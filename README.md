@@ -20,11 +20,8 @@ Port PCSX2 so that it can run as a native homebrew application on the PS4 using 
 
 
 
-
-https://github.com/user-attachments/assets/e48dccb5-cc8f-41e9-aa6f-295ed41142f7
-
-
-https://github.com/user-attachments/assets/9d1bb0de-8055-4770-86a0-1e711ff021e8
+https://github.com/user-attachments/assets/b2f5278c-6f9a-4716-a49c-d7fc812657ee
 
 
-https://youtu.be/ckPCVlBHaio
+
+https://www.youtube.com/@PhxGamingProject
