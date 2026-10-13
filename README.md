@@ -146,6 +146,9 @@ Only the source/header subset required by this PS4 target is included for some d
 
 ## Live debugging on your PC
 
+<img width="1913" height="992" alt="image" src="https://github.com/user-attachments/assets/df0906d2-1eaf-4fb2-a834-ad18a7aff32f" />
+
+
 The debug tool displays console logs, application/VM timing, execution stages, EE throughput and connection status at **[http://localhost:8080/](http://localhost:8080/)**. It also provides FTP upload/download and diagnostic marker controls. It is a development monitor, not a remote CPU debugger with breakpoints.
 
 ### 1. Configure the PC tool
