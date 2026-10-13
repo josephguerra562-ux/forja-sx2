@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="90" height="64" viewBox="0 0 90 64" role="img" aria-label="Botao R2">
+  <title>Botao R2</title>
+  
+  <rect x="5" y="7" width="80" height="50" rx="10" stroke="#B7CBE7" stroke-width="3" fill="#06172B"/><text x="45" y="42" text-anchor="middle" font-family="Arial, DejaVu Sans, sans-serif" font-size="27" font-weight="700" fill="#F1F7FF">R2</text>
+</svg>

@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PS4SX2 Debug Server</title>
+<style>
+:root { --bg:#0f1115; --card:#1a1d24; --border:#2a2d36; --text:#e6e8ee; --muted:#9aa0b0; --accent:#4ea1ff; --ok:#2ecc71; --warn:#f39c12; --err:#e74c3c; --mono: ui-monospace, "Cascadia Code", Consolas, monospace; }
+* { box-sizing:border-box; }
+body { margin:0; font-family: Inter, system-ui, sans-serif; background:var(--bg); color:var(--text); }
+header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:#111319; position:sticky; top:0; z-index:10; }
+header h1 { font-size:16px; margin:0; font-weight:700; letter-spacing:.02em; }
+.badge { padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; border:1px solid var(--border); }
+.badge.ok { background:#0f2a1a; color:var(--ok); border-color:#1e4a2a; }
+.badge.off { background:#2a1515; color:var(--err); border-color:#4a2222; }
+.badge.warn { background:#2a2210; color:var(--warn); border-color:#4a3a1a; }
+.mono { font-family:var(--mono); font-size:12px; }
+.grid { display:grid; grid-template-columns: 1.1fr .9fr; gap:14px; padding:14px; }
+@media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+.card { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.card h2 { margin:0; padding:10px 12px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.card h2 span { font-weight:600; }
+.stats { display:grid; grid-template-columns: repeat(4, 1fr); gap:0; }
+@media (max-width: 700px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+.stat { padding:10px 12px; border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
+.stat:last-child { border-right:none; }
+.stat .label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+.stat .value { font-family:var(--mono); font-size:18px; font-weight:700; margin-top:4px; }
+.stat .sub { font-size:11px; color:var(--muted); margin-top:2px; }
+.logbox { height: 42vh; min-height: 260px; overflow:auto; background:#0c0e12; font-family:var(--mono); font-size:12px; line-height:1.45; padding:8px 10px; white-space:pre-wrap; word-break:break-word; }
+.logline { padding:1px 0; border-left:3px solid transparent; padding-left:6px; margin:1px 0; }
+.logline.stage { border-color:var(--accent); background:#132034; }
+.logline.system { border-color:#555; color:#b0b8cc; }
+.logline.log { border-color:transparent; }
+.logline.game { border-color:var(--ok); }
+.logline.alert { border-color:var(--err); background:#2a1515; }
+.timeline { display:flex; gap:6px; flex-wrap:wrap; padding:8px 10px; }
+.timeline .step { padding:6px 8px; border-radius:8px; background:#0c0e12; border:1px solid var(--border); font-size:11px; font-family:var(--mono); }
+.timeline .step.active { border-color:var(--accent); background:#132034; color:var(--accent); }
+.controls { display:flex; gap:8px; flex-wrap:wrap; padding:10px; }
+.controls button, .controls input, .controls select { background:#0c0e12; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:12px; }
+.controls button:hover { border-color:var(--accent); }
+.controls button.on { background:var(--accent); color:#081018; border-color:var(--accent); font-weight:700; }
+canvas { width:100%; height:180px; background:#0c0e12; display:block; }
+.filelist { padding:8px 10px; font-family:var(--mono); font-size:12px; max-height:220px; overflow:auto; }
+.filelist div { padding:2px 0; border-bottom:1px dashed #222; display:flex; justify-content:space-between; gap:8px; }
+a { color:var(--accent); text-decoration:none; }
+a:hover { text-decoration:underline; }
+.kbd { background:#222; border:1px solid #333; border-bottom-width:2px; padding:1px 6px; border-radius:6px; font-family:var(--mono); font-size:11px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>PS4SX2 Debug Server</h1>
+  <span id="connBadge" class="badge off">DISCONNECTED</span>
+  <span id="ftpBadge" class="badge off">FTP --</span>
+  <span class="mono" id="execTime">boot: --</span>
+  <span class="mono" id="stageLabel">stage: --</span>
+  <span style="margin-left:auto" class="mono">Telemetry <span id="telPort">19423</span> | Dashboard <span id="webPort">8080</span> | <a href="/api/state" target="_blank">/api/state</a></span>
+</header>
+
+<div style="padding:8px 14px; background:#1a1d24; border-bottom:1px solid var(--border); font-size:12px; color:#b0b8cc;">
+  PS4 config: <span class="kbd">/data/PS4SX2/telemetry.conf</span> with <span class="kbd">host=YOUR_PC_IP</span> and <span class="kbd">port=19423</span> on separate lines &nbsp;|&nbsp; File transfers use your PS4 FTP server &nbsp;|&nbsp; Logs: <span class="kbd">tools/ps4-live-monitor/logs/</span>
+</div>
+
+<div class="grid">
+  <div style="display:flex; flex-direction:column; gap:14px;">
+    <div class="card">
+      <h2><span>Execution</span><span class="mono" id="gameLabel">--</span></h2>
+      <div class="stats">
+        <div class="stat"><div class="label">Application uptime</div><div class="value" id="bootS">--</div><div class="sub">since PS4SX2 started</div></div>
+        <div class="stat"><div class="label">VM time</div><div class="value" id="vmS">--</div><div class="sub">since the game started</div></div>
+        <div class="stat"><div class="label">EE MC/s</div><div class="value" id="eeMcps">--</div><div class="sub" id="eePc">pc --</div></div>
+        <div class="stat"><div class="label">Polls / Clock</div><div class="value" id="pollsVal">--</div><div class="sub" id="clockVal">--</div></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="label">VM State</div><div class="value" id="vmState">--</div><div class="sub" id="menuVal">menu --</div></div>
+        <div class="stat"><div class="label">VSyncQ</div><div class="value" id="vsyncq">--</div><div class="sub">queue</div></div>
+        <div class="stat"><div class="label">Platform</div><div class="value" id="platformVal">--</div><div class="sub" id="vsyncSub">--</div></div>
+        <div class="stat"><div class="label">Connections</div><div class="value" id="connCount">--</div><div class="sub" id="ps4Addr">--</div></div>
+      </div>
+      <div class="timeline" id="timeline"></div>
+      <canvas id="chart" width="800" height="180"></canvas>
+    </div>
+
+    <div class="card">
+      <h2><span>Live logs</span>
+        <span>
+          <label style="font-size:11px; text-transform:none; letter-spacing:0;"><input type="checkbox" id="autoScroll" checked> auto-scroll</label>
+          <label style="font-size:11px; text-transform:none; letter-spacing:0; margin-left:8px;"><input type="checkbox" id="onlyStage"> stages only</label>
+          <button id="clearLogs" style="margin-left:8px; padding:4px 8px; font-size:11px;">Clear</button>
+          <button id="saveLogs" style="padding:4px 8px; font-size:11px;">Save .jsonl</button>
+        </span>
+      </h2>
+      <div style="padding:6px 10px; display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--border);">
+        <input id="logFilter" placeholder="Filter logs (e.g. STAGE, EE, error)" style="flex:1; min-width:160px;"/>
+        <select id="typeFilter"><option value="">All types</option><option value="stage">stage</option><option value="log">log</option><option value="system">system</option><option value="game">game</option></select>
+      </div>
+      <div id="logbox" class="logbox"></div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px;">
+    <div class="card">
+      <h2><span>Diagnostic markers</span><span class="mono" id="markerCount">--</span></h2>
+      <div id="markers" style="padding:8px 10px; display:flex; flex-wrap:wrap; gap:6px;"></div>
+      <div style="padding:8px 10px; border-top:1px solid var(--border); font-size:11px; color:var(--muted);">Click to enable/disable via FTP. Some changes require restarting the game or application.</div>
+    </div>
+
+    <div class="card">
+      <h2><span>FTP files</span></h2>
+      <div class="controls">
+        <input id="ftpPath" value="/data/PS4SX2/roms/" style="flex:1; min-width:180px;" placeholder="/data/PS4SX2/roms/game.iso"/>
+        <input type="file" id="filePick" hidden/><button type="button" id="btnChooseFile">Choose file</button><span id="chosenFile" aria-live="polite">No file chosen</span>
+        <button id="btnUpload">Upload</button>
+        <button id="btnList">List</button>
+        <button id="btnPull">Download</button>
+      </div>
+      <div id="ftpStatus" style="padding:0 10px 6px; font-size:12px; color:var(--muted);"></div>
+      <div id="filelist" class="filelist">--</div>
+    </div>
+
+    <div class="card">
+      <h2><span>Alerts</span><span class="mono" id="alertCount">0</span></h2>
+      <div id="alerts" style="padding:8px 10px; font-family:var(--mono); font-size:11px; max-height:180px; overflow:auto;"></div>
+    </div>
+
+    <div class="card">
+      <h2><span>Stages</span></h2>
+      <div id="stages" style="padding:8px 10px; font-family:var(--mono); font-size:11px; max-height:180px; overflow:auto;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.getElementById(s);
+let hbHistory = [];
+let ws = null;
+let useSSE = false;
+
+function fmtSec(s) {
+  if (s == null || isNaN(s)) return "--";
+  if (s < 60) return s.toFixed(1) + "s";
+  const m = Math.floor(s/60), r = (s%60).toFixed(1);
+  return m + "m " + r + "s";
+}
+function fmtBoot(s) { return fmtSec(s); }
+
+function setBadge(el, text, cls) {
+  el.textContent = text;
+  el.className = "badge " + cls;
+}
+
+function renderTimeline(stage) {
+  const steps = ["boot","loading-modules","cpu-init","game-selected","vm-init","vm-running","vm-shutdown","disconnected","exit","connected"];
+  const tl = $("timeline");
+  tl.innerHTML = "";
+  // Show last stage highlight + sequence
+  steps.forEach(st => {
+    const d = document.createElement("div");
+    d.className = "step" + (st === stage ? " active" : "");
+    d.textContent = st;
+    if (st === stage) d.title = "current";
+    tl.appendChild(d);
+  });
+}
+
+let logEntries = [];
+function addLog(entry) {
+  logEntries.push(entry);
+  if (logEntries.length > 2000) logEntries.shift();
+  renderLogs();
+}
+function renderLogs() {
+  const box = $("logbox");
+  const filter = ($("logFilter").value || "").toLowerCase();
+  const typeF = $("typeFilter").value;
+  const onlyStage = $("onlyStage").checked;
+  const wasBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+  box.innerHTML = "";
+  let count = 0;
+  for (const e of logEntries) {
+    if (onlyStage && e.type !== "stage") continue;
+    if (typeF && e.type !== typeF) continue;
+    const hay = (e.msg + " " + (e.raw||"")).toLowerCase();
+    if (filter && !hay.includes(filter)) continue;
+    const line = document.createElement("div");
+    line.className = "logline " + (e.type || "log");
+    const t = e.boot_s != null ? e.boot_s.toFixed(2).padStart(7," ") + "s" : " --";
+    line.textContent = `[${t}] [${(e.type||"log").toUpperCase().padEnd(6," ")}] ${e.msg}`;
+    box.appendChild(line);
+    if (++count > 600) break; // cap render
+  }
+  // If filtered, show count
+  if (filter || typeF || onlyStage) {
+    const info = document.createElement("div");
+    info.style.cssText = "color:#666; font-size:10px; padding:4px;";
+    info.textContent = `Showing ${count} / ${logEntries.length}`;
+    box.appendChild(info);
+  }
+  if ($("autoScroll").checked && wasBottom) box.scrollTop = box.scrollHeight;
+}
+$("logFilter").addEventListener("input", renderLogs);
+$("typeFilter").addEventListener("change", renderLogs);
+$("onlyStage").addEventListener("change", renderLogs);
+$("clearLogs").addEventListener("click", () => { logEntries = []; renderLogs(); });
+$("saveLogs").addEventListener("click", () => {
+  const blob = new Blob(logEntries.map(e => JSON.stringify(e)), {type:"application/jsonl"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "ps4sx2_logs_" + new Date().toISOString().slice(0,19).replace(/:/g,"-") + ".jsonl";
+  a.click(); URL.revokeObjectURL(url);
+});
+
+function renderMarkers(markers) {
+  const c = $("markers");
+  c.innerHTML = "";
+  const keys = Object.keys(markers || {});
+  $("markerCount").textContent = keys.filter(k=>markers[k]).length + " ON / " + keys.length;
+  for (const k of keys) {
+    const b = document.createElement("button");
+    b.textContent = k;
+    b.className = markers[k] ? "on" : "";
+    b.title = markers[k] ? "ON (click to disable)" : "OFF (click to enable)";
+    b.addEventListener("click", () => toggleMarker(k));
+    c.appendChild(b);
+  }
+  if (!keys.length) c.textContent = "No markers configured (see config.json)";
+}
+
+async function toggleMarker(name) {
+  try {
+    const r = await fetch(`/api/marker?name=${encodeURIComponent(name)}&action=toggle`);
+    const j = await r.json();
+    if (j.ok) renderMarkers(j.markers);
+    else alert("Error: " + j.error);
+  } catch(e) { alert(e); }
+}
+
+function updateTelemetry(t) {
+  const boot = t.ps4_boot_s || t.execution_s || 0;
+  $("bootS").textContent = fmtBoot(boot);
+  $("vmS").textContent = fmtBoot(t.vm_s || 0);
+  $("eeMcps").textContent = t.ee_mcps ? t.ee_mcps.toFixed(2) : "--";
+  $("eePc").textContent = "EE " + (t.ee_pc ? ("0x"+t.ee_pc.toString(16).padStart(8,"0")) : "--") + " IOP " + (t.iop_pc ? ("0x"+t.iop_pc.toString(16).padStart(8,"0")) : "--");
+  $("pollsVal").textContent = t.polls != null ? Math.round(t.polls) : "--";
+  $("clockVal").textContent = t.clock_checks != null ? Math.round(t.clock_checks) + "/s" : "--";
+  $("vmState").textContent = t.vm_state != null ? t.vm_state : "--";
+  $("menuVal").textContent = t.menu_open ? "Menu open" : "Menu closed";
+  $("vsyncq").textContent = t.vsyncq != null ? t.vsyncq : "--";
+  $("platformVal").textContent = t.platform || "--";
+  $("gameLabel").textContent = t.game ? t.game.split("/").pop() : (t.stage || "--");
+  $("execTime").textContent = "boot " + fmtBoot(boot) + " | vm " + fmtBoot(t.vm_s||0);
+  $("stageLabel").textContent = "stage: " + (t.stage || "--");
+  $("ps4Addr").textContent = t.ps4_host ? (t.ps4_host + ":" + t.ps4_port) : "--";
+  $("connCount").textContent = (t.connect_count||0) + " / " + (t.disconnect_count||0);
+  const isConn = !!t.connected;
+  setBadge($("connBadge"), isConn ? "CONNECTED" : "DISCONNECTED", isConn ? "ok" : "off");
+  renderTimeline(t.stage || "disconnected");
+}
+function updateFtp(f) {
+  setBadge($("ftpBadge"), f.connected ? "FTP OK" : ("FTP " + (f.error ? "ERROR" : "--")), f.connected ? "ok" : "warn");
+  if (f.markers) renderMarkers(f.markers);
+}
+
+function drawChart() {
+  const c = $("chart");
+  const ctx = c.getContext("2d");
+  const W = c.width, H = c.height;
+  ctx.clearRect(0,0,W,H);
+  if (hbHistory.length < 2) {
+    ctx.fillStyle = "#555"; ctx.font = "11px monospace";
+    ctx.fillText("Waiting for PS4 heartbeats...", 10, 20);
+    return;
+  }
+  const vals = hbHistory.map(h => h.ee_mcps || 0);
+  const max = Math.max(10, ...vals) * 1.15;
+  const stepX = W / Math.max(1, hbHistory.length - 1);
+  // grid
+  ctx.strokeStyle = "#1e222c"; ctx.lineWidth = 1;
+  for (let i=0;i<4;i++) { const y = (H-20) * i/3 + 10; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  // line
+  ctx.strokeStyle = "#4ea1ff"; ctx.lineWidth = 1.6; ctx.beginPath();
+  hbHistory.forEach((h,i) => {
+    const x = i * stepX;
+    const y = H - 20 - (h.ee_mcps / max) * (H - 30);
+    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  // polls second line
+  const maxP = Math.max(1, ...hbHistory.map(h=>h.polls||0));
+  ctx.strokeStyle = "#2ecc71"; ctx.lineWidth = 1; ctx.beginPath();
+  hbHistory.forEach((h,i)=>{
+    const x=i*stepX; const y=H-20 - ((h.polls||0)/maxP)*(H-30)*0.35;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  ctx.fillStyle="#9aa0b0"; ctx.font="10px monospace";
+  ctx.fillText(`EE MC/s max ${max.toFixed(1)}`, 6, 12);
+  ctx.fillStyle="#4ea1ff"; ctx.fillText("EE MC/s", 6, H-4);
+  ctx.fillStyle="#2ecc71"; ctx.fillText("polls/s (scaled)", 90, H-4);
+}
+
+function handleEvent(type, data) {
+  if (type === "heartbeat") {
+    hbHistory.push(data);
+    if (hbHistory.length > 300) hbHistory.shift();
+    drawChart();
+  } else if (type === "log" || type === "stage" || type === "system" || type === "game") {
+    addLog(data);
+  } else if (type === "telemetry") {
+    updateTelemetry(data);
+  } else if (type === "ftp_state") {
+    updateFtp(data);
+  } else if (type === "alert") {
+    const box = $("alerts");
+    const d = document.createElement("div");
+    d.textContent = `[${(data.boot_s||0).toFixed(1)}s] ${data.msg}`;
+    d.style.cssText = "padding:3px 0; border-bottom:1px solid #222;";
+    box.prepend(d);
+    $("alertCount").textContent = box.children.length;
+  }
+  if (type === "telemetry" || type === "ftp_state") return;
+  // also update telemetry/ftp if piggybacked
+}
+
+async function loadInitial() {
+  try {
+    const r = await fetch("/api/state");
+    const j = await r.json();
+    $("telPort").textContent = j.config.telemetry_port;
+    $("webPort").textContent = j.config.web_port;
+    if (j.telemetry) updateTelemetry(j.telemetry);
+    if (j.ftp) updateFtp(j.ftp);
+    if (j.heartbeat_history) { hbHistory = j.heartbeat_history; drawChart(); }
+    if (j.logs) j.logs.forEach(e => addLog(e));
+    if (j.alerts) j.alerts.forEach(a => handleEvent("alert", a));
+    if (j.stages) {
+      const sbox = $("stages");
+      sbox.innerHTML = "";
+      j.stages.forEach(s => {
+        const d = document.createElement("div");
+        d.textContent = `[${(s.boot_s||0).toFixed(1)}s] ${s.stage}`;
+        d.style.padding = "2px 0";
+        sbox.appendChild(d);
+      });
+    }
+  } catch(e) { console.error(e); }
+}
+
+function connectWS() {
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  try {
+    ws = new WebSocket(proto + "//" + location.host + "/ws");
+    ws.onopen = () => console.log("WS open");
+    ws.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        handleEvent(msg.type, msg.data);
+      } catch(e) { console.error(e); }
+    };
+    ws.onclose = () => {
+      console.log("WS closed, fallback SSE");
+      if (!useSSE) connectSSE();
+    };
+    ws.onerror = () => {
+      try{ ws.close(); }catch{}
+    };
+  } catch(e) {
+    connectSSE();
+  }
+}
+function connectSSE() {
+  useSSE = true;
+  const es = new EventSource("/api/events");
+  es.onmessage = (ev) => {
+    try {
+      const msg = JSON.parse(ev.data);
+      handleEvent(msg.type, msg.data);
+    } catch(e) {}
+  };
+  es.onerror = () => console.log("SSE error");
+}
+
+// FTP actions
+$('btnChooseFile').addEventListener('click', () => $('filePick').click());
+$('filePick').addEventListener('change', () => { $('chosenFile').textContent = $('filePick').files[0]?.name || 'No file chosen'; });
+$("btnList").addEventListener("click", async () => {
+  const p = $("ftpPath").value.trim() || "/data/PS4SX2/roms";
+  $("ftpStatus").textContent = "Listing " + p + "...";
+  try {
+    // List path directory
+    const dir = p.endsWith("/") ? p : p.substring(0, p.lastIndexOf("/")+1) || "/data/PS4SX2/";
+    const r = await fetch(`/api/ftp/list?path=${encodeURIComponent(dir)}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error);
+    $("filelist").innerHTML = j.files.map(f => `<div><span>${f}</span><a href="#" onclick="event.preventDefault(); navigator.clipboard.writeText('${f.replace(/'/g,"\\'")}')">[copy]</a></div>`).join("") || "<div>(empty)</div>";
+    $("ftpStatus").textContent = `Listed ${j.files.length} items in ${dir}`;
+  } catch(e) { $("ftpStatus").textContent = "Error: " + e; }
+});
+$("btnUpload").addEventListener("click", async () => {
+  const inp = $("filePick");
+  if (!inp.files.length) { alert("Choose a file"); return; }
+  const file = inp.files[0];
+  let target = $("ftpPath").value.trim();
+  if (target.endsWith("/")) target += file.name;
+  $("ftpStatus").textContent = `Uploading ${file.name} (${(file.size/1024/1024).toFixed(2)} MB) -> ${target} ...`;
+  try {
+    const buf = await file.arrayBuffer();
+    const r = await fetch(`/api/ftp/push?path=${encodeURIComponent(target)}`, { method:"POST", body: buf, headers: {"Content-Type":"application/octet-stream"}});
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error);
+    $("ftpStatus").textContent = `OK: ${target} (${j.bytes} bytes)`;
+  } catch(e) { $("ftpStatus").textContent = "Upload error: " + e; }
+});
+$("btnPull").addEventListener("click", () => {
+  const p = $("ftpPath").value.trim();
+  if (!p || p.endsWith("/")) { alert("Enter the full file path"); return; }
+  window.open(`/api/ftp/pull?path=${encodeURIComponent(p)}`, "_blank");
+});
+
+loadInitial().then(()=> connectWS());
+setInterval(drawChart, 1000);
+</script>
+</body>
+</html>
+

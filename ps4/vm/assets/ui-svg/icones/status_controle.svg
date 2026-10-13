@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Status Controle">
+  <title>Status Controle</title>
+  
+  <g fill="none" stroke="#B7CBE7" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21h24c6 0 10 4 12 12l3 10c1 5-2 9-6 9-3 0-5-2-9-8H20c-4 6-6 8-9 8-4 0-7-4-6-9l3-10c2-8 6-12 12-12Z"/>
+<path d="M18 33h12M24 27v12"/><circle cx="40.5" cy="31" r="1.8" fill="#B7CBE7" stroke="none"/><circle cx="47" cy="37.5" r="1.8" fill="#B7CBE7" stroke="none"/></g>
+</svg>

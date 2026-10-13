@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="64" viewBox="0 0 260 64" role="img" aria-label="Menu Biblioteca ativo">
+  <title>Menu Biblioteca ativo</title>
+  <defs><linearGradient id="ativo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0757AE"/><stop offset=".5" stop-color="#064585"/><stop offset="1" stop-color="#156DD6"/></linearGradient>
+<linearGradient id="inativo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#071E38" stop-opacity=".5"/><stop offset="1" stop-color="#071425" stop-opacity=".35"/></linearGradient></defs>
+  <rect x="1.5" y="1.5" width="257" height="61" rx="13" fill="url(#ativo)" stroke="#25A7FF" stroke-width="2"/><g transform="translate(20,12) scale(0.625000)" fill="none" stroke="#F1F7FF" stroke-width="3.25" stroke-linejoin="round" stroke-linecap="round"><path d="M20 21h24c6 0 10 4 12 12l3 10c1 5-2 9-6 9-3 0-5-2-9-8H20c-4 6-6 8-9 8-4 0-7-4-6-9l3-10c2-8 6-12 12-12Z"/>
+<path d="M18 33h12M24 27v12"/><circle cx="40.5" cy="31" r="1.8" fill="#F1F7FF" stroke="none"/><circle cx="47" cy="37.5" r="1.8" fill="#F1F7FF" stroke="none"/></g><text x="77" y="39" font-family="Arial, DejaVu Sans, sans-serif" font-weight="700" font-size="20" fill="#F1F7FF">Biblioteca</text>
+</svg>

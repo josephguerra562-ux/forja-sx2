@@ -1,0 +1,929 @@
+// SPDX-FileCopyrightText: 2002-2026 PCSX2 Dev Team
+// SPDX-License-Identifier: GPL-3.0+
+
+#include "GS/Renderers/Vulkan/GSDeviceVK.h"
+#include "GS/Renderers/Vulkan/VKBuilders.h"
+#include "GS/Renderers/Vulkan/VKSwapChain.h"
+#include "GS/Renderers/Vulkan/VKOrbisTiming.h" // vk-285-36: [vkwait]
+#include "VMManager.h"
+
+#include "common/Assertions.h"
+#include "common/CocoaTools.h"
+#include "common/Console.h"
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+
+
+
+#if defined(VK_USE_PLATFORM_XLIB_KHR)
+#include <X11/Xlib.h>
+#endif
+
+static_assert(VKSwapChain::NUM_SEMAPHORES == (GSDeviceVK::NUM_COMMAND_BUFFERS + 1));
+
+VKSwapChain::VKSwapChain(const WindowInfo& wi, VkSurfaceKHR surface, VkPresentModeKHR present_mode,
+	std::optional<bool> exclusive_fullscreen_control)
+	: m_window_info(wi)
+	, m_surface(surface)
+	, m_present_mode(present_mode)
+	, m_exclusive_fullscreen_control(exclusive_fullscreen_control)
+{
+}
+
+VKSwapChain::~VKSwapChain()
+{
+	DestroySwapChainImages();
+	DestroySwapChain();
+	DestroySurface();
+}
+
+#ifdef ORBIS_VULKAN
+// PS5: no window system; the one display is VideoOut, driven through VK_KHR_display
+// as mihawk-99's vkQuake and RetroArch ports do. The driver reports one 3840x2160
+// mode and refuses a surface of any other extent, so the swapchain is that size and
+// the present pass scales the frame into it.
+static VkSurfaceKHR CreateOrbisDisplaySurface(VkInstance instance, VkPhysicalDevice physical_device)
+{
+	if (!vkGetPhysicalDeviceDisplayPropertiesKHR || !vkGetPhysicalDeviceDisplayPlanePropertiesKHR ||
+		!vkGetDisplayModePropertiesKHR || !vkCreateDisplayPlaneSurfaceKHR)
+	{
+		Console.Error("VK: the driver does not implement VK_KHR_display.");
+		return VK_NULL_HANDLE;
+	}
+
+	u32 display_count = 0;
+	if (vkGetPhysicalDeviceDisplayPropertiesKHR(physical_device, &display_count, nullptr) != VK_SUCCESS ||
+		display_count == 0)
+	{
+		Console.Error("VK: the device reports no display.");
+		return VK_NULL_HANDLE;
+	}
+	std::vector<VkDisplayPropertiesKHR> displays(display_count);
+	if (vkGetPhysicalDeviceDisplayPropertiesKHR(physical_device, &display_count, displays.data()) != VK_SUCCESS)
+		return VK_NULL_HANDLE;
+
+	u32 plane_count = 0;
+	if (vkGetPhysicalDeviceDisplayPlanePropertiesKHR(physical_device, &plane_count, nullptr) != VK_SUCCESS ||
+		plane_count == 0)
+	{
+		Console.Error("VK: the device reports no display plane.");
+		return VK_NULL_HANDLE;
+	}
+	std::vector<VkDisplayPlanePropertiesKHR> planes(plane_count);
+	if (vkGetPhysicalDeviceDisplayPlanePropertiesKHR(physical_device, &plane_count, planes.data()) != VK_SUCCESS)
+		return VK_NULL_HANDLE;
+
+	// The first display with a mode; the largest mode it offers (ps5vk has one), and of equally large ones the one nearest
+	// 60 Hz (vk-285-115: RADV can list 119.88 Hz first, when the title asks VideoOut for high frame rates).
+	VkDisplayKHR chosen_display = VK_NULL_HANDLE;
+	VkDisplayModePropertiesKHR chosen_mode = {};
+	const auto off_60hz = [](const VkDisplayModePropertiesKHR& m) {
+		const s64 mhz = static_cast<s64>(m.parameters.refreshRate);
+		return mhz > 60000 ? mhz - 60000 : 60000 - mhz;
+	};
+	for (const VkDisplayPropertiesKHR& display : displays)
+	{
+		u32 mode_count = 0;
+		if (vkGetDisplayModePropertiesKHR(physical_device, display.display, &mode_count, nullptr) != VK_SUCCESS ||
+			mode_count == 0)
+			continue;
+		std::vector<VkDisplayModePropertiesKHR> modes(mode_count);
+		if (vkGetDisplayModePropertiesKHR(physical_device, display.display, &mode_count, modes.data()) != VK_SUCCESS)
+			continue;
+		for (const VkDisplayModePropertiesKHR& mode : modes)
+		{
+			const VkExtent2D& region = mode.parameters.visibleRegion;
+			const u64 area = static_cast<u64>(region.width) * region.height;
+			const u64 chosen_area =
+				static_cast<u64>(chosen_mode.parameters.visibleRegion.width) * chosen_mode.parameters.visibleRegion.height;
+			if (chosen_display == VK_NULL_HANDLE || area > chosen_area ||
+				(area == chosen_area && off_60hz(mode) < off_60hz(chosen_mode)))
+			{
+				chosen_display = display.display;
+				chosen_mode = mode;
+			}
+		}
+		if (chosen_display != VK_NULL_HANDLE)
+			break;
+	}
+	if (chosen_display == VK_NULL_HANDLE)
+	{
+		Console.Error("VK: no display offers a mode.");
+		return VK_NULL_HANDLE;
+	}
+
+	// The plane that can drive that display, chosen by what it reports rather than by index.
+	u32 chosen_plane = UINT32_MAX;
+	for (u32 index = 0; index < plane_count; index++)
+	{
+		if (planes[index].currentDisplay == VK_NULL_HANDLE || planes[index].currentDisplay == chosen_display)
+		{
+			chosen_plane = index;
+			break;
+		}
+	}
+	if (chosen_plane == UINT32_MAX)
+	{
+		Console.Error("VK: no display plane can drive the display.");
+		return VK_NULL_HANDLE;
+	}
+
+	const VkDisplaySurfaceCreateInfoKHR create_info = {
+		VK_STRUCTURE_TYPE_DISPLAY_SURFACE_CREATE_INFO_KHR, nullptr, 0, chosen_mode.displayMode, chosen_plane,
+		planes[chosen_plane].currentStackIndex, VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR, 1.0f,
+		VK_DISPLAY_PLANE_ALPHA_OPAQUE_BIT_KHR, chosen_mode.parameters.visibleRegion};
+	VkSurfaceKHR surface;
+	const VkResult res = vkCreateDisplayPlaneSurfaceKHR(instance, &create_info, nullptr, &surface);
+	if (res != VK_SUCCESS)
+	{
+		LOG_VULKAN_ERROR(res, "vkCreateDisplayPlaneSurfaceKHR failed: ");
+		return VK_NULL_HANDLE;
+	}
+	Console.WriteLn("VK: display surface %ux%u on plane %u (%.2f Hz)", chosen_mode.parameters.visibleRegion.width,
+		chosen_mode.parameters.visibleRegion.height, chosen_plane, chosen_mode.parameters.refreshRate / 1000.0);
+	return surface;
+}
+#endif
+
+VkSurfaceKHR VKSwapChain::CreateVulkanSurface(VkInstance instance, VkPhysicalDevice physical_device, WindowInfo* wi)
+{
+#ifdef ORBIS_VULKAN
+	if (wi->type != WindowInfo::Type::Surfaceless)
+		return CreateOrbisDisplaySurface(instance, physical_device);
+#endif
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
+	if (wi->type == WindowInfo::Type::Win32)
+	{
+		VkWin32SurfaceCreateInfoKHR surface_create_info = {
+			VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, // VkStructureType               sType
+			nullptr, // const void*                   pNext
+			0, // VkWin32SurfaceCreateFlagsKHR  flags
+			nullptr, // HINSTANCE                     hinstance
+			reinterpret_cast<HWND>(wi->window_handle) // HWND                          hwnd
+		};
+
+		VkSurfaceKHR surface;
+		VkResult res = vkCreateWin32SurfaceKHR(instance, &surface_create_info, nullptr, &surface);
+		if (res != VK_SUCCESS)
+		{
+			LOG_VULKAN_ERROR(res, "vkCreateWin32SurfaceKHR failed: ");
+			return VK_NULL_HANDLE;
+		}
+
+		return surface;
+	}
+#endif
+
+#if defined(VK_USE_PLATFORM_XLIB_KHR)
+	if (wi->type == WindowInfo::Type::X11)
+	{
+		VkXlibSurfaceCreateInfoKHR surface_create_info = {
+			VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR, // VkStructureType               sType
+			nullptr, // const void*                   pNext
+			0, // VkXlibSurfaceCreateFlagsKHR   flags
+			static_cast<Display*>(wi->display_connection), // Display*                      dpy
+			reinterpret_cast<Window>(wi->window_handle) // Window                        window
+		};
+
+		VkSurfaceKHR surface;
+		VkResult res = vkCreateXlibSurfaceKHR(instance, &surface_create_info, nullptr, &surface);
+		if (res != VK_SUCCESS)
+		{
+			LOG_VULKAN_ERROR(res, "vkCreateXlibSurfaceKHR failed: ");
+			return VK_NULL_HANDLE;
+		}
+
+		return surface;
+	}
+#endif
+
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+	if (wi->type == WindowInfo::Type::Wayland)
+	{
+		VkWaylandSurfaceCreateInfoKHR surface_create_info = {VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR, nullptr,
+			0, static_cast<struct wl_display*>(wi->display_connection),
+			static_cast<struct wl_surface*>(wi->window_handle)};
+
+		VkSurfaceKHR surface;
+		VkResult res = vkCreateWaylandSurfaceKHR(instance, &surface_create_info, nullptr, &surface);
+		if (res != VK_SUCCESS)
+		{
+			LOG_VULKAN_ERROR(res, "vkCreateWaylandSurfaceEXT failed: ");
+			return VK_NULL_HANDLE;
+		}
+
+		return surface;
+	}
+#endif
+
+#if defined(VK_USE_PLATFORM_METAL_EXT)
+	if (wi->type == WindowInfo::Type::MacOS)
+	{
+		if (!wi->surface_handle && !CocoaTools::CreateMetalLayer(wi))
+			return VK_NULL_HANDLE;
+
+		VkMetalSurfaceCreateInfoEXT surface_create_info = {VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT, nullptr, 0,
+			static_cast<const CAMetalLayer*>(wi->surface_handle)};
+
+		VkSurfaceKHR surface;
+		VkResult res = vkCreateMetalSurfaceEXT(instance, &surface_create_info, nullptr, &surface);
+		if (res != VK_SUCCESS)
+		{
+			LOG_VULKAN_ERROR(res, "vkCreateMetalSurfaceEXT failed: ");
+			return VK_NULL_HANDLE;
+		}
+
+		return surface;
+	}
+#endif
+
+	return VK_NULL_HANDLE;
+}
+
+void VKSwapChain::DestroyVulkanSurface(VkInstance instance, WindowInfo* wi, VkSurfaceKHR surface)
+{
+	vkDestroySurfaceKHR(GSDeviceVK::GetInstance()->GetVulkanInstance(), surface, nullptr);
+
+#if defined(__APPLE__)
+	if (wi->type == WindowInfo::Type::MacOS && wi->surface_handle)
+		CocoaTools::DestroyMetalLayer(wi);
+#endif
+}
+
+std::unique_ptr<VKSwapChain> VKSwapChain::Create(const WindowInfo& wi, VkSurfaceKHR surface,
+	VkPresentModeKHR present_mode, std::optional<bool> exclusive_fullscreen_control)
+{
+	std::unique_ptr<VKSwapChain> swap_chain =
+		std::unique_ptr<VKSwapChain>(new VKSwapChain(wi, surface, present_mode, exclusive_fullscreen_control));
+	if (!swap_chain->CreateSwapChain())
+		return nullptr;
+
+	return swap_chain;
+}
+
+#if defined(PCSX2_PS4)
+std::unique_ptr<VKSwapChain> VKSwapChain::CreateVideoOut(const WindowInfo& wi)
+{
+	std::unique_ptr<VKSwapChain> swap_chain =
+		std::unique_ptr<VKSwapChain>(new VKSwapChain(wi, VK_NULL_HANDLE, VK_PRESENT_MODE_FIFO_KHR, std::nullopt));
+	swap_chain->m_is_video_out = true;
+	if (!swap_chain->CreateVideoOutImages())
+		return nullptr;
+
+	return swap_chain;
+}
+
+bool VKSwapChain::CreateVideoOutImages()
+{
+	const PS4Port::VulkanVideoOut::Dispatch dispatch = {vkGetPhysicalDeviceFormatProperties,
+		vkGetPhysicalDeviceMemoryProperties, vkCreateImage, vkGetImageMemoryRequirements, vkAllocateMemory,
+		vkMapMemory, vkGetImageSubresourceLayout, vkBindImageMemory, vkUnmapMemory, vkDestroyImage, vkFreeMemory,
+		vkDeviceWaitIdle};
+	m_video_out = std::make_unique<PS4Port::VulkanVideoOut>(GSDeviceVK::GetInstance()->GetPhysicalDevice(),
+		GSDeviceVK::GetInstance()->GetDevice(), dispatch, [](const char* message) { Console.WriteLn("%s", message); });
+	if (!m_video_out->Create())
+		return false;
+	for (u32 i = 0; i < PS4Port::VulkanVideoOut::ImageCount; i++)
+	{
+		auto texture = GSTextureVK::Adopt(m_video_out->GetImage(i), GSTexture::RenderTarget, GSTexture::Format::Color,
+			PS4Port::VulkanVideoOut::Width, PS4Port::VulkanVideoOut::Height, 1, PS4Port::VulkanVideoOut::Format);
+		if (!texture)
+			return false;
+		m_images.push_back(std::move(texture));
+	}
+	m_window_info.type = WindowInfo::Type::Surfaceless;
+	m_window_info.surface_width = PS4Port::VulkanVideoOut::Width;
+	m_window_info.surface_height = PS4Port::VulkanVideoOut::Height;
+	m_window_info.surface_scale = 1.0f;
+	m_window_info.surface_refresh_rate = 60.0f;
+	return true;
+}
+#endif
+
+static VkFormat GetLinearFormat(VkFormat format)
+{
+	switch (format)
+	{
+		case VK_FORMAT_R8_SRGB:
+			return VK_FORMAT_R8_UNORM;
+		case VK_FORMAT_R8G8_SRGB:
+			return VK_FORMAT_R8G8_UNORM;
+		case VK_FORMAT_R8G8B8_SRGB:
+			return VK_FORMAT_R8G8B8_UNORM;
+		case VK_FORMAT_R8G8B8A8_SRGB:
+			return VK_FORMAT_R8G8B8A8_UNORM;
+		case VK_FORMAT_B8G8R8_SRGB:
+			return VK_FORMAT_B8G8R8_UNORM;
+		case VK_FORMAT_B8G8R8A8_SRGB:
+			return VK_FORMAT_B8G8R8A8_UNORM;
+		default:
+			return format;
+	}
+}
+
+std::optional<VkSurfaceFormatKHR> VKSwapChain::SelectSurfaceFormat(VkSurfaceKHR surface)
+{
+	u32 format_count;
+	VkResult res = vkGetPhysicalDeviceSurfaceFormatsKHR(
+		GSDeviceVK::GetInstance()->GetPhysicalDevice(), surface, &format_count, nullptr);
+	if (res != VK_SUCCESS || format_count == 0)
+	{
+		LOG_VULKAN_ERROR(res, "vkGetPhysicalDeviceSurfaceFormatsKHR failed: ");
+		return std::nullopt;
+	}
+
+	std::vector<VkSurfaceFormatKHR> surface_formats(format_count);
+	res = vkGetPhysicalDeviceSurfaceFormatsKHR(
+		GSDeviceVK::GetInstance()->GetPhysicalDevice(), surface, &format_count, surface_formats.data());
+	pxAssert(res == VK_SUCCESS);
+
+	// If there is a single undefined surface format, the device doesn't care, so we'll just use RGBA
+	if (surface_formats[0].format == VK_FORMAT_UNDEFINED)
+		return VkSurfaceFormatKHR{VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
+
+	// Try to find a suitable format.
+	for (const VkSurfaceFormatKHR& surface_format : surface_formats)
+	{
+		// Some drivers seem to return a SRGB format here (Intel Mesa).
+		// This results in gamma correction when presenting to the screen, which we don't want.
+		// Use a linear format instead, if this is the case.
+		return VkSurfaceFormatKHR{GetLinearFormat(surface_format.format), VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
+	}
+
+	Console.Error("Failed to find a suitable format for swap chain buffers.");
+	return std::nullopt;
+}
+
+static const char* PresentModeToString(VkPresentModeKHR mode)
+{
+	switch (mode)
+	{
+		case VK_PRESENT_MODE_IMMEDIATE_KHR:
+			return "VK_PRESENT_MODE_IMMEDIATE_KHR";
+
+		case VK_PRESENT_MODE_MAILBOX_KHR:
+			return "VK_PRESENT_MODE_MAILBOX_KHR";
+
+		case VK_PRESENT_MODE_FIFO_KHR:
+			return "VK_PRESENT_MODE_FIFO_KHR";
+
+		case VK_PRESENT_MODE_FIFO_RELAXED_KHR:
+			return "VK_PRESENT_MODE_FIFO_RELAXED_KHR";
+
+		case VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR:
+			return "VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR";
+
+		case VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR:
+			return "VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR";
+
+		default:
+			return "UNKNOWN_VK_PRESENT_MODE";
+	}
+}
+
+bool VKSwapChain::SelectPresentMode(VkSurfaceKHR surface, GSVSyncMode* vsync_mode, VkPresentModeKHR* present_mode)
+{
+	VkResult res;
+	u32 mode_count;
+	res = vkGetPhysicalDeviceSurfacePresentModesKHR(
+		GSDeviceVK::GetInstance()->GetPhysicalDevice(), surface, &mode_count, nullptr);
+	if (res != VK_SUCCESS || mode_count == 0)
+	{
+		LOG_VULKAN_ERROR(res, "vkGetPhysicalDeviceSurfaceFormatsKHR failed: ");
+		return false;
+	}
+
+	std::vector<VkPresentModeKHR> present_modes(mode_count);
+	res = vkGetPhysicalDeviceSurfacePresentModesKHR(
+		GSDeviceVK::GetInstance()->GetPhysicalDevice(), surface, &mode_count, present_modes.data());
+	pxAssert(res == VK_SUCCESS);
+
+	// Checks if a particular mode is supported, if it is, returns that mode.
+	const auto CheckForMode = [&present_modes](VkPresentModeKHR check_mode) {
+		auto it = std::find_if(present_modes.begin(), present_modes.end(),
+			[check_mode](VkPresentModeKHR mode) { return check_mode == mode; });
+		return it != present_modes.end();
+	};
+
+	switch (*vsync_mode)
+	{
+		case GSVSyncMode::Disabled:
+		{
+			// Prefer immediate > mailbox > fifo.
+			if (CheckForMode(VK_PRESENT_MODE_IMMEDIATE_KHR))
+			{
+				*present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+			}
+			else if (CheckForMode(VK_PRESENT_MODE_MAILBOX_KHR))
+			{
+				WARNING_LOG("Immediate not supported for vsync-disabled, using mailbox.");
+				*present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+				*vsync_mode = GSVSyncMode::Mailbox;
+			}
+			else
+			{
+				WARNING_LOG("Mailbox not supported for vsync-disabled, using FIFO.");
+				*present_mode = VK_PRESENT_MODE_FIFO_KHR;
+				*vsync_mode = GSVSyncMode::FIFO;
+			}
+		}
+		break;
+
+		case GSVSyncMode::FIFO:
+		{
+			// FIFO is always available.
+			*present_mode = VK_PRESENT_MODE_FIFO_KHR;
+		}
+		break;
+
+		case GSVSyncMode::Mailbox:
+		{
+			// Mailbox > fifo.
+			if (CheckForMode(VK_PRESENT_MODE_MAILBOX_KHR))
+			{
+				*present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+			}
+			else
+			{
+				WARNING_LOG("Mailbox not supported for vsync-mailbox, using FIFO.");
+				*present_mode = VK_PRESENT_MODE_FIFO_KHR;
+				*vsync_mode = GSVSyncMode::FIFO;
+			}
+		}
+		break;
+
+			jNO_DEFAULT
+	}
+
+	return true;
+}
+
+bool VKSwapChain::CreateSwapChain()
+{
+	// Select swap chain format
+	std::optional<VkSurfaceFormatKHR> surface_format = SelectSurfaceFormat(m_surface);
+	if (!surface_format.has_value())
+		return false;
+
+	// Look up surface properties to determine image count and dimensions
+	VkSurfaceCapabilitiesKHR surface_capabilities;
+	VkResult res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+		GSDeviceVK::GetInstance()->GetPhysicalDevice(), m_surface, &surface_capabilities);
+	if (res != VK_SUCCESS)
+	{
+		LOG_VULKAN_ERROR(res, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR failed: ");
+		return false;
+	}
+
+	// Select number of images in swap chain, we prefer one buffer in the background to work on in triple-buffered mode.
+	// maxImageCount can be zero, in which case there isn't an upper limit on the number of buffers.
+	u32 image_count = std::clamp<u32>(
+		(m_present_mode == VK_PRESENT_MODE_MAILBOX_KHR) ? 3 : 2, surface_capabilities.minImageCount,
+		(surface_capabilities.maxImageCount == 0) ? std::numeric_limits<u32>::max() : surface_capabilities.maxImageCount);
+	DEV_LOG("Creating a swap chain with {} images in present mode {}", image_count, PresentModeToString(m_present_mode));
+
+	// Determine the dimensions of the swap chain. Values of -1 indicate the size we specify here
+	// determines window size?
+	VkExtent2D size = surface_capabilities.currentExtent;
+	if (size.width == UINT32_MAX)
+	{
+		size.width = m_window_info.surface_width;
+		size.height = m_window_info.surface_height;
+	}
+	size.width =
+		std::clamp(size.width, surface_capabilities.minImageExtent.width, surface_capabilities.maxImageExtent.width);
+	size.height =
+		std::clamp(size.height, surface_capabilities.minImageExtent.height, surface_capabilities.maxImageExtent.height);
+
+	// Prefer identity transform if possible
+	VkSurfaceTransformFlagBitsKHR transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	if (!(surface_capabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR))
+		transform = surface_capabilities.currentTransform;
+
+	VkCompositeAlphaFlagBitsKHR alpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	if (!(surface_capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR))
+	{
+		// If we only support pre-multiplied/post-multiplied... :/
+		if (surface_capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR)
+			alpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+	}
+
+	// Select swap chain flags, we only need a colour attachment
+#ifdef ORBIS_VULKAN
+	// PS5: the display's images are colour attachments (and transfer sources) only;
+	// GSDeviceVK::RenderBlankFrame clears them with a render pass instead.
+	VkImageUsageFlags image_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+#else
+	VkImageUsageFlags image_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+#endif
+	if ((surface_capabilities.supportedUsageFlags & image_usage) != image_usage)
+	{
+		Console.Error("Vulkan: Swap chain does not support usage as color attachment");
+		return false;
+	}
+
+	// Store the old/current swap chain when recreating for resize
+	// Old swap chain is destroyed regardless of whether the create call succeeds
+	VkSwapchainKHR old_swap_chain;
+	// RDNA4 experences a 2s delay in the following 2-3 vkAcquireNextImageKHR calls if we pass the old swapchain to the new one.
+	// Instead, pass null. This requires us to have freed the old image, which we already do with the swapchain maintenance extension.
+	if (GSDeviceVK::GetInstance()->IsDeviceAMD() && GSDeviceVK::GetInstance()->GetOptionalExtensions().vk_swapchain_maintenance1)
+	{
+		vkDestroySwapchainKHR(GSDeviceVK::GetInstance()->GetDevice(), m_swap_chain, nullptr);
+		old_swap_chain = VK_NULL_HANDLE;
+	}
+	else
+		old_swap_chain = m_swap_chain;
+
+	m_swap_chain = VK_NULL_HANDLE;
+
+	// VK_EXT_swapchain_maintenance1 types/enums are aliases of VK_KHR_swapchain_maintenance1 types/enums.
+	const VkSwapchainPresentModesCreateInfoKHR modes_info{VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_KHR, nullptr, 1u, &m_present_mode};
+
+	// Now we can actually create the swap chain
+	VkSwapchainCreateInfoKHR swap_chain_info = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR, 
+		GSDeviceVK::GetInstance()->GetOptionalExtensions().vk_swapchain_maintenance1 ? &modes_info : nullptr, 0, m_surface,
+		image_count, surface_format->format, surface_format->colorSpace, size, 1u, image_usage,
+		VK_SHARING_MODE_EXCLUSIVE, 0, nullptr, transform, alpha, m_present_mode, VK_TRUE, old_swap_chain};
+	std::array<uint32_t, 2> indices = {{
+		GSDeviceVK::GetInstance()->GetGraphicsQueueFamilyIndex(),
+		GSDeviceVK::GetInstance()->GetPresentQueueFamilyIndex(),
+	}};
+	if (GSDeviceVK::GetInstance()->GetGraphicsQueueFamilyIndex() !=
+		GSDeviceVK::GetInstance()->GetPresentQueueFamilyIndex())
+	{
+		swap_chain_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+		swap_chain_info.queueFamilyIndexCount = 2;
+		swap_chain_info.pQueueFamilyIndices = indices.data();
+	}
+
+#ifdef _WIN32
+	VkSurfaceFullScreenExclusiveInfoEXT exclusive_info = {VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT};
+	VkSurfaceFullScreenExclusiveWin32InfoEXT exclusive_win32_info = {
+		VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT};
+	if (m_exclusive_fullscreen_control.has_value())
+	{
+		if (GSDeviceVK::GetInstance()->GetOptionalExtensions().vk_ext_full_screen_exclusive)
+		{
+			exclusive_info.fullScreenExclusive =
+				(m_exclusive_fullscreen_control.value() ? VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT :
+														  VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT);
+
+			exclusive_win32_info.hmonitor =
+				MonitorFromWindow(reinterpret_cast<HWND>(m_window_info.window_handle), MONITOR_DEFAULTTONEAREST);
+			if (!exclusive_win32_info.hmonitor)
+				Console.Error("MonitorFromWindow() for exclusive fullscreen exclusive override failed.");
+
+			Vulkan::AddPointerToChain(&swap_chain_info, &exclusive_info);
+			Vulkan::AddPointerToChain(&swap_chain_info, &exclusive_win32_info);
+		}
+		else
+		{
+			Console.Error("Exclusive fullscreen control requested, but VK_EXT_full_screen_exclusive is not supported.");
+		}
+	}
+#else
+	if (m_exclusive_fullscreen_control.has_value())
+		Console.Error("Exclusive fullscreen control requested, but is not supported on this platform.");
+#endif
+
+	res = vkCreateSwapchainKHR(GSDeviceVK::GetInstance()->GetDevice(), &swap_chain_info, nullptr, &m_swap_chain);
+	if (res != VK_SUCCESS)
+	{
+		LOG_VULKAN_ERROR(res, "vkCreateSwapchainKHR failed: ");
+		return false;
+	}
+
+	// Now destroy the old swap chain, since it's been recreated.
+	// We can do this immediately since all work should have been completed before calling resize.
+	if (old_swap_chain != VK_NULL_HANDLE)
+		vkDestroySwapchainKHR(GSDeviceVK::GetInstance()->GetDevice(), old_swap_chain, nullptr);
+
+	m_window_info.surface_width = std::max(1u, size.width);
+	m_window_info.surface_height = std::max(1u, size.height);
+
+	// Get and create images.
+	pxAssert(m_images.empty());
+
+	res = vkGetSwapchainImagesKHR(GSDeviceVK::GetInstance()->GetDevice(), m_swap_chain, &image_count, nullptr);
+	if (res != VK_SUCCESS)
+	{
+		LOG_VULKAN_ERROR(res, "vkGetSwapchainImagesKHR failed: ");
+		return false;
+	}
+
+	std::vector<VkImage> images(image_count);
+	res = vkGetSwapchainImagesKHR(GSDeviceVK::GetInstance()->GetDevice(), m_swap_chain, &image_count, images.data());
+	pxAssert(res == VK_SUCCESS);
+
+	m_images.reserve(image_count);
+	m_current_image = 0;
+	for (u32 i = 0; i < image_count; i++)
+	{
+		std::unique_ptr<GSTextureVK> texture =
+			GSTextureVK::Adopt(images[i], GSTexture::RenderTarget, GSTexture::Format::Color,
+				m_window_info.surface_width, m_window_info.surface_height, 1, surface_format->format);
+		if (!texture)
+			return false;
+
+		m_images.push_back(std::move(texture));
+	}
+
+	m_current_semaphore = 0;
+	for (u32 i = 0; i < NUM_SEMAPHORES; i++)
+	{
+		ImageSemaphores& sema = m_semaphores[i];
+
+		const VkSemaphoreCreateInfo semaphore_info = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, nullptr, 0};
+		res = vkCreateSemaphore(
+			GSDeviceVK::GetInstance()->GetDevice(), &semaphore_info, nullptr, &sema.available_semaphore);
+		if (res != VK_SUCCESS)
+		{
+			LOG_VULKAN_ERROR(res, "vkCreateSemaphore failed: ");
+			return false;
+		}
+
+		res = vkCreateSemaphore(
+			GSDeviceVK::GetInstance()->GetDevice(), &semaphore_info, nullptr, &sema.rendering_finished_semaphore);
+		if (res != VK_SUCCESS)
+		{
+			LOG_VULKAN_ERROR(res, "vkCreateSemaphore failed: ");
+			vkDestroySemaphore(GSDeviceVK::GetInstance()->GetDevice(), sema.available_semaphore, nullptr);
+			sema.available_semaphore = VK_NULL_HANDLE;
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void VKSwapChain::DestroySwapChainImages()
+{
+#if defined(PCSX2_PS4)
+	if (m_is_video_out)
+	{
+		for (auto& texture : m_images)
+			texture->Destroy(false);
+		m_images.clear();
+		m_video_out.reset();
+		m_image_acquire_result.reset();
+		return;
+	}
+#endif
+
+	for (auto& it : m_images)
+	{
+		// don't defer view destruction, images are no longer valid
+		it->Destroy(false);
+	}
+	m_images.clear();
+	for (auto& it : m_semaphores)
+	{
+		if (it.rendering_finished_semaphore != VK_NULL_HANDLE)
+			vkDestroySemaphore(GSDeviceVK::GetInstance()->GetDevice(), it.rendering_finished_semaphore, nullptr);
+		if (it.available_semaphore != VK_NULL_HANDLE)
+			vkDestroySemaphore(GSDeviceVK::GetInstance()->GetDevice(), it.available_semaphore, nullptr);
+	}
+	m_semaphores = {};
+
+	m_image_acquire_result.reset();
+}
+
+void VKSwapChain::DestroySwapChain()
+{
+	DestroySwapChainImages();
+
+#if defined(PCSX2_PS4)
+	if (m_is_video_out)
+	{
+		m_is_video_out = false;
+		m_window_info.surface_width = 0;
+		m_window_info.surface_height = 0;
+		return;
+	}
+#endif
+
+	if (m_swap_chain == VK_NULL_HANDLE)
+		return;
+
+	vkDestroySwapchainKHR(GSDeviceVK::GetInstance()->GetDevice(), m_swap_chain, nullptr);
+	m_swap_chain = VK_NULL_HANDLE;
+	m_window_info.surface_width = 0;
+	m_window_info.surface_height = 0;
+}
+
+VkFormat VKSwapChain::GetTextureFormat() const
+{
+	if (m_images.empty())
+		return VK_FORMAT_UNDEFINED;
+
+	return m_images[m_current_image]->GetVkFormat();
+}
+
+VkResult VKSwapChain::AcquireNextImage()
+{
+	if (m_image_acquire_result.has_value())
+		return m_image_acquire_result.value();
+
+#if defined(PCSX2_PS4)
+	if (m_is_video_out)
+	{
+		if (!m_video_out || !m_video_out->Acquire())
+			return VK_ERROR_SURFACE_LOST_KHR;
+		m_current_image = m_video_out->GetCurrentIndex();
+		m_image_acquire_result = VK_SUCCESS;
+		return VK_SUCCESS;
+	}
+#endif
+
+	if (!m_swap_chain)
+		return VK_ERROR_SURFACE_LOST_KHR;
+
+	// Use a different semaphore for each image.
+	m_current_semaphore = (m_current_semaphore + 1) % static_cast<u32>(m_semaphores.size());
+
+	VkResult res;
+	{
+		// vk-285-36: the [vkwait] line's acquire time (VKOrbisTiming.h).
+		ORBIS_VKW(3);
+		res = vkAcquireNextImageKHR(GSDeviceVK::GetInstance()->GetDevice(), m_swap_chain, UINT64_MAX,
+			m_semaphores[m_current_semaphore].available_semaphore, VK_NULL_HANDLE, &m_current_image);
+	}
+	m_image_acquire_result = res;
+	return res;
+}
+
+bool VKSwapChain::PresentCurrentImage()
+{
+#if defined(PCSX2_PS4)
+	const bool result = m_is_video_out && m_video_out && m_video_out->Present();
+	m_image_acquire_result.reset();
+	return result;
+#else
+	return false;
+#endif
+}
+
+void VKSwapChain::ReleaseCurrentImage()
+{
+	if (!m_image_acquire_result.has_value())
+		return;
+
+#if defined(PCSX2_PS4)
+	if (m_is_video_out)
+	{
+		if (m_video_out)
+			m_video_out->Release();
+		m_image_acquire_result.reset();
+		return;
+	}
+#endif
+
+	if ((m_image_acquire_result.value() == VK_SUCCESS || m_image_acquire_result.value() == VK_SUBOPTIMAL_KHR) &&
+		GSDeviceVK::GetInstance()->GetOptionalExtensions().vk_swapchain_maintenance1)
+	{
+		GSDeviceVK::GetInstance()->WaitForGPUIdle();
+
+		// VK_EXT_swapchain_maintenance1 types/enums are aliases of VK_KHR_swapchain_maintenance1 types/enums.
+		const VkReleaseSwapchainImagesInfoKHR info = {.sType = VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_KHR,
+			.swapchain = m_swap_chain,
+			.imageIndexCount = 1,
+			.pImageIndices = &m_current_image};
+
+		VkResult res;
+		if (GSDeviceVK::GetInstance()->GetOptionalExtensions().vk_swapchain_maintenance1_is_khr)
+			res = vkReleaseSwapchainImagesKHR(GSDeviceVK::GetInstance()->GetDevice(), &info);
+		else
+			res = vkReleaseSwapchainImagesEXT(GSDeviceVK::GetInstance()->GetDevice(), &info);
+		if (res != VK_SUCCESS)
+			LOG_VULKAN_ERROR(res, "vkReleaseSwapchainImages() failed: ");
+	}
+
+	m_image_acquire_result.reset();
+}
+
+void VKSwapChain::ResetImageAcquireResult()
+{
+	m_image_acquire_result.reset();
+}
+
+bool VKSwapChain::ResizeSwapChain(u32 new_width, u32 new_height, float new_scale)
+{
+#if defined(PCSX2_PS4)
+	if (m_is_video_out)
+	{
+		// (AI-assisted) Keep VideoOut at 1080p; GSDeviceVK scales each completed frame into it.
+		m_window_info.surface_scale = new_scale;
+		return true;
+	}
+#endif
+
+	ReleaseCurrentImage();
+	DestroySwapChainImages();
+
+	if (new_width != 0 && new_height != 0)
+	{
+		m_window_info.surface_width = new_width;
+		m_window_info.surface_height = new_height;
+	}
+
+	m_window_info.surface_scale = new_scale;
+
+	if (!CreateSwapChain())
+	{
+		DestroySwapChain();
+		return false;
+	}
+
+	return true;
+}
+
+bool VKSwapChain::SetPresentMode(VkPresentModeKHR present_mode)
+{
+#if defined(PCSX2_PS4)
+	if (m_is_video_out)
+		return true;
+#endif
+
+	if (m_present_mode == present_mode)
+		return true;
+
+	m_present_mode = present_mode;
+
+	// Recreate the swap chain with the new present mode.
+	INFO_LOG("Recreating swap chain to change present mode.");
+	ReleaseCurrentImage();
+	DestroySwapChainImages();
+	if (!CreateSwapChain())
+	{
+		DestroySwapChain();
+		return false;
+	}
+
+	return true;
+}
+
+bool VKSwapChain::RecreateSurface(const WindowInfo& new_wi)
+{
+#if defined(PCSX2_PS4)
+	if (m_is_video_out)
+	{
+		m_window_info = new_wi;
+		m_window_info.type = WindowInfo::Type::Surfaceless;
+		m_window_info.surface_width = 1920;
+		m_window_info.surface_height = 1080;
+		return true;
+	}
+#endif
+
+	// Destroy the old swap chain, images, and surface.
+	DestroySwapChain();
+	DestroySurface();
+
+	// Re-create the surface with the new native handle
+	m_window_info = new_wi;
+	m_surface = CreateVulkanSurface(
+		GSDeviceVK::GetInstance()->GetVulkanInstance(), GSDeviceVK::GetInstance()->GetPhysicalDevice(), &m_window_info);
+	if (m_surface == VK_NULL_HANDLE)
+		return false;
+
+	// The validation layers get angry at us if we don't call this before creating the swapchain.
+	VkBool32 present_supported = VK_TRUE;
+	VkResult res = vkGetPhysicalDeviceSurfaceSupportKHR(GSDeviceVK::GetInstance()->GetPhysicalDevice(),
+		GSDeviceVK::GetInstance()->GetPresentQueueFamilyIndex(), m_surface, &present_supported);
+	if (res != VK_SUCCESS)
+	{
+		LOG_VULKAN_ERROR(res, "vkGetPhysicalDeviceSurfaceSupportKHR failed: ");
+		return false;
+	}
+	if (!present_supported)
+	{
+		pxFailRel("Recreated surface does not support presenting.");
+		return false;
+	}
+
+	// Finally re-create the swap chain
+	if (!CreateSwapChain())
+	{
+		DestroySwapChain();
+		return false;
+	}
+
+	return true;
+}
+
+void VKSwapChain::DestroySurface()
+{
+#if defined(PCSX2_PS4)
+	if (m_is_video_out)
+		return;
+#endif
+
+	if (m_surface == VK_NULL_HANDLE)
+		return;
+
+	DestroyVulkanSurface(GSDeviceVK::GetInstance()->GetVulkanInstance(), &m_window_info, m_surface);
+	m_surface = VK_NULL_HANDLE;
+}

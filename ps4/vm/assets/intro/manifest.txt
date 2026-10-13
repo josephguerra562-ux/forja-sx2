@@ -1,0 +1,7 @@
+frames=96
+fps=30
+width=1280
+height=720
+audio_rate=48000
+audio_channels=2
+audio_bytes=618496

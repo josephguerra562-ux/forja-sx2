@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Botao triangle controle PS4">
+  <title>Botao triangle controle PS4</title>
+  
+  <circle cx="32" cy="32" r="25" fill="#07182A" fill-opacity=".9" stroke="#26DDC5" stroke-opacity=".85" stroke-width="2.8"/><path d="M32 19 46 44H18Z" fill="none" stroke="#26DDC5" stroke-width="4" stroke-linejoin="round"/>
+</svg>

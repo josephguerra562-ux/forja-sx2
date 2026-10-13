@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="324" viewBox="0 0 240 324" role="img" aria-label="Moldura selecionada para capa de jogo 240x324">
+  <title>Moldura selecionada para capa de jogo 240x324</title>
+  <defs><linearGradient id="foco" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5AC3FF"/><stop offset="1" stop-color="#0576FF"/></linearGradient></defs>
+  <rect x="5" y="5" width="230" height="314" rx="13" fill="none" stroke="url(#foco)" stroke-width="4"/>
+</svg>

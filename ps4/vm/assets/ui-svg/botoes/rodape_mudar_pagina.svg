@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="270" height="52" viewBox="0 0 270 52" role="img" aria-label="L1 R1 mudar pagina">
+  <title>L1 R1 mudar pagina</title>
+  
+  <rect x="3" y="7" width="47" height="37" rx="7" fill="#06172B" stroke="#8BAAD0" stroke-width="2"/>
+<rect x="72" y="7" width="47" height="37" rx="7" fill="#06172B" stroke="#8BAAD0" stroke-width="2"/>
+<text x="26.5" y="33" font-family="Arial, DejaVu Sans, sans-serif" text-anchor="middle" fill="#F1F7FF" font-weight="bold" font-size="18">L1</text>
+<text x="96" y="33" font-family="Arial, DejaVu Sans, sans-serif" text-anchor="middle" fill="#F1F7FF" font-weight="bold" font-size="18">R1</text>
+<text x="60" y="32" font-family="Arial, DejaVu Sans, sans-serif" text-anchor="middle" fill="#B7CBE7" font-size="19">/</text>
+<text x="134" y="33" font-family="Arial, DejaVu Sans, sans-serif" fill="#B7CBE7" font-size="18">Mudar página</text>
+</svg>

@@ -1,0 +1,21 @@
+# PS4SX2 generated output and local SDK dependencies
+**/build/
+ps4/deps/prefix/
+ps4/deps/downloads/
+ps4/deps/src/
+*.log
+*.pkg
+*.oelf
+*.elf
+*.obj
+.DS_Store
+/bios/
+/roms/
+/logs/
+
+# Private development notes and PC debug configuration/captures
+/MD/
+/tools/ps4-live-monitor/config.json
+/tools/ps4-live-monitor/logs/
+**/__pycache__/
+*.pyc

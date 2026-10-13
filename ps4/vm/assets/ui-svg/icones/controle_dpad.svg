@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Direcional D-pad">
+  <title>Direcional D-pad</title>
+  
+  <path d="M25 9h14v16h16v14H39v16H25V39H9V25h16Z" fill="none" stroke="#B7CBE7" stroke-width="3" stroke-linejoin="round"/>
+</svg>

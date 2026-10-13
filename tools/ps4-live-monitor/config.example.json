@@ -1,0 +1,39 @@
+{
+  "ps4": {
+    "host": "192.168.1.50",
+    "port": 2121,
+    "user": "anonymous",
+    "pass": "anonymous@",
+    "timeout": 5
+  },
+  "poll_interval_ms": 500,
+  "web_port": 8080,
+  "telemetry_port": 19423,
+  "paths": {
+    "vm_boot": "/data/PS4SX2/logs/PCSX2-vm-boot.log",
+    "emulog": "/data/PS4SX2/logs/emulog.txt",
+    "stdout": "/data/PS4SX2/logs/PCSX2-vm-stdout.log",
+    "stderr": "/data/PS4SX2/logs/PCSX2-vm-stderr.log",
+    "markers_dir": "/data/PS4SX2"
+  },
+  "markers": [
+    "vm-ee-cycle-underclock",
+    "vm-ee-cycle-normal",
+    "vm-ee-cycle-mild",
+    "vm-ee-cycle-skip",
+    "vm-no-ee-cycle-skip",
+    "vm-skip-smc",
+    "vm-no-skip-smc",
+    "vm-no-bytecopy-fusion",
+    "vm-launch-request",
+    "vm-verbose-log",
+    "vm-profile-perf",
+    "vm-profile-ee",
+    "vm-profile-gs",
+    "vm-no-fastmem",
+    "vm-no-audio",
+    "vm-sync-log",
+    "vm-kernel-log"
+  ],
+  "web_host": "127.0.0.1"
+}
