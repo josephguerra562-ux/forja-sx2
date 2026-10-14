@@ -1,4 +1,4 @@
-name: Build PS4SX2
+name: Compilar Forja SX2
 
 on:
   workflow_dispatch:
@@ -150,3 +150,36 @@ jobs:
           path: ci-output/*.log
           if-no-files-found: ignore
           retention-days: 14
+
+  publish:
+    # Forja SX2: cada compilación de main se publica como pre-release, para bajar el PKG sin iniciar sesión.
+    # Es pre-release a propósito: /releases/latest (el aviso de actualización) solo ve las versiones estables.
+    name: Publicar PKG en Releases
+    needs: package
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: PS4SX2-PKG-${{ github.run_number }}
+          path: release
+      - name: Crear la pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="compilacion-${{ github.run_number }}"
+          {
+            echo "Compilación automática de Forja SX2 (commit ${GITHUB_SHA::7})."
+            echo
+            echo "Instalar el .pkg en la PS4 con GoldHEN. Guía: LEEME_FORJA_SX2.md"
+            echo
+            echo '```'
+            cat release/SHA256SUMS.txt
+            echo '```'
+          } > notas.md
+          gh release create "$tag" release/*.pkg release/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "Forja SX2 - compilación ${{ github.run_number }}" --notes-file notas.md
