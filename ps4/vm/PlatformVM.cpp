@@ -28,7 +28,7 @@
 
 namespace BuildVersion
 {
-	const char* GitRev = "PS4SX2-EMU-1.00-CHD-SMC (AI-assisted)";
+	const char* GitRev = "FORJASX2-1.00 (base PS4SX2-EMU-1.00)";
 }
 namespace Host
 {

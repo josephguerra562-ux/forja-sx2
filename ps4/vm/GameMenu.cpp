@@ -301,7 +301,8 @@ namespace PS4GameMenu
 					std::string extension = name.substr(dot);
 					std::transform(extension.begin(), extension.end(), extension.begin(),
 						[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-					if (extension != ".iso" && extension != ".bin" && extension != ".chd")
+					if (extension != ".iso" && extension != ".bin" && extension != ".chd" && extension != ".cso" &&
+					    extension != ".zso" && extension != ".gz")
 						continue;
 					const std::string path = std::string(Directory) + "/" + name;
 					struct stat info{};
@@ -317,7 +318,7 @@ namespace PS4GameMenu
 				closedir(dir);
 			}
 			std::sort(items.begin(), items.end(), [](const Item& a, const Item& b) { return a.name < b.name; });
-			ProbeLog("Game menu: found %zu .iso/.bin/.chd files in %s\n", items.size(), Directory);
+			ProbeLog("Game menu: found %zu .iso/.bin/.chd/.cso/.zso/.gz files in %s\n", items.size(), Directory);
 			return items;
 		}
 

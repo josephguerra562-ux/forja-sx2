@@ -194,7 +194,7 @@ void DiscCoverDownload::Run()
 	ProbeLog("Disc cover: catalog=%s serial=%s\n", catalog, m_serial.c_str());
 	std::vector<unsigned char> bytes;
 	Request request;
-	request.tmpl = sceHttpCreateTemplate(context, "PS4SX2/1.00 cover-downloader", ORBIS_HTTP_VERSION_1_1, 0);
+	request.tmpl = sceHttpCreateTemplate(context, "ForjaSX2/1.00 cover-downloader", ORBIS_HTTP_VERSION_1_1, 0);
 	ProbeLog("Disc cover: template=%#x serial=%s\n", request.tmpl, m_serial.c_str());
 	if (request.tmpl < 0)
 		return;

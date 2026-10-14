@@ -18,7 +18,7 @@ namespace
 {
 	constexpr const char* CurrentVersion = "1.00";
 	constexpr const char* LatestReleaseUrl =
-		"https://api.github.com/repos/Phoenixx1202/PS4SX2/releases/latest";
+		"https://api.github.com/repos/josephguerra562-ux/forja-sx2/releases/latest";
 	std::atomic<bool> s_started{false};
 	std::atomic<bool> s_has_update{false};
 	char s_latest[32]{};
@@ -80,7 +80,7 @@ namespace
 	{
 		pthread_setname_np(pthread_self(), "PS4 release check");
 		std::vector<unsigned char> bytes;
-		if (!PS4CoverHttp::Get(LatestReleaseUrl, "PS4SX2/1.00 release-checker", bytes, 64 * 1024))
+		if (!PS4CoverHttp::Get(LatestReleaseUrl, "ForjaSX2/1.00 release-checker", bytes, 64 * 1024))
 		{
 			ProbeLog("Release check: GitHub request failed\n");
 			return nullptr;

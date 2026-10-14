@@ -1,7 +1,9 @@
 # (AI-assisted) Package in a fresh staging directory and publish only the validated PKG.
 param(
   [string]$Toolchain = $env:OO_PS4_TOOLCHAIN,
-  [string]$Eboot = (Join-Path $PSScriptRoot 'build/eboot.bin')
+  [string]$Eboot = (Join-Path $PSScriptRoot 'build/eboot.bin'),
+  # Forja SX2: 0x00010000 = séptimo núcleo (65536 decimal); -ModoPro suma 0x00800000 (total 8454144) (modo PS4 Pro, sin probar).
+  [switch]$ModoPro
 )
 $ErrorActionPreference = 'Stop'
 if (-not $Toolchain -or -not (Test-Path -LiteralPath $Toolchain)) {
@@ -89,7 +91,7 @@ try {
   $entries = @(
     # (AI-assisted) Restore game SFO metadata with PAID 0x3800000000000011.
     @('APP_TYPE', 'Integer', '4', '1'), @('APP_VER', 'Utf8', '8', '01.00'),
-    @('ATTRIBUTE', 'Integer', '4', '0'), @('CATEGORY', 'Utf8', '4', 'gd'),
+    @('ATTRIBUTE', 'Integer', '4', $(if ($ModoPro) { '8454144' } else { '65536' })), @('CATEGORY', 'Utf8', '4', 'gd'),
 
     @('CONTENT_ID', 'Utf8', '48', $contentId), @('DOWNLOAD_DATA_SIZE', 'Integer', '4', '0'),
     @('SYSTEM_VER', 'Integer', '4', '0'), @('TITLE', 'Utf8', '128', 'Forja SX2'),
