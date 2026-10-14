@@ -872,6 +872,31 @@ static void* RunVM(void*)
 			return nullptr;
 		}
 	}
+	// Forja SX2: the settings above were read when the app started, before the library opened, so a change
+	// made on the Settings page only reached the next launch of the app. Read ajustes.ini again now that a
+	// game has been chosen and apply it to the base layer before the VM boots (the PS1 profile below can
+	// still override it; a game's own gamesettings ini still wins over all of this).
+	{
+		const ForjaSettings::Values chosen = ForjaSettings::Load();
+		if (chosen.from_file)
+			settings->SetIntValue("EmuCore/Speedhacks", "EECycleRate", chosen.ee_rate);
+		settings->SetFloatValue("EmuCore/GS", "upscale_multiplier", static_cast<float>(chosen.upscale));
+		settings->SetStringValue("EmuCore/GS", "AspectRatio", Pcsx2Config::GSOptions::AspectRatioNames[chosen.aspect]);
+		settings->SetIntValue("EmuCore/GS", "HWDownloadMode", ForjaSettings::ReadbackModes[chosen.readback]);
+		const bool chosen_fast_cdvd = (access("/data/ForjaSX2/vm-fast-cdvd", F_OK) == 0 || chosen.fast_cdvd) &&
+		                              access("/data/ForjaSX2/vm-no-fast-cdvd", F_OK) != 0;
+		settings->SetBoolValue("EmuCore/Speedhacks", "fastCDVD", chosen_fast_cdvd);
+		fast_boot = access("/data/ForjaSX2/vm-no-fast-boot", F_OK) != 0 && chosen.fast_boot;
+		settings->SetBoolValue("EmuCore", "EnableFastBoot", fast_boot);
+		settings->SetBoolValue("EmuCore", "EnableFastBootFastForward", fast_boot);
+		s_game_show_performance_overlay = chosen.overlay && access("/data/ForjaSX2/vm-hide-stats", F_OK) != 0;
+		ApplyPerformanceOverlay();
+		VMManager::ApplySettings();
+		ProbeLog("Forja settings at game start: file=%d ee_rate=%d upscale=%dx aspect=%d overlay=%d stick=%d fast_cdvd=%d "
+				 "fast_boot=%d readback=%d\n",
+			chosen.from_file ? 1 : 0, chosen.ee_rate, chosen.upscale, chosen.aspect, chosen.overlay ? 1 : 0, chosen.stick,
+			chosen_fast_cdvd ? 1 : 0, fast_boot ? 1 : 0, chosen.readback);
+	}
 	if (platform == GamePlatform::PS1)
 	{
 		// (AI-assisted) PS1DRV takes over the EE after the BIOS. Do not carry the
