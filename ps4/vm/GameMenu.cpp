@@ -130,13 +130,14 @@ namespace PS4GameMenu
 		// Forja SX2: the Settings page. The CPU thread owns the values; the GS thread draws this copy.
 		ForjaSettings::Values s_settings_gs;
 		unsigned s_settings_row_gs = 0;
-		constexpr unsigned SettingsRows = 7;
+		constexpr unsigned SettingsRows = 8;
 
 		const char* SettingLabel(unsigned row)
 		{
 			static constexpr const char* labels[SettingsRows] = {
 				"Velocidad del CPU de la PS2", "Resolución interna", "Relación de aspecto", "Contador de FPS al jugar",
-				"Sensibilidad de la palanca", "Cargas rápidas del disco", "Saltar el logo de la PS2"};
+				"Sensibilidad de la palanca", "Cargas rápidas del disco", "Saltar el logo de la PS2",
+				"Lecturas de la gráfica (readbacks)"};
 			return labels[std::min(row, SettingsRows - 1)];
 		}
 
@@ -149,7 +150,8 @@ namespace PS4GameMenu
 				"Muestra FPS y velocidad arriba a la derecha (se cambia también en L3+R3)",
 				"Qué tanto hay que empujar la palanca para llegar al tope. 133 % es como el PCSX2 de PC",
 				"Acorta las cargas. Algunos juegos se cuelgan con esto: si pasa, apágalo",
-				"Arranca directo el juego, sin la animación de la PS2"};
+				"Arranca directo el juego, sin la animación de la PS2",
+				"Si el juego se traba sin que el CPU esté al 100 %: prueba Sin esperar. Desactivadas puede romper efectos"};
 			return help[std::min(row, SettingsRows - 1)];
 		}
 
@@ -165,7 +167,13 @@ namespace PS4GameMenu
 				case 3: std::snprintf(out, size, "%s", v.overlay ? "Sí" : "No"); break;
 				case 4: std::snprintf(out, size, "%d %%", v.stick); break;
 				case 5: std::snprintf(out, size, "%s", v.fast_cdvd ? "Sí" : "No"); break;
-				default: std::snprintf(out, size, "%s", v.fast_boot ? "Sí" : "No"); break;
+				case 6: std::snprintf(out, size, "%s", v.fast_boot ? "Sí" : "No"); break;
+				default:
+				{
+					static constexpr const char* readback_names[] = {"Precisas", "Sin esperar (más rápido)", "Desactivadas"};
+					std::snprintf(out, size, "%s", readback_names[std::clamp(v.readback, 0, 2)]);
+					break;
+				}
 			}
 		}
 
@@ -193,7 +201,8 @@ namespace PS4GameMenu
 					break;
 				}
 				case 5: v.fast_cdvd = !v.fast_cdvd; break;
-				default: v.fast_boot = !v.fast_boot; break;
+				case 6: v.fast_boot = !v.fast_boot; break;
+				default: v.readback = step(v.readback, 0, 2); break;
 			}
 		}
 
@@ -1493,19 +1502,19 @@ namespace PS4GameMenu
 			const unsigned focused_row = std::min(s_settings_row_gs, SettingsRows - 1);
 			for (unsigned row = 0; row < SettingsRows; ++row)
 			{
-				const float y = 124.0f + static_cast<float>(row) * 110.0f;
+				const float y = 116.0f + static_cast<float>(row) * 98.0f;
 				const bool focused = !s_sidebar_focused && row == focused_row;
-				fill(346, y, 1470, 96, focused ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 235), 10);
+				fill(346, y, 1470, 86, focused ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 235), 10);
 				if (focused)
-					draw->AddRect(point(346, y), point(1816, y + 96), accent, 10 * scale, 2.0f * scale, 0);
-				text(380, y + 42, 25, white, SettingLabel(row));
-				text(380, y + 76, 16, muted, SettingHelp(row));
+					draw->AddRect(point(346, y), point(1816, y + 86), accent, 10 * scale, 2.0f * scale, 0);
+				text(380, y + 38, 24, white, SettingLabel(row));
+				text(380, y + 68, 16, muted, SettingHelp(row));
 				char value[64];
 				SettingValue(s_settings_gs, row, value, sizeof(value));
 				char shown[96];
 				std::snprintf(shown, sizeof(shown), focused ? "<  %s  >" : "%s", value);
 				const float width = font->CalcTextSizeA(25.0f * scale, FLT_MAX, 0, shown).x / scale;
-				text(1786 - width, y + 58, 25, focused ? white : accent, shown);
+				text(1786 - width, y + 52, 25, focused ? white : accent, shown);
 			}
 		}
 		for (size_t slot = 0; !disc_view && !settings_view && slot < VisibleItems && first + slot < s_items.size(); ++slot)

@@ -691,9 +691,9 @@ static void* RunVM(void*)
 	if (forja.from_file)
 		ee_cycle_rate = forja.ee_rate;
 	s_game_show_performance_overlay = forja.overlay && access("/data/ForjaSX2/vm-hide-stats", F_OK) != 0;
-	ProbeLog("Forja settings: file=%d ee_rate=%d upscale=%dx aspect=%d overlay=%d stick=%d fast_cdvd=%d fast_boot=%d\n",
+	ProbeLog("Forja settings: file=%d ee_rate=%d upscale=%dx aspect=%d overlay=%d stick=%d fast_cdvd=%d fast_boot=%d readback=%d\n",
 		forja.from_file ? 1 : 0, forja.ee_rate, forja.upscale, forja.aspect, forja.overlay ? 1 : 0, forja.stick,
-		forja.fast_cdvd ? 1 : 0, forja.fast_boot ? 1 : 0);
+		forja.fast_cdvd ? 1 : 0, forja.fast_boot ? 1 : 0, forja.readback);
 	settings->SetIntValue("EmuCore/Speedhacks", "EECycleRate", ee_cycle_rate);
 	// (AI-assisted) Fase 3-A reverted: EECycleSkip=1 gave -1.2pp on GoW FMV (32.8ms vs 31.4ms) and no gain on GTA.
 	// Reverted to 0 (opt-in via /data/ForjaSX2/vm-ee-cycle-skip only). Needs proper testing.
@@ -722,6 +722,9 @@ static void* RunVM(void*)
 	settings->SetIntValue("EmuCore/GS", "Renderer", static_cast<int>(GSRendererType::VK));
 	settings->SetFloatValue("EmuCore/GS", "upscale_multiplier", static_cast<float>(forja.upscale));
 	settings->SetStringValue("EmuCore/GS", "AspectRatio", Pcsx2Config::GSOptions::AspectRatioNames[forja.aspect]);
+	// Forja SX2: GPU readbacks. "Don't wait" keeps the GS thread from stalling until the GPU has finished,
+	// the stall that showed on the console as slow scenes with no thread near 100%.
+	settings->SetIntValue("EmuCore/GS", "HWDownloadMode", ForjaSettings::ReadbackModes[forja.readback]);
 	const bool disable_shader_cache = access("/data/ForjaSX2/vm-no-shader-cache", F_OK) == 0;
 	settings->SetBoolValue("EmuCore/GS", "DisableShaderCache", disable_shader_cache);
 	settings->SetBoolValue("EmuCore/GS", "HWSpinGPUForReadbacks", false);

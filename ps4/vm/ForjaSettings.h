@@ -11,6 +11,8 @@
 namespace ForjaSettings
 {
 	constexpr const char* Path = "/data/ForjaSX2/ajustes.ini";
+	// GSHardwareDownloadMode values for the readback choices: Enabled, Unsynchronized, NoReadbacks.
+	constexpr int ReadbackModes[] = {0, 3, 2};
 	// Analog sensitivity steps, in percent (133 is PCSX2's default for DualShock 2 pads).
 	constexpr int StickSteps[] = {100, 110, 120, 133, 140, 150, 160, 170, 180, 190, 200};
 	constexpr int StickStepCount = static_cast<int>(sizeof(StickSteps) / sizeof(StickSteps[0]));
@@ -24,6 +26,8 @@ namespace ForjaSettings
 		int stick = 133;      // analog sensitivity, percent
 		bool fast_cdvd = false;
 		bool fast_boot = true;
+		// GPU readbacks: 0 accurate (waits for the GPU), 1 don't wait (Unsynchronized), 2 none (NoReadbacks).
+		int readback = 0;
 		bool from_file = false;
 	};
 
@@ -33,6 +37,7 @@ namespace ForjaSettings
 		v.upscale = std::clamp(v.upscale, 1, 4);
 		v.aspect = std::clamp(v.aspect, 0, 4);
 		v.stick = std::clamp(v.stick, 100, 200);
+		v.readback = std::clamp(v.readback, 0, 2);
 		return v;
 	}
 
@@ -64,6 +69,8 @@ namespace ForjaSettings
 				v.fast_cdvd = value != 0;
 			else if (!std::strcmp(key, "fast_boot"))
 				v.fast_boot = value != 0;
+			else if (!std::strcmp(key, "readback"))
+				v.readback = value;
 		}
 		std::fclose(file);
 		return Clamp(v);
@@ -79,8 +86,9 @@ namespace ForjaSettings
 			return false;
 		std::fprintf(file,
 			"; Forja SX2: ajustes para todos los juegos (pestaña Ajustes de la biblioteca)\n"
-			"ee_rate=%d\nupscale=%d\naspect=%d\noverlay=%d\nstick=%d\nfast_cdvd=%d\nfast_boot=%d\n",
-			v.ee_rate, v.upscale, v.aspect, v.overlay ? 1 : 0, v.stick, v.fast_cdvd ? 1 : 0, v.fast_boot ? 1 : 0);
+			"ee_rate=%d\nupscale=%d\naspect=%d\noverlay=%d\nstick=%d\nfast_cdvd=%d\nfast_boot=%d\nreadback=%d\n",
+			v.ee_rate, v.upscale, v.aspect, v.overlay ? 1 : 0, v.stick, v.fast_cdvd ? 1 : 0, v.fast_boot ? 1 : 0,
+			v.readback);
 		const bool written = std::fclose(file) == 0;
 		return written && std::rename(temporary, Path) == 0;
 	}
