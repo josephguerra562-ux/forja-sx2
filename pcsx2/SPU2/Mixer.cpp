@@ -8,6 +8,9 @@
 #include "SPU2/interpolate_table.h"
 
 #include "common/Assertions.h"
+#include "common/Timer.h"
+
+#include <unistd.h> // Forja SX2: access() for the PS4 test markers
 
 // LOOP/END sets the ENDX bit and sets NAX to LSA, and the voice is muted if LOOP is not set
 // LOOP seems to only have any effect on the block with LOOP/END set, where it prevents muting the voice
@@ -423,9 +426,17 @@ static __forceinline StereoOut32 MixVoice(uint coreidx, uint voiceidx)
 static __forceinline void MixCoreVoices(VoiceMixSet& dest, const uint coreidx)
 {
 	V_Core& thiscore(Cores[coreidx]);
+	// Forja SX2, a test with /data/ForjaSX2/vm-spu2-voces-rapidas (off by default): a stopped voice is not run on while its core
+	// has no IRQ armed. The SPU2 keeps every voice reading its memory (above), for IRQs and for games that read a voice's address or
+	// its end flags; a key-on starts a voice from its own start address, so a game that does neither will not tell. Voices 1 and 3
+	// always run (their output goes to SPU2 memory).
+	static const bool s_fast_voices = access("/data/ForjaSX2/vm-spu2-voces-rapidas", F_OK) == 0;
+	const bool skip_stopped = s_fast_voices && !thiscore.IRQEnable;
 
 	for (uint voiceidx = 0; voiceidx < V_Core::NumVoices; ++voiceidx)
 	{
+		if (skip_stopped && voiceidx != 1 && voiceidx != 3 && thiscore.Voices[voiceidx].ADSR.Phase == V_ADSR::PHASE_STOPPED)
+			continue;
 		StereoOut32 VVal(MixVoice(coreidx, voiceidx));
 
 		// Note: Results from MixVoice are ranged at 16 bits.
@@ -519,8 +530,16 @@ static __forceinline StereoOut32 MixCore(const uint coreidx, const VoiceMixSet& 
 	return TD + ApplyVolume(RV, thiscore.FxVol);
 }
 
+// Forja SX2: where the SPU2's time goes (main.cpp's heartbeat reports it). One sample in 16 is timed in three parts: the 48 voices,
+// the cores' mix with the reverb, and the output (the chunk to the audio stream, with its time stretching).
+u64 g_forja_spu2_split_voices = 0, g_forja_spu2_split_mix = 0, g_forja_spu2_split_output = 0;
+u64 g_forja_spu2_split_samples = 0, g_forja_spu2_split_active = 0, g_forja_spu2_split_irq = 0;
+static u32 s_forja_spu2_split_counter = 0;
+
 void spu2Mix()
 {
+	const bool forja_timed = (++s_forja_spu2_split_counter & 15) == 0;
+	const Common::Timer::Value forja_t0 = forja_timed ? Common::Timer::GetCurrentValue() : 0;
 	// Note: Playmode 4 is SPDIF, which overrides other inputs.
 	StereoOut32 InputData[2] =
 		{
@@ -543,6 +562,7 @@ void spu2Mix()
 
 	MixCoreVoices(VoiceData[0], 0);
 	MixCoreVoices(VoiceData[1], 1);
+	const Common::Timer::Value forja_t1 = forja_timed ? Common::Timer::GetCurrentValue() : 0;
 
 	StereoOut32 Ext(MixCore(0, VoiceData[0], InputData[0], StereoOut32::Empty));
 
@@ -582,7 +602,22 @@ void spu2Mix()
 	WaveDump::WriteCore(1, CoreSrc_External, Out);
 #endif
 
+	const Common::Timer::Value forja_t2 = forja_timed ? Common::Timer::GetCurrentValue() : 0;
 	spu2Output(Out);
+	if (forja_timed)
+	{
+		const Common::Timer::Value forja_t3 = Common::Timer::GetCurrentValue();
+		g_forja_spu2_split_voices += forja_t1 - forja_t0;
+		g_forja_spu2_split_mix += forja_t2 - forja_t1;
+		g_forja_spu2_split_output += forja_t3 - forja_t2;
+		g_forja_spu2_split_samples++;
+		for (uint c = 0; c < 2; c++)
+		{
+			for (uint v = 0; v < V_Core::NumVoices; v++)
+				g_forja_spu2_split_active += Cores[c].Voices[v].ADSR.Phase > V_ADSR::PHASE_STOPPED ? 1 : 0;
+			g_forja_spu2_split_irq += Cores[c].IRQEnable ? 1 : 0;
+		}
+	}
 
 	// Update AutoDMA output positioning
 	OutPos++;

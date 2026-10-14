@@ -507,6 +507,20 @@ void VMHostPoll()
 				spu2_ms / interval, spu2_ms / interval / 10.0, g_forja_spu2_calls / interval);
 			g_forja_spu2_calls = 0;
 			g_forja_spu2_sampled_ticks = 0;
+			// The split of one sample in 16 (pcsx2/SPU2/Mixer.cpp): voices, the cores' mix and reverb, the output and its stretching.
+			extern u64 g_forja_spu2_split_voices, g_forja_spu2_split_mix, g_forja_spu2_split_output;
+			extern u64 g_forja_spu2_split_samples, g_forja_spu2_split_active, g_forja_spu2_split_irq;
+			if (g_forja_spu2_split_samples > 0)
+			{
+				const double n = static_cast<double>(g_forja_spu2_split_samples);
+				ProbeLog("Audio SPU2 split: voices_ms=%.1f mix_reverb_ms=%.1f output_stretch_ms=%.1f (per second) active_voices=%.1f of 48 irq_cores=%.2f\n",
+					Common::Timer::ConvertValueToMilliseconds(g_forja_spu2_split_voices) * 16.0 / interval,
+					Common::Timer::ConvertValueToMilliseconds(g_forja_spu2_split_mix) * 16.0 / interval,
+					Common::Timer::ConvertValueToMilliseconds(g_forja_spu2_split_output) * 16.0 / interval,
+					g_forja_spu2_split_active / n, g_forja_spu2_split_irq / n);
+			}
+			g_forja_spu2_split_voices = g_forja_spu2_split_mix = g_forja_spu2_split_output = 0;
+			g_forja_spu2_split_samples = g_forja_spu2_split_active = g_forja_spu2_split_irq = 0;
 		}
 		// Read on the owning EE thread, once per heartbeat. No MMIO reads or
 		// worker calls here: observing a stalled IPU must not advance it.
@@ -901,7 +915,10 @@ static void* RunVM(void*)
 	settings->SetIntValue("SPU2/Output", "StretchSequenceLengthMS", legacy_audio ? 30 : 35);
 	settings->SetIntValue("SPU2/Output", "StretchSeekWindowMS", legacy_audio ? 20 : 15);
 	settings->SetIntValue("SPU2/Output", "StretchOverlapMS", legacy_audio ? 10 : 8);
-	settings->SetBoolValue("SPU2/Output", "StretchUseQuickSeek", false);
+	// Forja SX2: SoundTouch's quick seek. The stretching runs on the EE thread (AudioStream::WriteChunk) and only works while the
+	// game is below full speed, which is when the EE thread has no time to spare (MMXCM's intro: 80-88 %, the SPU2 then at 15-16 %
+	// of the thread against 12-13 % at full speed). /data/ForjaSX2/vm-audio-full-seek brings back the full search.
+	settings->SetBoolValue("SPU2/Output", "StretchUseQuickSeek", access("/data/ForjaSX2/vm-audio-full-seek", F_OK) != 0);
 	settings->SetIntValue("SPU2/Output", "StandardVolume", 100);
 	settings->SetBoolValue("SPU2/Output", "OutputMuted", false);
 	ProbeLog("PS4 audio configuration: %s (stereo PCM16 48 kHz, main port, explicit 0 dB; disable with /data/ForjaSX2/vm-no-audio)\n",
