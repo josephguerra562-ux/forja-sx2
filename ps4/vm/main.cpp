@@ -15,6 +15,7 @@
 #include "common/FileSystem.h"
 #include "Memory.h"
 #include "common/MemorySettingsInterface.h"
+#include "INISettingsInterface.h"
 #include "common/Timer.h"
 #include "ps2/BiosTools.h"
 #include "R5900.h"
@@ -143,6 +144,7 @@ static unsigned s_game_upscale = 1;
 static unsigned s_max_game_upscale = 1;
 static unsigned s_game_aspect = 1;
 static bool s_game_show_performance_overlay = true;
+static int s_game_ee_rate = -1;
 static u32 s_game_menu_direction = 0;
 static double s_game_menu_next_repeat = 0.0;
 static std::atomic<bool> s_return_to_main_menu{false};
@@ -241,7 +243,7 @@ static void ReadGameResolution()
 static void PublishGameMenu()
 {
 	PS4GameMenu::SetInGameMenu(s_game_menu_open, s_game_menu_selection, s_game_upscale, s_max_game_upscale,
-		s_game_aspect, s_game_show_performance_overlay);
+		s_game_aspect, s_game_show_performance_overlay, s_game_ee_rate);
 }
 
 namespace ImGuiManager
@@ -268,6 +270,36 @@ static void ApplyGameAspect(unsigned aspect)
 	MTGS::ApplySettings();
 	MTGS::WaitGS(false, false, false);
 	ProbeLog("Aspect ratio applied: index=%u\n", aspect);
+}
+
+// Forja SX2: the pause menu's "PS2 CPU speed" row. The value goes to this game's settings ini
+// (gamesettings/<serial>_<crc>.ini, PCSX2's own per-game file), then the game layer is reloaded so the
+// recompilers pick up the new EECycleRate. ReloadGameSettings rebuilds EmuConfig from the settings
+// layers, which drops the session-only resolution and aspect choices, so those are put back afterwards.
+static void ApplyGameEECycleRate(int rate)
+{
+	rate = std::clamp(rate, -3, 3);
+	const std::string serial = VMManager::GetDiscSerial();
+	const u32 crc = VMManager::GetDiscCRC();
+	if (crc == 0)
+	{
+		ProbeLog("EE cycle rate: no disc CRC yet, not saved\n");
+		return;
+	}
+	const std::string path = VMManager::GetGameSettingsPath(serial, crc);
+	INISettingsInterface ini(path);
+	ini.Load();
+	ini.SetIntValue("EmuCore/Speedhacks", "EECycleRate", rate);
+	const bool saved = ini.Save();
+	const bool reloaded = VMManager::ReloadGameSettings();
+	EmuConfig.GS.UpscaleMultiplier = static_cast<float>(s_game_upscale);
+	EmuConfig.GS.AspectRatio = static_cast<AspectRatioType>(std::clamp(s_game_aspect, 0u, 4u));
+	EmuConfig.CurrentAspectRatio = EmuConfig.GS.AspectRatio;
+	MTGS::ApplySettings();
+	MTGS::WaitGS(false, false, false);
+	s_game_ee_rate = EmuConfig.Speedhacks.EECycleRate;
+	ProbeLog("EE cycle rate: requested=%d active=%d saved=%d reloaded=%d file=%s\n", rate, s_game_ee_rate,
+		saved ? 1 : 0, reloaded ? 1 : 0, path.c_str());
 }
 
 void VMHostPoll()
@@ -410,6 +442,7 @@ void VMHostPoll()
 	{
 		s_game_menu_open = true;
 		s_game_menu_selection = 0;
+		s_game_ee_rate = EmuConfig.Speedhacks.EECycleRate;
 		s_game_menu_direction = 0;
 		s_game_menu_next_repeat = elapsed;
 	}
@@ -472,18 +505,18 @@ void VMHostPoll()
 
 	const bool cancel = (pressed & ORBIS_PAD_BUTTON_CIRCLE) != 0 || chord_edge;
 	const bool confirm = (pressed & ORBIS_PAD_BUTTON_CROSS) != 0;
-	if (cancel || (confirm && s_game_menu_selection != 1 && s_game_menu_selection != 2 && s_game_menu_selection != 3))
+	if (cancel || (confirm && (s_game_menu_selection < 1 || s_game_menu_selection > 4)))
 	{
 		s_game_menu_open = false;
 		s_blocked_pad_buttons |= raw;
 		PS4GameMenu::SetInGameMenu(false, 0);
-		if (!cancel && s_game_menu_selection == 4)
+		if (!cancel && s_game_menu_selection == 5)
 		{
 			s_return_to_main_menu.store(true, std::memory_order_release);
 			ProbeLog("VM stop request: return to main menu\n");
 			VMManager::SetState(VMState::Stopping);
 		}
-		else if (!cancel && s_game_menu_selection == 5)
+		else if (!cancel && s_game_menu_selection == 6)
 		{
 			ProbeLog("VM stop request: exit application\n");
 			VMManager::SetState(VMState::Stopping);
@@ -517,10 +550,10 @@ void VMHostPoll()
 		{
 			s_game_menu_next_repeat = elapsed + (navigation == s_game_menu_direction ? 0.12 : 0.35);
 			if (navigation == ORBIS_PAD_BUTTON_UP)
-				s_game_menu_selection = s_game_menu_selection == 0 ? 5 : s_game_menu_selection - 1;
+				s_game_menu_selection = s_game_menu_selection == 0 ? 6 : s_game_menu_selection - 1;
 			else if (navigation == ORBIS_PAD_BUTTON_DOWN)
-				s_game_menu_selection = (s_game_menu_selection + 1) % 6;
-			else if (s_game_menu_selection == 1 || s_game_menu_selection == 2 || s_game_menu_selection == 3)
+				s_game_menu_selection = (s_game_menu_selection + 1) % 7;
+			else if (s_game_menu_selection >= 1 && s_game_menu_selection <= 4)
 			{
 				const int delta = navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1;
 				if (s_game_menu_selection == 1)
@@ -542,6 +575,12 @@ void VMHostPoll()
 					s_game_aspect = static_cast<unsigned>((static_cast<int>(s_game_aspect) + delta + 5) % 5);
 					ApplyGameAspect(s_game_aspect);
 					ProbeLog("Aspect ratio: index=%u (session only)\n", s_game_aspect);
+				}
+				else if (s_game_menu_selection == 4)
+				{
+					const int requested = std::clamp(s_game_ee_rate + delta, -3, 3);
+					if (requested != s_game_ee_rate)
+						ApplyGameEECycleRate(requested);
 				}
 				else if (delta != 0)
 				{
@@ -904,7 +943,7 @@ static void* RunVM(void*)
 		ProbeLog("Controller: OPTIONS=PS2 Start, touchpad=PS2 Select, L3+R3=emulator menu\n");
 		if (s_use_vulkan_selector)
 		{
-			PS4GameMenu::ShowLoading(100, "Ready");
+			PS4GameMenu::ShowLoading(100, "Listo");
 			Threading::Sleep(50);
 			PS4GameMenu::HideLoading();
 		}

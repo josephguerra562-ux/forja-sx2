@@ -22,7 +22,10 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
 ## 3. Controles
 - **Biblioteca:** X = jugar, Cuadrado = favorito, Triángulo = actualizar, Círculo = salir.
 - **En el juego:** OPTIONS = Start, clic en el touchpad = Select, **L3+R3 = menú del emulador**
-  (resolución, forma de la imagen, contador de FPS, volver a la biblioteca).
+  (resolución, forma de la imagen, contador de FPS, **velocidad del CPU de la PS2**, volver a la biblioteca).
+- **Velocidad del CPU de la PS2** (en L3+R3, con Izquierda/Derecha): 50 % … 300 %. Por defecto, 75 %.
+  Menos % = más FPS en la PS4, pero el juego puede perder cuadros. Se aplica al instante y **se guarda solo para ese juego**
+  (escribe el `.ini` de la sección 4 por ti).
 
 ## 4. Ajustes por juego (`gamesettings/`)
 El nombre del archivo es `SERIAL_CRC.ini`. Para sacarlo de cualquier ISO:
@@ -33,18 +36,20 @@ Mega Man X Command Mission (nuestras ISO):
 - versión de 30 FPS: `SLUS-20903_0EA58EED.ini`
 - versión de 60 FPS: `SLUS-20903_12E1728B.ini`
 
-Ejemplo de contenido (son los nombres de ajustes del PCSX2 de PC; solo pon lo que quieras cambiar):
+Ejemplo de contenido (son los nombres de ajustes del PCSX2 de PC; solo pon lo que quieras cambiar).
+Los comentarios van **en su propia línea** empezando con `;`, nunca al final de un valor:
 ```ini
 [EmuCore/Speedhacks]
-EECycleRate = 0      ; -3 a 3. Por defecto -1 (75 %). 0 = 100 % (como una PS2 real).
-                     ; Negativo = menos trabajo para la PS4 (más FPS, pero el juego puede perder cuadros).
-                     ; Positivo = más trabajo (solo para juegos que van lentos "por dentro", p. ej. con parche de 60 FPS)
-EECycleSkip = 0      ; 0 a 3. Sube la velocidad, pero el juego puede ir "en cámara lenta"
-fastCDVD = true      ; cargas más rápidas
-
-[EmuCore/GS]
-upscale_multiplier = 1
+; Ciclos del EE: -3 a 3. Por defecto -1 (75 %). 0 = 100 %, como una PS2 real.
+; Negativo = menos trabajo para la PS4 (más FPS, pero el juego puede perder cuadros).
+; Positivo = más trabajo (solo para juegos que van lentos "por dentro", p. ej. con parche de 60 FPS).
+EECycleRate = 0
+; 0 a 3. Sube la velocidad, pero el juego puede ir "en cámara lenta".
+EECycleSkip = 0
+; Cargas más rápidas.
+fastCDVD = true
 ```
+En la carpeta `Forja SX2 - Para la PS4` del Escritorio ya están los .ini de Mega Man con las opciones apagadas, listas para probar.
 Lo que diga este archivo **manda sobre** los interruptores generales, solo para ese juego.
 
 ## 5. Parches (`patches/`)

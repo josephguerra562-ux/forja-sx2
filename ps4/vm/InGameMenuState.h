@@ -15,6 +15,7 @@ namespace PS4GameMenu
 		unsigned max_upscale;
 		unsigned aspect;
 		bool show_overlay;
+		int ee_rate; // Forja SX2: EECycleRate, -3..3
 	};
 
 	constexpr std::uint32_t PackInGameMenuState(InGameMenuState value)
@@ -22,11 +23,12 @@ namespace PS4GameMenu
 		if (!value.visible)
 			return 0;
 		const unsigned limit = std::clamp(value.max_upscale, 1u, 4u);
-		return (std::min(value.selected, 5u) + 1u) |
+		return (std::min(value.selected, 6u) + 1u) |
 			(std::clamp(value.upscale, 1u, limit) << 8) |
 			(limit << 12) |
 			(std::min(value.aspect, 4u) << 16) |
-			(value.show_overlay ? (1u << 20) : 0u);
+			(value.show_overlay ? (1u << 20) : 0u) |
+			(static_cast<unsigned>(std::clamp(value.ee_rate, -3, 3) + 3) << 21);
 	}
 
 	constexpr InGameMenuState UnpackInGameMenuState(std::uint32_t value)
@@ -35,8 +37,9 @@ namespace PS4GameMenu
 		// resolution with its limit (1 became 65), and aspect with overlay (0 became 16).
 		const unsigned selection = value & 0xffu;
 		const unsigned limit = std::clamp((value >> 12) & 0x0fu, 1u, 4u);
-		return {selection != 0, selection ? std::min(selection - 1u, 5u) : 0u,
+		return {selection != 0, selection ? std::min(selection - 1u, 6u) : 0u,
 			std::clamp((value >> 8) & 0x0fu, 1u, limit), limit,
-			std::min((value >> 16) & 0x0fu, 4u), (value & (1u << 20)) != 0};
+			std::min((value >> 16) & 0x0fu, 4u), (value & (1u << 20)) != 0,
+			static_cast<int>(std::min((value >> 21) & 0x07u, 6u)) - 3};
 	}
 } // namespace PS4GameMenu

@@ -1131,6 +1131,7 @@ namespace PS4GameMenu
 			const unsigned upscale = menu_state.upscale;
 			const unsigned aspect = menu_state.aspect;
 			const bool show_performance_overlay = menu_state.show_overlay;
+			const int ee_rate = menu_state.ee_rate;
 			ImDrawList* draw = ImGui::GetBackgroundDrawList();
 			ImFont* font = ImGui::GetFont();
 			const ImVec2 size = ImGui::GetIO().DisplaySize;
@@ -1162,12 +1163,17 @@ namespace PS4GameMenu
 			char performance_label[96];
 			std::snprintf(performance_label, sizeof(performance_label), "Contador de rendimiento:  < %s >",
 				show_performance_overlay ? "Sí" : "No");
-			const char* labels[] = {"Volver al juego", resolution, aspect_label, performance_label, "Volver a la biblioteca", "Salir de la aplicación"};
+			// Forja SX2: los mismos porcentajes que muestra PCSX2 para EECycleRate -3..3.
+			static constexpr const char* ee_names[] = {"50 %", "60 %", "75 %", "100 % (PS2 real)", "130 %", "180 %", "300 %"};
+			char ee_label[96];
+			std::snprintf(ee_label, sizeof(ee_label), "Velocidad del CPU de la PS2:  < %s >", ee_names[std::clamp(ee_rate, -3, 3) + 3]);
+			const char* labels[] = {"Volver al juego", resolution, aspect_label, performance_label, ee_label, "Volver a la biblioteca", "Salir de la aplicación"};
 			const char* descriptions[] = {
 				"Seguir jugando desde donde quedó",
 				"Más calidad de imagen en esta sesión (consume más)",
 				"Forma de la imagen en pantalla",
 				"Mostrar u ocultar FPS, velocidad y tiempos",
+				"Menos % = más FPS en la PS4 (el juego puede perder cuadros). Se guarda para este juego",
 				"Cerrar el juego y volver a la biblioteca",
 				"Cerrar el juego y salir de Forja SX2"};
 			const auto draw_option_icon = [&](unsigned row, float cx, float cy, bool selected) {
@@ -1197,6 +1203,11 @@ namespace PS4GameMenu
 				}
 				else if (row == 4)
 				{
+					draw->AddCircle(point(cx, cy + 4), 14 * scale, icon_line, 24, 2 * scale);
+					draw->AddLine(point(cx, cy + 4), point(cx + 8, cy - 6), icon_line, 3 * scale);
+				}
+				else if (row == 5)
+				{
 					draw->AddLine(point(cx - 12, cy), point(cx + 10, cy), icon_line, 3 * scale);
 					draw->AddLine(point(cx - 12, cy), point(cx - 2, cy - 9), icon_line, 3 * scale);
 					draw->AddLine(point(cx - 12, cy), point(cx - 2, cy + 9), icon_line, 3 * scale);
@@ -1207,20 +1218,20 @@ namespace PS4GameMenu
 					draw->AddLine(point(cx + 10, cy - 12), point(cx - 10, cy + 12), icon_line, 3 * scale);
 				}
 			};
-			for (unsigned row = 0; row < 6; row++)
+			for (unsigned row = 0; row < 7; row++)
 			{
-				const float y = 206.0f + row * 84.0f;
+				const float y = 200.0f + row * 77.0f;
 				const bool selected = selected_row == row;
-				draw->AddRectFilled(point(112, y), point(1808, y + 82),
+				draw->AddRectFilled(point(112, y), point(1808, y + 72),
 					selected ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 255), 10.0f * scale);
 				if (selected)
-					draw->AddRect(point(112, y), point(1808, y + 82), accent, 10.0f * scale, 2.0f * scale, 0);
-				draw_option_icon(row, 168, y + 41, selected);
-				draw->AddText(font, 26.0f * scale, point(226, y + 19), white, labels[row]);
-				draw->AddText(font, 16.0f * scale, point(226, y + 53), muted, descriptions[row]);
-				if (row == 1 || row == 2 || row == 3)
-					draw->AddText(font, 20.0f * scale, point(1580, y + 29), selected ? white : muted,
-						row == 1 ? "AJUSTAR" : (row == 2 ? "ELEGIR" : "CAMBIAR"));
+					draw->AddRect(point(112, y), point(1808, y + 72), accent, 10.0f * scale, 2.0f * scale, 0);
+				draw_option_icon(row, 168, y + 36, selected);
+				draw->AddText(font, 26.0f * scale, point(226, y + 12), white, labels[row]);
+				draw->AddText(font, 16.0f * scale, point(226, y + 45), muted, descriptions[row]);
+				if (row >= 1 && row <= 4)
+					draw->AddText(font, 20.0f * scale, point(1580, y + 24), selected ? white : muted,
+						(row == 1 || row == 4) ? "AJUSTAR" : (row == 2 ? "ELEGIR" : "CAMBIAR"));
 			}
 			char hint[128];
 			std::snprintf(hint, sizeof(hint), "Izq./Der.: cambiar valor   |   Resolución: 1x-%ux", max_upscale);
@@ -1454,10 +1465,10 @@ namespace PS4GameMenu
 	}
 
 	void SetInGameMenu(bool visible, unsigned selected, unsigned upscale, unsigned max_upscale, unsigned aspect,
-		bool show_performance_overlay)
+		bool show_performance_overlay, int ee_rate)
 	{
 		const unsigned state = PackInGameMenuState({visible, selected, upscale, max_upscale, aspect,
-			show_performance_overlay});
+			show_performance_overlay, ee_rate});
 		s_in_game_state.store(state, std::memory_order_release);
 		// Paused emulation produces no VSync. Queue the redraw on the GS thread
 		// so every value change is visible immediately in the panel.
