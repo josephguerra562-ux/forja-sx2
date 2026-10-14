@@ -70,6 +70,9 @@ namespace ps5::framegen
 		bool create(VkPhysicalDevice physical, VkDevice device, std::uint32_t width, std::uint32_t height, std::string& error,
 			VkFormat frame_format = VK_FORMAT_R8G8B8A8_UNORM);
 		void destroy();
+		// Forja SX2: the interpolation pass to use instead of PS5SX2's (taken over by create(); entry "main", bindings 0..10 in the
+		// order of k_fg_bind_fi_interpolate's numbers). Set before create().
+		void set_interpolate_module(VkShaderModule module) { m_custom_interpolate = module; }
 
 		bool ready() const { return m_device != VK_NULL_HANDLE; }
 		std::uint32_t width() const { return m_width; }
@@ -182,6 +185,7 @@ namespace ps5::framegen
 		VkBuffer m_counters = VK_NULL_HANDLE; // FSR3's counters (frames since a reset)
 		VkDeviceMemory m_counters_memory = VK_NULL_HANDLE;
 		// Forja SX2: the PS4 hang diagnosis (ps5_framegen.cpp, create()).
+		VkShaderModule m_custom_interpolate = VK_NULL_HANDLE;
 		VkBuffer m_diag = VK_NULL_HANDLE;
 		VkDeviceMemory m_diag_memory = VK_NULL_HANDLE;
 		bool m_diag_markers = false;

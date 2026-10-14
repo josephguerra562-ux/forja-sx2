@@ -515,7 +515,17 @@ namespace ps5::framegen
 					p.slot[order[k]] = k;
 			}
 
-			std::vector<u32> code(sh.code, sh.code + sh.words);
+			// Forja SX2: on PS4 the interpolation pass is our own (GSDeviceVK.cpp compiles it, entry "main", bindings already
+			// numbered 0..n-1): PS5SX2's hangs the GPU under radv/ps4 (2026-10-14: every pass before it finished, it never did).
+			const bool custom = i == sh_fi_interpolate && m_custom_interpolate != VK_NULL_HANDLE;
+			std::vector<u32> code;
+			if (custom)
+			{
+				p.module = m_custom_interpolate;
+				m_custom_interpolate = VK_NULL_HANDLE;
+			}
+			else
+				code.assign(sh.code, sh.code + sh.words);
 
 			for (std::size_t at = 5; at < code.size();)
 			{
@@ -555,7 +565,7 @@ namespace ps5::framegen
 			mod.codeSize = code.size() * 4;
 			mod.pCode = code.data();
 
-			if (vkCreateShaderModule(m_device, &mod, nullptr, &p.module) != VK_SUCCESS)
+			if (!custom && vkCreateShaderModule(m_device, &mod, nullptr, &p.module) != VK_SUCCESS)
 			{
 				error = std::string("vkCreateShaderModule ") + sh.name;
 				return false;
@@ -589,7 +599,7 @@ namespace ps5::framegen
 			}
 
 			VkComputePipelineCreateInfo info{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
-			info.stage = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0, VK_SHADER_STAGE_COMPUTE_BIT, p.module, "CS", nullptr};
+			info.stage = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0, VK_SHADER_STAGE_COMPUTE_BIT, p.module, custom ? "main" : "CS", nullptr};
 			info.layout = p.layout;
 
 			if (VkResult r = vkCreateComputePipelines(m_device, VK_NULL_HANDLE, 1, &info, nullptr, &p.pipeline); r != VK_SUCCESS)
@@ -966,6 +976,8 @@ namespace ps5::framegen
 		m_ubo_memory = VK_NULL_HANDLE;
 		m_counters = VK_NULL_HANDLE;
 		m_counters_memory = VK_NULL_HANDLE;
+		if (m_custom_interpolate) vkDestroyShaderModule(m_device, m_custom_interpolate, nullptr);
+		m_custom_interpolate = VK_NULL_HANDLE;
 		if (m_diag) vkDestroyBuffer(m_device, m_diag, nullptr);
 		if (m_diag_memory) vkFreeMemory(m_device, m_diag_memory, nullptr);
 		m_diag = VK_NULL_HANDLE;

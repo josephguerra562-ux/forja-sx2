@@ -4666,6 +4666,95 @@ namespace
 
 	OrbisFrameGenState s_orbis_fg;
 
+	// Forja SX2: the interpolation pass on the PS4, in place of PS5SX2's fi_interpolate. That one (a 2x2 quad a thread with a dozen
+	// candidates and per-pixel history, 256 VGPRs) hung the GPU under radv/ps4: with a marker after each pass (2026-10-14) all 26
+	// passes before it finished and it never did. This one keeps to a few registers: a thread makes a 2x2 quad of the frame at
+	// interpolation_t between the previous frame and this one. Its motion is one of FSR3's optical flow vectors (8x8 blocks, in
+	// pixels; which way they point is not assumed, each is tried both ways) from its block and the 8 around it, or none; the one
+	// whose two ends look most alike over the quad wins (none, slightly favoured, where nothing does better: the HUD, flat areas),
+	// and each pixel is the blend of the previous frame at one end and this one at the other. The bindings are
+	// k_fg_bind_fi_interpolate's, numbered 0..10 in the order of their numbers (ps5_framegen.cpp make_pipelines()).
+	static constexpr std::string_view FORJA_FG_INTERPOLATE_SHADER = R"(
+#version 460 core
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform itexture2D r_optical_flow;
+// Bindings 1, 2 (the vector field), 6, 7 (PS5SX2's still history and quad motions) and 10 (the counters) are in the layout
+// but not used here.
+layout(set = 0, binding = 3) uniform texture2D r_previous;
+layout(set = 0, binding = 4) uniform texture2D r_current;
+layout(set = 0, binding = 5, rgba8) uniform writeonly image2D rw_output;
+layout(set = 0, binding = 8, std140) uniform cbFI
+{
+	layout(offset = 8) ivec2 display_size;
+	layout(offset = 16) vec2 display_size_rcp;
+	layout(offset = 80) vec2 optical_flow_scale;
+	layout(offset = 88) int optical_flow_block_size;
+	layout(offset = 156) float interpolation_t;
+};
+layout(set = 0, binding = 9) uniform sampler s_linear;
+
+vec3 Previous(vec2 uv) { return textureLod(sampler2D(r_previous, s_linear), uv, 0.0).rgb; }
+vec3 Current(vec2 uv) { return textureLod(sampler2D(r_current, s_linear), uv, 0.0).rgb; }
+
+// How unlike the two ends of motion m (previous to current, in UV) are over the quad.
+float QuadError(vec2 uv0, vec2 m, float t)
+{
+	float e = 0.0;
+	for (int i = 0; i < 4; i++)
+	{
+		vec2 uv = uv0 + vec2(float(i & 1), float(i >> 1)) * display_size_rcp;
+		vec3 d = Previous(uv - m * t) - Current(uv + m * (1.0 - t));
+		e += abs(d.r) + abs(d.g) + abs(d.b);
+	}
+	return e;
+}
+
+void main()
+{
+	ivec2 base = ivec2(gl_GlobalInvocationID.xy) * 2;
+	if (base.x >= display_size.x || base.y >= display_size.y)
+		return;
+	float t = clamp(interpolation_t > 0.0 ? interpolation_t : 0.5, 0.0, 1.0);
+	vec2 uv0 = (vec2(base) + 0.5) * display_size_rcp;
+	ivec2 flow_size = textureSize(isampler2D(r_optical_flow, s_linear), 0);
+	ivec2 block = clamp(base / max(optical_flow_block_size, 1), ivec2(0), flow_size - 1);
+
+	vec2 best = vec2(0.0);
+	float best_error = QuadError(uv0, best, t) * 0.92;
+	for (int dy = -1; dy <= 1; dy++)
+	{
+		for (int dx = -1; dx <= 1; dx++)
+		{
+			ivec2 at = clamp(block + ivec2(dx, dy), ivec2(0), flow_size - 1);
+			vec2 mv = vec2(texelFetch(isampler2D(r_optical_flow, s_linear), at, 0).xy) * optical_flow_scale;
+			if (mv.x == 0.0 && mv.y == 0.0)
+				continue;
+			for (int way = 0; way < 2; way++)
+			{
+				vec2 m = way == 0 ? mv : -mv;
+				float e = QuadError(uv0, m, t);
+				if (e < best_error)
+				{
+					best_error = e;
+					best = m;
+				}
+			}
+		}
+	}
+
+	for (int i = 0; i < 4; i++)
+	{
+		ivec2 px = base + ivec2(i & 1, i >> 1);
+		if (px.x >= display_size.x || px.y >= display_size.y)
+			continue;
+		vec2 uv = (vec2(px) + 0.5) * display_size_rcp;
+		vec3 color = mix(Previous(uv - best * t), Current(uv + best * (1.0 - t)), t);
+		imageStore(rw_output, px, vec4(color, 1.0));
+	}
+}
+)";
+
 	double OrbisFrameGenDisplayHz()
 	{
 		return 59.94;
@@ -4851,6 +4940,25 @@ u32 GSDeviceVK::OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv,
 		const auto t0 = std::chrono::steady_clock::now();
 		std::string error;
 		s.fg = std::make_unique<ps5::framegen::interpolator>();
+
+		// Forja SX2: our interpolation pass (FORJA_FG_INTERPOLATE_SHADER); /data/ForjaSX2/fg-fsr3-original keeps PS5SX2's.
+		if (access("/data/ForjaSX2/fg-fsr3-original", F_OK) != 0)
+		{
+			const VkShaderModule module = g_vulkan_shader_cache->GetComputeShader(FORJA_FG_INTERPOLATE_SHADER);
+			if (module == VK_NULL_HANDLE)
+			{
+				printf("[fg] the Forja interpolation shader did not compile; frame generation stays off in this game\n");
+				fflush(stdout);
+				s.fg.reset();
+				s.failed = true;
+				g_orbis_fg_engaged = false;
+				return 0;
+			}
+			s.fg->set_interpolate_module(module);
+			printf("[fg] interpolation: Forja's pass (PS4)\n");
+		}
+		else
+			printf("[fg] interpolation: PS5SX2's pass (fg-fsr3-original)\n");
 
 		if (!s.fg->create(m_physical_device, m_device, w, h, error, format))
 		{
