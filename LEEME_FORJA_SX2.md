@@ -27,6 +27,15 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
   Menos % = más FPS en la PS4, pero el juego puede perder cuadros. Se aplica al instante y **se guarda solo para ese juego**
   (escribe el `.ini` de la sección 4 por ti).
 
+## 3b. Pestaña Ajustes (para todos los juegos)
+En la biblioteca, menú lateral > **Ajustes**. Arriba/Abajo eligen, Izq./Der. cambian, X pasa al siguiente valor y Círculo vuelve al menú.
+Se guarda al momento en `/data/ForjaSX2/ajustes.ini` y se aplica al iniciar el siguiente juego:
+velocidad del CPU de la PS2, resolución, relación de aspecto, contador de FPS, **sensibilidad de la palanca** (133 % por defecto,
+como el PCSX2 de PC; arregla que X caminara con la palanca a tope), cargas rápidas, saltar el logo,
+lecturas de la GPU (readbacks), **Modo video automático** (sube la velocidad mientras se reproduce un video del juego) y
+**Generación de cuadros (30 a 60 FPS)**, que es EXPERIMENTAL, viene apagada e inventa el cuadro intermedio en juegos que van estables a 30.
+Lo que se guarde para un juego en L3+R3 manda sobre esto.
+
 ## 4. Ajustes por juego (`gamesettings/`)
 El nombre del archivo es `SERIAL_CRC.ini`. Para sacarlo de cualquier ISO:
 ```

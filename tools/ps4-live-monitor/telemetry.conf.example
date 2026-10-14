@@ -1,4 +1,4 @@
 # Replace this with your PC's LAN IPv4 address, then upload as:
-# /data/PS4SX2/telemetry.conf
+# /data/ForjaSX2/telemetry.conf
 host=192.168.1.10
 port=19423
