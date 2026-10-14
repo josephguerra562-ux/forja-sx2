@@ -58,6 +58,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <utility>
 #include <dirent.h>
 #include <vector>
 
@@ -160,17 +161,45 @@ static u64 s_host_clock_checks = 0;
 static u64 s_last_host_clock_checks = 0;
 static bool s_verbose_diag = false;
 
-// (AI-assisted) Convert the DS4's 0..255 axis to DS2's range and absorb stick-center noise.
-static u8 MapStickAxis(u8 value)
+// Forja SX2: analog sensitivity, as PCSX2's "Analog Sensitivity" (133% by default for DualShock 2 pads).
+// A real DS2 stick reaches its end values well before the end of its travel, and on the diagonals too; a
+// DS4 passed through 1:1 often stays short of them, so games that pick walk or run from how far the stick
+// is pushed (Mega Man X Command Mission) walked with the stick held at the edge. Optional override:
+// /data/ForjaSX2/sensibilidad.txt with a percentage (100-200).
+static float s_stick_scale = 1.33f;
+
+static void LoadStickSensitivity()
 {
-	constexpr int center = 128;
-	constexpr int deadzone = 8;
-	const int delta = static_cast<int>(value) - center;
-	if (std::abs(delta) <= deadzone)
-		return Pad::ANALOG_NEUTRAL_POSITION;
-	if (delta < 0)
-		return static_cast<u8>(center - 1 - ((-delta - deadzone) * 127 / (center - deadzone)));
-	return static_cast<u8>(center - 1 + ((delta - deadzone) * 128 / (127 - deadzone)));
+	if (std::FILE* file = std::fopen("/data/ForjaSX2/sensibilidad.txt", "r"))
+	{
+		int percent = 0;
+		if (std::fscanf(file, "%d", &percent) == 1 && percent >= 100 && percent <= 200)
+			s_stick_scale = static_cast<float>(percent) / 100.0f;
+		std::fclose(file);
+	}
+	ProbeLog("Controller: analog sensitivity %.0f%% (/data/ForjaSX2/sensibilidad.txt overrides, 100-200)\n",
+		s_stick_scale * 100.0f);
+}
+
+// Converts one DS4 stick (0..255 per axis, centre 128) to the DS2's values: a small round deadzone for
+// centre noise, then the sensitivity scale on the whole vector, clamped per axis so the diagonals reach the
+// corners like a DS2.
+static std::pair<u8, u8> MapStick(u8 raw_x, u8 raw_y)
+{
+	constexpr float deadzone = 8.0f;
+	float dx = static_cast<float>(raw_x) - 128.0f;
+	float dy = static_cast<float>(raw_y) - 128.0f;
+	const float length = std::sqrt(dx * dx + dy * dy);
+	if (length <= deadzone)
+		return {Pad::ANALOG_NEUTRAL_POSITION, Pad::ANALOG_NEUTRAL_POSITION};
+	// Take the deadzone off the length so movement starts at 0 just outside it.
+	const float factor = (length - deadzone) / (128.0f - deadzone) * 128.0f / length * s_stick_scale;
+	dx *= factor;
+	dy *= factor;
+	const auto to_u8 = [](float d) {
+		return static_cast<u8>(std::clamp(static_cast<int>(std::lround(128.0f + d)), 0, 255));
+	};
+	return {to_u8(dx), to_u8(dy)};
 }
 
 // (AI-assisted) Forward the PS4 controller to the first emulated DualShock 2.
@@ -208,9 +237,9 @@ static void VMHostUpdateController(const OrbisPadData& data)
 
 	if (PadBase* pad = Pad::GetPad(0))
 	{
-		pad->SetRawAnalogs(
-			{MapStickAxis(data.leftStick.x), MapStickAxis(data.leftStick.y)},
-			{MapStickAxis(data.rightStick.x), MapStickAxis(data.rightStick.y)});
+		const auto left = MapStick(data.leftStick.x, data.leftStick.y);
+		const auto right = MapStick(data.rightStick.x, data.rightStick.y);
+		pad->SetRawAnalogs({left.first, left.second}, {right.first, right.second});
 		Pad::SetControllerState(0, PadDualshock2::Inputs::PAD_L2, data.analogButtons.l2 / 255.0f);
 		Pad::SetControllerState(0, PadDualshock2::Inputs::PAD_R2, data.analogButtons.r2 / 255.0f);
 	}
@@ -897,6 +926,7 @@ static void* RunVM(void*)
 		Pad::SetControllerState(0, PadDualshock2::Inputs::PAD_ANALOG, 1.0f);
 		Pad::SetControllerState(0, PadDualshock2::Inputs::PAD_ANALOG, 0.0f);
 		ProbeLog("Controller: DualShock 2 analog mode enabled; both sticks and analog triggers forwarded.\n");
+		LoadStickSensitivity();
 		s_verbose_diag = access("/data/ForjaSX2/vm-verbose-log", F_OK) == 0;
 		ProbeLog("Verbose diagnostics: %s (single marker /data/ForjaSX2/vm-verbose-log forces 1s heartbeat, TimedWaitGS, and GS/EE hotspot sampling)\n",
 			s_verbose_diag ? "ENABLED" : "disabled");
