@@ -290,7 +290,7 @@ def telemetry_listener():
         print(f"[telemetry] Check config.json telemetry_port or kill process using port.")
         return
     srv.listen(8)
-    print(f"[telemetry] Listening on 0.0.0.0:{TEL_PORT} (PS4 target: set /data/PS4SX2/telemetry.conf)")
+    print(f"[telemetry] Listening on 0.0.0.0:{TEL_PORT} (PS4 target: set /data/ForjaSX2/telemetry.conf)")
     while True:
         try:
             conn, addr = srv.accept()
@@ -467,8 +467,8 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/ftp/list":
             target = qs.get("path", [PATHS["markers_dir"]])[0]
-            # sanitize: only allow /data/PS4SX2/**
-            if not target.startswith("/data/PS4SX2"):
+            # sanitize: only allow /data/ForjaSX2/**
+            if not target.startswith("/data/ForjaSX2"):
                 self.send_response(400); self.end_headers(); return
             try:
                 ftp = ftp_connect()
@@ -488,7 +488,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/ftp/pull":
             # Download file from PS4 via FTP and return as download
             target = qs.get("path", [""])[0]
-            if not target.startswith("/data/PS4SX2"):
+            if not target.startswith("/data/ForjaSX2"):
                 self.send_response(400); self.end_headers(); return
             try:
                 ftp = ftp_connect()
@@ -550,7 +550,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/ftp/push":
             # Upload file to PS4: multipart or raw body
             target = qs.get("path", [""])[0]
-            if not target.startswith("/data/PS4SX2"):
+            if not target.startswith("/data/ForjaSX2"):
                 self.send_response(400); self.end_headers(); return
             length = int(self.headers.get("Content-Length", 0))
             data = self.rfile.read(length) if length else b""
@@ -585,7 +585,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/ftp/delete":
             target = qs.get("path", [""])[0]
-            if not target.startswith("/data/PS4SX2"):
+            if not target.startswith("/data/ForjaSX2"):
                 self.send_response(400); self.end_headers(); return
             try:
                 ftp = ftp_connect()
@@ -619,7 +619,7 @@ def main():
     print(f"  Dashboard : http://localhost:{WEB_PORT}")
     print(f"  Telemetry : 0.0.0.0:{TEL_PORT}  (PS4 -> PC)")
     print(f"  FTP       : {PS4['host']}:{PS4['port']} -> {PATHS['markers_dir']}")
-    print(f"  PS4 config: /data/PS4SX2/telemetry.conf  ->  host=YOUR_PC_IP and port={TEL_PORT} on separate lines")
+    print(f"  PS4 config: /data/ForjaSX2/telemetry.conf  ->  host=YOUR_PC_IP and port={TEL_PORT} on separate lines")
     print(f"  Logs      : {LOG_DIR}")
     try:
         ThreadedHTTPServer((WEB_HOST, WEB_PORT), Handler).serve_forever()

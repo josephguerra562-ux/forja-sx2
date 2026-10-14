@@ -260,12 +260,12 @@ void DiscCoverDownload::Run()
 	stbi_image_free(decoded);
 	if (m_cancel.load())
 		return;
-	if (mkdir("/data/PS4SX2/covers", 0777) != 0 && errno != EEXIST)
+	if (mkdir("/data/ForjaSX2/covers", 0777) != 0 && errno != EEXIST)
 	{
 		ProbeLog("Disc cover: mkdir failed errno=%d\n", errno);
 		return;
 	}
-	const std::string path = "/data/PS4SX2/covers/" + m_cache_name + ".jpg";
+	const std::string path = "/data/ForjaSX2/covers/" + m_cache_name + ".jpg";
 	const std::string temp = path + ".download";
 	FILE* file = std::fopen(temp.c_str(), "wb");
 	if (!file)

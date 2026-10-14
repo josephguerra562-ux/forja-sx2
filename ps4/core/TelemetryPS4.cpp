@@ -34,7 +34,7 @@ namespace
 	constexpr std::size_t kNetPoolSize = 512 * 1024;
 	constexpr int kReconnectMinMs = 2000;
 	constexpr int kReconnectMaxMs = 10000;
-	constexpr const char* kConfigPath = "/data/PS4SX2/telemetry.conf";
+	constexpr const char* kConfigPath = "/data/ForjaSX2/telemetry.conf";
 	constexpr const char* kDefaultHost = "192.168.0.8";
 	constexpr int kDefaultPort = 19423; // PS4SX2 debug server default (PC IP)
 

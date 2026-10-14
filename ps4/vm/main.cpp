@@ -95,17 +95,17 @@ static int MigrateLegacyLogs()
 		"PCSX2-vm-boot.log", "PCSX2-vm-stdout.log", "PCSX2-vm-stderr.log",
 		"emulog.txt", "xmb-trace.log", "crash.log"};
 	int migrated = 0;
-	mkdir("/data/PS4SX2/logs", 0777);
+	mkdir("/data/ForjaSX2/logs", 0777);
 	for (const char* name : names)
 	{
 		char old_path[128];
 		char new_path[128];
-		snprintf(old_path, sizeof(old_path), "/data/PS4SX2/%s", name);
-		snprintf(new_path, sizeof(new_path), "/data/PS4SX2/logs/%s", name);
+		snprintf(old_path, sizeof(old_path), "/data/ForjaSX2/%s", name);
+		snprintf(new_path, sizeof(new_path), "/data/ForjaSX2/logs/%s", name);
 		if (access(old_path, F_OK) != 0)
 			continue;
 		if (access(new_path, F_OK) == 0)
-			snprintf(new_path, sizeof(new_path), "/data/PS4SX2/logs/legacy-%s", name);
+			snprintf(new_path, sizeof(new_path), "/data/ForjaSX2/logs/legacy-%s", name);
 		if (rename(old_path, new_path) == 0)
 		{
 			migrated++;
@@ -560,16 +560,16 @@ static void PrepareEmulatorFolders(SettingsInterface& settings)
 	// (AI-assisted) Initialize the same paths before the launcher and the VM.
 	// Settings must be absolute before LoadConfig derives its debugger paths.
 	EmuFolders::AppRoot = "/app0";
-	EmuFolders::DataRoot = "/data/PS4SX2";
+	EmuFolders::DataRoot = "/data/ForjaSX2";
 	EmuFolders::Resources = "/app0/resources";
-	EmuFolders::Settings = "/data/PS4SX2/inis";
+	EmuFolders::Settings = "/data/ForjaSX2/inis";
 	EmuFolders::LoadConfig(settings);
-	EmuFolders::Bios = "/data/PS4SX2/bios";
-	EmuFolders::Logs = "/data/PS4SX2/logs";
-	EmuFolders::Cache = "/data/PS4SX2/cache/vm-boot";
+	EmuFolders::Bios = "/data/ForjaSX2/bios";
+	EmuFolders::Logs = "/data/ForjaSX2/logs";
+	EmuFolders::Cache = "/data/ForjaSX2/cache/vm-boot";
 	const char* paths[] = {
 		EmuFolders::DataRoot.c_str(), EmuFolders::Settings.c_str(),
-		EmuFolders::Bios.c_str(), "/data/PS4SX2/roms",
+		EmuFolders::Bios.c_str(), "/data/ForjaSX2/roms",
 		EmuFolders::MemoryCards.c_str(), EmuFolders::Savestates.c_str(),
 		EmuFolders::Snapshots.c_str(), EmuFolders::Logs.c_str(),
 		EmuFolders::Cheats.c_str(), EmuFolders::Patches.c_str(),
@@ -593,8 +593,8 @@ static void* RunVM(void*)
 	PS4ThreadAffinity::PinCurrentThread("EE", 2);
 	VMHostSetCPUThread();
 	PS4ThreadCPUMetrics::Sample(PS4ThreadCPUMetrics::Role::EE);
-	PS4IPUProfile::s_sampling.enabled = access("/data/PS4SX2/vm-profile-ipu", F_OK) == 0 &&
-	                                    access("/data/PS4SX2/vm-no-ipu-profile", F_OK) != 0;
+	PS4IPUProfile::s_sampling.enabled = access("/data/ForjaSX2/vm-profile-ipu", F_OK) == 0 &&
+	                                    access("/data/ForjaSX2/vm-no-ipu-profile", F_OK) != 0;
 	PS4IPUProfile::s_access_sampling.enabled = PS4IPUProfile::s_sampling.enabled;
 	ProbeLog("IPU profiling: %s (sampled duration, nominal ratio 1/%u)\n",
 		PS4IPUProfile::s_sampling.enabled ? "enabled by opt-in marker with inclusive access sampling 1/1024" : "disabled for performance",
@@ -609,25 +609,25 @@ static void* RunVM(void*)
 	// Default to mild underclock (-1 = 75% cycles) for headroom; exact cycle accuracy costs ~25%
 	// EE time on this CPU. Original 100% stays via marker for sensitive titles. Needs proper testing.
 	int ee_cycle_rate = -1;
-	if (access("/data/PS4SX2/vm-ee-cycle-normal", F_OK) == 0)
+	if (access("/data/ForjaSX2/vm-ee-cycle-normal", F_OK) == 0)
 		ee_cycle_rate = 0;
-	else if (access("/data/PS4SX2/vm-ee-cycle-underclock", F_OK) == 0)
+	else if (access("/data/ForjaSX2/vm-ee-cycle-underclock", F_OK) == 0)
 		ee_cycle_rate = -2;
-	else if (access("/data/PS4SX2/vm-ee-cycle-mild", F_OK) == 0)
+	else if (access("/data/ForjaSX2/vm-ee-cycle-mild", F_OK) == 0)
 		ee_cycle_rate = -1;
 	settings->SetIntValue("EmuCore/Speedhacks", "EECycleRate", ee_cycle_rate);
 	// (AI-assisted) Fase 3-A reverted: EECycleSkip=1 gave -1.2pp on GoW FMV (32.8ms vs 31.4ms) and no gain on GTA.
-	// Reverted to 0 (opt-in via /data/PS4SX2/vm-ee-cycle-skip only). Needs proper testing.
+	// Reverted to 0 (opt-in via /data/ForjaSX2/vm-ee-cycle-skip only). Needs proper testing.
 	int ee_cycle_skip = 0;
-	if (access("/data/PS4SX2/vm-ee-cycle-skip", F_OK) == 0)
+	if (access("/data/ForjaSX2/vm-ee-cycle-skip", F_OK) == 0)
 		ee_cycle_skip = 1;
 	settings->SetIntValue("EmuCore/Speedhacks", "EECycleSkip", ee_cycle_skip);
 	ProbeLog("EE cycle profile requested: rate=%d skip=%d (underclock marker=%s, mild marker=%s, normal marker=%s, skip marker=%s)\n",
 		ee_cycle_rate, ee_cycle_skip,
-		access("/data/PS4SX2/vm-ee-cycle-underclock", F_OK) == 0 ? "present" : "absent",
-		access("/data/PS4SX2/vm-ee-cycle-mild", F_OK) == 0 ? "present" : "absent",
-		access("/data/PS4SX2/vm-ee-cycle-normal", F_OK) == 0 ? "present" : "absent",
-		access("/data/PS4SX2/vm-ee-cycle-skip", F_OK) == 0 ? "present" : "absent");
+		access("/data/ForjaSX2/vm-ee-cycle-underclock", F_OK) == 0 ? "present" : "absent",
+		access("/data/ForjaSX2/vm-ee-cycle-mild", F_OK) == 0 ? "present" : "absent",
+		access("/data/ForjaSX2/vm-ee-cycle-normal", F_OK) == 0 ? "present" : "absent",
+		access("/data/ForjaSX2/vm-ee-cycle-skip", F_OK) == 0 ? "present" : "absent");
 
 	// (AI-assisted) Recommended speedhacks: vuFlagHack eliminates VU1 status flag overhead,
 	// IntcStat and WaitLoop bypass guest idle loops. Keep normal disc timing by default.
@@ -635,14 +635,14 @@ static void* RunVM(void*)
 	settings->SetBoolValue("EmuCore/Speedhacks", "vuFlagHack", true);
 	settings->SetBoolValue("EmuCore/Speedhacks", "IntcStat", true);
 	settings->SetBoolValue("EmuCore/Speedhacks", "WaitLoop", true);
-	const bool fast_cdvd = access("/data/PS4SX2/vm-fast-cdvd", F_OK) == 0 &&
-	                       access("/data/PS4SX2/vm-no-fast-cdvd", F_OK) != 0;
+	const bool fast_cdvd = access("/data/ForjaSX2/vm-fast-cdvd", F_OK) == 0 &&
+	                       access("/data/ForjaSX2/vm-no-fast-cdvd", F_OK) != 0;
 	settings->SetBoolValue("EmuCore/Speedhacks", "fastCDVD", fast_cdvd);
 	ProbeLog("CDVD timing: %s\n", fast_cdvd ? "accelerated by opt-in marker" : "normal (compatibility default)");
 	// (AI-assisted) Let the backend choose the compiled renderer; on this PS4 build that is Vulkan.
 	settings->SetIntValue("EmuCore/GS", "Renderer", static_cast<int>(GSRendererType::VK));
 	settings->SetFloatValue("EmuCore/GS", "upscale_multiplier", 1.0f);
-	const bool disable_shader_cache = access("/data/PS4SX2/vm-no-shader-cache", F_OK) == 0;
+	const bool disable_shader_cache = access("/data/ForjaSX2/vm-no-shader-cache", F_OK) == 0;
 	settings->SetBoolValue("EmuCore/GS", "DisableShaderCache", disable_shader_cache);
 	settings->SetBoolValue("EmuCore/GS", "HWSpinGPUForReadbacks", false);
 	settings->SetBoolValue("EmuCore/GS", "HWSpinCPUForReadbacks", false);
@@ -662,7 +662,7 @@ static void* RunVM(void*)
 	settings->SetIntValue("EmuCore/GS", "VsyncQueueSize", 2);
 	// (AI-assisted) Skip the PS2 BIOS animation and fast-forward only the
 	// emulator's boot phase. The game's own logos and loading still run normally.
-	bool fast_boot = access("/data/PS4SX2/vm-no-fast-boot", F_OK) != 0;
+	bool fast_boot = access("/data/ForjaSX2/vm-no-fast-boot", F_OK) != 0;
 	settings->SetBoolValue("EmuCore", "EnableFastBoot", fast_boot);
 	settings->SetBoolValue("EmuCore", "EnableFastBootFastForward", fast_boot);
 	settings->SetBoolValue("EmuCore", "EnablePINE", false);
@@ -682,10 +682,10 @@ static void* RunVM(void*)
 	// (AI-assisted) Fastmem is compiled in for performance, but keep a
 	// console-side escape hatch for page-fault diagnosis. The marker must be
 	// checked before CPUThreadInitialize creates the VTLB mappings.
-	const bool fastmem_disabled_by_marker = access("/data/PS4SX2/vm-no-fastmem", F_OK) == 0;
+	const bool fastmem_disabled_by_marker = access("/data/ForjaSX2/vm-no-fastmem", F_OK) == 0;
 	settings->SetBoolValue("EmuCore/CPU/Recompiler", "EnableFastmem", !fastmem_disabled_by_marker);
 	ProbeLog("Fastmem runtime override: %s\n",
-		fastmem_disabled_by_marker ? "disabled by /data/PS4SX2/vm-no-fastmem" : "enabled");
+		fastmem_disabled_by_marker ? "disabled by /data/ForjaSX2/vm-no-fastmem" : "enabled");
 #else
 	settings->SetBoolValue("EmuCore/CPU/Recompiler", "EnableFastmem", false);
 #endif
@@ -694,7 +694,7 @@ static void* RunVM(void*)
 	// (AI-assisted) Both library and VM poll scePad directly on PS4.
 	settings->SetBoolValue("InputSources", "SDL", false);
 	// (AI-assisted) The Orbis Cubeb slot routes to native PS4 AudioOut.
-	const bool audio_enabled = access("/data/PS4SX2/vm-no-audio", F_OK) != 0;
+	const bool audio_enabled = access("/data/ForjaSX2/vm-no-audio", F_OK) != 0;
 	settings->SetStringValue("SPU2/Output", "Backend", audio_enabled ? "Cubeb" : "Null");
 	settings->SetStringValue("SPU2/Output", "SyncMode", "TimeStretch");
 	// (AI-assisted) Longer sequences suit slowed audio and need fewer overlap
@@ -704,7 +704,7 @@ static void* RunVM(void*)
 	// 70 ms buffer with 35 ms sequences avoids audio buffer underruns (input_short)
 	// while keeping speech and sound effects responsive and glitch-free.
 	// Needs proper testing across games on the console.
-	const bool legacy_audio = access("/data/PS4SX2/vm-audio-legacy-stretch", F_OK) == 0;
+	const bool legacy_audio = access("/data/ForjaSX2/vm-audio-legacy-stretch", F_OK) == 0;
 	settings->SetIntValue("SPU2/Output", "BufferMS", legacy_audio ? 50 : 70);
 	settings->SetIntValue("SPU2/Output", "StretchSequenceLengthMS", legacy_audio ? 30 : 35);
 	settings->SetIntValue("SPU2/Output", "StretchSeekWindowMS", legacy_audio ? 20 : 15);
@@ -712,11 +712,11 @@ static void* RunVM(void*)
 	settings->SetBoolValue("SPU2/Output", "StretchUseQuickSeek", false);
 	settings->SetIntValue("SPU2/Output", "StandardVolume", 100);
 	settings->SetBoolValue("SPU2/Output", "OutputMuted", false);
-	ProbeLog("PS4 audio configuration: %s (stereo PCM16 48 kHz, main port, explicit 0 dB; disable with /data/PS4SX2/vm-no-audio)\n",
+	ProbeLog("PS4 audio configuration: %s (stereo PCM16 48 kHz, main port, explicit 0 dB; disable with /data/ForjaSX2/vm-no-audio)\n",
 		audio_enabled ? "native AudioOut with TimeStretch" : "Null by marker");
 	PrepareEmulatorFolders(*settings);
-	PS4GSProfile::enabled = access("/data/PS4SX2/vm-profile-gs", F_OK) == 0 &&
-	                        access("/data/PS4SX2/vm-no-gs-profile", F_OK) != 0;
+	PS4GSProfile::enabled = access("/data/ForjaSX2/vm-profile-gs", F_OK) == 0 &&
+	                        access("/data/ForjaSX2/vm-no-gs-profile", F_OK) != 0;
 	ProbeLog("GS profiling: %s (hot calls sampled 1/64; inclusive wall time)\n",
 		PS4GSProfile::enabled ? "enabled by opt-in marker" : "disabled for performance");
 	ProbeLog("VM configuration: observation=unlimited renderer=vulkan mtvu=%s fastmem-build=%s shader_cache=%s directory=%s\n",
@@ -747,34 +747,34 @@ static void* RunVM(void*)
 		static_cast<unsigned>(EmuConfig.Speedhacks.EECycleSkip));
 	VMBootParameters boot{};
 	GamePlatform platform = GamePlatform::Unknown;
-	g_ps4_ipu_csc_reuse = access("/data/PS4SX2/vm-no-ipu-csc-reuse", F_OK) != 0;
+	g_ps4_ipu_csc_reuse = access("/data/ForjaSX2/vm-no-ipu-csc-reuse", F_OK) != 0;
 	ProbeLog("IPU CSC output reuse: %s (partial FIFO drain; timing unchanged)\n",
 		g_ps4_ipu_csc_reuse ? "enabled" : "disabled by marker");
-	g_ps4_ipu0_burst = access("/data/PS4SX2/vm-no-ipu-burst", F_OK) != 0;
-	ProbeLog("IPU output burst: %s (up to 32 FIFO fills per DMA event, cycles preserved; disable with /data/PS4SX2/vm-no-ipu-burst)\n",
+	g_ps4_ipu0_burst = access("/data/ForjaSX2/vm-no-ipu-burst", F_OK) != 0;
+	ProbeLog("IPU output burst: %s (up to 32 FIFO fills per DMA event, cycles preserved; disable with /data/ForjaSX2/vm-no-ipu-burst)\n",
 		g_ps4_ipu0_burst ? "enabled" : "disabled by marker");
 #if defined(PCSX2_PS4_VM_BOOT_JIT)
-	g_ps4_vtlb_register_cache = access("/data/PS4SX2/vm-no-vtlb-register-cache", F_OK) != 0;
+	g_ps4_vtlb_register_cache = access("/data/ForjaSX2/vm-no-vtlb-register-cache", F_OK) != 0;
 	ProbeLog("VTLB scalar read register cache: %s (device handlers retained; Fastmem unchanged)\n",
 		g_ps4_vtlb_register_cache ? "enabled" : "disabled by marker");
 	g_ps4_vtlb_bulk_register_cache = g_ps4_vtlb_register_cache &&
-	                                 access("/data/PS4SX2/vm-no-vtlb-bulk-cache", F_OK) != 0;
+	                                 access("/data/ForjaSX2/vm-no-vtlb-bulk-cache", F_OK) != 0;
 	g_ps4_vtlb_cached_quad_reads = g_ps4_vtlb_cached_writes = 0;
-	ProbeLog("VTLB quad read/store register cache: %s (disable with /data/PS4SX2/vm-no-vtlb-bulk-cache)\n",
+	ProbeLog("VTLB quad read/store register cache: %s (disable with /data/ForjaSX2/vm-no-vtlb-bulk-cache)\n",
 		g_ps4_vtlb_bulk_register_cache ? "enabled (default since v0.87)" : "disabled by marker");
 	// (AI-assisted) Fase 3-B REVERTED 2026-10-12: SMC skip default ON broke GTA SLUS-20946
 	// (Unknown SPECIAL 00000001 at 00eaa1c4, Trap 00eaa1d4, stuck at 8000fe74 100% unavailable).
-	// GoW gained +18pp but GTA unbootable -> revert to exact SMC. Opt-in via /data/PS4SX2/vm-skip-smc. Needs proper testing.
-	g_ps4_skip_smc_checks = access("/data/PS4SX2/vm-skip-smc", F_OK) == 0;
+	// GoW gained +18pp but GTA unbootable -> revert to exact SMC. Opt-in via /data/ForjaSX2/vm-skip-smc. Needs proper testing.
+	g_ps4_skip_smc_checks = access("/data/ForjaSX2/vm-skip-smc", F_OK) == 0;
 	ProbeLog("EE JIT manual SMC validation: %s (%s)\n",
 		g_ps4_skip_smc_checks ? "relaxed (skip per-block checks, manual protection only)" : "enabled for all games (exact block checks)",
-		g_ps4_skip_smc_checks ? "enabled by /data/PS4SX2/vm-skip-smc" : "exact (reverted Fase 3-B)");
+		g_ps4_skip_smc_checks ? "enabled by /data/ForjaSX2/vm-skip-smc" : "exact (reverted Fase 3-B)");
 	// (AI-assisted) Exact SMC mode must inspect code on every loop iteration.
-	g_ps4_bytecopy_fusion = g_ps4_skip_smc_checks && access("/data/PS4SX2/vm-no-bytecopy-fusion", F_OK) != 0;
+	g_ps4_bytecopy_fusion = g_ps4_skip_smc_checks && access("/data/ForjaSX2/vm-no-bytecopy-fusion", F_OK) != 0;
 	g_ps4_bytecopy_blocks = g_ps4_bytecopy_runs = g_ps4_bytecopy_bytes = 0;
 	g_ps4_bytecopy_short = g_ps4_bytecopy_deadline = g_ps4_bytecopy_mapping = g_ps4_bytecopy_state = g_ps4_bytecopy_scratch = 0;
 	g_ps4_bytecopy_last_source = g_ps4_bytecopy_last_destination = 0;
-	ProbeLog("EE byte-copy fusion: %s (disable with /data/PS4SX2/vm-no-bytecopy-fusion)\n",
+	ProbeLog("EE byte-copy fusion: %s (disable with /data/ForjaSX2/vm-no-bytecopy-fusion)\n",
 		g_ps4_bytecopy_fusion ? "enabled with inline deadline gate, mapped RAM batches and native fallback" : "disabled by marker or exact SMC checks");
 #endif
 	// (AI-assisted) This process has never initialized Piglet. The recovery
@@ -839,7 +839,7 @@ static void* RunVM(void*)
 		ProbeLog("Disc selection: mounting %s\n", boot.filename.c_str());
 	}
 	boot.fast_boot = fast_boot;
-	ProbeLog("Fast boot: %s (PS1 always uses full BIOS boot; PS2 override: /data/PS4SX2/vm-no-fast-boot)\n", fast_boot ? "enabled" : "disabled");
+	ProbeLog("Fast boot: %s (PS1 always uses full BIOS boot; PS2 override: /data/ForjaSX2/vm-no-fast-boot)\n", fast_boot ? "enabled" : "disabled");
 	Error error;
 	if (s_use_vulkan_selector)
 		PS4GameMenu::ShowLoading(45, "Initializing virtual machine...");
@@ -858,13 +858,13 @@ static void* RunVM(void*)
 		Pad::SetControllerState(0, PadDualshock2::Inputs::PAD_ANALOG, 1.0f);
 		Pad::SetControllerState(0, PadDualshock2::Inputs::PAD_ANALOG, 0.0f);
 		ProbeLog("Controller: DualShock 2 analog mode enabled; both sticks and analog triggers forwarded.\n");
-		s_verbose_diag = access("/data/PS4SX2/vm-verbose-log", F_OK) == 0;
-		ProbeLog("Verbose diagnostics: %s (single marker /data/PS4SX2/vm-verbose-log forces 1s heartbeat, TimedWaitGS, and GS/EE hotspot sampling)\n",
+		s_verbose_diag = access("/data/ForjaSX2/vm-verbose-log", F_OK) == 0;
+		ProbeLog("Verbose diagnostics: %s (single marker /data/ForjaSX2/vm-verbose-log forces 1s heartbeat, TimedWaitGS, and GS/EE hotspot sampling)\n",
 			s_verbose_diag ? "ENABLED" : "disabled");
 		s_run_timer.Reset();
-		const bool hotspot_marker = access("/data/PS4SX2/vm-ee-hotspots", F_OK) == 0 && access("/data/PS4SX2/vm-no-ee-hotspots", F_OK) != 0;
+		const bool hotspot_marker = access("/data/ForjaSX2/vm-ee-hotspots", F_OK) == 0 && access("/data/ForjaSX2/vm-no-ee-hotspots", F_OK) != 0;
 		PS4EEHotspots::Reset(hotspot_marker || s_verbose_diag);
-		ProbeLog("EE hotspots: %s; event and IPU-call frequencies, not CPU-time shares (disable with /data/PS4SX2/vm-no-ee-hotspots)\n",
+		ProbeLog("EE hotspots: %s; event and IPU-call frequencies, not CPU-time shares (disable with /data/ForjaSX2/vm-no-ee-hotspots)\n",
 			PS4EEHotspots::enabled ? "enabled" : "disabled");
 #if defined(PCSX2_PS4_VM_EE_BLOCK_PROFILE)
 		PS4EEHotspots::ResetBlockSampling(true);
@@ -876,16 +876,16 @@ static void* RunVM(void*)
 		PS4EEEventProfile::s_sampling = {};
 		// (AI-assisted) Keep deep profiling opt-in: PS1 can reach over a million
 		// event polls per second. Normal FPS/CPU metrics and heartbeat stay active.
-		const bool performance_profile = access("/data/PS4SX2/vm-profile-perf", F_OK) == 0 &&
-		                                 access("/data/PS4SX2/vm-no-perf-profile", F_OK) != 0;
+		const bool performance_profile = access("/data/ForjaSX2/vm-profile-perf", F_OK) == 0 &&
+		                                 access("/data/ForjaSX2/vm-no-perf-profile", F_OK) != 0;
 		PS4WorkerProfile::enabled.store(performance_profile, std::memory_order_relaxed);
-		PS4EEEventProfile::s_sampling.enabled = ((performance_profile || access("/data/PS4SX2/vm-profile-ee", F_OK) == 0) && access("/data/PS4SX2/vm-no-ee-profile", F_OK) != 0) || s_verbose_diag;
+		PS4EEEventProfile::s_sampling.enabled = ((performance_profile || access("/data/ForjaSX2/vm-profile-ee", F_OK) == 0) && access("/data/ForjaSX2/vm-no-ee-profile", F_OK) != 0) || s_verbose_diag;
 		PS4EEEventProfile::s_sampling.gaps_only = false;
 		PS4EEEventProfile::s_sampling.gap_observer = PS4EEEventProfile::RecordGap;
-		ProbeLog("Performance diagnosis: workers=%d EE_phases=%d sample_ratio=1/1024; opt-in with /data/PS4SX2/vm-profile-perf\n",
+		ProbeLog("Performance diagnosis: workers=%d EE_phases=%d sample_ratio=1/1024; opt-in with /data/ForjaSX2/vm-profile-perf\n",
 			performance_profile ? 1 : 0, PS4EEEventProfile::s_sampling.enabled ? 1 : 0);
 		// (AI-assisted) Verbose also forces GS profiling on. Needs proper testing on console overhead.
-		PS4GSProfile::enabled = (access("/data/PS4SX2/vm-profile-gs", F_OK) == 0 && access("/data/PS4SX2/vm-no-gs-profile", F_OK) != 0) || s_verbose_diag;
+		PS4GSProfile::enabled = (access("/data/ForjaSX2/vm-profile-gs", F_OK) == 0 && access("/data/ForjaSX2/vm-no-gs-profile", F_OK) != 0) || s_verbose_diag;
 		ProbeLog("GS profiling: %s (verbose forces 1/64 sampling when vm-verbose-log present)\n",
 			PS4GSProfile::enabled ? "enabled" : "disabled");
 		s_host_poll_gate.Reset();
@@ -947,16 +947,16 @@ static void* RunVM(void*)
 
 int main()
 {
-	mkdir("/data/PS4SX2", 0777);
+	mkdir("/data/ForjaSX2", 0777);
 	// (AI-assisted) Keep all runtime diagnostics together for FTP collection.
-	mkdir("/data/PS4SX2/logs", 0777);
+	mkdir("/data/ForjaSX2/logs", 0777);
 	const int migrated_logs = MigrateLegacyLogs();
 	const auto archived_logs = PS4SessionLogs::ArchivePrevious();
 	// If archiving fails, append rather than destroying the remaining evidence.
 	const int log_flags = O_WRONLY | O_CREAT | (archived_logs.error ? O_APPEND : O_TRUNC);
 	// (AI-assisted) Redirect descriptors without reopening or altering libc FILE
 	// objects. The GS diagnostics use ProbeLog directly; needs proper testing.
-	const char* stream_paths[] = {"/data/PS4SX2/logs/PCSX2-vm-stdout.log", "/data/PS4SX2/logs/PCSX2-vm-stderr.log"};
+	const char* stream_paths[] = {"/data/ForjaSX2/logs/PCSX2-vm-stdout.log", "/data/ForjaSX2/logs/PCSX2-vm-stderr.log"};
 	for (int stream = 0; stream < 2; stream++)
 	{
 		const int fd = open(stream_paths[stream], log_flags, 0666);
@@ -969,19 +969,19 @@ int main()
 			}
 		}
 	}
-	s_log = open("/data/PS4SX2/logs/PCSX2-vm-boot.log", log_flags, 0666);
-	s_verbose_diag = access("/data/PS4SX2/vm-verbose-log", F_OK) == 0;
-	const bool synchronous_log = access("/data/PS4SX2/vm-sync-log", F_OK) == 0 || s_verbose_diag;
-	const bool kernel_log = access("/data/PS4SX2/vm-kernel-log", F_OK) == 0 || s_verbose_diag;
+	s_log = open("/data/ForjaSX2/logs/PCSX2-vm-boot.log", log_flags, 0666);
+	s_verbose_diag = access("/data/ForjaSX2/vm-verbose-log", F_OK) == 0;
+	const bool synchronous_log = access("/data/ForjaSX2/vm-sync-log", F_OK) == 0 || s_verbose_diag;
+	const bool kernel_log = access("/data/ForjaSX2/vm-kernel-log", F_OK) == 0 || s_verbose_diag;
 	const int log_thread_result = PS4ProbeLogger::Start(s_log, synchronous_log, kernel_log);
-	// Live telemetry to PC debug server (reads /data/PS4SX2/telemetry.conf). Needs proper testing.
+	// Live telemetry to PC debug server (reads /data/ForjaSX2/telemetry.conf). Needs proper testing.
 	const bool telemetry_started = PS4Telemetry::Start();
 	// Record entry before module loading, so a stalled re-launch still has a startup marker.
 	ProbeLog("PS4SX2 Emu 1.00 CHD (AI-assisted) BUILD: PS4SX2-EMU-1.00-CHD-SMC-TELEMETRY\n");
 	ProbeLog("Telemetry: start=%d\n", telemetry_started ? 1 : 0);
 	PS4Telemetry::Stage("boot");
-	ProbeLog("Telemetry: PC debug server target from /data/PS4SX2/telemetry.conf (create with 'host=PC_IP port=19423')\n");
-	ProbeLog("Log directory: /data/PS4SX2/logs migrated=%d\n", migrated_logs);
+	ProbeLog("Telemetry: PC debug server target from /data/ForjaSX2/telemetry.conf (create with 'host=PC_IP port=19423')\n");
+	ProbeLog("Log directory: /data/ForjaSX2/logs migrated=%d\n", migrated_logs);
 	ProbeLog("Session archive: directory=%s moved=%d errno=%d\n",
 		archived_logs.directory, archived_logs.moved, archived_logs.error);
 	ProbeLog("PS4 log startup: fd=%d synchronous_marker=%d kernel_mirror=%d thread_result=%d verbose=%d\n", s_log, synchronous_log, kernel_log, log_thread_result, s_verbose_diag ? 1 : 0);
@@ -1001,7 +1001,7 @@ int main()
 	// and benefits all games during busy loops. Needs proper testing on input latency and slow titles.
 	// (AI-assisted) Fase 2: HostPollGate 1024/524288 -> 2048/1M. FMV loops hit VMHostPoll ~600k/s;
 	// doubling the gate halves Host_clock_checks and CPU queue fences; input stays 100 Hz via 10ms throttle. Needs proper testing.
-	const bool legacy_host_poll = access("/data/PS4SX2/vm-legacy-host-poll", F_OK) == 0;
+	const bool legacy_host_poll = access("/data/ForjaSX2/vm-legacy-host-poll", F_OK) == 0;
 	const u32 host_poll_calls = legacy_host_poll ? 64 : 2048;
 	const u32 host_poll_cycles = legacy_host_poll ? 32768 : 1048576;
 	s_host_poll_gate = HostPollGate(host_poll_calls, host_poll_cycles);
@@ -1029,8 +1029,8 @@ int main()
 		return 1;
 	}
 	// Old one-shot files must not bypass the library after this package update.
-	unlink("/data/PS4SX2/vm-launch-request");
-	unlink("/data/PS4SX2/vm-launch-request.tmp");
+	unlink("/data/ForjaSX2/vm-launch-request");
+	unlink("/data/ForjaSX2/vm-launch-request.tmp");
 	s_use_vulkan_selector = true;
 	ProbeLog("STAGE: unified Vulkan library and VM; SDL/Piglet disabled\n");
 	{

@@ -42,10 +42,10 @@ namespace PS4GameMenu
 {
 	namespace
 	{
-		constexpr const char* Directory = "/data/PS4SX2/roms";
-		constexpr const char* CoversDirectory = "/data/PS4SX2/covers";
-		constexpr const char* FavoritesFile = "/data/PS4SX2/favorites.txt";
-		constexpr const char* RecentFile = "/data/PS4SX2/recent.txt";
+		constexpr const char* Directory = "/data/ForjaSX2/roms";
+		constexpr const char* CoversDirectory = "/data/ForjaSX2/covers";
+		constexpr const char* FavoritesFile = "/data/ForjaSX2/favorites.txt";
+		constexpr const char* RecentFile = "/data/ForjaSX2/recent.txt";
 		constexpr const char* UiAssetsDirectory = "/app0/resources/ui";
 		constexpr const char* IntroDirectory = "/app0/resources/intro";
 		constexpr size_t GridColumns = 4;
@@ -100,7 +100,7 @@ namespace PS4GameMenu
 					return nullptr;
 				}, this);
 				active = result == 0;
-				if (!active) error = "Could not start disc detection.";
+				if (!active) error = "No se pudo iniciar la detección del disco.";
 				return active;
 			}
 			bool Collect()
@@ -393,11 +393,11 @@ namespace PS4GameMenu
 			}
 			if (items.empty())
 			{
-				const char* message = view == LibraryView::Disc      ? "No disc detected" :
-				                      view == LibraryView::Recent    ? "No recent games" :
-				                      view == LibraryView::Favorites ? "No favorite games" :
-				                      view == LibraryView::Settings  ? "Settings are coming soon" :
-				                                                       "No games found";
+				const char* message = view == LibraryView::Disc      ? "No se detectó ningún disco" :
+				                      view == LibraryView::Recent    ? "No hay juegos recientes" :
+				                      view == LibraryView::Favorites ? "No hay juegos favoritos" :
+				                      view == LibraryView::Settings  ? "Los ajustes llegan pronto" :
+				                                                       "No se encontraron juegos";
 				items.push_back({message, {}, {}, false});
 			}
 			return items;
@@ -442,7 +442,7 @@ namespace PS4GameMenu
 				s_loading_carousel = true;
 				s_loading_progress = std::min(progress, 100u);
 				s_loading_carousel_phase = carousel_phase;
-				s_loading_status = "Loading...";
+				s_loading_status = "Cargando...";
 				GSPresentCurrentFrame();
 			});
 			MTGS::WaitGS(false);
@@ -713,10 +713,10 @@ namespace PS4GameMenu
 			if (disc_probe.active) return;
 			boot_disc_when_ready = boot;
 			const bool started = disc_probe.Start();
-			items = {{started ? "Checking physical DVD..." : "Disc detection failed", {}, {}, false}};
+			items = {{started ? "Revisando el DVD..." : "Falló la detección del disco", {}, {}, false}};
 			selected = 0;
 			Publish(items, view);
-			status = started ? "Reading the drive. You can continue browsing." : disc_probe.error;
+			status = started ? "Leyendo la unidad. Puedes seguir navegando." : disc_probe.error;
 			disc_status = status;
 		};
 		const auto set_view = [&](LibraryView next) {
@@ -729,7 +729,7 @@ namespace PS4GameMenu
 			if (view == LibraryView::Disc)
 			{
 				if (!disc_probe.active) probe_disc(false);
-				else status = "Checking physical DVD...";
+				else status = "Revisando el DVD...";
 			}
 		};
 		// Library refreshes now begin a serialized cover queue. The UI remains
@@ -759,7 +759,7 @@ namespace PS4GameMenu
 				}
 				status = disc_status;
 				if (!disc_cover.Succeeded())
-					status += " Cover unavailable. Triangle to retry.";
+					status += " Portada no disponible. Triángulo para reintentar.";
 			}
 			if (disc_probe.Collect() && view == LibraryView::Disc)
 			{
@@ -775,7 +775,7 @@ namespace PS4GameMenu
 					if (!cover && !boot_disc_when_ready && !disc_cover.Active())
 						disc_cover.Start(disc.serial);
 					items = {{title, PS4Disc::DevicePath, std::move(cover), false}};
-					status = disc.serial + (disc.dual_type ? " | Dual-layer DVD | Press X to start." : " | DVD | Press X to start.");
+					status = disc.serial + (disc.dual_type ? " | DVD doble capa | Pulsa X para iniciar." : " | DVD | Pulsa X para iniciar.");
 					if (boot_disc_when_ready)
 					{
 						path = PS4Disc::DevicePath;
@@ -788,13 +788,13 @@ namespace PS4GameMenu
 				}
 				else
 				{
-					items = {{"Physical DVD unavailable", {}, {}, false}};
+					items = {{"DVD no disponible", {}, {}, false}};
 					status = disc_probe.error;
 				}
 				boot_disc_when_ready = false;
 				disc_status = status;
 				if (disc_cover.Active())
-					status += " Downloading cover...";
+					status += " Descargando portada...";
 				selected = 0;
 				Publish(items, view);
 			}
@@ -937,8 +937,8 @@ namespace PS4GameMenu
 					else
 						favorites.push_back(selected_path);
 					status = SavePathList(FavoritesFile, favorites) ?
-					             (removing ? "Removed from favorites." : "Added to favorites.") :
-					             "Could not save favorites.";
+					             (removing ? "Quitado de favoritos." : "Agregado a favoritos.") :
+					             "No se pudieron guardar los favoritos.";
 					items = BuildView(library, view, favorites, recent);
 					const auto same_item = std::find_if(items.begin(), items.end(), [&](const Item& item) { return item.path == selected_path; });
 					selected = same_item == items.end() ? std::min(selected, items.size() - 1) : static_cast<size_t>(same_item - items.begin());
@@ -963,11 +963,11 @@ namespace PS4GameMenu
 				path = items[selected].path;
 				struct stat info{};
 				if (path.empty())
-					status = view == LibraryView::Disc     ? "Physical disc support is being prepared." :
-					         view == LibraryView::Settings ? "Settings options will be added here." :
-					                                         "No game is available in this view.";
+					status = view == LibraryView::Disc     ? "El soporte de disco físico está en preparación." :
+					         view == LibraryView::Settings ? "Aquí irán las opciones de ajustes." :
+					                                         "No hay juegos en esta vista.";
 				else if (stat(path.c_str(), &info) != 0 || !S_ISREG(info.st_mode) || info.st_size <= 0)
-					status = "File unavailable. Press Triangle to refresh the library.";
+					status = "Archivo no disponible. Pulsa Triángulo para actualizar.";
 				else
 				{
 					// (AI-assisted) Keep an unreadable/unsupported image in the launcher
@@ -976,7 +976,7 @@ namespace PS4GameMenu
 					Error image_error;
 					if (!image.Open(path, &image_error))
 					{
-						status = "Cannot open game: " + image_error.GetDescription();
+						status = "No se puede abrir el juego: " + image_error.GetDescription();
 						ProbeLog("Game menu: launch rejected %s: %s\n", path.c_str(), image_error.GetDescription().c_str());
 						Present(selected, status, connected, false, false, false);
 						Threading::Sleep(16);
@@ -989,7 +989,7 @@ namespace PS4GameMenu
 						recent.resize(24);
 					if (!SavePathList(RecentFile, recent))
 						ProbeLog("Game menu: could not save recent list\n");
-					Present(selected, "Starting...", connected, false, false, false);
+					Present(selected, "Iniciando...", connected, false, false, false);
 					// Consume the confirmation before handing the controller to the game.
 					while (scePadReadState(pad, &data) == 0 && data.connected && (data.buttons & ORBIS_PAD_BUTTON_CROSS))
 						Threading::Sleep(16);
@@ -999,7 +999,7 @@ namespace PS4GameMenu
 					break;
 				}
 			}
-			Present(selected, connected ? (view == LibraryView::Disc && status.empty() ? disc_status : status) : "Connect a controller to choose a game.", connected,
+			Present(selected, connected ? (view == LibraryView::Disc && status.empty() ? disc_status : status) : "Conecta un control para elegir un juego.", connected,
 				sidebar_focused, false, false);
 			Threading::Sleep(16);
 		}
@@ -1007,13 +1007,13 @@ namespace PS4GameMenu
 		disc_cover.Cancel();
 		while (disc_cover.Active() && !disc_cover.Collect())
 		{
-			Present(selected, "Finishing cover request...", true, sidebar_focused, false, false);
+			Present(selected, "Terminando de bajar la portada...", true, sidebar_focused, false, false);
 			Threading::Sleep(16);
 		}
 		// The driver timeout is requested per command; hardware behavior needs proper testing.
 		while (disc_probe.active && !disc_probe.Collect())
 		{
-			Present(selected, "Finishing disc detection...", true, sidebar_focused, false, false);
+			Present(selected, "Terminando de detectar el disco...", true, sidebar_focused, false, false);
 			Threading::Sleep(16);
 		}
 		if (start && path == PS4Disc::DevicePath)
@@ -1032,7 +1032,7 @@ namespace PS4GameMenu
 			s_loading_visible = start;
 			s_loading_carousel = false;
 			s_loading_progress = start ? 10u : 0u;
-			s_loading_status = start ? "Preparing emulator..." : "";
+			s_loading_status = start ? "Preparando el emulador..." : "";
 			ClearCoverTextures();
 			if (start)
 				GSPresentCurrentFrame();
@@ -1150,25 +1150,25 @@ namespace PS4GameMenu
 			draw->AddRectFilled(point(64, 38), point(1856, 170), IM_COL32(4, 19, 34, 205), 24.0f * scale);
 			draw->AddLine(point(64, 170), point(1856, 170), IM_COL32(38, 103, 157, 150), 1.0f * scale);
 			image("status_controle", 126, 82, 40, 34);
-			draw->AddText(font, 34.0f * scale, point(196, 82), white, "Emulator menu");
-			draw->AddText(font, 18.0f * scale, point(138, 205), muted, "GAME PAUSED");
+			draw->AddText(font, 34.0f * scale, point(196, 82), white, "Menú del emulador");
+			draw->AddText(font, 18.0f * scale, point(138, 205), muted, "JUEGO EN PAUSA");
 			char resolution[96];
-			std::snprintf(resolution, sizeof(resolution), "Internal resolution:  < %ux >%s", upscale,
-				upscale == 1 ? "  (native)" : "");
-			static constexpr const char* aspect_names[] = {"Stretch", "Auto", "4:3", "16:9", "10:7"};
+			std::snprintf(resolution, sizeof(resolution), "Resolución interna:  < %ux >%s", upscale,
+				upscale == 1 ? "  (nativa)" : "");
+			static constexpr const char* aspect_names[] = {"Estirar", "Auto", "4:3", "16:9", "10:7"};
 			char aspect_label[96];
-			std::snprintf(aspect_label, sizeof(aspect_label), "Aspect ratio:  < %s >", aspect_names[std::min(aspect, 4u)]);
+			std::snprintf(aspect_label, sizeof(aspect_label), "Relación de aspecto:  < %s >", aspect_names[std::min(aspect, 4u)]);
 			char performance_label[96];
-			std::snprintf(performance_label, sizeof(performance_label), "Performance overlay:  < %s >",
-				show_performance_overlay ? "On" : "Off");
-			const char* labels[] = {"Resume game", resolution, aspect_label, performance_label, "Return to main menu", "Exit application"};
+			std::snprintf(performance_label, sizeof(performance_label), "Contador de rendimiento:  < %s >",
+				show_performance_overlay ? "Sí" : "No");
+			const char* labels[] = {"Volver al juego", resolution, aspect_label, performance_label, "Volver a la biblioteca", "Salir de la aplicación"};
 			const char* descriptions[] = {
-				"Continue emulation from the current frame",
-				"Increase internal rendering quality for this session",
-				"Choose the display shape used by the GS renderer",
-				"Show or hide FPS, speed and timing indicators",
-				"Close the VM and reopen the PS4SX2 game library",
-				"Close the VM and exit PS4SX2"};
+				"Seguir jugando desde donde quedó",
+				"Más calidad de imagen en esta sesión (consume más)",
+				"Forma de la imagen en pantalla",
+				"Mostrar u ocultar FPS, velocidad y tiempos",
+				"Cerrar el juego y volver a la biblioteca",
+				"Cerrar el juego y salir de Forja SX2"};
 			const auto draw_option_icon = [&](unsigned row, float cx, float cy, bool selected) {
 				const ImU32 icon_bg = selected ? IM_COL32(34, 127, 214, 255) : IM_COL32(16, 55, 86, 255);
 				const ImU32 icon_line = selected ? IM_COL32(231, 247, 255, 255) : IM_COL32(155, 204, 235, 255);
@@ -1219,17 +1219,17 @@ namespace PS4GameMenu
 				draw->AddText(font, 16.0f * scale, point(226, y + 53), muted, descriptions[row]);
 				if (row == 1 || row == 2 || row == 3)
 					draw->AddText(font, 20.0f * scale, point(1580, y + 29), selected ? white : muted,
-						row == 1 ? "ADJUST" : (row == 2 ? "SELECT" : "TOGGLE"));
+						row == 1 ? "AJUSTAR" : (row == 2 ? "ELEGIR" : "CAMBIAR"));
 			}
 			char hint[128];
-			std::snprintf(hint, sizeof(hint), "Left/Right: change value   |   Resolution range: 1x-%ux", max_upscale);
+			std::snprintf(hint, sizeof(hint), "Izq./Der.: cambiar valor   |   Resolución: 1x-%ux", max_upscale);
 		draw->AddText(font, 17.0f * scale, point(138, 756), muted, hint);
-		draw->AddText(font, 17.0f * scale, point(138, 786), muted, "3x and above is experimental and intended for PS4 Pro only.");
-		draw->AddText(font, 17.0f * scale, point(138, 816), muted, "Up/Down: select   Left/Right: change   X: confirm   Circle: resume");
+		draw->AddText(font, 17.0f * scale, point(138, 786), muted, "3x o más es experimental y solo para PS4 Pro.");
+		draw->AddText(font, 17.0f * scale, point(138, 816), muted, "Arriba/Abajo: elegir   Izq./Der.: cambiar   X: aceptar   Círculo: volver");
 			image("controle_x", 1480, 904, 30, 30);
-			draw->AddText(font, 20.0f * scale, point(1524, 909), white, "Confirm");
+			draw->AddText(font, 20.0f * scale, point(1524, 909), white, "Aceptar");
 			image("controle_bola", 1690, 904, 30, 30);
-			draw->AddText(font, 20.0f * scale, point(1734, 909), muted, "Resume");
+			draw->AddText(font, 20.0f * scale, point(1734, 909), muted, "Volver");
 			return true;
 		}
 		if (!s_visible || s_items.empty())
@@ -1293,7 +1293,7 @@ namespace PS4GameMenu
 		fill(286, 0, 1634, 92, IM_COL32(4, 19, 34, 220), 0);
 		draw->AddLine(point(286, 92), point(1920, 92), IM_COL32(38, 103, 157, 110), 1.0f * scale);
 		image("menu_logo", 32, 0, 220, 73);
-		centered_text(142, 82, 11, muted, "PLAYSTATION 2 EMULATOR");
+		centered_text(142, 82, 11, muted, "EMULADOR DE PLAYSTATION 2");
 		const size_t selected = std::min(s_selected, s_items.size() - 1);
 		const Item& current = s_items[selected];
 		text(348, 59, 28, white, fit(current.name, 28, 1430).c_str());
@@ -1303,13 +1303,13 @@ namespace PS4GameMenu
 			draw->AddRect(point(1480, 22), point(1888, 72), IM_COL32(42, 163, 255, 225), 10 * scale,
 				1.0f * scale, 0);
 			char update_text[96];
-			std::snprintf(update_text, sizeof(update_text), "Update available: %s", PS4Release::LatestVersion());
+			std::snprintf(update_text, sizeof(update_text), "Actualización disponible: %s", PS4Release::LatestVersion());
 			text(1502, 54, 17, white, update_text);
 		}
 		// The sidebar changes the data source while retaining the same grid.
 		static constexpr const char* sidebar_icons[] = {
 			"menu_biblioteca", "menu_disc", "menu_recentes", "menu_favoritos", "menu_configuracoes"};
-		static constexpr const char* sidebar_labels[] = {"Library", "Disc", "Recent", "Favorites", "Settings"};
+		static constexpr const char* sidebar_labels[] = {"Biblioteca", "Disco", "Recientes", "Favoritos", "Ajustes"};
 		const unsigned active_view = static_cast<unsigned>(s_library_view);
 		for (unsigned i = 0; i < 5; ++i)
 		{
@@ -1348,8 +1348,8 @@ namespace PS4GameMenu
 			}
 			else
 				image("menu_disc", 810, 280, 180, 180);
-			text(1030, 340, 30, white, "Physical PS2 DVD");
-			text(1030, 390, 20, muted, detected ? "Disc detected. Press X to start." : "Insert a DVD, then press Triangle to refresh.");
+			text(1030, 340, 30, white, "DVD de PS2");
+			text(1030, 390, 20, muted, detected ? "Disco detectado. Pulsa X para iniciar." : "Mete un DVD y pulsa Triángulo para actualizar.");
 		}
 		for (size_t slot = 0; !disc_view && slot < VisibleItems && first + slot < s_items.size(); ++slot)
 		{
@@ -1365,7 +1365,7 @@ namespace PS4GameMenu
 				draw->AddRect(point(x - 3, y - 3), point(x + card_w + 3, y + card_h + 3), accent, 10 * scale, 3.0f * scale, 0);
 				draw->AddRect(point(x - 7, y - 7), point(x + card_w + 7, y + card_h + 7), IM_COL32(28, 128, 228, 105), 13 * scale, 2.0f * scale, 0);
 			}
-			// Cover slot: use the user's image from /data/PS4SX2/covers when it
+			// Cover slot: use the user's image from /data/ForjaSX2/covers when it
 			// exists. The artwork fills the complete card and the selected title
 			// is shown once in the top bar.
 			fill(x + 2, y + 2, card_w - 4, card_h - 4, art_b[index % 5], 7);
@@ -1411,20 +1411,20 @@ namespace PS4GameMenu
 		if (!s_status.empty())
 			text(346, 936, 17, accent, fit(s_status, 17, 1496).c_str());
 		image("controle_x", 346, 1001, 30, 30);
-		text(384, 1023, 16, white, "Start");
+		text(384, 1023, 16, white, "Jugar");
 		if (!disc_view)
 		{
 			image("controle_quadrado", 500, 1001, 30, 30);
 			text(538, 1023, 16, current.path.empty() ? muted : white,
-				current.favorite ? "Remove favorite" : "Add favorite");
+				current.favorite ? "Quitar favorito" : "Agregar favorito");
 		}
 		// Disc has no favorite action: use the next Library slots without an empty gap.
 		const float refresh_x = disc_view ? 500.0f : 760.0f;
 		const float exit_x = disc_view ? 760.0f : 1035.0f;
 		image("controle_triangulo", refresh_x, 1001, 30, 30);
-		text(refresh_x + 38, 1023, 16, white, disc_view ? "Refresh disc" : "Refresh library");
+		text(refresh_x + 38, 1023, 16, white, disc_view ? "Revisar disco" : "Actualizar biblioteca");
 		image("controle_bola", exit_x, 1001, 30, 30);
-		text(exit_x + 38, 1023, 16, muted, "Exit");
+		text(exit_x + 38, 1023, 16, muted, "Salir");
 		if (s_exit_dialog_visible)
 		{
 			draw->AddRectFilled(ImVec2(0, 0), size, IM_COL32(0, 0, 0, 165));
@@ -1433,8 +1433,8 @@ namespace PS4GameMenu
 			draw->AddRect(point(438, 322), point(1482, 758), IM_COL32(35, 105, 161, 225), 12 * scale,
 				1.5f * scale, 0);
 			image("menu_logo", 790, 338, 340, 113);
-			centered_text(960, 480, 32, white, "Close PS4SX2?");
-			centered_text(960, 520, 18, muted, "Are you sure you want to exit the application?");
+			centered_text(960, 480, 32, white, "¿Cerrar Forja SX2?");
+			centered_text(960, 520, 18, muted, "¿Seguro que quieres salir de la aplicación?");
 			const auto dialog_button = [&](float x, const char* label, bool active) {
 				fill(x, 580, 260, 72, active ? IM_COL32(18, 88, 153, 255) : IM_COL32(11, 34, 54, 255), 10);
 				draw->AddRect(point(x, 580), point(x + 260, 652),
@@ -1442,12 +1442,12 @@ namespace PS4GameMenu
 					active ? 2.0f * scale : 1.0f * scale, 0);
 				centered_text(x + 130, 626, 20, active ? white : muted, label);
 			};
-			dialog_button(670, "Exit PS4SX2", s_exit_confirm);
-			dialog_button(990, "Cancel", !s_exit_confirm);
+			dialog_button(670, "Salir de Forja SX2", s_exit_confirm);
+			dialog_button(990, "Cancelar", !s_exit_confirm);
 			image("controle_x", 780, 694, 28, 28);
-			text(816, 715, 16, white, "Confirm");
+			text(816, 715, 16, white, "Aceptar");
 			image("controle_bola", 995, 694, 28, 28);
-			text(1031, 715, 16, muted, "Back");
+			text(1031, 715, 16, muted, "Atrás");
 		}
 		return true;
 	}

@@ -14,8 +14,8 @@ $sampleRoot = Join-Path $Toolchain 'samples/graphics'
 $fontRoot = Join-Path $Toolchain 'samples/font/assets/fonts'
 $packageRoot = Join-Path $PSScriptRoot 'build/package'
 $packageDir = Join-Path $packageRoot ('staging-' + [Guid]::NewGuid().ToString('N'))
-$titleId = 'PCSX20007'
-$contentId = 'IV0000-PCSX20007_00-PS4SX2EMU0000001'
+$titleId = 'FRJA00002'
+$contentId = 'IV0000-FRJA00002_00-FORJASX2EMULADOR'
 $resources = @('sce_sys/about/right.sprx', 'sce_module/libc.prx', 'sce_module/libSceFios2.prx')
 $iconSource = Join-Path $PSScriptRoot 'assets/sce_sys/icon0.png'
 $pic1Source = Join-Path $PSScriptRoot 'assets/sce_sys/pic1.png'
@@ -92,7 +92,7 @@ try {
     @('ATTRIBUTE', 'Integer', '4', '0'), @('CATEGORY', 'Utf8', '4', 'gd'),
 
     @('CONTENT_ID', 'Utf8', '48', $contentId), @('DOWNLOAD_DATA_SIZE', 'Integer', '4', '0'),
-    @('SYSTEM_VER', 'Integer', '4', '0'), @('TITLE', 'Utf8', '128', 'PS4SX2 Emu'),
+    @('SYSTEM_VER', 'Integer', '4', '0'), @('TITLE', 'Utf8', '128', 'Forja SX2'),
     @('TITLE_ID', 'Utf8', '12', $titleId), @('VERSION', 'Utf8', '8', '01.00')
   )
   foreach ($entry in $entries) {

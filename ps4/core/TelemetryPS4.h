@@ -9,7 +9,7 @@
 
 namespace PS4Telemetry
 {
-	// Reads /data/PS4SX2/telemetry.conf (host=IP port=NUM) and starts background thread.
+	// Reads /data/ForjaSX2/telemetry.conf (host=IP port=NUM) and starts background thread.
 	// Returns true if thread started (even if not yet connected). Never blocks EE thread.
 	bool Start();
 

@@ -12,7 +12,7 @@
 
 namespace PS4SessionLogs
 {
-	constexpr const char* MARKER = "/data/PS4SX2/logs/session-platform.txt";
+	constexpr const char* MARKER = "/data/ForjaSX2/logs/session-platform.txt";
 	struct ArchiveResult
 	{
 		const char* directory = "previous-menu";
@@ -35,7 +35,7 @@ namespace PS4SessionLogs
 				result.directory = "last-game-other";
 		}
 		char directory[128];
-		std::snprintf(directory, sizeof(directory), "/data/PS4SX2/logs/%s", result.directory);
+		std::snprintf(directory, sizeof(directory), "/data/ForjaSX2/logs/%s", result.directory);
 		if (mkdir(directory, 0777) != 0 && errno != EEXIST)
 		{
 			result.error = errno;
@@ -48,7 +48,7 @@ namespace PS4SessionLogs
 		for (const char* name : names)
 		{
 			char source[160], target[160];
-			std::snprintf(source, sizeof(source), "/data/PS4SX2/logs/%s", name);
+			std::snprintf(source, sizeof(source), "/data/ForjaSX2/logs/%s", name);
 			std::snprintf(target, sizeof(target), "%s/%s", directory, name);
 			if (rename(source, target) == 0)
 				++result.moved;

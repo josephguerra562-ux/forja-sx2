@@ -2,9 +2,9 @@
 //
 // PS4 coredumps are encrypted and klog is shared with other tools, so the app reports its own
 // crashes: a constructor that runs before all others (priority 101) starts
-// /data/PS4SX2/boot-trace.log and installs a handler for fatal signals that appends the
+// /data/ForjaSX2/boot-trace.log and installs a handler for fatal signals that appends the
 // signal, fault address, registers and the code addresses found on the stack to
-// /data/PS4SX2/crash.log. Addresses are printed relative to the start of .text, i.e. as ELF
+// /data/ForjaSX2/crash.log. Addresses are printed relative to the start of .text, i.e. as ELF
 // virtual addresses: symbolize with `llvm-symbolizer --obj=<elf> 0x...`.
 //
 // Handlers installed later (Dolphin's fastmem handler) chain to this one for faults they don't
@@ -43,12 +43,12 @@ int g_traceFd = -1;
 // Opened on first use: the heap may log before this file's constructor runs.
 int traceFd() {
     if (g_traceFd < 0) {
-        mkdir("/data/PS4SX2", 0777);
+        mkdir("/data/ForjaSX2", 0777);
         // A game start (launch.txt from the XMB) writes boot-trace.log; the XMB writes
         // xmb-trace.log, so restarting into the XMB keeps the last game's trace.
         struct stat st;
-        const bool game = stat("/data/PS4SX2/launch.txt", &st) == 0;
-        g_traceFd = open(game ? "/data/PS4SX2/boot-trace.log" : "/data/PS4SX2/xmb-trace.log",
+        const bool game = stat("/data/ForjaSX2/launch.txt", &st) == 0;
+        g_traceFd = open(game ? "/data/ForjaSX2/boot-trace.log" : "/data/ForjaSX2/xmb-trace.log",
                          O_WRONLY | O_CREAT | O_TRUNC, 0666);
     }
     return g_traceFd;
@@ -96,7 +96,7 @@ void crashHandler(int sig, siginfo_t* info, void* context) {
     if (s_depth++ > 0)
         return;  // crashed while reporting: give up
 
-    const int fd = open("/data/PS4SX2/crash.log", O_WRONLY | O_CREAT | O_APPEND, 0666);
+    const int fd = open("/data/ForjaSX2/crash.log", O_WRONLY | O_CREAT | O_APPEND, 0666);
     if (fd >= 0) {
         const auto* regs = reinterpret_cast<const uint64_t*>(static_cast<char*>(context) + kMcontextOffset);
         const uint64_t rip = regs[kRipIndex];
@@ -136,7 +136,7 @@ void crashHandler(int sig, siginfo_t* info, void* context) {
         char* name = abi::__cxa_demangle(type->name(), nullptr, nullptr, &status);
         snprintf(message, sizeof(message), "uncaught exception %s", name ? name : type->name());
     }
-    const int fd = open("/data/PS4SX2/crash.log", O_WRONLY | O_CREAT | O_APPEND, 0666);
+    const int fd = open("/data/ForjaSX2/crash.log", O_WRONLY | O_CREAT | O_APPEND, 0666);
     if (fd >= 0) {
         writeFormat(fd, "\n=== %s\n", message);
         close(fd);
@@ -179,7 +179,7 @@ extern "C" __attribute__((noinline)) void ps4_trace_callers(const char* what) {
     ps4_boot_trace(line);
 }
 
-// Appends a line to /data/PS4SX2/boot-trace.log (startup milestones), prefixed with the
+// Appends a line to /data/ForjaSX2/boot-trace.log (startup milestones), prefixed with the
 // seconds since the first trace line.
 extern "C" void ps4_boot_trace(const char* stage) {
     const int fd = traceFd();

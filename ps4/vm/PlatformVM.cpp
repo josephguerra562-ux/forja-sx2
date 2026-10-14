@@ -154,7 +154,7 @@ u64 g_orbis_waitloop_ext_blocks = 0;
 u64 g_orbis_waitloop_ext_runs = 0;
 std::string OrbisLogPath(const char* name)
 {
-	return std::string("/data/PS4SX2/") + (name ? name : "");
+	return std::string("/data/ForjaSX2/") + (name ? name : "");
 }
 
 const HotkeyInfo g_common_hotkeys[] = {{nullptr, nullptr, nullptr, nullptr}};

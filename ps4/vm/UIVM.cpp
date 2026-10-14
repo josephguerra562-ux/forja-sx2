@@ -117,7 +117,7 @@ namespace ImGuiManager
 		// (AI-assisted) The BIOS owns the display; ImGui supplies only the renderer context.
 		ProbeLog("STAGE: ImGui context creation\n");
 		ImGui::CreateContext();
-		s_show_performance_hud = access("/data/PS4SX2/vm-hide-stats", F_OK) != 0;
+		s_show_performance_hud = access("/data/ForjaSX2/vm-hide-stats", F_OK) != 0;
 		ProbeLog("Performance HUD: %s\n", s_show_performance_hud ? "enabled" : "hidden by marker");
 		auto& io = ImGui::GetIO();
 		io.IniFilename = nullptr;

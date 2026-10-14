@@ -10,11 +10,11 @@
   "web_port": 8080,
   "telemetry_port": 19423,
   "paths": {
-    "vm_boot": "/data/PS4SX2/logs/PCSX2-vm-boot.log",
-    "emulog": "/data/PS4SX2/logs/emulog.txt",
-    "stdout": "/data/PS4SX2/logs/PCSX2-vm-stdout.log",
-    "stderr": "/data/PS4SX2/logs/PCSX2-vm-stderr.log",
-    "markers_dir": "/data/PS4SX2"
+    "vm_boot": "/data/ForjaSX2/logs/PCSX2-vm-boot.log",
+    "emulog": "/data/ForjaSX2/logs/emulog.txt",
+    "stdout": "/data/ForjaSX2/logs/PCSX2-vm-stdout.log",
+    "stderr": "/data/ForjaSX2/logs/PCSX2-vm-stderr.log",
+    "markers_dir": "/data/ForjaSX2"
   },
   "markers": [
     "vm-ee-cycle-underclock",

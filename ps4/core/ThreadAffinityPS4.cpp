@@ -21,7 +21,7 @@ namespace PS4ThreadAffinity
 		if (value >= 0)
 			return value != 0;
 
-		value = access("/data/PS4SX2/vm-no-thread-affinity", F_OK) == 0 ? 0 : 1;
+		value = access("/data/ForjaSX2/vm-no-thread-affinity", F_OK) == 0 ? 0 : 1;
 		enabled.store(value, std::memory_order_release);
 		return value != 0;
 	}
