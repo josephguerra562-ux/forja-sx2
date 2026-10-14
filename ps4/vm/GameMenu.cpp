@@ -799,6 +799,7 @@ namespace PS4GameMenu
 		PublishSettings(settings, settings_row);
 		const auto change_setting = [&](int delta, bool wrap) {
 			ChangeSetting(settings, settings_row, delta, wrap);
+			ProbeLog("Game menu: setting %u changed\n", settings_row);
 			status = ForjaSettings::Save(settings) ? "Guardado. Se aplica al iniciar el próximo juego." :
 			                                         "No se pudieron guardar los ajustes.";
 			PublishSettings(settings, settings_row);
@@ -824,8 +825,12 @@ namespace PS4GameMenu
 				}
 			}
 		};
+		// Forja SX2: the drive is read once the Disc view has stayed selected for a moment, not on every pass of the
+		// sidebar over it. The app once closed in the library right after four reads in a row while scrolling past it.
+		double disc_probe_at = 0.0;
 		const auto probe_disc = [&](bool boot) {
 			if (disc_probe.active) return;
+			disc_probe_at = 0.0;
 			boot_disc_when_ready = boot;
 			const bool started = disc_probe.Start();
 			items = {{started ? "Revisando el DVD..." : "Falló la detección del disco", {}, {}, false}};
@@ -841,9 +846,16 @@ namespace PS4GameMenu
 			selected = 0;
 			Publish(items, view);
 			status.clear();
+			disc_probe_at = 0.0;
+			ProbeLog("Game menu: view %u\n", static_cast<unsigned>(view));
 			if (view == LibraryView::Disc)
 			{
-				if (!disc_probe.active) probe_disc(false);
+				if (!disc_probe.active)
+				{
+					disc_probe_at = timer.GetTimeSeconds() + 0.7;
+					items = {{"Revisando el DVD...", {}, {}, false}};
+					Publish(items, view);
+				}
 				else status = "Revisando el DVD...";
 			}
 			else if (view == LibraryView::Settings)
@@ -861,6 +873,12 @@ namespace PS4GameMenu
 		{
 			g_forja_menu_ticks.fetch_add(1, std::memory_order_relaxed); // watchdog heartbeat (main.cpp)
 			const double now = timer.GetTimeSeconds();
+			if (disc_probe_at > 0.0 && now >= disc_probe_at)
+			{
+				disc_probe_at = 0.0;
+				if (view == LibraryView::Disc && !disc_probe.active)
+					probe_disc(false);
+			}
 			if (library_cover.Collect())
 			{
 				for (Item& item : library)
