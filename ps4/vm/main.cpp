@@ -1176,6 +1176,10 @@ static void* RunVM(void*)
 // for 8 s it logs once where the EE and IOP are and how the GS queue looks, so the next hang names itself.
 std::atomic<u64> g_forja_menu_ticks{0};
 std::atomic<bool> g_forja_menu_active{false};
+// Forja SX2: GitHub Actions' run number (CMakeLists.txt); 0 for a local build.
+#ifndef FORJA_BUILD_NUMBER
+#define FORJA_BUILD_NUMBER 0
+#endif
 extern std::atomic<u64> g_forja_gs_vsyncs; // ps4/core/GSRendererPS4.cpp
 
 static void* ForjaWatchdog(void*)
@@ -1270,7 +1274,7 @@ int main()
 	// Live telemetry to PC debug server (reads /data/ForjaSX2/telemetry.conf). Needs proper testing.
 	const bool telemetry_started = PS4Telemetry::Start();
 	// Record entry before module loading, so a stalled re-launch still has a startup marker.
-	ProbeLog("Forja SX2 1.00 (base PS4SX2 1.00) BUILD: FORJASX2-1.00\n");
+	ProbeLog("Forja SX2 1.00 (base PS4SX2 1.00) BUILD: FORJASX2-1.00 compilacion=%d\n", FORJA_BUILD_NUMBER);
 	ProbeLog("Telemetry: start=%d\n", telemetry_started ? 1 : 0);
 	PS4Telemetry::Stage("boot");
 	ProbeLog("Telemetry: PC debug server target from /data/ForjaSX2/telemetry.conf (create with 'host=PC_IP port=19423')\n");

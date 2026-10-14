@@ -41,6 +41,10 @@ extern void ProbeLog(const char* format, ...);
 // Forja SX2: the watchdog in main.cpp checks that the library loop keeps turning.
 extern std::atomic<u64> g_forja_menu_ticks;
 extern std::atomic<bool> g_forja_menu_active;
+// Forja SX2: GitHub Actions' run number (CMakeLists.txt); 0 for a local build.
+#ifndef FORJA_BUILD_NUMBER
+#define FORJA_BUILD_NUMBER 0
+#endif
 
 namespace PS4GameMenu
 {
@@ -1484,6 +1488,15 @@ namespace PS4GameMenu
 			image(sidebar_icons[i], 43, y + 12, 34, 34);
 			text(91, y + 37, active ? 19 : 18, active ? white : muted, sidebar_labels[i]);
 		}
+		// Forja SX2: the build number, so a tester sees at a glance whether the new package is the one installed.
+		if (FORJA_BUILD_NUMBER > 0)
+		{
+			char build_text[32];
+			std::snprintf(build_text, sizeof(build_text), "Compilación %d", FORJA_BUILD_NUMBER);
+			text(43, 1023, 16, muted, build_text);
+		}
+		else
+			text(43, 1023, 16, muted, "Compilación local");
 		const size_t total_rows = (s_items.size() + GridColumns - 1) / GridColumns;
 		const size_t selected_row = selected / GridColumns;
 		const size_t max_first_row = total_rows > VisibleRows ? total_rows - VisibleRows : 0;

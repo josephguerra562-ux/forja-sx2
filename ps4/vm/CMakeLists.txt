@@ -324,6 +324,12 @@ target_compile_definitions(vm_boot PRIVATE PCSX2_PS4=1 PCSX2_PS4_VM_BOOT=1 PS4=1
 target_compile_options(vm_boot PRIVATE -march=btver2 -msse4.1 -mno-avx2 -mno-bmi2 -ffunction-sections -fdata-sections -fvisibility=hidden
   "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include compare>" "SHELL:-include strings.h")
 target_link_options(vm_boot PRIVATE --gc-sections --error-limit=0)
+# Forja SX2: the GitHub Actions run number, shown in the library and the log so a tester can tell which build is installed.
+set(FORJA_BUILD_NUMBER "$ENV{GITHUB_RUN_NUMBER}")
+if(NOT FORJA_BUILD_NUMBER MATCHES "^[0-9]+$")
+  set(FORJA_BUILD_NUMBER 0)
+endif()
+set_source_files_properties(main.cpp GameMenu.cpp PROPERTIES COMPILE_DEFINITIONS FORJA_BUILD_NUMBER=${FORJA_BUILD_NUMBER})
 ps4_link_mesa(vm_boot)
 target_link_libraries(vm_boot PRIVATE glslang glslang-default-resource-limits ryml ps4_audio_resampler ps4_chd
   png jpeg webp z ${PCSX2_ROOT}/ps4/deps/prefix/lib/libzstd.a ${PCSX2_ROOT}/ps4/deps/prefix/lib/liblz4.a
