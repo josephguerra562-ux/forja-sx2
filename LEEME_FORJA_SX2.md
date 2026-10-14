@@ -78,10 +78,16 @@ VU1=2
 GS=3
 Audio=5
 ```
+Los hilos secundarios (lectura del disco, registro, guardado de la caché) van a los núcleos 0-1, que están libres;
+con `AYUDANTES=0` los dejas en uno solo.
 Compara los FPS (L3+R3 > contador) en la MISMA escena con y sin el archivo. El núcleo 6 también se puede usar
 (Forja SX2 pide el séptimo núcleo a la PS4), pero el sistema lo comparte.
 
-## 8. Si algo falla
+## 8. Medir una prueba
+Baja `/data/ForjaSX2/logs` por FTP y arrástrala encima de `Herramientas PC\ANALIZAR LOGS (arrastra la carpeta aqui).bat`.
+Te dice los FPS, la velocidad, los tirones y qué parte frenó el juego, y crea `INFORME_RENDIMIENTO.md`.
+
+## 9. Si algo falla
 - **Vuelve a la biblioteca al ver el logo de PS2:** casi siempre es la BIOS. Usa una de la misma región que el juego.
 - **Error al arrancar:** prueba `vm-no-fastmem`.
 - **Audio roto:** prueba `vm-audio-legacy-stretch`.
