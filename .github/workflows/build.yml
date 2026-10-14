@@ -18,8 +18,8 @@ concurrency:
 
 env:
   # Keep the release URL and checksum paired when updating the SDK snapshot.
-  PS4_SDK_URL: ${{ vars.PS4_SDK_URL || 'https://github.com/Phoenixx1202/PS4SX2-SDK/releases/download/sdk-v1/ps4sx2-sdk-v1.tar.gz' }}
-  PS4_SDK_SHA256: ${{ vars.PS4_SDK_SHA256 || '3e7536f164cee3df2265fb2eff6fccc9e8286f2ab538559e3df0adf95a8ee831' }}
+  PS4_SDK_URL: ${{ vars.PS4_SDK_URL || 'https://github.com/Phoenixx1202/PS4SX2-SDK/releases/download/sdk-v2/ps4sx2-sdk-v2.tar.gz' }}
+  PS4_SDK_SHA256: ${{ vars.PS4_SDK_SHA256 || '0d7261c3e6c8e8d8e2e71d13ee9f39bcba8936fa1d50dbfce6e279c3c4e99822' }}
 
 jobs:
   compile:

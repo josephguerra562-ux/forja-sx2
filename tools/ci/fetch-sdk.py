@@ -53,6 +53,11 @@ def main():
                 target.parent.mkdir(parents=True, exist_ok=True)
                 with tar.extractfile(member) as source, target.open('xb') as out:
                     shutil.copyfileobj(source, out)
+                if target.suffix == '.a':
+                    with target.open('rb') as library:
+                        if library.read(8) == b'!<thin>\n':
+                            raise RuntimeError(f'SDK contains a non-portable thin archive: {member.name}. '
+                                               'Use SDK v2 or re-export with the updated exporter.')
                 if os.name != 'nt':
                     target.chmod(member.mode & 0o777)
                 count += 1

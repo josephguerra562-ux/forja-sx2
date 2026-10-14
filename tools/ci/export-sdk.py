@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import subprocess
 import tarfile
+import tempfile
 
 
 def main():
@@ -16,7 +17,8 @@ def main():
     parser.add_argument('--sysroot', type=Path, default=Path('/root/dolphinps4-build/sysroot'))
     parser.add_argument('--mesa', type=Path, default=Path('/root/dolphinps4-build/build/mesa'))
     parser.add_argument('--windows-sdk', type=Path, default=Path('/mnt/c/OpenOrbis/PS4Toolchain'))
-    parser.add_argument('--output', type=Path, default=repo / 'ps4/ci/build/ps4sx2-sdk-v1.tar.gz')
+    parser.add_argument('--output', type=Path, default=repo / 'ps4/ci/build/ps4sx2-sdk-v2.tar.gz')
+    parser.add_argument('--llvm-ar', default='llvm-ar-21', help='LLVM archiver for materializing thin libraries')
     args = parser.parse_args()
     if os.name == 'nt':
         parser.error('Run this exporter in WSL so the Linux SDK is accessible.')
@@ -99,13 +101,29 @@ def main():
         if name not in files:
             raise RuntimeError(f'Missing SDK build prerequisite: {name}')
     revision = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'HEAD'], text=True).strip()
-    manifest = {'format': 1, 'project_commit': revision,
+    manifest = {'format': 2, 'project_commit': revision, 'materialized_archives': [],
                 'description': 'PS4SX2 development SDK snapshot; prebuilt PS4 dependencies', 'files': {}}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     print(f'Packing {len(files)} SDK files into {args.output}', flush=True)
     # Dereference SDK tool aliases so the archive is portable and contains no symlinks.
-    with tarfile.open(args.output, 'w:gz', compresslevel=6, dereference=True) as tar:
-        for name, source in sorted(files.items()):
+    with tempfile.TemporaryDirectory(prefix='ps4-sdk-archives-') as temporary, \
+            tarfile.open(args.output, 'w:gz', compresslevel=6, dereference=True) as tar:
+        for index, (name, source) in enumerate(sorted(files.items())):
+            if source.suffix == '.a':
+                with source.open('rb') as stream:
+                    thin = stream.read(8) == b'!<thin>\n'
+                if thin:
+                    # Meson thin archives only reference .o files in the original build tree.
+                    # Append their members to a NEW regular archive, preserving duplicate names.
+                    # Never mutate the developer's original library or unpack by member basename.
+                    standalone = Path(temporary) / f'{index}.a'
+                    print(f'Materializing {name}', flush=True)
+                    subprocess.run([args.llvm_ar, 'qcLs', str(standalone), str(source.resolve())], check=True)
+                    with standalone.open('rb') as stream:
+                        if stream.read(8) != b'!<arch>\n':
+                            raise RuntimeError(f'Failed to create standalone library: {name}')
+                    source = standalone
+                    manifest['materialized_archives'].append(name)
             with source.open('rb') as stream:
                 manifest['files'][name] = hashlib.file_digest(stream, 'sha256').hexdigest()
             tar.add(source, arcname=name, recursive=False)
