@@ -14,6 +14,9 @@
 // verified by DolphinPS4 until the SDK declaration is corrected.
 extern "C" void* scePthreadSelf();
 extern "C" int scePthreadSetaffinity(void* thread, unsigned long long mask);
+// Forja SX2: PlayStation thread priorities run from 256 (highest) to 767 (lowest); new threads get 700
+// (as PS5SX2's profiler notes and console emulators report). Same ABI shape as scePthreadSetaffinity.
+extern "C" int scePthreadSetprio(void* thread, int prio);
 
 namespace PS4ThreadAffinity
 {
@@ -83,6 +86,27 @@ namespace PS4ThreadAffinity
 		return core;
 	}
 
+	// Forja SX2: PRIORIDAD=1 in nucleos.txt raises the emulation workers (EE, VU1, GS, Audio) above the
+	// default 700 and drops helper threads to the lowest priority, so nothing that lands on a worker's core
+	// can delay it. Off by default until measured on the console (a busy high-priority thread can starve
+	// anything else sharing its core).
+	constexpr int WORKER_PRIORITY = 448;
+	constexpr int HELPER_PRIORITY = 767;
+
+	static bool PriorityEnabled()
+	{
+		return ResolveCore("PRIORIDAD", 0) == 1;
+	}
+
+	static void ApplyPriority(const char* role, int prio)
+	{
+		if (!PriorityEnabled())
+			return;
+		const int result = scePthreadSetprio(scePthreadSelf(), prio);
+		std::printf("PS4 thread priority: %s prio=%d sce_result=0x%x\n", role, prio, result);
+		std::fflush(stdout);
+	}
+
 	void PinCurrentThread(const char* role, int core)
 	{
 		if (!IsEnabled())
@@ -91,6 +115,7 @@ namespace PS4ThreadAffinity
 			std::fflush(stdout);
 			return;
 		}
+		ApplyPriority(role, WORKER_PRIORITY);
 
 		const int requested = core;
 		core = ResolveCore(role, core);
@@ -106,6 +131,7 @@ namespace PS4ThreadAffinity
 	{
 		if (!IsEnabled())
 			return;
+		ApplyPriority(role, HELPER_PRIORITY);
 		// Default: cores 0 and 1. AYUDANTES=<core> in nucleos.txt narrows them to one core.
 		const int single = ResolveCore("AYUDANTES", -1);
 		const unsigned long long mask = single >= 0 ? (1ULL << single) : 0x3ULL;
