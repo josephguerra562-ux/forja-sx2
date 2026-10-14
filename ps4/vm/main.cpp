@@ -986,7 +986,19 @@ static void* RunVM(void*)
 	// game has been chosen and apply it to the base layer before the VM boots (the PS1 profile below can
 	// still override it; a game's own gamesettings ini still wins over all of this).
 	{
-		const ForjaSettings::Values chosen = ForjaSettings::Load();
+		ForjaSettings::Values chosen = ForjaSettings::Load();
+		// Forja SX2: GSRendererPS4.cpp leaves fg-en-prueba while frame generation's first seconds run; if it is still
+		// here, the last try never got through them (the PS4's GPU hung on it once), so it is turned off and saved off.
+		if (access("/data/ForjaSX2/fg-en-prueba", F_OK) == 0)
+		{
+			unlink("/data/ForjaSX2/fg-en-prueba");
+			if (chosen.frame_gen)
+			{
+				chosen.frame_gen = false;
+				ForjaSettings::Save(chosen);
+				ProbeLog("Frame generation: turned off, the last try did not finish its first seconds (GPU hang?)\n");
+			}
+		}
 		if (chosen.from_file)
 			settings->SetIntValue("EmuCore/Speedhacks", "EECycleRate", chosen.ee_rate);
 		// Console profile: until the player saves the Settings page, a PS4 Pro with Boost Mode (CPU ~2.1 GHz)

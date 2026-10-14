@@ -32,6 +32,8 @@
 #include <deque>
 #include <thread>
 #include <mutex>
+#include <cstdio>
+#include <unistd.h>
 
 static void DumpGSPrivRegs(const GSPrivRegSet& r, const std::string& filename);
 
@@ -633,6 +635,7 @@ void OrbisVkFrameGenDraw();
 extern double GetVerticalFrequency();
 static u32 s_orbis_fg_vsyncs = 0;
 static u32 s_orbis_fg_presents = 0;
+static u32 s_orbis_fg_guard = 0; // 0 = not armed; then vsyncs since the first generated frame
 
 static void ForjaReportHitch()
 {
@@ -670,6 +673,9 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 	if (!g_gs_device)
 		return;
 	ForjaReportHitch();
+	// Forja SX2: frame generation's hang guard (main.cpp reads it). Armed at the first generated frame, cleared 10 s later.
+	if (s_orbis_fg_guard > 0 && ++s_orbis_fg_guard == 600)
+		unlink("/data/ForjaSX2/fg-en-prueba");
 	s_orbis_fg_vsyncs++; // frame generation's clock: a PS2 vsync each call
 	const bool fg_skips_repeats = g_orbis_fg_wanted && g_orbis_fg_engaged;
 
@@ -822,6 +828,12 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 			const u32 generated_presents = OrbisVkFrameGenRecord(current, src_uv, draw_rect, s_tv_shader_indices[GSConfig.TVShader],
 				fg_time, BilnIf(GSConfig.LinearPresent != GSPostBilinearMode::Off), fg_vsyncs, fg_already, GetVerticalFrequency(),
 				fg_speed, fg_nominal);
+			if (generated_presents > 0 && s_orbis_fg_guard == 0)
+			{
+				if (FILE* guard = std::fopen("/data/ForjaSX2/fg-en-prueba", "w"))
+					std::fclose(guard);
+				s_orbis_fg_guard = 1;
+			}
 			for (u32 i = 0; i < generated_presents; i++)
 			{
 				if (!BeginPresentFrame(false))

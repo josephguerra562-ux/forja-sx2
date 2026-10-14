@@ -13,6 +13,10 @@
 #include <atomic>
 #include <cstddef>
 #include <cstring>
+#include <cstdio>
+#include <unistd.h>
+
+extern void ProbeLog(const char* format, ...); // Forja SX2: ps4/vm/main.cpp
 
 namespace ps5::framegen
 {
@@ -368,6 +372,43 @@ namespace ps5::framegen
 			}
 
 			vkBindBufferMemory(m_device, m_counters, m_counters_memory, 0);
+		}
+
+		// Forja SX2: diagnosis of the GPU hang on PS4 (radv/ps4). With /data/ForjaSX2/fg-diagnostico, record() writes a marker
+		// (vkCmdUpdateBuffer = a WRITE_DATA packet) after each pass has finished; radv/ps4's hang report (gpu-hang.txt) lists
+		// each one as done or NOT DONE, which names the pass that never ends. /data/ForjaSX2/fg-pasos.txt (a number) runs only
+		// that many passes.
+		m_diag_markers = access("/data/ForjaSX2/fg-diagnostico", F_OK) == 0;
+		m_diag_pass_limit = UINT32_MAX;
+		if (FILE* f = std::fopen("/data/ForjaSX2/fg-pasos.txt", "r"))
+		{
+			unsigned n = 0;
+			if (std::fscanf(f, "%u", &n) == 1)
+				m_diag_pass_limit = n;
+			std::fclose(f);
+		}
+		if (m_diag_markers)
+		{
+			VkBufferCreateInfo info{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+			info.size = 256;
+			info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+			info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			VkMemoryRequirements req{};
+			VkMemoryAllocateInfo alloc{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+			if (vkCreateBuffer(m_device, &info, nullptr, &m_diag) == VK_SUCCESS)
+			{
+				vkGetBufferMemoryRequirements(m_device, m_diag, &req);
+				alloc.allocationSize = req.size;
+				alloc.memoryTypeIndex = memory_type(req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				if (alloc.memoryTypeIndex != UINT32_MAX && vkAllocateMemory(m_device, &alloc, nullptr, &m_diag_memory) == VK_SUCCESS)
+					vkBindBufferMemory(m_device, m_diag, m_diag_memory, 0);
+				else
+				{
+					vkDestroyBuffer(m_device, m_diag, nullptr);
+					m_diag = VK_NULL_HANDLE;
+				}
+			}
+			ProbeLog("[fg] diagnosis: pass markers %s, pass limit %u\n", m_diag ? "on" : "FAILED", m_diag_pass_limit);
 		}
 
 		{
@@ -925,6 +966,10 @@ namespace ps5::framegen
 		m_ubo_memory = VK_NULL_HANDLE;
 		m_counters = VK_NULL_HANDLE;
 		m_counters_memory = VK_NULL_HANDLE;
+		if (m_diag) vkDestroyBuffer(m_device, m_diag, nullptr);
+		if (m_diag_memory) vkFreeMemory(m_device, m_diag_memory, nullptr);
+		m_diag = VK_NULL_HANDLE;
+		m_diag_memory = VK_NULL_HANDLE;
 
 		for (image_t& c : m_color) free_image(c);
 		for (auto& set : m_luma) for (image_t& i : set) free_image(i);
@@ -1206,6 +1251,19 @@ namespace ps5::framegen
 
 		bool first = true;
 		bool flow_timed = false; // m74: the middle timestamp, after the optical flow's passes
+		u32 pass = 0; // Forja SX2: the diagnosis' pass number
+
+		// Forja SX2: a pass's marker, written once the passes before it have finished (the barrier waits for them).
+		const auto diag_marker = [&](u32 index) {
+			if (!m_diag || index >= 64)
+				return;
+			memory_barrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+				VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
+			const u32 value = 0xF6000000u | (m_diag_frame << 8) | index;
+			vkCmdUpdateBuffer(cmd, m_diag, index * 4, 4, &value);
+		};
+		m_diag_frame = (m_diag_frame + 1) & 0xFFFF;
+		diag_marker(0);
 
 		for (const dispatch_t& d : m_dispatches)
 		{
@@ -1213,6 +1271,8 @@ namespace ps5::framegen
 			{
 				continue;
 			}
+			if (pass >= m_diag_pass_limit)
+				break;
 
 			if (d.interpolation && !flow_timed && m_queries)
 			{
@@ -1239,6 +1299,7 @@ namespace ps5::framegen
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, p.pipeline);
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, p.layout, 0, 1, &d.set[parity], d.ubo_count, offsets);
 			vkCmdDispatch(cmd, d.groups[0], d.groups[1], d.groups[2]);
+			diag_marker(++pass);
 		}
 
 		// The interpolated frame (and the frame itself) for the caller's copies.

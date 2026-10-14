@@ -181,6 +181,12 @@ namespace ps5::framegen
 
 		VkBuffer m_counters = VK_NULL_HANDLE; // FSR3's counters (frames since a reset)
 		VkDeviceMemory m_counters_memory = VK_NULL_HANDLE;
+		// Forja SX2: the PS4 hang diagnosis (ps5_framegen.cpp, create()).
+		VkBuffer m_diag = VK_NULL_HANDLE;
+		VkDeviceMemory m_diag_memory = VK_NULL_HANDLE;
+		bool m_diag_markers = false;
+		std::uint32_t m_diag_pass_limit = UINT32_MAX;
+		std::uint32_t m_diag_frame = 0;
 		VkBuffer m_ubo = VK_NULL_HANDLE;      // the constants, a slot per frame in flight
 		VkDeviceMemory m_ubo_memory = VK_NULL_HANDLE;
 		std::uint8_t* m_ubo_map = nullptr;
