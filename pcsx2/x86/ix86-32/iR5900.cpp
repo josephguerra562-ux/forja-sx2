@@ -2745,7 +2745,9 @@ static void recRecompile(const u32 startpc)
 		const unsigned n = rec_probe++;
 		if (!lowest_rsp || rsp_now < lowest_rsp)
 			lowest_rsp = rsp_now;
-		if (n < 8 || (n % 100) == 0)
+		// Forja SX2: only the first blocks (boot diagnosis). The old "every 100th block" line did a
+		// printf + fflush to the console's disk from the EE thread all through play, more often in new areas.
+		if (n < 8)
 		{
 			printf("[dbg] rec: recompile[%u] pc=%08x rsp=%p lowest=%p\n", n, startpc, rsp_now, lowest_rsp);
 			fflush(stdout);

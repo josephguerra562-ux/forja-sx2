@@ -29,6 +29,10 @@ public:
 	/// Writes pipeline cache to file, saving all newly compiled pipelines.
 	bool FlushPipelineCache();
 
+	/// Forja SX2: copies the pipeline cache on the calling (GS) thread and writes it from a background
+	/// thread through a temporary file and a rename, so a game closed with the PS button keeps it.
+	bool FlushPipelineCacheInBackground();
+
 	VkShaderModule GetVertexShader(std::string_view shader_code);
 	VkShaderModule GetFragmentShader(std::string_view shader_code);
 	VkShaderModule GetComputeShader(std::string_view shader_code);

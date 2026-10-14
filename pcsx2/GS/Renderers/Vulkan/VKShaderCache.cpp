@@ -7,6 +7,9 @@
 #include "GS/Renderers/Vulkan/VKBuilders.h"
 #include "GS/Renderers/Vulkan/VKShaderCache.h"
 #include "GS/Renderers/Vulkan/VKOrbisTiming.h" // vk-285-38: [shaders]
+#if defined(PCSX2_PS4_VM_BOOT)
+#include "ps4/core/ThreadAffinityPS4.h"
+#endif
 
 #include "Config.h"
 #include "ShaderCacheVersion.h"
@@ -22,8 +25,10 @@
 #include "fmt/format.h"
 #include "shaderc/shaderc.h"
 
+#include <atomic>
 #include <cstring>
 #include <memory>
+#include <thread>
 
 // TODO: store the driver version and stuff in the shader header
 
@@ -637,6 +642,42 @@ bool VKShaderCache::FlushPipelineCache()
 	}
 
 	m_pipeline_cache_dirty = false;
+	return true;
+}
+
+bool VKShaderCache::FlushPipelineCacheInBackground()
+{
+	// One write at a time; a cache that changes meanwhile is picked up by the next call.
+	static std::atomic<bool> s_writing{false};
+	if (m_pipeline_cache == VK_NULL_HANDLE || !m_pipeline_cache_dirty || m_pipeline_cache_filename.empty() ||
+		s_writing.load(std::memory_order_acquire))
+	{
+		return false;
+	}
+
+	size_t data_size = 0;
+	VkResult res = vkGetPipelineCacheData(GSDeviceVK::GetInstance()->GetDevice(), m_pipeline_cache, &data_size, nullptr);
+	if (res != VK_SUCCESS || data_size == 0)
+		return false;
+	std::vector<u8> data(data_size);
+	res = vkGetPipelineCacheData(GSDeviceVK::GetInstance()->GetDevice(), m_pipeline_cache, &data_size, data.data());
+	if (res != VK_SUCCESS)
+		return false;
+	data.resize(data_size);
+	m_pipeline_cache_dirty = false;
+
+	s_writing.store(true, std::memory_order_release);
+	std::thread([data = std::move(data), filename = m_pipeline_cache_filename]() {
+#if defined(PCSX2_PS4_VM_BOOT)
+		PS4ThreadAffinity::PinCurrentThreadToHelpers("pipeline cache writer");
+#endif
+		const std::string temporary = filename + ".tmp";
+		const bool ok = FileSystem::WriteBinaryFile(temporary.c_str(), data.data(), data.size()) &&
+						FileSystem::RenamePath(temporary.c_str(), filename.c_str());
+		Console.WriteLn("Forja SX2: pipeline cache %s in the background (%zu bytes)", ok ? "saved" : "NOT saved",
+			data.size());
+		s_writing.store(false, std::memory_order_release);
+	}).detach();
 	return true;
 }
 

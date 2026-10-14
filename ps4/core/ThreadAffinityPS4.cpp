@@ -35,7 +35,7 @@ namespace PS4ThreadAffinity
 	// on one cluster against the default split. Cores 0-5 are the game's; 6 needs the SFO 7-CPU flag.
 	struct Override
 	{
-		char role[8];
+		char role[12];
 		int core;
 	};
 	static Override s_overrides[8];
@@ -49,9 +49,9 @@ namespace PS4ThreadAffinity
 		char line[128];
 		while (s_override_count < 8 && std::fgets(line, sizeof(line), file))
 		{
-			char role[8] = {};
+			char role[12] = {};
 			int core = -1;
-			if (line[0] == '#' || std::sscanf(line, " %7[A-Za-z0-9] = %d", role, &core) != 2)
+			if (line[0] == '#' || std::sscanf(line, " %11[A-Za-z0-9] = %d", role, &core) != 2)
 				continue;
 			if (core < 0 || core > 6)
 			{
@@ -99,6 +99,18 @@ namespace PS4ThreadAffinity
 		// (AI-assisted) Core placement needs proper testing across base/Pro consoles.
 		std::printf("PS4 thread affinity: %s core=%d%s mask=0x%llx sce_result=0x%x\n", role, core,
 			core != requested ? " (nucleos.txt)" : "", mask, result);
+		std::fflush(stdout);
+	}
+
+	void PinCurrentThreadToHelpers(const char* role)
+	{
+		if (!IsEnabled())
+			return;
+		// Default: cores 0 and 1. AYUDANTES=<core> in nucleos.txt narrows them to one core.
+		const int single = ResolveCore("AYUDANTES", -1);
+		const unsigned long long mask = single >= 0 ? (1ULL << single) : 0x3ULL;
+		const int result = scePthreadSetaffinity(scePthreadSelf(), mask);
+		std::printf("PS4 thread affinity: helper %s mask=0x%llx sce_result=0x%x\n", role, mask, result);
 		std::fflush(stdout);
 	}
 } // namespace PS4ThreadAffinity

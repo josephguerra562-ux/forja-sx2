@@ -10,6 +10,9 @@
 #include "common/ProgressCallback.h"
 #include "common/SmallString.h"
 #include "common/Threading.h"
+#if defined(PCSX2_PS4_VM_BOOT)
+#include "ps4/core/ThreadAffinityPS4.h"
+#endif
 
 #include <cstring>
 #include <pthread.h> // PS5 port (vk-285-108)
@@ -64,6 +67,9 @@ size_t ThreadedFileReader::CopyBlocks(void* dst, const void* src, size_t size) c
 void ThreadedFileReader::Loop()
 {
 	Threading::SetNameOfCurrentThread("ISO Decompress");
+#if defined(PCSX2_PS4_VM_BOOT)
+	PS4ThreadAffinity::PinCurrentThreadToHelpers("disc reader");
+#endif
 
 	std::unique_lock<std::mutex> lock(m_mtx);
 

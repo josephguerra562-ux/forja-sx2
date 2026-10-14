@@ -2,6 +2,7 @@
 // (AI-assisted) Keep storage and kernel-log waits off emulation threads.
 #include "ProbeLoggerPS4.h"
 #include "TelemetryPS4.h"
+#include "ThreadAffinityPS4.h"
 #include "common/Timer.h"
 
 #include <algorithm>
@@ -112,6 +113,7 @@ namespace
 
 	void* Run(void*)
 	{
+		PS4ThreadAffinity::PinCurrentThreadToHelpers("log writer");
 		Entry entry;
 		for (;;)
 		{

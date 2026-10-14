@@ -3,6 +3,7 @@
 // Runs on a dedicated thread; producers (EE/GS) only enqueue, never block on network.
 
 #include "TelemetryPS4.h"
+#include "ThreadAffinityPS4.h"
 
 #include "common/Timer.h"
 
@@ -296,6 +297,7 @@ namespace
 	void* ThreadMain(void*)
 	{
 		pthread_setname_np(pthread_self(), "PS4 telemetry");
+		PS4ThreadAffinity::PinCurrentThreadToHelpers("telemetry");
 		int reconnect_ms = kReconnectMinMs;
 
 		while (true)

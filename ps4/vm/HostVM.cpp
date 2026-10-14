@@ -11,6 +11,7 @@
 #include "common/WindowInfo.h"
 #include "INISettingsInterface.h"
 #include "PerformanceMetrics.h"
+#include "GS/Renderers/Vulkan/VKShaderCache.h"
 #include "common/Timer.h"
 #include "ps4/core/IPUProfilePS4.h"
 #include "ps4/core/EEEventProfilePS4.h"
@@ -258,6 +259,15 @@ void Host::OnPerformanceMetricsUpdated()
 	static Common::Timer::Value first_update = Common::Timer::GetCurrentValue();
 	static Common::Timer::Value last_log = 0;
 	const auto now = Common::Timer::GetCurrentValue();
+	// Forja SX2: keep the Vulkan pipeline cache on disk while playing (every 30 s, only when it changed),
+	// so closing the app from the PS button does not throw away the compiled effects.
+	static Common::Timer::Value last_cache_save = now;
+	if (Common::Timer::ConvertValueToSeconds(now - last_cache_save) >= 30.0)
+	{
+		last_cache_save = now;
+		if (g_vulkan_shader_cache)
+			g_vulkan_shader_cache->FlushPipelineCacheInBackground();
+	}
 	if (last_log != 0 && Common::Timer::ConvertValueToSeconds(now - last_log) < 5.0)
 		return;
 	const double profile_interval = last_log ? Common::Timer::ConvertValueToSeconds(now - last_log) : 0.0;
