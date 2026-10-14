@@ -19,3 +19,4 @@ ps4/deps/src/
 /tools/ps4-live-monitor/logs/
 **/__pycache__/
 *.pyc
+/ci-output/

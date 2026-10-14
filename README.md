@@ -124,6 +124,54 @@ Ready-to-use startup images and intro resources are included. Regenerating them 
 
 Successful compilation and PKG validation do not replace testing on the console.
 
+### GitHub Actions
+
+The workflow at [`.github/workflows/build.yml`](.github/workflows/build.yml) builds on **GitHub-hosted runners**:
+
+1. **Ubuntu 24.04:** installs Clang/LLVM 21 from [LLVM's package repository](https://apt.llvm.org/), restores the PS4 SDK snapshot and compiles the current source with JIT, Fastmem and MTVU enabled.
+2. **Windows Server 2022:** downloads that executable, packages it with the existing PowerShell script and runs the package validator.
+3. The run publishes **PS4SX2-PKG**, executable/debug symbols and build logs as [Actions artifacts](https://github.com/actions/upload-artifact). It does not publish a release automatically.
+
+**The published SDK is configured by default.** The workflow downloads [PS4SX2 SDK v1](https://github.com/Phoenixx1202/PS4SX2-SDK/releases/tag/sdk-v1) and verifies its pinned SHA-256 checksum. No repository variables are required for this snapshot. Application builds run entirely on GitHub; your PC can be switched off. The PS4 Mesa/RADV, libc++ ABI overlay and OpenOrbis dependencies are prebuilt SDK inputs, not rebuilt from upstream in this workflow. A stock desktop SDK cannot replace them.
+
+#### Export a replacement SDK snapshot (maintainers)
+
+From PowerShell in this checkout, with the working WSL dependencies and local dependency prefix prepared:
+
+```powershell
+wsl -d Ubuntu-24.04 -- python3 /mnt/c/Port/PS4SX2/tools/ci/export-sdk.py
+```
+
+The exporter requires Python 3.11 or newer and produces:
+
+```text
+ps4/ci/build/ps4sx2-sdk-v1.tar.gz
+ps4/ci/build/ps4sx2-sdk-v1.tar.gz.sha256
+```
+
+Both files are ignored by Git. The archive includes the selected Linux OpenOrbis tools and target libraries, PS4 libc++ headers/runtime, Mesa static archives, the local dependency prefix, Windows packaging tools/resources, available license notices and a per-file SHA-256 manifest. It does not read game images, BIOS folders, saves or application logs. Preserve the component licenses and their source-distribution obligations when hosting a dependency snapshot.
+
+For another development environment, run `python3 tools/ci/export-sdk.py --help` in WSL and set `--openorbis`, `--sysroot`, `--mesa` and `--windows-sdk` as needed. The exporter refuses to overwrite an existing archive; use `--output /path/to/ps4sx2-sdk-v2.tar.gz` for a new snapshot.
+
+#### Override the SDK (optional)
+
+To use a different snapshot, upload its archive to your dependency hosting location (for example, a dedicated SDK repository release asset). Prefer a separate SDK repository so the application's release checker does not report an SDK asset as an emulator update. Then open **Settings → Secrets and variables → Actions → Variables** in the PS4SX2 repository and set both overrides:
+
+| Repository variable | Value |
+|---|---|
+| `PS4_SDK_URL` | Direct public HTTPS download URL of `ps4sx2-sdk-v1.tar.gz`; not a release page |
+| `PS4_SDK_SHA256` | The 64-character checksum from the `.sha256` file, without the filename |
+
+The downloader verifies the whole archive before extracting any files. An invalid URL/checksum, a missing component or a checksum mismatch stops the job. Private URLs requiring authentication are not supported by this setup. Leave both variables unset to use the published SDK v1 defaults.
+
+#### Run the build
+
+Commit the workflow and helper scripts, then open **Actions → Build PS4SX2 → Run workflow**. It also runs on code pushes to `main`; documentation-only and PC-monitor-only changes are skipped. When the run finishes, download **PS4SX2-PKG-<run number>** from its **Artifacts** section. The ZIP contains the installable PKG, its checksum and build provenance. Packages are retained for 30 days; executable symbols and logs for 14 days.
+
+If compilation fails, inspect the `compile-logs` artifact and the failed step. If packaging fails, inspect `package-logs`. Dependency download/setup errors appear directly in the step output. When the PS4 SDK or prebuilt libraries change, export a new archive and update **both** repository variables.
+
+The workflow must still be exercised on GitHub; publishing the SDK and writing this configuration do not establish console compatibility or a successful hosted build.
+
 ## Libraries and components
 
 | Component | Role |
