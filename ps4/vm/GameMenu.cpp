@@ -308,7 +308,11 @@ namespace PS4GameMenu
 			}
 			// (AI-assisted) Reuse the package background at runtime so the PS4 tile
 			// and emulator loading screen always show the exact same artwork.
-			s_ui_images.push_back({"loading_background", LoadImageFile("/app0/sce_sys/pic1.png", "loading background")});
+			// Forja SX2: sce_sys/pic1.png lives in the package header, not in the app's file system, so
+			// /app0/sce_sys/pic1.png never opened ("invalid or oversized loading background" on every boot).
+			// The same artwork ships as a UI asset instead.
+			s_ui_images.push_back({"loading_background",
+				LoadImageFile(std::string(UiAssetsDirectory) + "/loading_background.png", "loading background")});
 			ProbeLog("Game menu: loaded %zu UI button assets\n", s_ui_images.size());
 		}
 

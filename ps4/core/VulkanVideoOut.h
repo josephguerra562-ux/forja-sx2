@@ -60,6 +60,10 @@ namespace PS4Port
 
 	private:
 		void Log(const char* format, ...) const;
+		// Forja SX2: drains completed flip events and takes the pending count from the system.
+		void SyncPendingFlips();
+		// Waits until at most max_pending flips remain, up to timeout microseconds.
+		bool WaitPendingAtMost(std::uint32_t max_pending, OrbisKernelUseconds timeout);
 		struct ImageMemory
 		{
 			VkImage image = VK_NULL_HANDLE;
