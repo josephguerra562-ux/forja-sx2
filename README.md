@@ -172,7 +172,7 @@ Commit the workflow and helper scripts, then open **Actions → Build PS4SX2 →
 
 If compilation fails, inspect the `compile-logs` artifact and the failed step. If packaging fails, inspect `package-logs`. Dependency download/setup errors appear directly in the step output. When the PS4 SDK or prebuilt libraries change, export a new archive and update **both** repository variables.
 
-The workflow must still be exercised on GitHub; publishing the SDK and writing this configuration do not establish console compatibility or a successful hosted build.
+The [first successful hosted build using SDK v2](https://github.com/Phoenixx1202/PS4SX2/actions/runs/38490473175) compiled the executable and built and validated the PKG from commit `1cfb4a6`. This confirms the CI build path; console compatibility and performance still require hardware testing.
 
 ## Libraries and components
 
