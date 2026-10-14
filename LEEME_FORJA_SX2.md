@@ -10,7 +10,7 @@
 ## 2. Carpetas en la PS4 (`/data/ForjaSX2/`)
 | Carpeta | Qué va ahí |
 |---|---|
-| `bios/` | BIOS de PS2 (`.bin` + `.mec` + `.nvm`), de la misma región que el juego |
+| `bios/` | BIOS de PS2 (`.bin` + `.mec` + `.nvm`), de la misma región que el juego. También la encuentra en una USB, en `bios/` |
 | `roms/` | Juegos: **.iso, .bin, .chd, .cso, .zso, .gz** (las comprimidas ocupan menos) |
 | `covers/` | Portadas: mismo nombre que el juego + `.jpg` o `.png` (opcional) |
 | `gamesettings/` | Ajustes POR JUEGO (sección 4) |
@@ -63,6 +63,7 @@ Afectan a TODOS los juegos. Si el archivo existe, la opción se activa. Reinicia
 - `vm-no-audio`, `vm-audio-legacy-stretch`: audio
 - `vm-no-fastmem`: si se cuelga al arrancar · `vm-verbose-log`: registro detallado para mandarme
 - `vm-no-thread-affinity`: dejar que la PS4 reparta los núcleos sola
+- `vm-sync-flip`: modo antiguo de mandar la imagen a la tele (más lento; solo si ves parpadeos o imagen cortada)
 
 ## 7. Reparto de núcleos (`nucleos.txt`): para experimentar
 El CPU de la PS4 son **dos grupos de 4 núcleos** (0-3 y 4-7). Cada grupo tiene su propia memoria rápida (caché L2) y pasar datos de un grupo al otro es lento.

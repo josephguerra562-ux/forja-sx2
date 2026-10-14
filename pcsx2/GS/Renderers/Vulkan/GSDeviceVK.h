@@ -298,7 +298,7 @@ private:
 	u32 m_current_frame = 0;
 #if defined(PCSX2_PS4)
 	// (AI-assisted) A presented frame's VideoOut flip, submitted once its command buffer completes.
-	// GS thread only. Disabled by /data/PS4SX2/vm-sync-flip.
+	// GS thread only. Disabled by /data/ForjaSX2/vm-sync-flip.
 	u64 m_ps4_flip_fence_counter = 0;
 	u32 m_ps4_flip_index = 0;
 	u32 m_ps4_flip_polls = 0;

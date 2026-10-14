@@ -4193,9 +4193,9 @@ bool GSDeviceVK::CreateDeviceAndSwapChain()
 		Console.Error("VK: failed to create PS4 VideoOut images.");
 		return false;
 	}
-	m_ps4_async_flip = access("/data/PS4SX2/vm-sync-flip", F_OK) != 0;
+	m_ps4_async_flip = access("/data/ForjaSX2/vm-sync-flip", F_OK) != 0;
 	m_ps4_defer_next_flip = m_ps4_flip_deferred = false;
-	Console.WriteLn("PS4 GS: VideoOut flip %s (create /data/PS4SX2/vm-sync-flip for the old GPU wait per frame)",
+	Console.WriteLn("PS4 GS: VideoOut flip %s (create /data/ForjaSX2/vm-sync-flip for the old GPU wait per frame)",
 		m_ps4_async_flip ? "deferred until the frame completes" : "waits for the GPU in the present call");
 #else
 	if (surface != VK_NULL_HANDLE)
