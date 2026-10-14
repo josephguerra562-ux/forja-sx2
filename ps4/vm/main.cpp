@@ -147,6 +147,27 @@ static unsigned s_max_game_upscale = 1;
 static unsigned s_game_aspect = 1;
 static bool s_game_show_performance_overlay = true;
 static int s_game_ee_rate = -1;
+// Forja SX2: console detection. The PS4's CPU runs at 1.6 GHz; a PS4 Pro runs it at ~2.13 GHz in Pro
+// mode or with Boost Mode ("Modo optimizado") on. No system call tells an app which one it got, so the
+// clock is measured: a chain of dependent adds takes one cycle each on Jaguar, so adds per second is the
+// clock. ~40 ms, once, on the EE's own core before the VM starts.
+static double s_console_cpu_ghz = 0.0;
+static bool s_console_fast_cpu = false;
+
+static void MeasureConsoleCpu()
+{
+	constexpr u64 iterations = 20000000; // x4 dependent adds
+	u64 value = 0;
+	const auto start = Common::Timer::GetCurrentValue();
+	for (u64 i = 0; i < iterations; ++i)
+		asm volatile("add $1, %0\n\tadd $1, %0\n\tadd $1, %0\n\tadd $1, %0" : "+r"(value));
+	const double seconds = Common::Timer::ConvertValueToSeconds(Common::Timer::GetCurrentValue() - start);
+	s_console_cpu_ghz = seconds > 0.0 ? (static_cast<double>(iterations) * 4.0) / seconds / 1e9 : 0.0;
+	s_console_fast_cpu = s_console_cpu_ghz >= 1.9;
+	ProbeLog("Console CPU: ~%.2f GHz (%s)\n", s_console_cpu_ghz,
+		s_console_fast_cpu ? "PS4 Pro with Pro mode or Boost Mode" : "base PS4/Slim, or a Pro without Boost Mode");
+}
+
 // Forja SX2: automatic video mode state (see UpdateVideoMode).
 extern u64 g_forja_ipu_decodes; // pcsx2/IPU/IPU.cpp: IDEC/BDEC commands since boot
 static bool s_video_mode_enabled = true;
@@ -478,6 +499,15 @@ void VMHostPoll()
 					vkdev->PS4HasDeferredFlip() ? 1 : 0);
 		}
 		PS4EEHotspots::LogInterval(interval);
+		{
+			// Forja SX2: the SPU2 mixing cost measured in IopCounters.cpp (EE thread, like this heartbeat).
+			extern u64 g_forja_spu2_calls, g_forja_spu2_sampled_ticks;
+			const double spu2_ms = Common::Timer::ConvertValueToMilliseconds(g_forja_spu2_sampled_ticks);
+			ProbeLog("Audio SPU2: ms_per_second=%.1f share_of_EE_thread_pct=%.1f calls_per_second=%.0f\n",
+				spu2_ms / interval, spu2_ms / interval / 10.0, g_forja_spu2_calls / interval);
+			g_forja_spu2_calls = 0;
+			g_forja_spu2_sampled_ticks = 0;
+		}
 		// Read on the owning EE thread, once per heartbeat. No MMIO reads or
 		// worker calls here: observing a stalled IPU must not advance it.
 		ProbeLog("IPU state: ctrl=%08x cmd=%08x index=%d pos=%d,%d,%d,%d,%d,%d "
@@ -739,6 +769,7 @@ static void PrepareEmulatorFolders(SettingsInterface& settings)
 static void* RunVM(void*)
 {
 	PS4ThreadAffinity::PinCurrentThread("EE", 2);
+	MeasureConsoleCpu();
 	VMHostSetCPUThread();
 	PS4ThreadCPUMetrics::Sample(PS4ThreadCPUMetrics::Role::EE);
 	PS4IPUProfile::s_sampling.enabled = access("/data/ForjaSX2/vm-profile-ipu", F_OK) == 0 &&
@@ -958,7 +989,10 @@ static void* RunVM(void*)
 		const ForjaSettings::Values chosen = ForjaSettings::Load();
 		if (chosen.from_file)
 			settings->SetIntValue("EmuCore/Speedhacks", "EECycleRate", chosen.ee_rate);
-		settings->SetFloatValue("EmuCore/GS", "upscale_multiplier", static_cast<float>(chosen.upscale));
+		// Console profile: until the player saves the Settings page, a PS4 Pro with Boost Mode (CPU ~2.1 GHz)
+		// starts at 2x, which it holds in light games; a base PS4/Slim (1.6 GHz) keeps the native 1x.
+		const int upscale = (!chosen.from_file && s_console_fast_cpu) ? 2 : chosen.upscale;
+		settings->SetFloatValue("EmuCore/GS", "upscale_multiplier", static_cast<float>(upscale));
 		settings->SetStringValue("EmuCore/GS", "AspectRatio", Pcsx2Config::GSOptions::AspectRatioNames[chosen.aspect]);
 		settings->SetIntValue("EmuCore/GS", "HWDownloadMode", ForjaSettings::ReadbackModes[chosen.readback]);
 		const bool chosen_fast_cdvd = (access("/data/ForjaSX2/vm-fast-cdvd", F_OK) == 0 || chosen.fast_cdvd) &&
@@ -970,11 +1004,14 @@ static void* RunVM(void*)
 		s_game_show_performance_overlay = chosen.overlay && access("/data/ForjaSX2/vm-hide-stats", F_OK) != 0;
 		ApplyPerformanceOverlay();
 		s_video_mode_enabled = chosen.video_mode;
+		// Frame generation (pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp, from PS5SX2): read by the GS at every new frame.
+		extern bool g_orbis_fg_wanted;
+		g_orbis_fg_wanted = chosen.frame_gen;
 		VMManager::ApplySettings();
 		ProbeLog("Forja settings at game start: file=%d ee_rate=%d upscale=%dx aspect=%d overlay=%d stick=%d fast_cdvd=%d "
-				 "fast_boot=%d readback=%d video_mode=%d\n",
-			chosen.from_file ? 1 : 0, chosen.ee_rate, chosen.upscale, chosen.aspect, chosen.overlay ? 1 : 0, chosen.stick,
-			chosen_fast_cdvd ? 1 : 0, fast_boot ? 1 : 0, chosen.readback, chosen.video_mode ? 1 : 0);
+				 "fast_boot=%d readback=%d video_mode=%d frame_gen=%d\n",
+			chosen.from_file ? 1 : 0, chosen.ee_rate, upscale, chosen.aspect, chosen.overlay ? 1 : 0, chosen.stick,
+			chosen_fast_cdvd ? 1 : 0, fast_boot ? 1 : 0, chosen.readback, chosen.video_mode ? 1 : 0, chosen.frame_gen ? 1 : 0);
 	}
 	if (platform == GamePlatform::PS1)
 	{
@@ -1133,6 +1170,74 @@ static void* RunVM(void*)
 	return nullptr;
 }
 
+// Forja SX2: watchdog. Joseph once got a black screen on the way back to the library and the log just
+// stopped, with nothing to say what was stuck. This low-priority helper looks every 2 s at two heartbeats:
+// the library loop (GameMenu.cpp) while it is open, and GS vsyncs while a game runs. If one stands still
+// for 8 s it logs once where the EE and IOP are and how the GS queue looks, so the next hang names itself.
+std::atomic<u64> g_forja_menu_ticks{0};
+std::atomic<bool> g_forja_menu_active{false};
+extern std::atomic<u64> g_forja_gs_vsyncs; // ps4/core/GSRendererPS4.cpp
+
+static void* ForjaWatchdog(void*)
+{
+	PS4ThreadAffinity::PinCurrentThreadToHelpers("watchdog");
+	u64 last_menu = 0, last_vsyncs = 0;
+	unsigned menu_still = 0, game_still = 0;
+	bool menu_reported = false, game_reported = false;
+	for (;;)
+	{
+		Threading::Sleep(2000);
+		const u64 menu = g_forja_menu_ticks.load(std::memory_order_relaxed);
+		if (g_forja_menu_active.load(std::memory_order_relaxed) && menu == last_menu)
+		{
+			if (++menu_still >= 4 && !menu_reported)
+			{
+				menu_reported = true;
+				ProbeLog("Watchdog: the library loop has not turned for %u s (ticks=%llu, vsync queue=%d)\n",
+					menu_still * 2, static_cast<unsigned long long>(menu), MTGS::GetCurrentVsyncQueueSize());
+			}
+		}
+		else
+		{
+			menu_still = 0;
+			menu_reported = false;
+		}
+		last_menu = menu;
+
+		const u64 vsyncs = g_forja_gs_vsyncs.load(std::memory_order_relaxed);
+		if (VMManager::GetState() == VMState::Running && !s_game_menu_open && vsyncs == last_vsyncs)
+		{
+			if (++game_still >= 4 && !game_reported)
+			{
+				game_reported = true;
+				ProbeLog("Watchdog: no GS vsync for %u s while running: EE_PC=%08x IOP_PC=%08x EE_cycle=%u vsync queue=%d\n",
+					game_still * 2, cpuRegs.pc, psxRegs.pc, static_cast<unsigned>(cpuRegs.cycle),
+					MTGS::GetCurrentVsyncQueueSize());
+			}
+		}
+		else
+		{
+			game_still = 0;
+			game_reported = false;
+		}
+		last_vsyncs = vsyncs;
+	}
+	return nullptr;
+}
+
+static void StartForjaWatchdog()
+{
+	pthread_attr_t attr;
+	if (pthread_attr_init(&attr) != 0)
+		return;
+	pthread_attr_setstacksize(&attr, 128 * 1024);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	pthread_t thread;
+	const int result = pthread_create(&thread, &attr, ForjaWatchdog, nullptr);
+	pthread_attr_destroy(&attr);
+	ProbeLog("Watchdog: %s\n", result == 0 ? "started" : "could not start");
+}
+
 int main()
 {
 	mkdir("/data/ForjaSX2", 0777);
@@ -1174,6 +1279,7 @@ int main()
 		archived_logs.directory, archived_logs.moved, archived_logs.error);
 	ProbeLog("PS4 log startup: fd=%d synchronous_marker=%d kernel_mirror=%d thread_result=%d verbose=%d\n", s_log, synchronous_log, kernel_log, log_thread_result, s_verbose_diag ? 1 : 0);
 	PS4ProbeLogger::LogStatus();
+	StartForjaWatchdog();
 	PS4Telemetry::Stage("loading-modules");
 	ProbeLog("STAGE: loading system modules\n");
 	const int system_service_result = sceSysmoduleLoadModuleInternal(ORBIS_SYSMODULE_INTERNAL_SYSTEM_SERVICE);

@@ -38,6 +38,9 @@
 #include <vector>
 
 extern void ProbeLog(const char* format, ...);
+// Forja SX2: the watchdog in main.cpp checks that the library loop keeps turning.
+extern std::atomic<u64> g_forja_menu_ticks;
+extern std::atomic<bool> g_forja_menu_active;
 
 namespace PS4GameMenu
 {
@@ -130,14 +133,14 @@ namespace PS4GameMenu
 		// Forja SX2: the Settings page. The CPU thread owns the values; the GS thread draws this copy.
 		ForjaSettings::Values s_settings_gs;
 		unsigned s_settings_row_gs = 0;
-		constexpr unsigned SettingsRows = 9;
+		constexpr unsigned SettingsRows = 10;
 
 		const char* SettingLabel(unsigned row)
 		{
 			static constexpr const char* labels[SettingsRows] = {
 				"Velocidad del CPU de la PS2", "Resolución interna", "Relación de aspecto", "Contador de FPS al jugar",
 				"Sensibilidad de la palanca", "Cargas rápidas del disco", "Saltar el logo de la PS2",
-				"Lecturas de la gráfica (readbacks)", "Modo video automático"};
+				"Lecturas de la gráfica (readbacks)", "Modo video automático", "Generación de cuadros (30 a 60 FPS)"};
 			return labels[std::min(row, SettingsRows - 1)];
 		}
 
@@ -152,7 +155,8 @@ namespace PS4GameMenu
 				"Acorta las cargas. Algunos juegos se cuelgan con esto: si pasa, apágalo",
 				"Arranca directo el juego, sin la animación de la PS2",
 				"Si el juego se traba sin que el CPU esté al 100 %: prueba Sin esperar. Desactivadas puede romper efectos",
-				"Durante los videos del juego baja el CPU de la PS2 al 50 % y lo devuelve al terminar (videos más fluidos)"};
+				"Durante los videos del juego baja el CPU de la PS2 al 50 % y lo devuelve al terminar (videos más fluidos)",
+				"EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso"};
 			return help[std::min(row, SettingsRows - 1)];
 		}
 
@@ -175,7 +179,8 @@ namespace PS4GameMenu
 					std::snprintf(out, size, "%s", readback_names[std::clamp(v.readback, 0, 2)]);
 					break;
 				}
-				default: std::snprintf(out, size, "%s", v.video_mode ? "Sí" : "No"); break;
+				case 8: std::snprintf(out, size, "%s", v.video_mode ? "Sí" : "No"); break;
+				default: std::snprintf(out, size, "%s", v.frame_gen ? "Sí" : "No"); break;
 			}
 		}
 
@@ -205,7 +210,8 @@ namespace PS4GameMenu
 				case 5: v.fast_cdvd = !v.fast_cdvd; break;
 				case 6: v.fast_boot = !v.fast_boot; break;
 				case 7: v.readback = step(v.readback, 0, 2); break;
-				default: v.video_mode = !v.video_mode; break;
+				case 8: v.video_mode = !v.video_mode; break;
+				default: v.frame_gen = !v.frame_gen; break;
 			}
 		}
 
@@ -846,8 +852,10 @@ namespace PS4GameMenu
 		// Library refreshes now begin a serialized cover queue. The UI remains
 		// responsive while each native HTTPS request completes in its own thread.
 		pump_library_cover();
+		g_forja_menu_active.store(true, std::memory_order_relaxed);
 		for (;;)
 		{
+			g_forja_menu_ticks.fetch_add(1, std::memory_order_relaxed); // watchdog heartbeat (main.cpp)
 			const double now = timer.GetTimeSeconds();
 			if (library_cover.Collect())
 			{
@@ -1178,6 +1186,7 @@ namespace PS4GameMenu
 				GSPresentCurrentFrame();
 		});
 		MTGS::WaitGS(false);
+		g_forja_menu_active.store(false, std::memory_order_relaxed);
 		return start;
 	}
 
@@ -1509,19 +1518,19 @@ namespace PS4GameMenu
 			const unsigned focused_row = std::min(s_settings_row_gs, SettingsRows - 1);
 			for (unsigned row = 0; row < SettingsRows; ++row)
 			{
-				const float y = 112.0f + static_cast<float>(row) * 88.0f;
+				const float y = 108.0f + static_cast<float>(row) * 80.0f;
 				const bool focused = !s_sidebar_focused && row == focused_row;
-				fill(346, y, 1470, 78, focused ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 235), 10);
+				fill(346, y, 1470, 72, focused ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 235), 10);
 				if (focused)
-					draw->AddRect(point(346, y), point(1816, y + 78), accent, 10 * scale, 2.0f * scale, 0);
-				text(380, y + 34, 23, white, SettingLabel(row));
-				text(380, y + 62, 16, muted, SettingHelp(row));
+					draw->AddRect(point(346, y), point(1816, y + 72), accent, 10 * scale, 2.0f * scale, 0);
+				text(380, y + 31, 22, white, SettingLabel(row));
+				text(380, y + 57, 15, muted, SettingHelp(row));
 				char value[64];
 				SettingValue(s_settings_gs, row, value, sizeof(value));
 				char shown[96];
 				std::snprintf(shown, sizeof(shown), focused ? "<  %s  >" : "%s", value);
 				const float width = font->CalcTextSizeA(25.0f * scale, FLT_MAX, 0, shown).x / scale;
-				text(1786 - width, y + 48, 25, focused ? white : accent, shown);
+				text(1786 - width, y + 44, 25, focused ? white : accent, shown);
 			}
 		}
 		for (size_t slot = 0; !disc_view && !settings_view && slot < VisibleItems && first + slot < s_items.size(); ++slot)

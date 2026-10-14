@@ -601,6 +601,14 @@ public:
 	// timeout_ns: 0 polls, UINT64_MAX blocks. Returns true when no flip remains deferred.
 	bool PS4CompleteDeferredFlip(u64 timeout_ns);
 	bool PS4HasDeferredFlip() const { return m_ps4_flip_deferred; }
+	// Forja SX2: frame generation (AMD FSR3 frame interpolation, ported from PS5SX2; ps4/core/framegen). Record, at a
+	// present, for a new frame of the game: draws it as the present would into the interpolator's frame and makes the frame
+	// between it and the last one; returns how many presents of the generated frame should go before the game's (0: none).
+	// Draw: between BeginPresent and EndPresent, the generated frame over the whole screen. Release: before the device goes.
+	u32 OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv, const GSVector4& draw_rect, PresentShader shader,
+		float shader_time, Filter filter, u32 vsyncs, u32 already, double ps2_hz, float speed, bool nominal);
+	void OrbisFrameGenDraw();
+	void OrbisFrameGenRelease();
 #endif
 
 	bool SetGPUTimingEnabled(bool enabled) override;

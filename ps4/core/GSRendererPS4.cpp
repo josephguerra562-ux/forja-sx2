@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <deque>
 #include <thread>
 #include <mutex>
@@ -610,11 +611,67 @@ void GSRenderer::EndPresentFrame()
 	ImGuiManager::NewFrame();
 }
 
+// Forja SX2: hitch report. On the console a scene change in Mega Man X Command Mission showed one slow
+// frame (50-70 ms) and the 5 s averages could not say why. Every vsync whose gap to the previous one is
+// over 50 ms logs what happened meanwhile: EE blocks compiled (new game code), EE recompiler resets
+// (video mode, settings), Vulkan pipelines created (new effects) and disc data read. A paused VM sends no
+// vsyncs, so the first one after a pause is skipped.
+extern void ProbeLog(const char* format, ...);
+extern std::atomic<u32> g_orbis_rec_compiles, g_orbis_rec_full_resets; // pcsx2/x86/ix86-32/iR5900.cpp
+u32 g_forja_pipelines_created = 0; // GSDeviceVK::CreateTFXPipeline, GS thread only
+std::atomic<u64> g_forja_disc_bytes{0}; // ThreadedFileReader, reader thread
+std::atomic<u64> g_forja_gs_vsyncs{0}; // every GS vsync; the watchdog in main.cpp checks it moves
+
+// Forja SX2: frame generation (GSDeviceVK.cpp's block from PS5SX2). Its clock is the PS2's vsyncs: while generated frames have
+// room (g_orbis_fg_engaged), a vsync that only repeats the game's last frame presents nothing, since the generated frame was
+// presented in its place; at a new frame the generated one goes first and the game's own on the next refresh.
+extern bool g_orbis_fg_wanted;
+extern bool g_orbis_fg_engaged;
+u32 OrbisVkFrameGenRecord(GSTexture* current, const GSVector4& src_uv, const GSVector4& draw_rect, PresentShader shader, float shader_time,
+	Filter filter, u32 vsyncs, u32 already, double ps2_hz, float speed, bool nominal);
+void OrbisVkFrameGenDraw();
+extern double GetVerticalFrequency();
+static u32 s_orbis_fg_vsyncs = 0;
+static u32 s_orbis_fg_presents = 0;
+
+static void ForjaReportHitch()
+{
+	static Common::Timer::Value s_last = 0;
+	static u32 s_compiles = 0, s_resets = 0, s_pipelines = 0;
+	static u64 s_disc = 0;
+	static unsigned s_reported = 0;
+	g_forja_gs_vsyncs.fetch_add(1, std::memory_order_relaxed);
+	const Common::Timer::Value now = Common::Timer::GetCurrentValue();
+	const u32 compiles = g_orbis_rec_compiles.load(std::memory_order_relaxed);
+	const u32 resets = g_orbis_rec_full_resets.load(std::memory_order_relaxed);
+	const u64 disc = g_forja_disc_bytes.load(std::memory_order_relaxed);
+	if (s_last != 0)
+	{
+		const double gap_ms = Common::Timer::ConvertValueToMilliseconds(now - s_last);
+		// 50..2000 ms: a hitch. Longer gaps are a pause, a loading screen with no vsyncs, or the menu.
+		if (gap_ms > 50.0 && gap_ms < 2000.0 && VMManager::GetState() == VMState::Running && s_reported < 2000)
+		{
+			++s_reported;
+			ProbeLog("Hitch: frame_gap_ms=%.0f ee_blocks_compiled=%u ee_rec_resets=%u pipelines_created=%u disc_kb=%llu\n",
+				gap_ms, compiles - s_compiles, resets - s_resets, g_forja_pipelines_created - s_pipelines,
+				static_cast<unsigned long long>((disc - s_disc) / 1024));
+		}
+	}
+	s_last = now;
+	s_compiles = compiles;
+	s_resets = resets;
+	s_pipelines = g_forja_pipelines_created;
+	s_disc = disc;
+}
+
 void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 {
 	// The PS4 POC starts with the Null renderer and has no presentation device yet.
 	if (!g_gs_device)
 		return;
+	ForjaReportHitch();
+	s_orbis_fg_vsyncs++; // frame generation's clock: a PS2 vsync each call
+	const bool fg_skips_repeats = g_orbis_fg_wanted && g_orbis_fg_engaged;
 
 #if !defined(PCSX2_GS_RENDERER_PROBE)
 	if (GSConfig.ShouldDump(s_n, g_perfmon.GetFrame()))
@@ -643,7 +700,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 #endif
 	bool skip_frame = false;
 #if !defined(PCSX2_GS_RENDERER_PROBE)
-	if (GSConfig.SkipDuplicateFrames && !GSCapture::IsCapturingVideo())
+	if ((GSConfig.SkipDuplicateFrames || fg_skips_repeats) && !GSCapture::IsCapturingVideo())
 	{
 		bool is_unique_frame;
 		switch (PerformanceMetrics::GetInternalFPSMethod())
@@ -735,6 +792,46 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 			}
 		}
 
+#if !defined(PCSX2_GS_RENDERER_PROBE)
+		// Forja SX2: frame generation. For a new frame of the game, the frame between it and the last one is made and
+		// presented first (the pacing decides how many refreshes it gets); the game's own frame follows below.
+		bool fg_new_frame = true;
+		switch (PerformanceMetrics::GetInternalFPSMethod())
+		{
+			case PerformanceMetrics::InternalFPSMethod::GSPrivilegedRegister:
+				fg_new_frame = registers_written;
+				break;
+			case PerformanceMetrics::InternalFPSMethod::DISPFBBlit:
+				fg_new_frame = fb_sprite_frame;
+				break;
+			default:
+				break;
+		}
+		if (current && !blank_frame && g_orbis_fg_wanted && fg_new_frame)
+		{
+			const float fg_time = static_cast<float>(
+				Common::Timer::ConvertValueToSeconds(Common::Timer::GetCurrentValue() - m_shader_time_start));
+			const u32 fg_vsyncs = s_orbis_fg_vsyncs;
+			const u32 fg_already = s_orbis_fg_presents;
+			s_orbis_fg_vsyncs = 0;
+			s_orbis_fg_presents = 0;
+			const float fg_target = VMManager::GetTargetSpeed();
+			const bool fg_nominal = VMManager::GetLimiterMode() == LimiterModeType::Nominal && fg_target > 0.5f && fg_target < 1.05f &&
+			                        !GSCapture::IsCapturingVideo();
+			const float fg_speed = fg_target > 0.0f ? PerformanceMetrics::GetSpeed() / fg_target : PerformanceMetrics::GetSpeed();
+			const u32 generated_presents = OrbisVkFrameGenRecord(current, src_uv, draw_rect, s_tv_shader_indices[GSConfig.TVShader],
+				fg_time, BilnIf(GSConfig.LinearPresent != GSPostBilinearMode::Off), fg_vsyncs, fg_already, GetVerticalFrequency(),
+				fg_speed, fg_nominal);
+			for (u32 i = 0; i < generated_presents; i++)
+			{
+				if (!BeginPresentFrame(false))
+					break;
+				OrbisVkFrameGenDraw();
+				EndPresentFrame();
+			}
+		}
+#endif
+
 		if (BeginPresentFrame(false))
 		{
 			if (current && !blank_frame)
@@ -747,6 +844,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 			}
 
 			EndPresentFrame();
+			s_orbis_fg_presents++; // a refresh of this interval used (frame generation's budget)
 
 			const float gpu_time = g_gs_device->GetAndResetAccumulatedGPUTime();
 			GPUPipelineStatistics gpu_stats = g_gs_device->GetAndResetAccumulatedGPUPipelineStatistics();

@@ -17,6 +17,13 @@
 
 #include <math.h>
 
+#if defined(PCSX2_PS4_VM_BOOT)
+#include "common/Timer.h"
+// Forja SX2: SPU2 mixing cost, EE thread only (written here, read and reset by the VM heartbeat).
+u64 g_forja_spu2_calls = 0;
+u64 g_forja_spu2_sampled_ticks = 0;
+#endif
+
 /* Config.PsxType == 1: PAL:
 	 VBlank interlaced		50.00 Hz
 	 VBlank non-interlaced	49.76 Hz
@@ -482,7 +489,22 @@ void psxRcntUpdate()
 	const u32 spu2_delta = (psxRegs.cycle - lClocks) % 768;
 	psxCounters[6].startCycle = psxRegs.cycle - spu2_delta;
 	psxCounters[6].deltaCycles = psxCounters[6].rate;
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2: how much of the EE thread the PS2's sound mixing takes (it runs inline here). One call in
+	// 16 is timed and counted 16 times; the VM heartbeat in main.cpp logs it and resets it.
+	if ((++g_forja_spu2_calls & 15) == 0)
+	{
+		const Common::Timer::Value spu2_start = Common::Timer::GetCurrentValue();
+		SPU2async();
+		g_forja_spu2_sampled_ticks += (Common::Timer::GetCurrentValue() - spu2_start) * 16;
+	}
+	else
+	{
+		SPU2async();
+	}
+#else
 	SPU2async();
+#endif
 	psxNextDeltaCounter = psxCounters[6].deltaCycles;
 
 	DEV9async(1);    

@@ -12,6 +12,8 @@
 #include "common/Threading.h"
 #if defined(PCSX2_PS4_VM_BOOT)
 #include "ps4/core/ThreadAffinityPS4.h"
+#include <atomic>
+extern std::atomic<u64> g_forja_disc_bytes; // ps4/core/GSRendererPS4.cpp
 #endif
 
 #include <cstring>
@@ -96,6 +98,10 @@ void ThreadedFileReader::Loop()
 
 			if (ptr)
 				ok = Decompress(ptr, requestOffset, requestSize);
+#if defined(PCSX2_PS4_VM_BOOT)
+			// Forja SX2: bytes the game asked for, read by the GS thread's hitch report.
+			g_forja_disc_bytes.fetch_add(requestSize, std::memory_order_relaxed);
+#endif
 
 			// There's a potential for a race here when doing synchronous reads. Basically, another request can come in,
 			// after we release the lock, but before we store null to indicate we're finished. So, we do a compare-exchange

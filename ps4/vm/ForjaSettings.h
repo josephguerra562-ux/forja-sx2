@@ -30,6 +30,8 @@ namespace ForjaSettings
 		int readback = 0;
 		// Automatic video mode: while a game decodes a movie, run the EE at 50 % (EECycleRate -3).
 		bool video_mode = true;
+		// Frame generation (AMD FSR3 interpolation): a game steady at 30 fps is shown at 60. Off until tested on the console.
+		bool frame_gen = false;
 		bool from_file = false;
 	};
 
@@ -75,6 +77,8 @@ namespace ForjaSettings
 				v.readback = value;
 			else if (!std::strcmp(key, "video_mode"))
 				v.video_mode = value != 0;
+			else if (!std::strcmp(key, "frame_gen"))
+				v.frame_gen = value != 0;
 		}
 		std::fclose(file);
 		return Clamp(v);
@@ -90,9 +94,10 @@ namespace ForjaSettings
 			return false;
 		std::fprintf(file,
 			"; Forja SX2: ajustes para todos los juegos (pestaña Ajustes de la biblioteca)\n"
-			"ee_rate=%d\nupscale=%d\naspect=%d\noverlay=%d\nstick=%d\nfast_cdvd=%d\nfast_boot=%d\nreadback=%d\nvideo_mode=%d\n",
+			"ee_rate=%d\nupscale=%d\naspect=%d\noverlay=%d\nstick=%d\nfast_cdvd=%d\nfast_boot=%d\nreadback=%d\nvideo_mode=%d\n"
+			"frame_gen=%d\n",
 			v.ee_rate, v.upscale, v.aspect, v.overlay ? 1 : 0, v.stick, v.fast_cdvd ? 1 : 0, v.fast_boot ? 1 : 0,
-			v.readback, v.video_mode ? 1 : 0);
+			v.readback, v.video_mode ? 1 : 0, v.frame_gen ? 1 : 0);
 		const bool written = std::fclose(file) == 0;
 		return written && std::rename(temporary, Path) == 0;
 	}

@@ -54,6 +54,7 @@ set(gs_sources
   pcsx2/GS/Renderers/HW/GSTextureReplacements.cpp pcsx2/GS/Renderers/HW/GSTextureReplacementLoaders.cpp
   pcsx2/GS/Renderers/SW/GSTextureCacheSW.cpp
   ps4/core/GSRendererPS4.cpp ps4/core/GSProcessorPS4.cpp
+  ps4/core/framegen/ps5_framegen.cpp
   pcsx2/MTGS.cpp pcsx2/Gif_Unit.cpp pcsx2/Gif.cpp common/Semaphore.cpp common/Linux/LnxThreads.cpp
   pcsx2/Dmac.cpp pcsx2/Hw.cpp pcsx2/R5900.cpp
   pcsx2/vtlb.cpp pcsx2/R5900OpcodeImpl.cpp pcsx2/R5900OpcodeTables.cpp pcsx2/Interpreter.cpp
