@@ -28,6 +28,8 @@ namespace ForjaSettings
 		bool fast_boot = true;
 		// GPU readbacks: 0 accurate (waits for the GPU), 1 don't wait (Unsynchronized), 2 none (NoReadbacks).
 		int readback = 0;
+		// Automatic video mode: while a game decodes a movie, run the EE at 50 % (EECycleRate -3).
+		bool video_mode = true;
 		bool from_file = false;
 	};
 
@@ -71,6 +73,8 @@ namespace ForjaSettings
 				v.fast_boot = value != 0;
 			else if (!std::strcmp(key, "readback"))
 				v.readback = value;
+			else if (!std::strcmp(key, "video_mode"))
+				v.video_mode = value != 0;
 		}
 		std::fclose(file);
 		return Clamp(v);
@@ -86,9 +90,9 @@ namespace ForjaSettings
 			return false;
 		std::fprintf(file,
 			"; Forja SX2: ajustes para todos los juegos (pestaña Ajustes de la biblioteca)\n"
-			"ee_rate=%d\nupscale=%d\naspect=%d\noverlay=%d\nstick=%d\nfast_cdvd=%d\nfast_boot=%d\nreadback=%d\n",
+			"ee_rate=%d\nupscale=%d\naspect=%d\noverlay=%d\nstick=%d\nfast_cdvd=%d\nfast_boot=%d\nreadback=%d\nvideo_mode=%d\n",
 			v.ee_rate, v.upscale, v.aspect, v.overlay ? 1 : 0, v.stick, v.fast_cdvd ? 1 : 0, v.fast_boot ? 1 : 0,
-			v.readback);
+			v.readback, v.video_mode ? 1 : 0);
 		const bool written = std::fclose(file) == 0;
 		return written && std::rename(temporary, Path) == 0;
 	}

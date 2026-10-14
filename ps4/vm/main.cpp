@@ -147,6 +147,18 @@ static unsigned s_max_game_upscale = 1;
 static unsigned s_game_aspect = 1;
 static bool s_game_show_performance_overlay = true;
 static int s_game_ee_rate = -1;
+// Forja SX2: automatic video mode state (see UpdateVideoMode).
+extern u64 g_forja_ipu_decodes; // pcsx2/IPU/IPU.cpp: IDEC/BDEC commands since boot
+static bool s_video_mode_enabled = true;
+static bool s_video_active = false;
+static int s_video_saved_rate = 0;
+static u64 s_video_last_decodes = 0;
+static double s_video_last_check = 0.0;
+static double s_video_last_busy = -100.0;
+static double s_video_since = 0.0;
+static unsigned s_video_busy_checks = 0;
+static constexpr int VIDEO_EE_RATE = -3;
+static constexpr double VIDEO_DECODES_PER_SECOND = 2000.0; // a movie: tens of thousands; gameplay: ~0
 static u32 s_game_menu_direction = 0;
 static double s_game_menu_next_repeat = 0.0;
 static std::atomic<bool> s_return_to_main_menu{false};
@@ -328,9 +340,73 @@ static void ApplyGameEECycleRate(int rate)
 	EmuConfig.CurrentAspectRatio = EmuConfig.GS.AspectRatio;
 	MTGS::ApplySettings();
 	MTGS::WaitGS(false, false, false);
+	s_video_active = false; // ReloadGameSettings rebuilt EmuConfig; video mode re-arms if a movie is still on
 	s_game_ee_rate = EmuConfig.Speedhacks.EECycleRate;
 	ProbeLog("EE cycle rate: requested=%d active=%d saved=%d reloaded=%d file=%s\n", rate, s_game_ee_rate,
 		saved ? 1 : 0, reloaded ? 1 : 0, path.c_str());
+}
+
+// Forja SX2: automatic video mode. Measured on a PS4 Pro with Mega Man X Command Mission: during a movie
+// the EE thread was the limit (game code polling the IPU ~130k times a second, plus IOP/SPU2, DMA and IPU
+// work), and the intro ran at 55 % speed with EECycleRate 0, 66-72 % with -1 and ~83 % with -3, while
+// gameplay ran fine at any of them. So while the game decodes pictures at a movie's pace the EE runs at
+// 50 %, and the game's own rate comes back when the movie ends. The rate is baked into recompiled EE
+// blocks, so each switch resets the EE recompiler (recResetEE defers that to a safe point).
+
+static void UpdateVideoMode(double elapsed)
+{
+	if (!s_video_mode_enabled || elapsed - s_video_last_check < 0.5)
+		return;
+	const double interval = elapsed - s_video_last_check;
+	s_video_last_check = elapsed;
+	const u64 decodes = g_forja_ipu_decodes;
+	const double per_second = static_cast<double>(decodes - s_video_last_decodes) / interval;
+	s_video_last_decodes = decodes;
+	if (per_second >= VIDEO_DECODES_PER_SECOND)
+	{
+		s_video_last_busy = elapsed;
+		++s_video_busy_checks;
+	}
+	else
+	{
+		s_video_busy_checks = 0;
+	}
+
+	// On after two busy checks in a row (~1 s of movie); off 2 s after the last busy check, and never
+	// sooner than 3 s after switching on, so short decode bursts (loading screens) don't flip it back and forth.
+	bool want = s_video_active;
+	if (!s_video_active && s_video_busy_checks >= 2)
+		want = true;
+	else if (s_video_active && elapsed - s_video_last_busy >= 2.0 && elapsed - s_video_since >= 3.0)
+		want = false;
+	if (want == s_video_active)
+		return;
+
+	if (want)
+	{
+		s_video_saved_rate = EmuConfig.Speedhacks.EECycleRate;
+		s_video_since = elapsed;
+		s_video_active = true;
+		if (s_video_saved_rate <= VIDEO_EE_RATE)
+		{
+			ProbeLog("Video mode: movie detected (%.0f decodes/s), EE rate already %d\n", per_second, s_video_saved_rate);
+			return;
+		}
+		EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(VIDEO_EE_RATE);
+	}
+	else
+	{
+		s_video_active = false;
+		if (EmuConfig.Speedhacks.EECycleRate == s_video_saved_rate)
+		{
+			ProbeLog("Video mode: movie ended, EE rate unchanged (%d)\n", s_video_saved_rate);
+			return;
+		}
+		EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(s_video_saved_rate);
+	}
+	Cpu->Reset();
+	ProbeLog("Video mode: %s (%.0f decodes/s), EE rate now %d (game's own %d)\n", want ? "ON" : "OFF", per_second,
+		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), s_video_saved_rate);
 }
 
 void VMHostPoll()
@@ -361,6 +437,8 @@ void VMHostPoll()
 		return;
 	s_last_input = elapsed;
 	PS4ThreadCPUMetrics::Sample(PS4ThreadCPUMetrics::Role::EE);
+	if (!is_paused_menu)
+		UpdateVideoMode(elapsed);
 	// (AI-assisted) Verbose 1s heartbeat when paused/menu open, 5s otherwise. Needs proper testing.
 	const bool should_log_heartbeat = s_verbose_diag ?
 		(s_game_menu_open || vm_state == VMState::Paused ? (elapsed - s_last_log >= 1.0) : (elapsed - s_last_log >= 2.0)) :
@@ -473,7 +551,7 @@ void VMHostPoll()
 	{
 		s_game_menu_open = true;
 		s_game_menu_selection = 0;
-		s_game_ee_rate = EmuConfig.Speedhacks.EECycleRate;
+		s_game_ee_rate = s_video_active ? s_video_saved_rate : EmuConfig.Speedhacks.EECycleRate;
 		s_game_menu_direction = 0;
 		s_game_menu_next_repeat = elapsed;
 	}
@@ -891,11 +969,12 @@ static void* RunVM(void*)
 		settings->SetBoolValue("EmuCore", "EnableFastBootFastForward", fast_boot);
 		s_game_show_performance_overlay = chosen.overlay && access("/data/ForjaSX2/vm-hide-stats", F_OK) != 0;
 		ApplyPerformanceOverlay();
+		s_video_mode_enabled = chosen.video_mode;
 		VMManager::ApplySettings();
 		ProbeLog("Forja settings at game start: file=%d ee_rate=%d upscale=%dx aspect=%d overlay=%d stick=%d fast_cdvd=%d "
-				 "fast_boot=%d readback=%d\n",
+				 "fast_boot=%d readback=%d video_mode=%d\n",
 			chosen.from_file ? 1 : 0, chosen.ee_rate, chosen.upscale, chosen.aspect, chosen.overlay ? 1 : 0, chosen.stick,
-			chosen_fast_cdvd ? 1 : 0, fast_boot ? 1 : 0, chosen.readback);
+			chosen_fast_cdvd ? 1 : 0, fast_boot ? 1 : 0, chosen.readback, chosen.video_mode ? 1 : 0);
 	}
 	if (platform == GamePlatform::PS1)
 	{

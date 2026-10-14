@@ -512,6 +512,11 @@ static void ipuSETTH(u32 val)
 //  IPU Worker / Dispatcher
 // --------------------------------------------------------------------------------------
 
+// Forja SX2: picture decode commands (IDEC/BDEC) issued since boot, read once in a while by the PS4
+// frontend's automatic video mode. A game playing a movie issues thousands a second; gameplay almost none.
+// Written and read on the EE thread only.
+u64 g_forja_ipu_decodes = 0;
+
 // When a command is written, we set some various busy flags and clear some other junk.
 // The actual decoding will be handled by IPUworker.
 __fi void IPUCMD_WRITE(u32 val)
@@ -540,12 +545,14 @@ __fi void IPUCMD_WRITE(u32 val)
 			return;
 
 		case SCE_IPU_IDEC:
+			++g_forja_ipu_decodes;
 			g_BP.Advance(val & 0x3F);
 			ipuIDEC(val);
 			ipuRegs.SetTopBusy();
 			break;
 
 		case SCE_IPU_BDEC:
+			++g_forja_ipu_decodes;
 			g_BP.Advance(val & 0x3F);
 			ipuBDEC(val);
 			ipuRegs.SetTopBusy();
