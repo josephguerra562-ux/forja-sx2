@@ -12,6 +12,7 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "GameMenu.h"
+#include "ForjaSettings.h"
 #include <algorithm>
 #include <cfloat>
 #include <cstdio>
@@ -117,8 +118,9 @@ namespace ImGuiManager
 		// (AI-assisted) The BIOS owns the display; ImGui supplies only the renderer context.
 		ProbeLog("STAGE: ImGui context creation\n");
 		ImGui::CreateContext();
-		s_show_performance_hud = access("/data/ForjaSX2/vm-hide-stats", F_OK) != 0;
-		ProbeLog("Performance HUD: %s\n", s_show_performance_hud ? "enabled" : "hidden by marker");
+		// Forja SX2: the Settings page's "FPS counter" choice, unless the old hide marker is present.
+		s_show_performance_hud = access("/data/ForjaSX2/vm-hide-stats", F_OK) != 0 && ForjaSettings::Load().overlay;
+		ProbeLog("Performance HUD: %s\n", s_show_performance_hud ? "enabled" : "hidden (marker or Settings page)");
 		auto& io = ImGui::GetIO();
 		io.IniFilename = nullptr;
 		io.DisplaySize = ImVec2(1920, 1080);

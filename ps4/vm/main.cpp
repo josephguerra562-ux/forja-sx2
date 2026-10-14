@@ -39,6 +39,7 @@
 #include "ps4/core/GSProfilePS4.h"
 #include "HostPollGate.h"
 #include "GameMenu.h"
+#include "ForjaSettings.h"
 #include "SessionLogs.h"
 #include "ps4/core/WorkerProfilePS4.h"
 
@@ -170,6 +171,7 @@ static float s_stick_scale = 1.33f;
 
 static void LoadStickSensitivity()
 {
+	s_stick_scale = static_cast<float>(ForjaSettings::Load().stick) / 100.0f;
 	if (std::FILE* file = std::fopen("/data/ForjaSX2/sensibilidad.txt", "r"))
 	{
 		int percent = 0;
@@ -683,6 +685,15 @@ static void* RunVM(void*)
 		ee_cycle_rate = -2;
 	else if (access("/data/ForjaSX2/vm-ee-cycle-mild", F_OK) == 0)
 		ee_cycle_rate = -1;
+	// Forja SX2: the launcher's Settings page (ajustes.ini) sets the default for every game once it has
+	// been saved; a game's own gamesettings ini still overrides it.
+	const ForjaSettings::Values forja = ForjaSettings::Load();
+	if (forja.from_file)
+		ee_cycle_rate = forja.ee_rate;
+	s_game_show_performance_overlay = forja.overlay && access("/data/ForjaSX2/vm-hide-stats", F_OK) != 0;
+	ProbeLog("Forja settings: file=%d ee_rate=%d upscale=%dx aspect=%d overlay=%d stick=%d fast_cdvd=%d fast_boot=%d\n",
+		forja.from_file ? 1 : 0, forja.ee_rate, forja.upscale, forja.aspect, forja.overlay ? 1 : 0, forja.stick,
+		forja.fast_cdvd ? 1 : 0, forja.fast_boot ? 1 : 0);
 	settings->SetIntValue("EmuCore/Speedhacks", "EECycleRate", ee_cycle_rate);
 	// (AI-assisted) Fase 3-A reverted: EECycleSkip=1 gave -1.2pp on GoW FMV (32.8ms vs 31.4ms) and no gain on GTA.
 	// Reverted to 0 (opt-in via /data/ForjaSX2/vm-ee-cycle-skip only). Needs proper testing.
@@ -703,13 +714,14 @@ static void* RunVM(void*)
 	settings->SetBoolValue("EmuCore/Speedhacks", "vuFlagHack", true);
 	settings->SetBoolValue("EmuCore/Speedhacks", "IntcStat", true);
 	settings->SetBoolValue("EmuCore/Speedhacks", "WaitLoop", true);
-	const bool fast_cdvd = access("/data/ForjaSX2/vm-fast-cdvd", F_OK) == 0 &&
+	const bool fast_cdvd = (access("/data/ForjaSX2/vm-fast-cdvd", F_OK) == 0 || forja.fast_cdvd) &&
 	                       access("/data/ForjaSX2/vm-no-fast-cdvd", F_OK) != 0;
 	settings->SetBoolValue("EmuCore/Speedhacks", "fastCDVD", fast_cdvd);
 	ProbeLog("CDVD timing: %s\n", fast_cdvd ? "accelerated by opt-in marker" : "normal (compatibility default)");
 	// (AI-assisted) Let the backend choose the compiled renderer; on this PS4 build that is Vulkan.
 	settings->SetIntValue("EmuCore/GS", "Renderer", static_cast<int>(GSRendererType::VK));
-	settings->SetFloatValue("EmuCore/GS", "upscale_multiplier", 1.0f);
+	settings->SetFloatValue("EmuCore/GS", "upscale_multiplier", static_cast<float>(forja.upscale));
+	settings->SetStringValue("EmuCore/GS", "AspectRatio", Pcsx2Config::GSOptions::AspectRatioNames[forja.aspect]);
 	const bool disable_shader_cache = access("/data/ForjaSX2/vm-no-shader-cache", F_OK) == 0;
 	settings->SetBoolValue("EmuCore/GS", "DisableShaderCache", disable_shader_cache);
 	settings->SetBoolValue("EmuCore/GS", "HWSpinGPUForReadbacks", false);
@@ -730,7 +742,7 @@ static void* RunVM(void*)
 	settings->SetIntValue("EmuCore/GS", "VsyncQueueSize", 2);
 	// (AI-assisted) Skip the PS2 BIOS animation and fast-forward only the
 	// emulator's boot phase. The game's own logos and loading still run normally.
-	bool fast_boot = access("/data/ForjaSX2/vm-no-fast-boot", F_OK) != 0;
+	bool fast_boot = access("/data/ForjaSX2/vm-no-fast-boot", F_OK) != 0 && forja.fast_boot;
 	settings->SetBoolValue("EmuCore", "EnableFastBoot", fast_boot);
 	settings->SetBoolValue("EmuCore", "EnableFastBootFastForward", fast_boot);
 	settings->SetBoolValue("EmuCore", "EnablePINE", false);

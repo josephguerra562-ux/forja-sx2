@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0+
 // (AI-assisted) Uses the same Vulkan/ImGui presentation as the in-game HUD.
 #include "GameMenu.h"
+#include "ForjaSettings.h"
 #include "InGameMenuState.h"
 #include "PhysicalDisc.h"
 #include "CoverDownload.h"
@@ -126,6 +127,83 @@ namespace PS4GameMenu
 		bool s_exit_dialog_visible = false;
 		bool s_exit_confirm = false;
 		LibraryView s_library_view = LibraryView::Library;
+		// Forja SX2: the Settings page. The CPU thread owns the values; the GS thread draws this copy.
+		ForjaSettings::Values s_settings_gs;
+		unsigned s_settings_row_gs = 0;
+		constexpr unsigned SettingsRows = 7;
+
+		const char* SettingLabel(unsigned row)
+		{
+			static constexpr const char* labels[SettingsRows] = {
+				"Velocidad del CPU de la PS2", "Resolución interna", "Relación de aspecto", "Contador de FPS al jugar",
+				"Sensibilidad de la palanca", "Cargas rápidas del disco", "Saltar el logo de la PS2"};
+			return labels[std::min(row, SettingsRows - 1)];
+		}
+
+		const char* SettingHelp(unsigned row)
+		{
+			static constexpr const char* help[SettingsRows] = {
+				"Menos % = más FPS en la PS4. Cada juego puede tener la suya desde L3+R3 (esa manda)",
+				"1x es la de la PS2. En PS4 Pro aguanta 2x-4x en juegos ligeros",
+				"Auto respeta lo que pide el juego",
+				"Muestra FPS y velocidad arriba a la derecha (se cambia también en L3+R3)",
+				"Qué tanto hay que empujar la palanca para llegar al tope. 133 % es como el PCSX2 de PC",
+				"Acorta las cargas. Algunos juegos se cuelgan con esto: si pasa, apágalo",
+				"Arranca directo el juego, sin la animación de la PS2"};
+			return help[std::min(row, SettingsRows - 1)];
+		}
+
+		void SettingValue(const ForjaSettings::Values& v, unsigned row, char* out, size_t size)
+		{
+			static constexpr const char* ee_names[] = {"50 %", "60 %", "75 %", "100 % (PS2 real)", "130 %", "180 %", "300 %"};
+			static constexpr const char* aspect_names[] = {"Estirar", "Auto", "4:3", "16:9", "10:7"};
+			switch (row)
+			{
+				case 0: std::snprintf(out, size, "%s", ee_names[std::clamp(v.ee_rate, -3, 3) + 3]); break;
+				case 1: std::snprintf(out, size, "%dx%s", v.upscale, v.upscale == 1 ? " (nativa)" : ""); break;
+				case 2: std::snprintf(out, size, "%s", aspect_names[std::clamp(v.aspect, 0, 4)]); break;
+				case 3: std::snprintf(out, size, "%s", v.overlay ? "Sí" : "No"); break;
+				case 4: std::snprintf(out, size, "%d %%", v.stick); break;
+				case 5: std::snprintf(out, size, "%s", v.fast_cdvd ? "Sí" : "No"); break;
+				default: std::snprintf(out, size, "%s", v.fast_boot ? "Sí" : "No"); break;
+			}
+		}
+
+		// delta -1/+1 from Left/Right; X passes +1 with wrap so it cycles through the choices.
+		void ChangeSetting(ForjaSettings::Values& v, unsigned row, int delta, bool wrap)
+		{
+			const auto step = [&](int value, int lo, int hi) {
+				const int next = value + delta;
+				if (wrap && next > hi)
+					return lo;
+				return std::clamp(next, lo, hi);
+			};
+			switch (row)
+			{
+				case 0: v.ee_rate = step(v.ee_rate, -3, 3); break;
+				case 1: v.upscale = step(v.upscale, 1, 4); break;
+				case 2: v.aspect = step(v.aspect, 0, 4); break;
+				case 3: v.overlay = !v.overlay; break;
+				case 4:
+				{
+					int index = 0;
+					while (index + 1 < ForjaSettings::StickStepCount && ForjaSettings::StickSteps[index] < v.stick)
+						++index;
+					v.stick = ForjaSettings::StickSteps[step(index, 0, ForjaSettings::StickStepCount - 1)];
+					break;
+				}
+				case 5: v.fast_cdvd = !v.fast_cdvd; break;
+				default: v.fast_boot = !v.fast_boot; break;
+			}
+		}
+
+		void PublishSettings(const ForjaSettings::Values& values, unsigned row)
+		{
+			MTGS::RunOnGSThread([values, row]() {
+				s_settings_gs = values;
+				s_settings_row_gs = row;
+			});
+		}
 		bool s_loading_visible = false;
 		bool s_loading_carousel = false;
 		unsigned s_loading_progress = 0;
@@ -397,7 +475,7 @@ namespace PS4GameMenu
 				const char* message = view == LibraryView::Disc      ? "No se detectó ningún disco" :
 				                      view == LibraryView::Recent    ? "No hay juegos recientes" :
 				                      view == LibraryView::Favorites ? "No hay juegos favoritos" :
-				                      view == LibraryView::Settings  ? "Los ajustes llegan pronto" :
+				                      view == LibraryView::Settings  ? "Ajustes de Forja SX2 (para todos los juegos)" :
 				                                                       "No se encontraron juegos";
 				items.push_back({message, {}, {}, false});
 			}
@@ -689,6 +767,16 @@ namespace PS4GameMenu
 		bool exit_dialog_visible = false;
 		bool exit_confirm = false;
 		std::string status;
+		// Forja SX2: Settings page state. Every change is saved at once (ajustes.ini) and used by the next game.
+		ForjaSettings::Values settings = ForjaSettings::Load();
+		unsigned settings_row = 0;
+		PublishSettings(settings, settings_row);
+		const auto change_setting = [&](int delta, bool wrap) {
+			ChangeSetting(settings, settings_row, delta, wrap);
+			status = ForjaSettings::Save(settings) ? "Guardado. Se aplica al iniciar el próximo juego." :
+			                                         "No se pudieron guardar los ajustes.";
+			PublishSettings(settings, settings_row);
+		};
 		DiscProbe disc_probe;
 		DiscCoverDownload disc_cover;
 		DiscCoverDownload library_cover;
@@ -731,6 +819,12 @@ namespace PS4GameMenu
 			{
 				if (!disc_probe.active) probe_disc(false);
 				else status = "Revisando el DVD...";
+			}
+			else if (view == LibraryView::Settings)
+			{
+				settings = ForjaSettings::Load();
+				settings_row = 0;
+				PublishSettings(settings, settings_row);
 			}
 		};
 		// Library refreshes now begin a serialized cover queue. The UI remains
@@ -844,6 +938,14 @@ namespace PS4GameMenu
 				Threading::Sleep(16);
 				continue;
 			}
+			if ((pressed & ORBIS_PAD_BUTTON_CIRCLE) && view == LibraryView::Settings && !sidebar_focused)
+			{
+				// Forja SX2: Circle leaves the Settings list for the sidebar instead of asking to exit.
+				sidebar_focused = true;
+				Present(selected, status, connected, sidebar_focused, false, false);
+				Threading::Sleep(16);
+				continue;
+			}
 			if (pressed & ORBIS_PAD_BUTTON_CIRCLE)
 			{
 				boot_disc_when_ready = false;
@@ -906,6 +1008,18 @@ namespace PS4GameMenu
 					else if (navigation == ORBIS_PAD_BUTTON_RIGHT)
 						sidebar_focused = false;
 				}
+				else if (view == LibraryView::Settings)
+				{
+					if (navigation == ORBIS_PAD_BUTTON_UP && settings_row > 0)
+						--settings_row;
+					else if (navigation == ORBIS_PAD_BUTTON_DOWN && settings_row + 1 < SettingsRows)
+						++settings_row;
+					else if (navigation == ORBIS_PAD_BUTTON_LEFT)
+						change_setting(-1, false);
+					else if (navigation == ORBIS_PAD_BUTTON_RIGHT)
+						change_setting(1, false);
+					PublishSettings(settings, settings_row);
+				}
 				else
 				{
 					const size_t column = selected % GridColumns;
@@ -923,7 +1037,8 @@ namespace PS4GameMenu
 						selected = std::min(selected + GridColumns, items.size() - 1);
 				}
 				next_repeat = now + (navigation == held_direction ? 0.10 : 0.35);
-				status.clear();
+				if (view != LibraryView::Settings || sidebar_focused)
+					status.clear();
 			}
 			held_direction = navigation;
 			if ((pressed & ORBIS_PAD_BUTTON_SQUARE) && !sidebar_focused && view != LibraryView::Disc)
@@ -951,6 +1066,14 @@ namespace PS4GameMenu
 				if (sidebar_focused)
 				{
 					sidebar_focused = false;
+					continue;
+				}
+				if (view == LibraryView::Settings)
+				{
+					// Forja SX2: X moves the selected setting to its next choice (and wraps around).
+					change_setting(1, true);
+					Present(selected, status, connected, false, false, false);
+					Threading::Sleep(16);
 					continue;
 				}
 				if (view == LibraryView::Disc)
@@ -1363,7 +1486,29 @@ namespace PS4GameMenu
 			text(1030, 340, 30, white, "DVD de PS2");
 			text(1030, 390, 20, muted, detected ? "Disco detectado. Pulsa X para iniciar." : "Mete un DVD y pulsa Triángulo para actualizar.");
 		}
-		for (size_t slot = 0; !disc_view && slot < VisibleItems && first + slot < s_items.size(); ++slot)
+		// Forja SX2: the Settings page, one row per choice with its value on the right.
+		const bool settings_view = s_library_view == LibraryView::Settings;
+		if (settings_view)
+		{
+			const unsigned focused_row = std::min(s_settings_row_gs, SettingsRows - 1);
+			for (unsigned row = 0; row < SettingsRows; ++row)
+			{
+				const float y = 124.0f + static_cast<float>(row) * 110.0f;
+				const bool focused = !s_sidebar_focused && row == focused_row;
+				fill(346, y, 1470, 96, focused ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 235), 10);
+				if (focused)
+					draw->AddRect(point(346, y), point(1816, y + 96), accent, 10 * scale, 2.0f * scale, 0);
+				text(380, y + 42, 25, white, SettingLabel(row));
+				text(380, y + 76, 16, muted, SettingHelp(row));
+				char value[64];
+				SettingValue(s_settings_gs, row, value, sizeof(value));
+				char shown[96];
+				std::snprintf(shown, sizeof(shown), focused ? "<  %s  >" : "%s", value);
+				const float width = font->CalcTextSizeA(25.0f * scale, FLT_MAX, 0, shown).x / scale;
+				text(1786 - width, y + 58, 25, focused ? white : accent, shown);
+			}
+		}
+		for (size_t slot = 0; !disc_view && !settings_view && slot < VisibleItems && first + slot < s_items.size(); ++slot)
 		{
 			const size_t index = first + slot;
 			const float x = grid_x + static_cast<float>(slot % GridColumns) * column_step;
@@ -1422,6 +1567,17 @@ namespace PS4GameMenu
 		}
 		if (!s_status.empty())
 			text(346, 936, 17, accent, fit(s_status, 17, 1496).c_str());
+		if (settings_view)
+		{
+			// Forja SX2: the Settings page's own buttons.
+			image("controle_x", 346, 1001, 30, 30);
+			text(384, 1023, 16, white, "Cambiar");
+			text(520, 1023, 16, white, "Izq./Der.: ajustar   Arriba/Abajo: elegir");
+			image("controle_bola", 1035, 1001, 30, 30);
+			text(1073, 1023, 16, muted, "Menú lateral");
+		}
+		else
+		{
 		image("controle_x", 346, 1001, 30, 30);
 		text(384, 1023, 16, white, "Jugar");
 		if (!disc_view)
@@ -1437,6 +1593,7 @@ namespace PS4GameMenu
 		text(refresh_x + 38, 1023, 16, white, disc_view ? "Revisar disco" : "Actualizar biblioteca");
 		image("controle_bola", exit_x, 1001, 30, 30);
 		text(exit_x + 38, 1023, 16, muted, "Salir");
+		}
 		if (s_exit_dialog_visible)
 		{
 			draw->AddRectFilled(ImVec2(0, 0), size, IM_COL32(0, 0, 0, 165));
