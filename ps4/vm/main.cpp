@@ -515,14 +515,17 @@ void VMHostPoll()
 			{
 				const double n = static_cast<double>(g_forja_spu2_split_samples);
 				extern u64 g_forja_spu2_deferred_samples, g_forja_spu2_catch_ups; // Mixer.cpp: stopped voices in batches
+				extern u64 g_forja_spu2_split_fx_on, g_forja_spu2_split_fx_heard, g_forja_spu2_split_fx_area; // the reverb in use?
 				ProbeLog("Audio SPU2 split: voices_ms=%.1f mix_reverb_ms=%.1f output_stretch_ms=%.1f (per second) active_voices=%.1f of 48 irq_cores=%.2f "
-						 "deferred_voice_samples_per_second=%.0f catch_ups_per_second=%.0f\n",
+						 "deferred_voice_samples_per_second=%.0f catch_ups_per_second=%.0f reverb_cores: area=%.2f on=%.2f heard=%.2f\n",
 					Common::Timer::ConvertValueToMilliseconds(g_forja_spu2_split_voices) * 16.0 / interval,
 					Common::Timer::ConvertValueToMilliseconds(g_forja_spu2_split_mix) * 16.0 / interval,
 					Common::Timer::ConvertValueToMilliseconds(g_forja_spu2_split_output) * 16.0 / interval,
 					g_forja_spu2_split_active / n, g_forja_spu2_split_irq / n, g_forja_spu2_deferred_samples / interval,
-					g_forja_spu2_catch_ups / interval);
+					g_forja_spu2_catch_ups / interval, g_forja_spu2_split_fx_area / n, g_forja_spu2_split_fx_on / n,
+					g_forja_spu2_split_fx_heard / n);
 				g_forja_spu2_deferred_samples = g_forja_spu2_catch_ups = 0;
+				g_forja_spu2_split_fx_on = g_forja_spu2_split_fx_heard = g_forja_spu2_split_fx_area = 0;
 			}
 			g_forja_spu2_split_voices = g_forja_spu2_split_mix = g_forja_spu2_split_output = 0;
 			g_forja_spu2_split_samples = g_forja_spu2_split_active = g_forja_spu2_split_irq = 0;

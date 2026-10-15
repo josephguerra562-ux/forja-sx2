@@ -26,6 +26,7 @@
 // namespace of its own for each ISA it is compiled for.
 extern u64 g_forja_spu2_split_voices, g_forja_spu2_split_mix, g_forja_spu2_split_output;
 extern u64 g_forja_spu2_split_samples, g_forja_spu2_split_active, g_forja_spu2_split_irq;
+extern u64 g_forja_spu2_split_fx_on, g_forja_spu2_split_fx_heard, g_forja_spu2_split_fx_area;
 // Forja SX2: stopped voices replayed in batches (MixCoreVoices below; spu2.cpp and Dma.cpp call the catch-up).
 extern void (*g_forja_spu2_catch_up)();
 extern u32 g_forja_spu2_pending[2][24];
@@ -35,6 +36,7 @@ extern u64 g_forja_spu2_deferred_samples, g_forja_spu2_catch_ups;
 #if MULTI_ISA_COMPILE_ONCE
 u64 g_forja_spu2_split_voices = 0, g_forja_spu2_split_mix = 0, g_forja_spu2_split_output = 0;
 u64 g_forja_spu2_split_samples = 0, g_forja_spu2_split_active = 0, g_forja_spu2_split_irq = 0;
+u64 g_forja_spu2_split_fx_on = 0, g_forja_spu2_split_fx_heard = 0, g_forja_spu2_split_fx_area = 0;
 void (*g_forja_spu2_catch_up)() = nullptr;
 u32 g_forja_spu2_pending[2][24] = {};
 bool g_forja_spu2_any_pending = false;
@@ -700,6 +702,10 @@ void spu2Mix()
 			for (uint v = 0; v < V_Core::NumVoices; v++)
 				g_forja_spu2_split_active += Cores[c].Voices[v].ADSR.Phase > V_ADSR::PHASE_STOPPED ? 1 : 0;
 			g_forja_spu2_split_irq += Cores[c].IRQEnable ? 1 : 0;
+			// The reverb runs whenever its work area is set (V_Core::DoReverb), even with effects off: is it in use?
+			g_forja_spu2_split_fx_on += Cores[c].FxEnable ? 1 : 0;
+			g_forja_spu2_split_fx_heard += (Cores[c].FxVol.Left != 0 || Cores[c].FxVol.Right != 0) ? 1 : 0;
+			g_forja_spu2_split_fx_area += Cores[c].EffectsStartA < Cores[c].EffectsEndA ? 1 : 0;
 		}
 	}
 
