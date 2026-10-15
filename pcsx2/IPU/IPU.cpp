@@ -14,6 +14,7 @@
 
 #include <limits.h>
 #include "Config.h"
+#include <unistd.h> // Forja SX2: access() for the PS4 test markers
 
 // the BP doesn't advance and returns -1 if there is no data to be read
 alignas(16) tIPU_cmd ipu_cmd;
@@ -248,6 +249,24 @@ void tIPU_CMD_CSC::log_from_RGB32() const
 }
 
 
+// Forja SX2: the EE polling a busy IPU. Movie players wait for the IPU by reading IPU_CTRL or IPU_CMD in a short loop (MMXCM's
+// intro: ~130,000 reads a second, ~60 ms of the EE thread); each turn costs the host a block and a register read and moves
+// the PS2's clock only a few cycles, while the IPU itself only advances at events. A read that finds it busy also moves the
+// EE's clock on by 64 cycles, as if the loop's turn were that long, so the same emulated wait takes far fewer turns (God of
+// War II's movies, compilation 23: these reads ~45 ms of the EE thread a second, with its loops around them).
+// /data/ForjaSX2/vm-ipu-exacto turns it off. The counters go to main.cpp's heartbeat either way.
+u64 g_forja_ipu_polls = 0, g_forja_ipu_busy_polls = 0;
+static __fi void ForjaIPUPoll(bool busy)
+{
+	g_forja_ipu_polls++;
+	if (!busy)
+		return;
+	g_forja_ipu_busy_polls++;
+	static const bool s_shortcut = access("/data/ForjaSX2/vm-ipu-exacto", F_OK) != 0;
+	if (s_shortcut)
+		cpuRegs.cycle += 64;
+}
+
 __fi u32 ipuRead32(u32 mem)
 {
 #if defined(PCSX2_PS4_VM_BOOT)
@@ -277,6 +296,7 @@ __fi u32 ipuRead32(u32 mem)
 		{
 			ipuRegs.ctrl.IFC = g_BP.IFC;
 			ipuRegs.ctrl.CBP = coded_block_pattern;
+			ForjaIPUPoll(ipuRegs.ctrl.BUSY);
 
 			if (!ipuRegs.ctrl.BUSY)
 				IPU_LOG("read32: IPU_CTRL=0x%08X", ipuRegs.ctrl._u32);
@@ -328,6 +348,7 @@ __fi u64 ipuRead64(u32 mem)
 
 			if (ipuRegs.cmd.DATA & 0xffffff)
 				IPU_LOG("read64: IPU_CMD=BUSY=%x, DATA=%08X", ipuRegs.cmd.BUSY ? 1 : 0, ipuRegs.cmd.DATA);
+			ForjaIPUPoll(ipuRegs.cmd.BUSY);
 			return ipuRegs.cmd._u64;
 		}
 

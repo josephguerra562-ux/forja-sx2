@@ -532,6 +532,11 @@ void VMHostPoll()
 					g_forja_audio_chunks / interval, g_forja_audio_waits / interval,
 					Common::Timer::ConvertValueToMilliseconds(g_forja_audio_wait_ticks) / interval);
 				g_forja_audio_wait_ticks = g_forja_audio_waits = g_forja_audio_chunks = 0;
+				// pcsx2/IPU/IPU.cpp: the EE polling the IPU (the shortcut moves the clock on while it is busy; vm-ipu-exacto turns it off).
+				extern u64 g_forja_ipu_polls, g_forja_ipu_busy_polls;
+				ProbeLog("IPU polls: per_second=%.0f busy_per_second=%.0f shortcut=%d\n", g_forja_ipu_polls / interval,
+					g_forja_ipu_busy_polls / interval, access("/data/ForjaSX2/vm-ipu-exacto", F_OK) != 0 ? 1 : 0);
+				g_forja_ipu_polls = g_forja_ipu_busy_polls = 0;
 			}
 			g_forja_spu2_split_voices = g_forja_spu2_split_mix = g_forja_spu2_split_output = 0;
 			g_forja_spu2_split_samples = g_forja_spu2_split_active = g_forja_spu2_split_irq = 0;

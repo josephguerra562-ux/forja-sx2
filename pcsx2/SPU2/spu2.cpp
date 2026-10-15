@@ -67,8 +67,6 @@ namespace
 	std::array<std::array<float, AudioStream::CHUNK_SIZE * 2>, FORJA_AUDIO_SLOTS> s_forja_audio_ring;
 	std::atomic<u32> s_forja_audio_head{0};
 	std::atomic<u32> s_forja_audio_tail{0};
-	std::mutex s_forja_audio_wake_mutex;
-	std::condition_variable s_forja_audio_wake;
 	bool s_forja_audio_thread_started = false;
 	int s_forja_audio_async = -1; // read from the marker at the first chunk
 
@@ -77,13 +75,14 @@ namespace
 		// Compilation 23: on the audio core (nucleos.txt AUDIO=), not the helpers: there the ring filled up and the EE thread
 		// waited for it (the output's share of the EE thread went from ~60 to ~77 ms a second in God of War II).
 		PS4ThreadAffinity::PinCurrentThread("Audio", 5);
+		// Compilation 24: it looks at the ring every millisecond by itself. Waking it for each chunk (a mutex and a condition
+		// signal, ~600 a second) cost the EE thread more than the chunk writing had (~75 ms a second in Tales' movies).
 		for (;;)
 		{
+			if (s_forja_audio_head.load(std::memory_order_acquire) == s_forja_audio_tail.load(std::memory_order_relaxed))
 			{
-				std::unique_lock lock(s_forja_audio_wake_mutex);
-				s_forja_audio_wake.wait(lock, [] {
-					return s_forja_audio_head.load(std::memory_order_acquire) != s_forja_audio_tail.load(std::memory_order_relaxed);
-				});
+				usleep(1000);
+				continue;
 			}
 			u32 tail = s_forja_audio_tail.load(std::memory_order_relaxed);
 			while (tail != s_forja_audio_head.load(std::memory_order_acquire))
@@ -127,10 +126,6 @@ namespace
 		g_forja_audio_chunks++;
 		std::memcpy(s_forja_audio_ring[head % FORJA_AUDIO_SLOTS].data(), chunk, sizeof(s_forja_audio_ring[0]));
 		s_forja_audio_head.store(head + 1, std::memory_order_release);
-		{
-			std::lock_guard lock(s_forja_audio_wake_mutex); // the thread checks its condition under this lock
-		}
-		s_forja_audio_wake.notify_one();
 	}
 } // namespace
 

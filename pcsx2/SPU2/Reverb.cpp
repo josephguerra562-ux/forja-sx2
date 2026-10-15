@@ -7,6 +7,7 @@
 #include "common/Console.h"
 
 #include <array>
+#include <unistd.h> // Forja SX2: access() for the PS4 test markers
 
 void V_Core::AnalyzeReverbPreset()
 {
@@ -60,6 +61,40 @@ StereoOut32 V_Core::DoReverb(StereoOut32 Input)
 	if (EffectsStartA >= EffectsEndA)
 	{
 		return StereoOut32::Empty;
+	}
+
+	// Forja SX2: a reverb nobody hears. Tales of the Abyss keeps the effects on with the effects volume at 0 on both cores
+	// (2026-10-15, compilation 23), and the reverb's work here (~25 ms of the EE thread a second) is then multiplied by 0 in
+	// MixCore(). While FxVol is 0 and no IRQ is armed (the reverb's memory accesses can raise one), only its input and output
+	// histories move on (silence out); when the volume comes back, the work area starts from silence, like a reverb just
+	// switched on. /data/ForjaSX2/vm-reverb-exacto keeps the full reverb.
+	static const bool s_forja_reverb_skip = access("/data/ForjaSX2/vm-reverb-exacto", F_OK) != 0;
+	static bool s_forja_reverb_skipped[2] = {false, false};
+	if (s_forja_reverb_skip && FxVol.Left == 0 && FxVol.Right == 0 && !Cores[0].IRQEnable && !Cores[1].IRQEnable)
+	{
+		Input = clamp_mix(Input);
+		RevbDownBuf[0][RevbSampleBufPos] = Input.Left;
+		RevbDownBuf[1][RevbSampleBufPos] = Input.Right;
+		RevbDownBuf[0][RevbSampleBufPos | 64] = Input.Left;
+		RevbDownBuf[1][RevbSampleBufPos | 64] = Input.Right;
+		RevbUpBuf[0][RevbSampleBufPos] = 0;
+		RevbUpBuf[1][RevbSampleBufPos] = 0;
+		RevbUpBuf[0][RevbSampleBufPos | 64] = 0;
+		RevbUpBuf[1][RevbSampleBufPos | 64] = 0;
+		RevbSampleBufPos = (RevbSampleBufPos + 1) & 63;
+		s_forja_reverb_skipped[Index & 1] = true;
+		return StereoOut32::Empty;
+	}
+	if (s_forja_reverb_skipped[Index & 1])
+	{
+		s_forja_reverb_skipped[Index & 1] = false;
+		if (FxEnable)
+		{
+			const u32 start = EffectsStartA & 0x3f'ffff;
+			const u32 end = (EffectsEndA & 0x3f'ffff) | 0xffff;
+			for (u32 a = start; a <= end && a < 0x100000; a++)
+				_spu2mem[a] = 0;
+		}
 	}
 
 	Input = clamp_mix(Input);
