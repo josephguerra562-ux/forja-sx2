@@ -511,7 +511,13 @@ namespace PS4GameMenu
 		void Publish(const std::vector<Item>& items, LibraryView view)
 		{
 			MTGS::RunOnGSThread([items, view]() {
-				ClearCoverTextures();
+				// Forja SX2: the textures (covers, icons, the logo, the 1920x1080 loading background) are kept across view changes;
+				// clearing them on every change re-uploaded ~16 MB each time. They are let go only once there are many covers.
+				if (s_cover_textures.size() > 64)
+					ClearCoverTextures();
+				if (g_gs_device)
+					ProbeLog("Game menu: GPU texture pool %.1f MB, %zu menu textures\n",
+						static_cast<double>(g_gs_device->GetPoolMemoryUsage()) / (1024.0 * 1024.0), s_cover_textures.size());
 				s_items = items;
 				s_library_view = view;
 				s_loading_visible = false;

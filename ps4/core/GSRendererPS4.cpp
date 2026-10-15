@@ -1122,6 +1122,13 @@ void GSRenderer::StopGSDump()
 
 void GSRenderer::PresentCurrentFrame()
 {
+	// Forja SX2: the texture pool's frame counter only moved in VSync(), so in the library and the startup intro (which present
+	// through here) a recycled texture was never reused ("used this frame") nor aged out: the intro's 96 frames (1280x720, ~3.7 MB
+	// each) and every library view change (~16 MB: covers, icons, the 1920x1080 loading background) piled up in the pool until
+	// the GPU ran out and GSDevice::UpdateImGuiTextures() failed ("Failed to create ImGui texture", CE-34878-0) a few view changes
+	// after the intro (2026-10-14). Aging here works as in a game: reuse the next frame, free after MAX_TEXTURE_AGE frames.
+	if (g_gs_device)
+		g_gs_device->AgePool();
 	if (BeginPresentFrame(false))
 	{
 		GSTexture* current = g_gs_device->GetCurrent();
