@@ -172,6 +172,17 @@ jobs:
         with:
           name: PS4SX2-PKG-${{ github.run_number }}
           path: release
+      # Forja SX2: the function names of this build, for the sampling profiler's addresses (vm-sampler,
+      # herramientas/perfil_funciones.py). The executable artifact needs a GitHub login; the release does not.
+      - uses: actions/download-artifact@v8
+        with:
+          name: ps4-executable-${{ github.run_id }}
+          path: executable
+      - name: Diccionario de funciones
+        run: |
+          set -euo pipefail
+          nm -C -n --defined-only executable/vm_boot | gzip -9 > release/vm_boot.sym.gz
+          ls -la release/vm_boot.sym.gz
       - name: Crear la pre-release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -187,6 +198,6 @@ jobs:
             cat release/SHA256SUMS.txt
             echo '```'
           } > notas.md
-          gh release create "$tag" release/*.pkg release/SHA256SUMS.txt \
+          gh release create "$tag" release/*.pkg release/SHA256SUMS.txt release/vm_boot.sym.gz \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
             --title "Forja SX2 - compilación ${{ github.run_number }}" --notes-file notas.md

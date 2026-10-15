@@ -18,6 +18,12 @@ extern "C" int scePthreadSetaffinity(void* thread, unsigned long long mask);
 // (as PS5SX2's profiler notes and console emulators report). Same ABI shape as scePthreadSetaffinity.
 extern "C" int scePthreadSetprio(void* thread, int prio);
 
+// Forja SX2: the sampling profiler from the PS4 runtime (ps4/runtime/ps4_sampler.cpp): 1,000 times a second it records where
+// each registered thread is, and every 10 s writes the busiest code addresses to /data/ForjaSX2/samples.log (symbolized with
+// the vm_boot.sym.gz each release carries, by herramientas/perfil_funciones.py). On with /data/ForjaSX2/vm-sampler.
+extern "C" void ps4_sampler_register_thread(const char* name);
+extern "C" void ps4_sampler_start();
+
 namespace PS4ThreadAffinity
 {
 	static bool IsEnabled()
@@ -125,6 +131,15 @@ namespace PS4ThreadAffinity
 		std::printf("PS4 thread affinity: %s core=%d%s mask=0x%llx sce_result=0x%x\n", role, core,
 			core != requested ? " (nucleos.txt)" : "", mask, result);
 		std::fflush(stdout);
+		// Forja SX2: the three emulation workers into the sampling profiler (it holds four threads).
+		static const bool s_sampler = access("/data/ForjaSX2/vm-sampler", F_OK) == 0;
+		if (s_sampler && (std::strcmp(role, "EE") == 0 || std::strcmp(role, "VU1") == 0 || std::strcmp(role, "GS") == 0))
+		{
+			ps4_sampler_register_thread(role);
+			ps4_sampler_start();
+			std::printf("PS4 sampler: %s registered\n", role);
+			std::fflush(stdout);
+		}
 	}
 
 	void PinCurrentThreadToHelpers(const char* role)
