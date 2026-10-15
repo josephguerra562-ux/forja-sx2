@@ -375,6 +375,29 @@ static void ApplyGameEECycleRate(int rate)
 // 50 %, and the game's own rate comes back when the movie ends. The rate is baked into recompiled EE
 // blocks, so each switch resets the EE recompiler (recResetEE defers that to a safe point).
 
+// Forja SX2: the EE rate for movies can be set per game, in its gamesettings ini ([Forja] VideoEECycleRate = -2). Tales of
+// the Abyss at -3 (50 %) dropped about a sixth of its movie's pictures and left ~5 short silences a second in the music, as
+// its player could not feed the sound in time; at -2 (60 %) it showed as many pictures a second and the silences were gone
+// (PS4 Pro, 2026-10-15). God of War II and Mega Man X Command Mission play their movies cleanly at -3, the default.
+static int VideoEECycleRateForGame()
+{
+	static u32 s_crc = 0;
+	static int s_rate = VIDEO_EE_RATE;
+	const u32 crc = VMManager::GetDiscCRC();
+	if (crc == s_crc)
+		return s_rate;
+	s_crc = crc;
+	s_rate = VIDEO_EE_RATE;
+	if (crc != 0)
+	{
+		INISettingsInterface ini(VMManager::GetGameSettingsPath(VMManager::GetDiscSerial(), crc));
+		if (ini.Load())
+			s_rate = std::clamp(ini.GetIntValue("Forja", "VideoEECycleRate", VIDEO_EE_RATE), -3, 0);
+	}
+	ProbeLog("Video mode: EE rate for this game's movies %d ([Forja] VideoEECycleRate, default %d)\n", s_rate, VIDEO_EE_RATE);
+	return s_rate;
+}
+
 static void UpdateVideoMode(double elapsed)
 {
 	if (!s_video_mode_enabled || elapsed - s_video_last_check < 0.5)
@@ -406,15 +429,16 @@ static void UpdateVideoMode(double elapsed)
 
 	if (want)
 	{
+		const int video_rate = VideoEECycleRateForGame();
 		s_video_saved_rate = EmuConfig.Speedhacks.EECycleRate;
 		s_video_since = elapsed;
 		s_video_active = true;
-		if (s_video_saved_rate <= VIDEO_EE_RATE)
+		if (s_video_saved_rate <= video_rate)
 		{
 			ProbeLog("Video mode: movie detected (%.0f decodes/s), EE rate already %d\n", per_second, s_video_saved_rate);
 			return;
 		}
-		EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(VIDEO_EE_RATE);
+		EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(video_rate);
 	}
 	else
 	{
