@@ -21,7 +21,15 @@
 #define XAFLAG_LOOP (1ul << 1)
 #define XAFLAG_LOOP_START (1ul << 2)
 
+// Forja SX2: the SPU2 time split (spu2Mix() below, main.cpp's heartbeat). Global: what follows MULTI_ISA_UNSHARED_START is in a
+// namespace of its own for each ISA it is compiled for.
+extern u64 g_forja_spu2_split_voices, g_forja_spu2_split_mix, g_forja_spu2_split_output;
+extern u64 g_forja_spu2_split_samples, g_forja_spu2_split_active, g_forja_spu2_split_irq;
+
 #if MULTI_ISA_COMPILE_ONCE
+u64 g_forja_spu2_split_voices = 0, g_forja_spu2_split_mix = 0, g_forja_spu2_split_output = 0;
+u64 g_forja_spu2_split_samples = 0, g_forja_spu2_split_active = 0, g_forja_spu2_split_irq = 0;
+
 // decoded pcm data, used to cache the decoded data so that it needn't be decoded
 // multiple times.  Cache chunks are decoded when the mixer requests the blocks, and
 // invalided when DMA transfers and memory writes are performed.
@@ -532,8 +540,7 @@ static __forceinline StereoOut32 MixCore(const uint coreidx, const VoiceMixSet& 
 
 // Forja SX2: where the SPU2's time goes (main.cpp's heartbeat reports it). One sample in 16 is timed in three parts: the 48 voices,
 // the cores' mix with the reverb, and the output (the chunk to the audio stream, with its time stretching).
-u64 g_forja_spu2_split_voices = 0, g_forja_spu2_split_mix = 0, g_forja_spu2_split_output = 0;
-u64 g_forja_spu2_split_samples = 0, g_forja_spu2_split_active = 0, g_forja_spu2_split_irq = 0;
+// (The counters themselves are defined once, at the top of the file, outside the per-ISA namespace.)
 static u32 s_forja_spu2_split_counter = 0;
 
 void spu2Mix()
