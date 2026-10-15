@@ -314,7 +314,21 @@ namespace
 			Entry entry = s_queue[s_head];
 			s_head = (s_head + 1) % kCapacity;
 			--s_count;
+			const bool stopping = s_stopping;
 			pthread_mutex_unlock(&s_mutex);
+
+			// Forja SX2: stopping with no PC server is not worth waiting for. Stop() (on the way back to the library or out of
+			// the app) joins this thread, and the queue (up to 256 lines) was drained here one TryConnect() each: 3 s of
+			// connect timeout plus 2-10 s of backoff a line, many minutes in all when the server was gone (Windows' firewall
+			// drops the packets instead of refusing them), which Joseph saw as the return to the library hanging (2026-10-15).
+			if (!s_connected && stopping)
+			{
+				pthread_mutex_lock(&s_mutex);
+				s_dropped += 1 + s_count;
+				s_count = 0;
+				pthread_mutex_unlock(&s_mutex);
+				break;
+			}
 
 			// Ensure connected
 			if (!s_connected)

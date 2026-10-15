@@ -13,6 +13,7 @@
 #include "VMManager.h"
 
 #include "common/Error.h"
+#include "common/Timer.h"
 
 #include "ps4/core/ThreadAffinityPS4.h"
 
@@ -53,6 +54,9 @@ static std::unique_ptr<AudioStream> s_output_stream;
 // Forja SX2: the audio stream is also written by ForjaAudioThread() below; everything that uses it holds this.
 static std::recursive_mutex s_stream_mutex;
 
+// Forja SX2: how often the EE thread waited for the audio write thread (main.cpp's heartbeat reports it).
+u64 g_forja_audio_wait_ticks = 0, g_forja_audio_waits = 0, g_forja_audio_chunks = 0;
+
 namespace
 {
 	// Forja SX2: the stream's chunk writing, with its time stretching (SoundTouch), on a thread of its own. It ran on the EE
@@ -70,7 +74,9 @@ namespace
 
 	void ForjaAudioThread()
 	{
-		PS4ThreadAffinity::PinCurrentThreadToHelpers("audio write");
+		// Compilation 23: on the audio core (nucleos.txt AUDIO=), not the helpers: there the ring filled up and the EE thread
+		// waited for it (the output's share of the EE thread went from ~60 to ~77 ms a second in God of War II).
+		PS4ThreadAffinity::PinCurrentThread("Audio", 5);
 		for (;;)
 		{
 			{
@@ -110,8 +116,15 @@ namespace
 		}
 		const u32 head = s_forja_audio_head.load(std::memory_order_relaxed);
 		// A full ring (the thread 85 ms behind) waits for a slot: dropping or reordering audio would be heard.
-		while (head - s_forja_audio_tail.load(std::memory_order_acquire) >= FORJA_AUDIO_SLOTS)
-			std::this_thread::yield();
+		if (head - s_forja_audio_tail.load(std::memory_order_acquire) >= FORJA_AUDIO_SLOTS)
+		{
+			const Common::Timer::Value wait_start = Common::Timer::GetCurrentValue();
+			while (head - s_forja_audio_tail.load(std::memory_order_acquire) >= FORJA_AUDIO_SLOTS)
+				std::this_thread::yield();
+			g_forja_audio_wait_ticks += Common::Timer::GetCurrentValue() - wait_start;
+			g_forja_audio_waits++;
+		}
+		g_forja_audio_chunks++;
 		std::memcpy(s_forja_audio_ring[head % FORJA_AUDIO_SLOTS].data(), chunk, sizeof(s_forja_audio_ring[0]));
 		s_forja_audio_head.store(head + 1, std::memory_order_release);
 		{

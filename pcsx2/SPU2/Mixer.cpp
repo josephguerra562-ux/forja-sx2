@@ -464,6 +464,59 @@ static void ForjaReplayStoppedVoice(uint coreidx, uint voiceidx, u32 samples)
 {
 	V_Core& thiscore(Cores[coreidx]);
 	V_Voice& vc(thiscore.Voices[voiceidx]);
+	// Forja SX2 (compilation 23): the replay with the same functions cost about what the voices did one sample at a time
+	// (compilation 22: ~90 ms of the EE thread a second in Tales and God of War II). This is the same steps for a stopped voice
+	// with no volume slide, no pitch modulation and no IRQ armed (the conditions to defer it), in locals: UpdateBlockHeader()
+	// without the IRQ tests, DecodeSamples() without the decoding (a stopped voice decodes nothing), UpdatePitch() with the
+	// voice's own pitch, ConsumeSamples(). Anything else takes the generic replay below.
+	if (!vc.Volume.Left.Enable && !vc.Volume.Right.Enable && !vc.Modulated && vc.ADSR.Phase == V_ADSR::PHASE_STOPPED &&
+		!Cores[0].IRQEnable && !Cores[1].IRQEnable)
+	{
+		u32 next = vc.NextA;
+		u32 write = vc.DecPosWrite;
+		u32 read = vc.DecPosRead;
+		s32 sp = vc.SP;
+		s8 loop_flags = vc.LoopFlags;
+		u32 loop_start = vc.LoopStartA;
+		const s8 loop_mode = vc.LoopMode;
+		const s32 pitch = std::min<s32>(vc.Pitch, 0x3FFF);
+		bool ended = false;
+		for (u32 i = 0; i < samples; i++)
+		{
+			loop_flags = static_cast<s8>(*GetMemPtr(next & 0xFFFF8) >> 8);
+			if ((loop_flags & XAFLAG_LOOP_START) && !loop_mode)
+				loop_start = next & 0xFFFF8;
+			if (static_cast<int>(write - read) <= 12)
+			{
+				write += 4;
+				next = (next + 1) & 0xFFFFF;
+				if ((next & 7) == 0)
+				{
+					if (loop_flags & XAFLAG_LOOP_END)
+					{
+						ended = true;
+						next = loop_start;
+						if (!(loop_flags & XAFLAG_LOOP))
+							vc.Stop();
+					}
+					next = (next + 1) & 0xFFFFF;
+					vc.SBuffer = nullptr;
+				}
+			}
+			sp += pitch;
+			read += sp >> 12;
+			sp &= 0xfff;
+		}
+		vc.NextA = next;
+		vc.DecPosWrite = write;
+		vc.DecPosRead = read;
+		vc.SP = sp;
+		vc.LoopFlags = loop_flags;
+		vc.LoopStartA = loop_start;
+		if (ended)
+			thiscore.Regs.ENDX |= (1 << voiceidx);
+		return;
+	}
 	for (u32 i = 0; i < samples; i++)
 	{
 		vc.Volume.Update();

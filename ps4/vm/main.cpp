@@ -526,6 +526,12 @@ void VMHostPoll()
 					g_forja_spu2_split_fx_heard / n);
 				g_forja_spu2_deferred_samples = g_forja_spu2_catch_ups = 0;
 				g_forja_spu2_split_fx_on = g_forja_spu2_split_fx_heard = g_forja_spu2_split_fx_area = 0;
+				// pcsx2/SPU2/spu2.cpp: the EE thread waiting for the audio write thread (a full ring).
+				extern u64 g_forja_audio_wait_ticks, g_forja_audio_waits, g_forja_audio_chunks;
+				ProbeLog("Audio write thread: chunks_per_second=%.0f waits_per_second=%.1f EE_wait_ms_per_second=%.1f\n",
+					g_forja_audio_chunks / interval, g_forja_audio_waits / interval,
+					Common::Timer::ConvertValueToMilliseconds(g_forja_audio_wait_ticks) / interval);
+				g_forja_audio_wait_ticks = g_forja_audio_waits = g_forja_audio_chunks = 0;
 			}
 			g_forja_spu2_split_voices = g_forja_spu2_split_mix = g_forja_spu2_split_output = 0;
 			g_forja_spu2_split_samples = g_forja_spu2_split_active = g_forja_spu2_split_irq = 0;
