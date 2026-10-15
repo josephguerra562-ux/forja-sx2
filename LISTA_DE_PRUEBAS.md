@@ -1,13 +1,14 @@
 # Forja SX2: lo que se hizo y lo que hay que probar
 
-*Compilación 18. En la biblioteca, abajo a la izquierda, debe decir "Compilación 18" (la 16 y la 17 no compilaron).*
+*Compilación 19. En la biblioteca, abajo a la izquierda, debe decir "Compilación 19".*
 
 ## Qué ya se probó (versiones 14 y 15)
 - **Volver a la biblioteca:** funciona, sin pantalla negra.
 - **Generación de cuadros con el cálculo de PS5:** colgaba la gráfica de la PS4. Con la 15 encontramos el culpable: el **paso 27 de 27**, el que arma el cuadro final. Los otros 26 funcionan bien.
 - **Audio de la PS2:** se come el 12-13 % del núcleo del juego, y en la intro el 15-16 %.
 
-## Qué trae la 18
+## Qué trae la 19
+0. **Arreglo de los cierres en la biblioteca (CE-34878-0):** el menú y el video de inicio nunca liberaban sus imágenes (unos 350 MB solo del video), y la gráfica se quedaba sin memoria a los pocos cambios de sección. Ahora se reutilizan y se liberan igual que dentro del juego.
 1. **Paso 27 propio** para los 30 a 60 FPS. Es liviano y está hecho para la PS4. Por cada grupo de 4 píxeles prueba el movimiento de su zona y el de las vecinas, y mezcla el cuadro anterior con el actual.
 2. **Protección:** si la generación de cuadros se cuelga, al volver a abrir el emulador se apaga sola.
 3. **Biblioteca:** el DVD solo se busca cuando te quedas en "Disco", no cada vez que pasas por ahí. Así se evita el cierre que hubo en Ajustes.
