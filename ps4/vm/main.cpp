@@ -932,14 +932,18 @@ static void* RunVM(void*)
 	// while keeping speech and sound effects responsive and glitch-free.
 	// Needs proper testing across games on the console.
 	const bool legacy_audio = access("/data/ForjaSX2/vm-audio-legacy-stretch", F_OK) == 0;
-	settings->SetIntValue("SPU2/Output", "BufferMS", legacy_audio ? 50 : 70);
-	settings->SetIntValue("SPU2/Output", "StretchSequenceLengthMS", legacy_audio ? 30 : 35);
-	settings->SetIntValue("SPU2/Output", "StretchSeekWindowMS", legacy_audio ? 20 : 15);
-	settings->SetIntValue("SPU2/Output", "StretchOverlapMS", legacy_audio ? 10 : 8);
-	// Forja SX2: SoundTouch's quick seek. The stretching runs on the EE thread (AudioStream::WriteChunk) and only works while the
-	// game is below full speed, which is when the EE thread has no time to spare (MMXCM's intro: 80-88 %, the SPU2 then at 15-16 %
-	// of the thread against 12-13 % at full speed). /data/ForjaSX2/vm-audio-full-seek brings back the full search.
-	settings->SetBoolValue("SPU2/Output", "StretchUseQuickSeek", access("/data/ForjaSX2/vm-audio-full-seek", F_OK) != 0);
+	// Forja SX2 (compilation 26): the stretching for music. Movies run at 85-90 % of full speed, so their music is stretched
+	// the whole time, and 35 ms sequences with a 15 ms search and 8 ms overlaps (plus the quick seek below) made it sound
+	// choppy, like a damaged song (Tales of the Abyss, God of War II, 2026-10-15), while the queue never ran dry. Longer
+	// sequences with wider searches and overlaps join music smoothly; the cost is on the audio write thread (spu2.cpp,
+	// the audio core), not the EE thread, since compilation 23. vm-audio-legacy-stretch keeps the old values.
+	settings->SetIntValue("SPU2/Output", "BufferMS", legacy_audio ? 50 : 80);
+	settings->SetIntValue("SPU2/Output", "StretchSequenceLengthMS", legacy_audio ? 30 : 60);
+	settings->SetIntValue("SPU2/Output", "StretchSeekWindowMS", legacy_audio ? 20 : 25);
+	settings->SetIntValue("SPU2/Output", "StretchOverlapMS", legacy_audio ? 10 : 12);
+	// SoundTouch's full search, for the same reason (it ran on the EE thread until compilation 23, hence the quick seek then).
+	// /data/ForjaSX2/vm-audio-quick-seek brings the quick seek back.
+	settings->SetBoolValue("SPU2/Output", "StretchUseQuickSeek", access("/data/ForjaSX2/vm-audio-quick-seek", F_OK) == 0);
 	settings->SetIntValue("SPU2/Output", "StandardVolume", 100);
 	settings->SetBoolValue("SPU2/Output", "OutputMuted", false);
 	ProbeLog("PS4 audio configuration: %s (stereo PCM16 48 kHz, main port, explicit 0 dB; disable with /data/ForjaSX2/vm-no-audio)\n",
