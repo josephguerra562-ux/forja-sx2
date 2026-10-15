@@ -14,6 +14,15 @@
 
 #include "common/Error.h"
 
+#include "ps4/core/ThreadAffinityPS4.h"
+
+#include <atomic>
+#include <condition_variable>
+#include <cstring>
+#include <mutex>
+#include <thread>
+#include <unistd.h>
+
 const StereoOut32 StereoOut32::Empty(0, 0);
 
 namespace SPU2
@@ -41,6 +50,77 @@ static inline void ForjaSPU2CatchUp()
 }
 
 static std::unique_ptr<AudioStream> s_output_stream;
+// Forja SX2: the audio stream is also written by ForjaAudioThread() below; everything that uses it holds this.
+static std::recursive_mutex s_stream_mutex;
+
+namespace
+{
+	// Forja SX2: the stream's chunk writing, with its time stretching (SoundTouch), on a thread of its own. It ran on the EE
+	// thread, in spu2Output(), and took ~60 ms of it a second in MMXCM's and Tales of the Abyss's movies (2026-10-15), when the EE
+	// thread was at 103-107 %. The EE thread now copies each chunk into a ring and goes on; the thread writes them into the stream
+	// in order, on the helper cores. /data/ForjaSX2/vm-audio-sync-stretch keeps the old way.
+	constexpr u32 FORJA_AUDIO_SLOTS = 64; // 64 chunks of 64 frames: 85 ms
+	std::array<std::array<float, AudioStream::CHUNK_SIZE * 2>, FORJA_AUDIO_SLOTS> s_forja_audio_ring;
+	std::atomic<u32> s_forja_audio_head{0};
+	std::atomic<u32> s_forja_audio_tail{0};
+	std::mutex s_forja_audio_wake_mutex;
+	std::condition_variable s_forja_audio_wake;
+	bool s_forja_audio_thread_started = false;
+	int s_forja_audio_async = -1; // read from the marker at the first chunk
+
+	void ForjaAudioThread()
+	{
+		PS4ThreadAffinity::PinCurrentThreadToHelpers("audio write");
+		for (;;)
+		{
+			{
+				std::unique_lock lock(s_forja_audio_wake_mutex);
+				s_forja_audio_wake.wait(lock, [] {
+					return s_forja_audio_head.load(std::memory_order_acquire) != s_forja_audio_tail.load(std::memory_order_relaxed);
+				});
+			}
+			u32 tail = s_forja_audio_tail.load(std::memory_order_relaxed);
+			while (tail != s_forja_audio_head.load(std::memory_order_acquire))
+			{
+				{
+					std::lock_guard stream_lock(s_stream_mutex);
+					if (s_output_stream)
+						s_output_stream->WriteChunk(s_forja_audio_ring[tail % FORJA_AUDIO_SLOTS].data());
+				}
+				tail++;
+				s_forja_audio_tail.store(tail, std::memory_order_release);
+			}
+		}
+	}
+
+	void ForjaAudioWrite(const float* chunk)
+	{
+		if (s_forja_audio_async < 0)
+			s_forja_audio_async = access("/data/ForjaSX2/vm-audio-sync-stretch", F_OK) != 0 ? 1 : 0;
+		if (!s_forja_audio_async)
+		{
+			std::lock_guard stream_lock(s_stream_mutex);
+			s_output_stream->WriteChunk(chunk);
+			return;
+		}
+		if (!s_forja_audio_thread_started)
+		{
+			s_forja_audio_thread_started = true;
+			std::thread(ForjaAudioThread).detach();
+		}
+		const u32 head = s_forja_audio_head.load(std::memory_order_relaxed);
+		// A full ring (the thread 85 ms behind) waits for a slot: dropping or reordering audio would be heard.
+		while (head - s_forja_audio_tail.load(std::memory_order_acquire) >= FORJA_AUDIO_SLOTS)
+			std::this_thread::yield();
+		std::memcpy(s_forja_audio_ring[head % FORJA_AUDIO_SLOTS].data(), chunk, sizeof(s_forja_audio_ring[0]));
+		s_forja_audio_head.store(head + 1, std::memory_order_release);
+		{
+			std::lock_guard lock(s_forja_audio_wake_mutex); // the thread checks its condition under this lock
+		}
+		s_forja_audio_wake.notify_one();
+	}
+} // namespace
+
 static std::array<float, AudioStream::CHUNK_SIZE * 2> s_current_chunk;
 static u32 s_current_chunk_pos;
 static u32 s_standard_volume = 0;
@@ -112,6 +192,7 @@ void SPU2writeDMA7Mem(u16* pMem, u32 size)
 
 void SPU2::CreateOutputStream()
 {
+	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	// Initialize volume and mute settings on new session.
 	if (!s_output_stream)
 	{
@@ -145,6 +226,7 @@ void SPU2::CreateOutputStream()
 
 void SPU2::UpdateSampleRate()
 {
+	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	if (s_output_stream && s_output_stream->GetSampleRate() == GetConsoleSampleRate())
 		return;
 
@@ -160,11 +242,13 @@ void SPU2::UpdateSampleRate()
 
 u32 SPU2::GetOutputVolume()
 {
+	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	return s_output_stream ? s_output_stream->GetOutputVolume() : 0;
 }
 
 void SPU2::SetOutputVolume(u32 volume)
 {
+	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	if (VMManager::GetTargetSpeed() == 1.0f)
 		s_standard_volume = volume;
 	else
@@ -182,6 +266,7 @@ float SPU2::GetNominalRate()
 
 bool SPU2::SetOutputMuted(const bool muted)
 {
+	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	// User setting takes precedence. Unmute not guaranteed by design.
 	if (!s_output_stream || (!muted && EmuConfig.SPU2.OutputMuted))
 		return false;
@@ -204,6 +289,7 @@ bool SPU2::IsOutputMuted()
 
 void SPU2::UpdateOutputVolume()
 {
+	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	s_output_stream->SetOutputVolume(s_output_muted ?
 										 0 : (VMManager::GetTargetSpeed() == 1.0f ?
 										 	s_standard_volume : s_fast_forward_volume));
@@ -211,6 +297,7 @@ void SPU2::UpdateOutputVolume()
 
 void SPU2::SaveOutputVolume()
 {
+	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	if (!s_output_muted)
 	{
 		if (VMManager::GetTargetSpeed() == 1.0f)
@@ -222,6 +309,7 @@ void SPU2::SaveOutputVolume()
 
 void SPU2::SetOutputPaused(bool paused)
 {
+	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	s_output_stream->SetPaused(paused);
 }
 
@@ -269,6 +357,7 @@ void SPU2::Reset(bool psxmode)
 
 void SPU2::OnTargetSpeedChanged()
 {
+	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	if (!s_output_stream)
 		return;
 
@@ -324,6 +413,7 @@ bool SPU2::Open()
 
 void SPU2::Close()
 {
+	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	FileLog("[%10d] SPU2 Close\n", Cycles);
 
 	s_output_stream.reset();
@@ -344,6 +434,7 @@ bool SPU2::IsRunningPSXMode()
 
 void SPU2::CheckForConfigChanges(const Pcsx2Config& old_config)
 {
+	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	const Pcsx2Config::SPU2Options& opts = EmuConfig.SPU2;
 	const Pcsx2Config::SPU2Options& old_opts = old_config.SPU2;
 
@@ -545,7 +636,7 @@ __forceinline void spu2Output(StereoOut32 out)
 	{
 		s_current_chunk_pos = 0;
 
-		s_output_stream->WriteChunk(s_current_chunk.data());
+		ForjaAudioWrite(s_current_chunk.data()); // Forja SX2: on the audio write thread
 
 		if (SPU2::IsAudioCaptureActive()) [[unlikely]]
 			GSCapture::DeliverAudioPacket(s_current_chunk.data());
