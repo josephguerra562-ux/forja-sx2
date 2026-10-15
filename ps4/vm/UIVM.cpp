@@ -5,6 +5,7 @@
 #include "ImGui/ImGuiOverlays.h"
 #include "Input/InputManager.h"
 #include "common/SmallString.h"
+#include "common/Timer.h"
 #include "Host.h"
 #include "PerformanceMetrics.h"
 #include "VMManager.h"
@@ -14,6 +15,7 @@
 #include "GameMenu.h"
 #include "ForjaSettings.h"
 #include <algorithm>
+#include <atomic>
 #include <cfloat>
 #include <cstdio>
 #include <unistd.h>
@@ -98,6 +100,11 @@ namespace FullscreenUI
 		return TinyString();
 	}
 } // namespace FullscreenUI
+
+// Forja SX2: the FPS box's frame generation figures (pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp, ps4/core/GSRendererPS4.cpp). Declared
+// here, outside the namespace, so they name the globals.
+extern std::atomic<bool> g_orbis_fg_active;
+extern std::atomic<u32> g_forja_presents;
 
 namespace ImGuiManager
 {
@@ -209,7 +216,31 @@ namespace ImGuiManager
 		if (!s_show_performance_hud || VMManager::GetState() != VMState::Running || PerformanceMetrics::GetFPS() <= 0.0f)
 			return;
 		char fields[6][64];
-		if (PerformanceMetrics::IsInternalFPSValid())
+		// Forja SX2: with frame generation at work the box shows both the game's frames and the frames the TV gets (the game's
+		// and the generated ones, counted in GSRendererPS4.cpp), measured here over half a second.
+		static Common::Timer::Value s_presents_since = 0;
+		static u32 s_presents_at = 0;
+		static float s_shown_fps = 0.0f;
+		{
+			const Common::Timer::Value now = Common::Timer::GetCurrentValue();
+			const u32 presents = g_forja_presents.load(std::memory_order_relaxed);
+			const double seconds = Common::Timer::ConvertValueToSeconds(now - s_presents_since);
+			if (s_presents_since == 0 || seconds > 2.0)
+			{
+				s_presents_since = now;
+				s_presents_at = presents;
+			}
+			else if (seconds >= 0.5)
+			{
+				s_shown_fps = static_cast<float>((presents - s_presents_at) / seconds);
+				s_presents_since = now;
+				s_presents_at = presents;
+			}
+		}
+		if (g_orbis_fg_active.load(std::memory_order_relaxed) && PerformanceMetrics::IsInternalFPSValid() && s_shown_fps > 0.0f)
+			std::snprintf(fields[0], sizeof(fields[0]), "Juego %.0f / Pantalla %.0f FPS (FG)", PerformanceMetrics::GetInternalFPS(),
+				s_shown_fps);
+		else if (PerformanceMetrics::IsInternalFPSValid())
 			std::snprintf(fields[0], sizeof(fields[0]), "Game ~%.1f FPS", PerformanceMetrics::GetInternalFPS());
 		else
 			std::snprintf(fields[0], sizeof(fields[0]), "Internal FPS N/A");

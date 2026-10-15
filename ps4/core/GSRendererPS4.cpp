@@ -623,6 +623,7 @@ extern std::atomic<u32> g_orbis_rec_compiles, g_orbis_rec_full_resets; // pcsx2/
 u32 g_forja_pipelines_created = 0; // GSDeviceVK::CreateTFXPipeline, GS thread only
 std::atomic<u64> g_forja_disc_bytes{0}; // ThreadedFileReader, reader thread
 std::atomic<u64> g_forja_gs_vsyncs{0}; // every GS vsync; the watchdog in main.cpp checks it moves
+std::atomic<u32> g_forja_presents{0}; // every frame shown in a game, the game's and the generated ones (UIVM.cpp's FPS box)
 
 // Forja SX2: frame generation (GSDeviceVK.cpp's block from PS5SX2). Its clock is the PS2's vsyncs: while generated frames have
 // room (g_orbis_fg_engaged), a vsync that only repeats the game's last frame presents nothing, since the generated frame was
@@ -840,6 +841,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 					break;
 				OrbisVkFrameGenDraw();
 				EndPresentFrame();
+				g_forja_presents.fetch_add(1, std::memory_order_relaxed);
 			}
 		}
 #endif
@@ -857,6 +859,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 
 			EndPresentFrame();
 			s_orbis_fg_presents++; // a refresh of this interval used (frame generation's budget)
+			g_forja_presents.fetch_add(1, std::memory_order_relaxed);
 
 			const float gpu_time = g_gs_device->GetAndResetAccumulatedGPUTime();
 			GPUPipelineStatistics gpu_stats = g_gs_device->GetAndResetAccumulatedGPUPipelineStatistics();
