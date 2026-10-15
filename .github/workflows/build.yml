@@ -66,6 +66,13 @@ jobs:
           printf 'Commit: %s\nSDK SHA256: %s\n' "$GITHUB_SHA" "$PS4_SDK_SHA256" > ci-output/build-info.txt
           clang-21 --version >> ci-output/build-info.txt
 
+      # Forja SX2: a failed compile's first errors as annotations, which the public API shows without signing in (the job log
+      # and the artifacts need a GitHub login).
+      - name: Report compile errors
+        if: failure()
+        run: |
+          grep -E "error:|error [A-Z][0-9]|undefined (reference|symbol)" ci-output/compile.log | head -10 | sed -e 's/%/%25/g' | while IFS= read -r line; do echo "::error::${line:0:900}"; done || true
+
       - name: Upload executable and symbols
         uses: actions/upload-artifact@v7
         with:
