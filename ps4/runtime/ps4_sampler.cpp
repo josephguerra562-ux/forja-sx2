@@ -28,6 +28,10 @@
 extern "C" char __text_start[];  // defined by the OpenOrbis link.x at the start of .text
 extern "C" int pthread_getthreadid_np(void);  // libkernel (FreeBSD libthr)
 extern "C" void ps4_boot_trace(const char* stage);
+// Same ABI as in ps4/core/ThreadAffinityPS4.cpp (DolphinPS4's, not OpenOrbis's parameterless declarations).
+extern "C" void* scePthreadSelf();
+extern "C" int scePthreadSetaffinity(void* thread, unsigned long long mask);
+extern "C" int scePthreadSetprio(void* thread, int prio);
 
 namespace {
 
@@ -268,11 +272,22 @@ void dumpJitCode() {
 }
 
 std::atomic<bool> g_sampler_on{false};
+std::atomic<unsigned long long> g_sampler_cpu_mask{0};
 
 void* samplerThread(void*) {
+    // Forja SX2: the thread is created by the EE thread right after that pinned itself, so it inherited the EE's core and
+    // its priority. It then only ran when the EE blocked, and every EE sample landed in a libkernel wait ("EE: 100 % sys",
+    // compilations 25-26). Off the workers' cores, above their priority, it interrupts them when it should.
+    const unsigned long long mask = g_sampler_cpu_mask.load();
+    const int affinity = mask ? scePthreadSetaffinity(scePthreadSelf(), mask) : 0;
+    const int priority = scePthreadSetprio(scePthreadSelf(), 300);
     const int fd = open("/data/ForjaSX2/samples.log", O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd < 0)
         return nullptr;
+    char placement[160];
+    snprintf(placement, sizeof(placement), "sampler thread: cpu mask 0x%llx (result 0x%x), priority 300 (result 0x%x)\n",
+             mask, affinity, priority);
+    writeLine(fd, placement);
     writeModuleList(fd);
     const double start = now();
     double window_start = start, last_dump = start;
@@ -540,6 +555,11 @@ extern "C" void ps4_sampler_register_thread(const char* name) {
     g_threads[index].name = name;
     g_threads[index].thread.store(pthread_self());
     g_thread_count.store(index + 1, std::memory_order_release);
+}
+
+// Forja SX2: the cores the sampler thread runs on (the helpers' cores); set before ps4_sampler_start().
+extern "C" void ps4_sampler_set_cpu_mask(unsigned long long mask) {
+    g_sampler_cpu_mask.store(mask);
 }
 
 extern "C" void ps4_sampler_start() {

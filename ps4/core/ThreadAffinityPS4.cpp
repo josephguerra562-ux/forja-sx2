@@ -23,6 +23,7 @@ extern "C" int scePthreadSetprio(void* thread, int prio);
 // the vm_boot.sym.gz each release carries, by herramientas/perfil_funciones.py). On with /data/ForjaSX2/vm-sampler.
 extern "C" void ps4_sampler_register_thread(const char* name);
 extern "C" void ps4_sampler_start();
+extern "C" void ps4_sampler_set_cpu_mask(unsigned long long mask);
 
 namespace PS4ThreadAffinity
 {
@@ -135,6 +136,9 @@ namespace PS4ThreadAffinity
 		static const bool s_sampler = access("/data/ForjaSX2/vm-sampler", F_OK) == 0;
 		if (s_sampler && (std::strcmp(role, "EE") == 0 || std::strcmp(role, "VU1") == 0 || std::strcmp(role, "GS") == 0))
 		{
+			// Its own thread goes on the helpers' cores, never on the worker that happens to start it.
+			const int helper = ResolveCore("AYUDANTES", -1);
+			ps4_sampler_set_cpu_mask(helper >= 0 ? (1ULL << helper) : 0x3ULL);
 			ps4_sampler_register_thread(role);
 			ps4_sampler_start();
 			std::printf("PS4 sampler: %s registered\n", role);
