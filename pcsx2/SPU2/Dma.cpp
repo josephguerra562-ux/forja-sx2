@@ -9,6 +9,9 @@
 #include "IopHw.h"
 #include "Config.h"
 
+// Forja SX2: stopped SPU2 voices are replayed in batches (Mixer.cpp); they catch up before a DMA changes SPU2 memory they read.
+extern void (*g_forja_spu2_catch_up)();
+
 static constexpr int CYCLES_PER_WORD = 24;
 
 #ifdef PCSX2_DEVBUILD
@@ -93,6 +96,8 @@ void V_Core::LogAutoDMA(FILE* fp)
 
 void V_Core::AutoDMAReadBuffer(int mode) //mode: 0= split stereo; 1 = do not split stereo
 {
+	if (g_forja_spu2_catch_up)
+		g_forja_spu2_catch_up();
 	u32 spos = InputPosWrite & 0x100; // Starting position passed by TSA
 	bool leftbuffer = !(InputPosWrite & 0x80);
 
@@ -236,6 +241,8 @@ void V_Core::PlainDMAWrite(u16* pMem, u32 size)
 
 void V_Core::FinishDMAwrite()
 {
+	if (g_forja_spu2_catch_up)
+		g_forja_spu2_catch_up();
 	if (DMAPtr == nullptr)
 	{
 		DMAPtr = (u16*)iopPhysMem(MADR);

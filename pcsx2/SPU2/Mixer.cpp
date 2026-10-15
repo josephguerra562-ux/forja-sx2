@@ -10,6 +10,7 @@
 #include "common/Assertions.h"
 #include "common/Timer.h"
 
+#include <cstring>
 #include <unistd.h> // Forja SX2: access() for the PS4 test markers
 
 // LOOP/END sets the ENDX bit and sets NAX to LSA, and the voice is muted if LOOP is not set
@@ -25,10 +26,26 @@
 // namespace of its own for each ISA it is compiled for.
 extern u64 g_forja_spu2_split_voices, g_forja_spu2_split_mix, g_forja_spu2_split_output;
 extern u64 g_forja_spu2_split_samples, g_forja_spu2_split_active, g_forja_spu2_split_irq;
+// Forja SX2: stopped voices replayed in batches (MixCoreVoices below; spu2.cpp and Dma.cpp call the catch-up).
+extern void (*g_forja_spu2_catch_up)();
+extern u32 g_forja_spu2_pending[2][24];
+extern bool g_forja_spu2_any_pending;
+extern u64 g_forja_spu2_deferred_samples, g_forja_spu2_catch_ups;
 
 #if MULTI_ISA_COMPILE_ONCE
 u64 g_forja_spu2_split_voices = 0, g_forja_spu2_split_mix = 0, g_forja_spu2_split_output = 0;
 u64 g_forja_spu2_split_samples = 0, g_forja_spu2_split_active = 0, g_forja_spu2_split_irq = 0;
+void (*g_forja_spu2_catch_up)() = nullptr;
+u32 g_forja_spu2_pending[2][24] = {};
+bool g_forja_spu2_any_pending = false;
+u64 g_forja_spu2_deferred_samples = 0, g_forja_spu2_catch_ups = 0;
+
+// A reset or a loaded savestate replaces the voices: their pending samples belong to the state before.
+void ForjaSPU2ClearPending()
+{
+	std::memset(g_forja_spu2_pending, 0, sizeof(g_forja_spu2_pending));
+	g_forja_spu2_any_pending = false;
+}
 
 // decoded pcm data, used to cache the decoded data so that it needn't be decoded
 // multiple times.  Cache chunks are decoded when the mixer requests the blocks, and
@@ -431,20 +448,80 @@ static __forceinline StereoOut32 MixVoice(uint coreidx, uint voiceidx)
 	return voiceOut;
 }
 
+// Forja SX2: stopped voices in batches. The SPU2 keeps every voice reading its memory even when it is silent (MixVoice), for IRQs
+// and for games that read a voice's address (NAX) or its end flags (ENDX); MMXCM's audio uses none of its 48 voices and they took
+// ~95 ms of the EE thread a second. Skipping them (compilation 20, vm-spu2-voces-rapidas) hung the game on loading a save: it
+// waited for something of theirs that never moved. Now a stopped voice is not skipped but deferred: what MixVoice does to it
+// (the volume slide, the block header and address, the pitch and the samples it consumes, nothing audible) is replayed in a
+// batch, with the same functions in the same order, before anything could tell the difference: any SPU2 register read or write
+// (SPU2read/SPU2write, after their TimeUpdate), a DMA writing SPU2 memory, a savestate, or 256 samples (5 ms) at most. A voice
+// is deferred only while neither core has an IRQ armed (a voice reading IRQA raises the IRQ of both), when it is not pitch
+// modulated (that reads the previous voice's output each sample), when it is not voice 1 or 3 (they write SPU2 memory) and when
+// it is not reading the output areas below 0x1000 (written every sample). /data/ForjaSX2/vm-spu2-voces-exactas turns it off.
+static void ForjaReplayStoppedVoice(uint coreidx, uint voiceidx, u32 samples)
+{
+	V_Core& thiscore(Cores[coreidx]);
+	V_Voice& vc(thiscore.Voices[voiceidx]);
+	for (u32 i = 0; i < samples; i++)
+	{
+		vc.Volume.Update();
+		DecodeSamples(coreidx, voiceidx);
+		UpdatePitch(coreidx, voiceidx);
+		ConsumeSamples(thiscore, voiceidx);
+	}
+}
+
+static void ForjaCatchUpVoices()
+{
+	if (!g_forja_spu2_any_pending)
+		return;
+	g_forja_spu2_any_pending = false;
+	g_forja_spu2_catch_ups++;
+	for (uint c = 0; c < 2; c++)
+	{
+		for (uint v = 0; v < V_Core::NumVoices; v++)
+		{
+			if (const u32 n = g_forja_spu2_pending[c][v])
+			{
+				g_forja_spu2_pending[c][v] = 0;
+				ForjaReplayStoppedVoice(c, v, n);
+			}
+		}
+	}
+}
+
 static __forceinline void MixCoreVoices(VoiceMixSet& dest, const uint coreidx)
 {
 	V_Core& thiscore(Cores[coreidx]);
-	// Forja SX2, a test with /data/ForjaSX2/vm-spu2-voces-rapidas (off by default): a stopped voice is not run on while its core
-	// has no IRQ armed. The SPU2 keeps every voice reading its memory (above), for IRQs and for games that read a voice's address or
-	// its end flags; a key-on starts a voice from its own start address, so a game that does neither will not tell. Voices 1 and 3
-	// always run (their output goes to SPU2 memory).
-	static const bool s_fast_voices = access("/data/ForjaSX2/vm-spu2-voces-rapidas", F_OK) == 0;
-	const bool skip_stopped = s_fast_voices && !thiscore.IRQEnable;
+	static const bool s_defer_voices = access("/data/ForjaSX2/vm-spu2-voces-exactas", F_OK) != 0;
+	const bool defer = s_defer_voices && !Cores[0].IRQEnable && !Cores[1].IRQEnable;
+	if (defer)
+		g_forja_spu2_catch_up = &ForjaCatchUpVoices;
+	else if (g_forja_spu2_any_pending)
+		ForjaCatchUpVoices();
 
 	for (uint voiceidx = 0; voiceidx < V_Core::NumVoices; ++voiceidx)
 	{
-		if (skip_stopped && voiceidx != 1 && voiceidx != 3 && thiscore.Voices[voiceidx].ADSR.Phase == V_ADSR::PHASE_STOPPED)
-			continue;
+		V_Voice& vc(thiscore.Voices[voiceidx]);
+		u32& pending = g_forja_spu2_pending[coreidx][voiceidx];
+		if (defer && voiceidx != 1 && voiceidx != 3 && vc.ADSR.Phase == V_ADSR::PHASE_STOPPED && !vc.Modulated && vc.NextA >= 0x1000)
+		{
+			g_forja_spu2_any_pending = true;
+			g_forja_spu2_deferred_samples++;
+			if (++pending >= 256)
+			{
+				const u32 n = pending;
+				pending = 0;
+				ForjaReplayStoppedVoice(coreidx, voiceidx, n);
+			}
+			continue; // a stopped voice adds nothing to the mix
+		}
+		if (pending)
+		{
+			const u32 n = pending;
+			pending = 0;
+			ForjaReplayStoppedVoice(coreidx, voiceidx, n);
+		}
 		StereoOut32 VVal(MixVoice(coreidx, voiceidx));
 
 		// Note: Results from MixVoice are ranged at 16 bits.

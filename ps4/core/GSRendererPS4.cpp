@@ -623,6 +623,7 @@ extern std::atomic<u32> g_orbis_rec_compiles, g_orbis_rec_full_resets; // pcsx2/
 u32 g_forja_pipelines_created = 0; // GSDeviceVK::CreateTFXPipeline, GS thread only
 std::atomic<u64> g_forja_disc_bytes{0}; // ThreadedFileReader, reader thread
 std::atomic<u64> g_forja_gs_vsyncs{0}; // every GS vsync; the watchdog in main.cpp checks it moves
+std::atomic<u32> g_forja_resumes{0}; // main.cpp, each time the L3+R3 menu resumes the game (the hitch detector skips that gap)
 std::atomic<u32> g_forja_presents{0}; // every frame shown in a game, the game's and the generated ones (UIVM.cpp's FPS box)
 
 // Forja SX2: frame generation (GSDeviceVK.cpp's block from PS5SX2). Its clock is the PS2's vsyncs: while generated frames have
@@ -644,7 +645,13 @@ static void ForjaReportHitch()
 	static u32 s_compiles = 0, s_resets = 0, s_pipelines = 0;
 	static u64 s_disc = 0;
 	static unsigned s_reported = 0;
+	static u32 s_resumes = 0;
 	g_forja_gs_vsyncs.fetch_add(1, std::memory_order_relaxed);
+	if (const u32 resumes = g_forja_resumes.load(std::memory_order_relaxed); resumes != s_resumes)
+	{
+		s_resumes = resumes;
+		s_last = 0; // the gap since the last vsync is the menu's, not a hitch
+	}
 	const Common::Timer::Value now = Common::Timer::GetCurrentValue();
 	const u32 compiles = g_orbis_rec_compiles.load(std::memory_order_relaxed);
 	const u32 resets = g_orbis_rec_full_resets.load(std::memory_order_relaxed);

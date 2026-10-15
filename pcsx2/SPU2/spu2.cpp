@@ -30,6 +30,16 @@ static bool s_audio_capture_active = false;
 static bool s_psxmode = false;
 static bool s_output_muted = false;
 
+// Forja SX2: stopped SPU2 voices are replayed in batches (Mixer.cpp, MixCoreVoices); they are brought up to date before
+// anything reads or writes the SPU2's registers, and dropped on a reset or a loaded savestate.
+extern void (*g_forja_spu2_catch_up)();
+extern void ForjaSPU2ClearPending();
+static inline void ForjaSPU2CatchUp()
+{
+	if (g_forja_spu2_catch_up)
+		g_forja_spu2_catch_up();
+}
+
 static std::unique_ptr<AudioStream> s_output_stream;
 static std::array<float, AudioStream::CHUNK_SIZE * 2> s_current_chunk;
 static u32 s_current_chunk_pos;
@@ -233,6 +243,7 @@ void SPU2::InternalReset(bool psxmode)
 
 	s_current_chunk_pos = 0;
 	s_psxmode = psxmode;
+	ForjaSPU2ClearPending();
 	if (!s_psxmode)
 	{
 		memset(spu2regs, 0, 0x010000);
@@ -414,6 +425,7 @@ u16 SPU2read(u32 rmem)
 	else
 	{
 		TimeUpdate(psxRegs.cycle);
+		ForjaSPU2CatchUp();
 
 		if (rmem >> 16 == 0x1f80)
 		{
@@ -445,6 +457,7 @@ void SPU2write(u32 rmem, u16 value)
 	// incorrect pitches and loop lengths.
 
 	TimeUpdate(psxRegs.cycle);
+	ForjaSPU2CatchUp();
 
 	if (rmem >> 16 == 0x1f80)
 		Cores[0].WriteRegPS1(rmem, value);
@@ -485,8 +498,10 @@ s32 SPU2freeze(FreezeAction mode, freezeData* data)
 	switch (mode)
 	{
 		case FreezeAction::Load:
+			ForjaSPU2ClearPending();
 			return SPU2Savestate::ThawIt(spud);
 		case FreezeAction::Save:
+			ForjaSPU2CatchUp();
 			return SPU2Savestate::FreezeIt(spud);
 
 			jNO_DEFAULT;

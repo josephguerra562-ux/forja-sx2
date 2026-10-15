@@ -72,6 +72,7 @@ extern bool g_ps4_vtlb_bulk_register_cache;
 extern bool g_ps4_skip_smc_checks;
 extern bool g_ps4_bytecopy_fusion;
 extern std::atomic<int> g_orbis_waitloop_ext;
+extern std::atomic<u32> g_forja_resumes; // ps4/core/GSRendererPS4.cpp: the hitch detector skips the L3+R3 menu's gap
 extern u64 g_ps4_vtlb_cached_quad_reads, g_ps4_vtlb_cached_writes;
 extern u64 g_ps4_multiblock_wait_blocks, g_ps4_multiblock_wait_runs, g_ps4_multiblock_wait_iterations;
 extern u64 g_ps4_bytecopy_blocks, g_ps4_bytecopy_runs, g_ps4_bytecopy_bytes;
@@ -513,11 +514,15 @@ void VMHostPoll()
 			if (g_forja_spu2_split_samples > 0)
 			{
 				const double n = static_cast<double>(g_forja_spu2_split_samples);
-				ProbeLog("Audio SPU2 split: voices_ms=%.1f mix_reverb_ms=%.1f output_stretch_ms=%.1f (per second) active_voices=%.1f of 48 irq_cores=%.2f\n",
+				extern u64 g_forja_spu2_deferred_samples, g_forja_spu2_catch_ups; // Mixer.cpp: stopped voices in batches
+				ProbeLog("Audio SPU2 split: voices_ms=%.1f mix_reverb_ms=%.1f output_stretch_ms=%.1f (per second) active_voices=%.1f of 48 irq_cores=%.2f "
+						 "deferred_voice_samples_per_second=%.0f catch_ups_per_second=%.0f\n",
 					Common::Timer::ConvertValueToMilliseconds(g_forja_spu2_split_voices) * 16.0 / interval,
 					Common::Timer::ConvertValueToMilliseconds(g_forja_spu2_split_mix) * 16.0 / interval,
 					Common::Timer::ConvertValueToMilliseconds(g_forja_spu2_split_output) * 16.0 / interval,
-					g_forja_spu2_split_active / n, g_forja_spu2_split_irq / n);
+					g_forja_spu2_split_active / n, g_forja_spu2_split_irq / n, g_forja_spu2_deferred_samples / interval,
+					g_forja_spu2_catch_ups / interval);
+				g_forja_spu2_deferred_samples = g_forja_spu2_catch_ups = 0;
 			}
 			g_forja_spu2_split_voices = g_forja_spu2_split_mix = g_forja_spu2_split_output = 0;
 			g_forja_spu2_split_samples = g_forja_spu2_split_active = g_forja_spu2_split_irq = 0;
@@ -677,6 +682,8 @@ void VMHostPoll()
 		else
 		{
 			ProbeLog("Emulator menu: resume\n");
+			// Forja SX2: the GS's hitch detector (GSRendererPS4.cpp) does not count the time the menu was open as a hitch.
+			g_forja_resumes.fetch_add(1, std::memory_order_relaxed);
 			VMManager::SetPaused(false);
 		}
 	}
