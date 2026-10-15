@@ -51,6 +51,7 @@
 #include "ps2/BiosTools.h"
 
 #include "common/Console.h"
+#include <unistd.h> // Forja SX2: access() for the PS4 markers
 #include "common/Error.h"
 #include "common/FileSystem.h"
 #include "common/FPControl.h"
@@ -2767,6 +2768,12 @@ void VMManager::InitializeCPUProviders()
 #endif
 
 #if !defined(PCSX2_PS4_VM_BOOT) || defined(PCSX2_PS4_VM_BOOT_JIT)
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+	// Forja SX2: the VIF unpack recompiler (Vif_Dynarec.h), on with a marker while it is tested.
+	newVifDynaRec = access("/data/ForjaSX2/vm-vif-rapido", F_OK) == 0;
+	printf("Forja SX2: VIF unpack recompiler %s\n", newVifDynaRec ? "ON (vm-vif-rapido)" : "off");
+	fflush(stdout);
+#endif
 	VifUnpackSSE_Init();
 #endif
 }
@@ -2853,7 +2860,7 @@ void VMManager::Internal::ClearCPUExecutionCaches()
 	printf("[dbg] clear: CpuVU1 done\n");
 	fflush(stdout);
 
-	if constexpr (newVifDynaRec)
+	if (newVifDynaRec)
 	{
 		dVifReset(0);
 		dVifReset(1);

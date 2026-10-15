@@ -7,6 +7,9 @@
 #include "Vif_Dma.h"
 #include "Vif_Dynarec.h"
 #include "MTVU.h"
+
+// Forja SX2: see Vif_Dynarec.h (set in VMManager::InitializeCPUProviders()).
+bool newVifDynaRec = false;
 #if !defined(PCSX2_PS4)
 #include "OrbisPaths.h" // vk-285-33 (the port's include-orbis)
 #endif

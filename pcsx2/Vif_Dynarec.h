@@ -43,4 +43,8 @@ alignas(16) extern nVifStruct nVif[2];
 alignas(16) extern nVifCall nVifUpk[(2 * 2 * 16) * 4]; // ([USN][Masking][Unpack Type]) [curCycle]
 alignas(16) extern u32      nVifMask[3][4][4];         // [MaskNumber][CycleNumber][Vector]
 
-static constexpr bool newVifDynaRec = 0; // Orbis bring-up: avoid the native VIF code cache.
+// Forja SX2: the VIF unpack recompiler was turned off for the PS4 bring-up ("avoid the native VIF code cache"), so every
+// VIF1 unpack ran the generic loop: ~22 % of the VU1 thread in God of War II's heavy scenes (the sampler, 2026-10-15), with
+// that thread the one holding the game back. The code cache is in the same RWX code map the EE and microVU recompilers use.
+// Chosen when the CPU providers start (VMManager.cpp): on with /data/ForjaSX2/vm-vif-rapido while it is tested.
+extern bool newVifDynaRec;
