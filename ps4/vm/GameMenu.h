@@ -2,6 +2,7 @@
 // (AI-assisted) Small controller-driven launcher for the PS4 VM frontend.
 #pragma once
 #include "GamePlatform.h"
+#include "InGameMenuState.h"
 #include <string>
 
 namespace PS4GameMenu
@@ -13,7 +14,6 @@ namespace PS4GameMenu
 	// CPU thread: update the full-screen boot artwork and its real startup stage.
 	void ShowLoading(unsigned progress, const char* status);
 	void HideLoading();
-	// CPU thread: publish the pause panel and request a presentation while paused.
-	void SetInGameMenu(bool visible, unsigned selected, unsigned upscale = 1, unsigned max_upscale = 1,
-		unsigned aspect = 1, bool show_performance_overlay = true, int ee_rate = -1);
+	// CPU thread: publish the pause panel and request a presentation while paused (a state with visible = false hides it).
+	void SetInGameMenu(const InGameMenuState& state);
 } // namespace PS4GameMenu

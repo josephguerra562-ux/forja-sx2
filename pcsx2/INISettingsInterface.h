@@ -18,6 +18,9 @@ public:
 
 	const std::string& GetFileName() const { return m_filename; }
 	bool IsDirty() const { return m_dirty; }
+	// Forja SX2: the game layer gets the factory profile's keys in memory only (ForjaGameProfile.h); this keeps the
+	// destructor from saving them into the player's file.
+	void ClearDirty() { m_dirty = false; }
 
 	bool Load();
 	bool Save(Error* error = nullptr) override;

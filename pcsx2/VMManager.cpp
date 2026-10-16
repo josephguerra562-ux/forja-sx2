@@ -47,6 +47,7 @@
 #include "USB/USB.h"
 #include "Vif_Dynarec.h"
 #include "VMManager.h"
+#include "ForjaGameProfile.h"
 #include "OrbisEEProf.h"
 #include "ps2/BiosTools.h"
 
@@ -771,6 +772,25 @@ void VMManager::ApplyGameFixes()
 	game->applyGameFixes(EmuConfig, EmuConfig.EnableGameFixes);
 	game->applyGSHardwareFixes(EmuConfig.GS);
 
+	// Forja SX2: what the game's profile sets explicitly (the player's file, or the factory profile under it) wins over the
+	// GameDB key by key, as in Dolphin. The load wrappers keep the current value of every key the profile leaves out, so only
+	// the keys it names change. The GS hardware fixes are still the GameDB's.
+	if (s_game_settings_interface)
+	{
+		const Pcsx2Config::CpuOptions cpu_before = EmuConfig.Cpu;
+		const Pcsx2Config::SpeedhackOptions speedhacks_before = EmuConfig.Speedhacks;
+		const Pcsx2Config::GamefixOptions gamefixes_before = EmuConfig.Gamefixes;
+		SettingsLoadWrapper profile(*s_game_settings_interface);
+		EmuConfig.Cpu.LoadSave(profile);
+		EmuConfig.Cpu.ApplySanityCheck();
+		EmuConfig.Speedhacks.LoadSave(profile);
+		EmuConfig.Gamefixes.LoadSave(profile);
+		if (EmuConfig.Cpu != cpu_before || EmuConfig.Speedhacks != speedhacks_before || EmuConfig.Gamefixes != gamefixes_before)
+			Console.WriteLn("Forja SX2: the game's profile overrides the GameDB (cpu=%d speedhacks=%d gamefixes=%d)",
+				EmuConfig.Cpu != cpu_before ? 1 : 0, EmuConfig.Speedhacks != speedhacks_before ? 1 : 0,
+				EmuConfig.Gamefixes != gamefixes_before ? 1 : 0);
+	}
+
 	// Re-remove upscaling fixes, make sure they don't apply at native res.
 	// We do this in LoadCoreSettings(), but game fixes get applied afterwards because of the unsafe warning.
 	EmuConfig.GS.MaskUpscalingHacks();
@@ -1022,6 +1042,20 @@ bool VMManager::UpdateGameSettingsLayer()
 		else
 		{
 			DevCon.WriteLn("No game settings found (tried '%s')", filename.c_str());
+		}
+
+		// Forja SX2: the factory profile (resources/perfiles/<SERIAL>.ini) fills in whatever the player's file leaves out. Its
+		// keys stay in memory: ClearDirty keeps the destructor from saving them into the player's file.
+		const std::string serial = GetSerialForGameSettings();
+		if (!serial.empty())
+		{
+			std::unique_ptr<INISettingsInterface> merged = new_interface ? std::move(new_interface) :
+				std::make_unique<INISettingsInterface>(GetGameSettingsPath(serial, s_disc_crc));
+			if (ForjaGameProfile::MergeFactory(*merged, serial))
+				Console.WriteLn("Forja SX2: factory profile '%s' under the player's settings", ForjaGameProfile::FactoryPath(serial).c_str());
+			merged->ClearDirty();
+			if (!merged->IsEmpty())
+				new_interface = std::move(merged);
 		}
 	}
 

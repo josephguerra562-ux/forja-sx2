@@ -236,7 +236,7 @@ namespace PS4GameMenu
 		ImTextureData* s_intro_texture = nullptr;
 		// One atomic snapshot shared by CPU and GS; field widths are defined
 		// in InGameMenuState.h so publication and rendering stay consistent.
-		std::atomic<unsigned> s_in_game_state{0};
+		std::atomic<std::uint64_t> s_in_game_state{0};
 		std::string s_status;
 		std::vector<CoverTexture> s_cover_textures;
 		std::vector<UiImage> s_ui_images;
@@ -1329,7 +1329,13 @@ namespace PS4GameMenu
 			draw->AddLine(point(64, 170), point(1856, 170), IM_COL32(38, 103, 157, 150), 1.0f * scale);
 			image("status_controle", 126, 82, 40, 34);
 			draw->AddText(font, 34.0f * scale, point(196, 82), white, "Menú del emulador");
-			draw->AddText(font, 18.0f * scale, point(138, 205), muted, "JUEGO EN PAUSA");
+			draw->AddText(font, 18.0f * scale, point(138, 186), muted, "JUEGO EN PAUSA");
+			// Forja SX2: which profiles this game has (pcsx2/ForjaGameProfile.h).
+			char profile_label[128];
+			std::snprintf(profile_label, sizeof(profile_label), "Perfil de este juego:  de fábrica %s  ·  tuyo %s",
+				menu_state.has_factory ? "sí" : "no", menu_state.has_player ? "sí" : "no");
+			draw->AddText(font, 18.0f * scale, point(1180, 186), muted, profile_label);
+			static constexpr const char* origin_names[] = {"global", "perfil de fábrica", "tu perfil"};
 			char resolution[96];
 			std::snprintf(resolution, sizeof(resolution), "Resolución interna:  < %ux >%s", upscale,
 				upscale == 1 ? "  (nativa)" : "");
@@ -1343,15 +1349,42 @@ namespace PS4GameMenu
 			static constexpr const char* ee_names[] = {"50 %", "60 %", "75 %", "100 % (PS2 real)", "130 %", "180 %", "300 %"};
 			char ee_label[96];
 			std::snprintf(ee_label, sizeof(ee_label), "Velocidad del CPU de la PS2:  < %s >", ee_names[std::clamp(ee_rate, -3, 3) + 3]);
-			const char* labels[] = {"Volver al juego", resolution, aspect_label, performance_label, ee_label, "Volver a la biblioteca", "Salir de la aplicación"};
+			// Forja SX2: the game's profile rows. Video mode: the EE rate while a movie plays (0 = off).
+			static constexpr const char* video_names[] = {"No", "100 %", "75 %", "60 %", "50 %"};
+			char video_label[96];
+			std::snprintf(video_label, sizeof(video_label), "Modo video:  < %s >", video_names[std::min(menu_state.video, 4u)]);
+			char video_description[160];
+			std::snprintf(video_description, sizeof(video_description),
+				"CPU de la PS2 durante las cinemáticas. Para este juego  ·  ahora: %s", origin_names[menu_state.video_origin]);
+			char frame_gen_label[96];
+			std::snprintf(frame_gen_label, sizeof(frame_gen_label), "Generación de cuadros:  < %s >", menu_state.frame_gen ? "Sí" : "No");
+			char frame_gen_description[160];
+			std::snprintf(frame_gen_description, sizeof(frame_gen_description),
+				"Muestra a 60 un juego estable a 30 (experimental). Para este juego  ·  ahora: %s",
+				origin_names[menu_state.frame_gen_origin]);
+			static constexpr const char* cores_names[] = {"Global", "Normal", "Plan B", "Propio"};
+			char cores_label[96];
+			std::snprintf(cores_label, sizeof(cores_label), "Núcleos de la CPU:  < %s >", cores_names[std::min(menu_state.cores, 3u)]);
+			char cores_description[160];
+			std::snprintf(cores_description, sizeof(cores_description),
+				"Reparto de EE, VU1 y GS (Plan B: EE 1, VU1 2, GS 3). Para este juego  ·  ahora: %s",
+				origin_names[menu_state.cores_origin]);
+			const char* labels[] = {"Volver al juego", resolution, aspect_label, performance_label, ee_label, video_label,
+				frame_gen_label, cores_label, "Restablecer este juego", "Volver a la biblioteca", "Salir de la aplicación"};
 			const char* descriptions[] = {
 				"Seguir jugando desde donde quedó",
-				"Más calidad de imagen en esta sesión (consume más)",
-				"Forma de la imagen en pantalla",
+				"Más calidad de imagen (consume más). Se guarda para este juego",
+				"Forma de la imagen en pantalla. Se guarda para este juego",
 				"Mostrar u ocultar FPS, velocidad y tiempos",
 				"Menos % = más FPS en la PS4 (el juego puede perder cuadros). Se guarda para este juego",
+				video_description,
+				frame_gen_description,
+				cores_description,
+				menu_state.has_player ? "X: borra tus cambios de este juego (queda copia .bak). Siguen el perfil de fábrica y los globales" :
+				                        "Este juego no tiene cambios tuyos",
 				"Cerrar el juego y volver a la biblioteca",
 				"Cerrar el juego y salir de Forja SX2"};
+			static_assert(sizeof(labels) / sizeof(labels[0]) == ROW_COUNT && sizeof(descriptions) / sizeof(descriptions[0]) == ROW_COUNT);
 			const auto draw_option_icon = [&](unsigned row, float cx, float cy, bool selected) {
 				const ImU32 icon_bg = selected ? IM_COL32(34, 127, 214, 255) : IM_COL32(16, 55, 86, 255);
 				const ImU32 icon_line = selected ? IM_COL32(231, 247, 255, 255) : IM_COL32(155, 204, 235, 255);
@@ -1382,7 +1415,32 @@ namespace PS4GameMenu
 					draw->AddCircle(point(cx, cy + 4), 14 * scale, icon_line, 24, 2 * scale);
 					draw->AddLine(point(cx, cy + 4), point(cx + 8, cy - 6), icon_line, 3 * scale);
 				}
-				else if (row == 5)
+				else if (row == ROW_VIDEO_MODE)
+				{
+					draw->AddRect(point(cx - 15, cy - 11), point(cx + 15, cy + 11), icon_line, 3 * scale, 2 * scale, 0);
+					draw->AddTriangleFilled(point(cx - 5, cy - 6), point(cx - 5, cy + 6), point(cx + 7, cy), icon_line);
+				}
+				else if (row == ROW_FRAME_GEN)
+				{
+					draw->AddRect(point(cx - 15, cy - 12), point(cx + 5, cy + 6), icon_line, 2 * scale, 2 * scale, 0);
+					draw->AddRect(point(cx - 5, cy - 6), point(cx + 15, cy + 12), icon_line, 2 * scale, 2 * scale, 0);
+				}
+				else if (row == ROW_CORES)
+				{
+					for (int i = 0; i < 4; i++)
+					{
+						const float x = cx + ((i & 1) ? 2.0f : -14.0f);
+						const float y = cy + ((i & 2) ? 2.0f : -14.0f);
+						draw->AddRect(point(x, y), point(x + 12, y + 12), icon_line, 2 * scale, 2 * scale, 0);
+					}
+				}
+				else if (row == ROW_RESET_GAME)
+				{
+					draw->PathArcTo(point(cx, cy), 13.0f * scale, 0.6f, 5.6f, 20);
+					draw->PathStroke(icon_line, 0, 3 * scale);
+					draw->AddTriangleFilled(point(cx + 9, cy - 13), point(cx + 17, cy - 3), point(cx + 6, cy - 2), icon_line);
+				}
+				else if (row == ROW_LIBRARY)
 				{
 					draw->AddLine(point(cx - 12, cy), point(cx + 10, cy), icon_line, 3 * scale);
 					draw->AddLine(point(cx - 12, cy), point(cx - 2, cy - 9), icon_line, 3 * scale);
@@ -1394,30 +1452,39 @@ namespace PS4GameMenu
 					draw->AddLine(point(cx + 10, cy - 12), point(cx - 10, cy + 12), icon_line, 3 * scale);
 				}
 			};
-			for (unsigned row = 0; row < 7; row++)
+			// Forja SX2: eleven rows since the game's profile rows (5-8); 62 px apart instead of 77 so they fit the panel.
+			for (unsigned row = 0; row < ROW_COUNT; row++)
 			{
-				const float y = 200.0f + row * 77.0f;
+				const float y = 218.0f + row * 62.0f;
 				const bool selected = selected_row == row;
-				draw->AddRectFilled(point(112, y), point(1808, y + 72),
+				draw->AddRectFilled(point(112, y), point(1808, y + 56),
 					selected ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 255), 10.0f * scale);
 				if (selected)
-					draw->AddRect(point(112, y), point(1808, y + 72), accent, 10.0f * scale, 2.0f * scale, 0);
-				draw_option_icon(row, 168, y + 36, selected);
-				draw->AddText(font, 26.0f * scale, point(226, y + 12), white, labels[row]);
-				draw->AddText(font, 16.0f * scale, point(226, y + 45), muted, descriptions[row]);
-				if (row >= 1 && row <= 4)
-					draw->AddText(font, 20.0f * scale, point(1580, y + 24), selected ? white : muted,
-						(row == 1 || row == 4) ? "AJUSTAR" : (row == 2 ? "ELEGIR" : "CAMBIAR"));
+					draw->AddRect(point(112, y), point(1808, y + 56), accent, 10.0f * scale, 2.0f * scale, 0);
+				draw_option_icon(row, 168, y + 28, selected);
+				draw->AddText(font, 24.0f * scale, point(226, y + 5), white, labels[row]);
+				draw->AddText(font, 15.0f * scale, point(226, y + 34), muted, descriptions[row]);
+				const char* action = nullptr;
+				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
+					action = "AJUSTAR";
+				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES)
+					action = "ELEGIR";
+				else if (row == ROW_OVERLAY || row == ROW_FRAME_GEN)
+					action = "CAMBIAR";
+				else if (row == ROW_RESET_GAME && menu_state.has_player)
+					action = "X";
+				if (action)
+					draw->AddText(font, 20.0f * scale, point(1580, y + 17), selected ? white : muted, action);
 			}
-			char hint[128];
-			std::snprintf(hint, sizeof(hint), "Izq./Der.: cambiar valor   |   Resolución: 1x-%ux", max_upscale);
-		draw->AddText(font, 17.0f * scale, point(138, 756), muted, hint);
-		draw->AddText(font, 17.0f * scale, point(138, 786), muted, "3x o más es experimental y solo para PS4 Pro.");
-		draw->AddText(font, 17.0f * scale, point(138, 816), muted, "Arriba/Abajo: elegir   Izq./Der.: cambiar   X: aceptar   Círculo: volver");
-			image("controle_x", 1480, 904, 30, 30);
-			draw->AddText(font, 20.0f * scale, point(1524, 909), white, "Aceptar");
-			image("controle_bola", 1690, 904, 30, 30);
-			draw->AddText(font, 20.0f * scale, point(1734, 909), muted, "Volver");
+			char hint[160];
+			std::snprintf(hint, sizeof(hint), "Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias aquí se guarda solo para este juego.",
+				max_upscale);
+			draw->AddText(font, 17.0f * scale, point(138, 908), muted, hint);
+			draw->AddText(font, 17.0f * scale, point(138, 936), muted, "Arriba/Abajo: elegir   Izq./Der.: cambiar   X: aceptar   Círculo: volver");
+			image("controle_x", 1480, 976, 30, 30);
+			draw->AddText(font, 20.0f * scale, point(1524, 981), white, "Aceptar");
+			image("controle_bola", 1690, 976, 30, 30);
+			draw->AddText(font, 20.0f * scale, point(1734, 981), muted, "Volver");
 			return true;
 		}
 		if (!s_visible || s_items.empty())
@@ -1683,12 +1750,9 @@ namespace PS4GameMenu
 		return true;
 	}
 
-	void SetInGameMenu(bool visible, unsigned selected, unsigned upscale, unsigned max_upscale, unsigned aspect,
-		bool show_performance_overlay, int ee_rate)
+	void SetInGameMenu(const InGameMenuState& state)
 	{
-		const unsigned state = PackInGameMenuState({visible, selected, upscale, max_upscale, aspect,
-			show_performance_overlay, ee_rate});
-		s_in_game_state.store(state, std::memory_order_release);
+		s_in_game_state.store(PackInGameMenuState(state), std::memory_order_release);
 		// Paused emulation produces no VSync. Queue the redraw on the GS thread
 		// so every value change is visible immediately in the panel.
 		MTGS::RunOnGSThread([]() {

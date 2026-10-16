@@ -262,6 +262,8 @@ void VU_Thread::ExecuteRingBuffer()
 			g_orbis_vu_waiting.store(1, std::memory_order_relaxed); // vk-285-29
 #if defined(PCSX2_PS4_VM_BOOT)
 			PS4ThreadCPUMetrics::Sample(PS4ThreadCPUMetrics::Role::VU1);
+			// Forja SX2: a game's profile can move the VU1 (the L3+R3 menu's Núcleos row).
+			PS4ThreadAffinity::RepinIfPlanChanged("VU1", 3);
 #endif
 			if (g_orbis_mtvu_spin.load(std::memory_order_relaxed)) // vk-285-84
 				semaEvent.WaitForWorkWithSpin();

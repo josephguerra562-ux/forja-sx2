@@ -435,6 +435,8 @@ void MTGS::MainLoop()
 		{
 #if defined(PCSX2_PS4_VM_BOOT)
 			PS4GSPollDeferredFlip();
+			// Forja SX2: a game's profile can move the GS (its cores plan, the L3+R3 menu's Núcleos row).
+			PS4ThreadAffinity::RepinIfPlanChanged("GS", 4);
 #endif
 			mtvu_lock.unlock();
 			{

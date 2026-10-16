@@ -16,6 +16,8 @@
 #include "Memory.h"
 #include "common/MemorySettingsInterface.h"
 #include "INISettingsInterface.h"
+#include "ForjaGameProfile.h"
+#include "GameList.h"
 #include "common/Timer.h"
 #include "ps2/BiosTools.h"
 #include "R5900.h"
@@ -52,6 +54,7 @@
 #include <string>
 #include <string_view>
 #include <cstdio>
+#include <cstring>
 #include <cerrno>
 #include <fcntl.h>
 #include <unistd.h>
@@ -181,6 +184,15 @@ static double s_video_since = 0.0;
 static unsigned s_video_busy_checks = 0;
 static constexpr int VIDEO_EE_RATE = -3;
 static constexpr double VIDEO_DECODES_PER_SECOND = 2000.0; // a movie: tens of thousands; gameplay: ~0
+// Forja SX2: the running game's profile (pcsx2/ForjaGameProfile.h): its factory profile under the player's own. Read before
+// the VM boots, from the library's scan of the image, and again if PCSX2 identifies another disc.
+extern bool g_orbis_fg_wanted; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp: frame generation, read by the GS at every frame
+static ForjaGameProfile::Values s_profile;
+static bool s_global_video_mode = true; // ajustes.ini
+static bool s_global_frame_gen = false; // ajustes.ini
+static bool s_frame_gen_blocked = false; // the last try hung the GPU (fg-en-prueba): off for this launch
+static int s_video_ee_rate = VIDEO_EE_RATE;
+static double s_profile_last_check = 0.0;
 static u32 s_game_menu_direction = 0;
 static double s_game_menu_next_repeat = 0.0;
 static std::atomic<bool> s_return_to_main_menu{false};
@@ -305,10 +317,60 @@ static void ReadGameResolution()
 		MTGS::WaitGS(false, false, false);
 }
 
+// Forja SX2: the L3+R3 menu's values for the game's profile rows (InGameMenuState.h). Video mode: 0 off, else 1 - the EE
+// rate while a movie plays (1 = 100 % ... 4 = 50 %).
+static unsigned VideoMenuValue()
+{
+	return s_video_mode_enabled ? static_cast<unsigned>(1 - std::clamp(s_video_ee_rate, -3, 0)) : 0u;
+}
+
+// The Núcleos row's choices: global (nucleos.txt), the built-in cores, and plan B (the best one in God of War II).
+static constexpr const char* CORE_PLANS[] = {"global", "EE=2 VU1=3 GS=4 AUDIO=5", "EE=1 VU1=2 GS=3 AUDIO=5 AYUDANTES=4"};
+
+static std::string SquashPlan(std::string_view plan)
+{
+	std::string squashed;
+	for (const char c : plan)
+	{
+		if (std::isalnum(static_cast<unsigned char>(c)) || c == '=')
+			squashed += static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+	}
+	return squashed;
+}
+
+// 0 global, 1 normal, 2 plan B, 3 another plan written by hand in the profile.
+static unsigned CoresMenuValue()
+{
+	const std::string plan = SquashPlan(s_profile.cores);
+	if (plan.empty() || plan == "GLOBAL")
+		return 0;
+	for (unsigned i = 1; i < std::size(CORE_PLANS); i++)
+	{
+		if (plan == SquashPlan(CORE_PLANS[i]))
+			return i;
+	}
+	return 3;
+}
+
 static void PublishGameMenu()
 {
-	PS4GameMenu::SetInGameMenu(s_game_menu_open, s_game_menu_selection, s_game_upscale, s_max_game_upscale,
-		s_game_aspect, s_game_show_performance_overlay, s_game_ee_rate);
+	PS4GameMenu::InGameMenuState state;
+	state.visible = s_game_menu_open;
+	state.selected = s_game_menu_selection;
+	state.upscale = s_game_upscale;
+	state.max_upscale = s_max_game_upscale;
+	state.aspect = s_game_aspect;
+	state.show_overlay = s_game_show_performance_overlay;
+	state.ee_rate = s_game_ee_rate;
+	state.video = VideoMenuValue();
+	state.video_origin = static_cast<unsigned>(std::max(s_profile.video_mode_origin, s_profile.video_ee_rate_origin));
+	state.frame_gen = g_orbis_fg_wanted;
+	state.frame_gen_origin = static_cast<unsigned>(s_profile.frame_gen_origin);
+	state.cores = CoresMenuValue();
+	state.cores_origin = static_cast<unsigned>(s_profile.cores_origin);
+	state.has_factory = s_profile.has_factory;
+	state.has_player = s_profile.has_player;
+	PS4GameMenu::SetInGameMenu(state);
 }
 
 namespace ImGuiManager
@@ -337,35 +399,94 @@ static void ApplyGameAspect(unsigned aspect)
 	ProbeLog("Aspect ratio applied: index=%u\n", aspect);
 }
 
-// Forja SX2: the pause menu's "PS2 CPU speed" row. The value goes to this game's settings ini
-// (gamesettings/<serial>_<crc>.ini, PCSX2's own per-game file), then the game layer is reloaded so the
-// recompilers pick up the new EECycleRate. ReloadGameSettings rebuilds EmuConfig from the settings
-// layers, which drops the session-only resolution and aspect choices, so those are put back afterwards.
-static void ApplyGameEECycleRate(int rate)
+static const char* ProfileOriginName(ForjaGameProfile::Origin origin)
 {
-	rate = std::clamp(rate, -3, 3);
+	return origin == ForjaGameProfile::Origin::Player ? "player" : origin == ForjaGameProfile::Origin::Factory ? "factory" : "global";
+}
+
+// Forja SX2: makes the game's profile current: video mode, frame generation and cores. Its PCSX2 keys are not here: PCSX2
+// reads them itself, as the game settings layer (VMManager::UpdateGameSettingsLayer).
+static void ApplyGameProfile(ForjaGameProfile::Values profile)
+{
+	s_profile = std::move(profile);
+	s_video_mode_enabled = s_profile.video_mode >= 0 ? s_profile.video_mode != 0 : s_global_video_mode;
+	s_video_ee_rate = s_profile.video_ee_rate <= 0 ? s_profile.video_ee_rate : VIDEO_EE_RATE;
+	g_orbis_fg_wanted = !s_frame_gen_blocked && (s_profile.frame_gen >= 0 ? s_profile.frame_gen != 0 : s_global_frame_gen);
+	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
+	ProbeLog("Game profile: %s %08X factory=%d player=%d video_mode=%d (%s) video_ee_rate=%d (%s) frame_gen=%d (%s) "
+			 "cores=\"%s\" (%s)\n",
+		s_profile.serial.empty() ? "(no serial)" : s_profile.serial.c_str(), s_profile.crc, s_profile.has_factory ? 1 : 0,
+		s_profile.has_player ? 1 : 0, s_video_mode_enabled ? 1 : 0, ProfileOriginName(s_profile.video_mode_origin), s_video_ee_rate,
+		ProfileOriginName(s_profile.video_ee_rate_origin), g_orbis_fg_wanted ? 1 : 0, ProfileOriginName(s_profile.frame_gen_origin),
+		s_profile.cores.c_str(), ProfileOriginName(s_profile.cores_origin));
+}
+
+// The EE is the thread that calls this; the GS moves on its own thread (or pins itself with the plan when it starts). The VU1
+// and the audio thread move from their loops.
+static void RepinWorkersForProfile()
+{
+	PS4ThreadAffinity::RepinIfPlanChanged("EE", 2);
+	if (MTGS::IsOpen())
+		MTGS::RunOnGSThread([]() { PS4ThreadAffinity::RepinIfPlanChanged("GS", 4); });
+}
+
+// Forja SX2: the L3+R3 menu's per-game rows save into the player's profile of the running game (PCSX2's own
+// gamesettings/<serial>_<crc>.ini). With reload_pcsx2 the game layer is reloaded so PCSX2's keys take effect at once:
+// ReloadGameSettings rebuilds EmuConfig from the settings layers, which drops the video mode's movie rate (it re-arms if a
+// movie is still on), so the resolution and aspect shown in the menu are put back afterwards.
+template <typename Edit>
+static void SavePlayerProfile(const char* what, Edit&& edit, bool reload_pcsx2)
+{
 	const std::string serial = VMManager::GetDiscSerial();
 	const u32 crc = VMManager::GetDiscCRC();
 	if (crc == 0)
 	{
-		ProbeLog("EE cycle rate: no disc CRC yet, not saved\n");
+		ProbeLog("%s: no disc CRC yet, not saved\n", what);
 		return;
 	}
-	const std::string path = VMManager::GetGameSettingsPath(serial, crc);
-	INISettingsInterface ini(path);
-	ini.Load();
-	ini.SetIntValue("EmuCore/Speedhacks", "EECycleRate", rate);
-	const bool saved = ini.Save();
+	const bool saved = ForjaGameProfile::EditPlayer(serial, crc, std::forward<Edit>(edit));
+	bool reloaded = false;
+	if (reload_pcsx2)
+	{
+		reloaded = VMManager::ReloadGameSettings();
+		EmuConfig.GS.UpscaleMultiplier = static_cast<float>(s_game_upscale);
+		EmuConfig.GS.AspectRatio = static_cast<AspectRatioType>(std::clamp(s_game_aspect, 0u, 4u));
+		EmuConfig.CurrentAspectRatio = EmuConfig.GS.AspectRatio;
+		MTGS::ApplySettings();
+		MTGS::WaitGS(false, false, false);
+		s_video_active = false;
+		s_game_ee_rate = EmuConfig.Speedhacks.EECycleRate;
+	}
+	ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
+	ProbeLog("%s: saved=%d reloaded=%d file=%s\n", what, saved ? 1 : 0, reloaded ? 1 : 0,
+		ForjaGameProfile::PlayerPath(serial, crc).c_str());
+}
+
+// Forja SX2: the pause menu's "PS2 CPU speed" row (EECycleRate, a PCSX2 key: the recompilers need the reload).
+static void ApplyGameEECycleRate(int rate)
+{
+	rate = std::clamp(rate, -3, 3);
+	SavePlayerProfile("EE cycle rate", [rate](INISettingsInterface& ini) { ini.SetIntValue("EmuCore/Speedhacks", "EECycleRate", rate); },
+		true);
+	ProbeLog("EE cycle rate: requested=%d active=%d\n", rate, s_game_ee_rate);
+}
+
+// Forja SX2: "Restablecer este juego". The player's profile becomes a .bak; the factory profile and the global settings stay.
+static void ResetGameProfile()
+{
+	const std::string serial = VMManager::GetDiscSerial();
+	const u32 crc = VMManager::GetDiscCRC();
+	const bool reset = ForjaGameProfile::ResetPlayer(serial, crc);
 	const bool reloaded = VMManager::ReloadGameSettings();
-	EmuConfig.GS.UpscaleMultiplier = static_cast<float>(s_game_upscale);
-	EmuConfig.GS.AspectRatio = static_cast<AspectRatioType>(std::clamp(s_game_aspect, 0u, 4u));
-	EmuConfig.CurrentAspectRatio = EmuConfig.GS.AspectRatio;
 	MTGS::ApplySettings();
 	MTGS::WaitGS(false, false, false);
-	s_video_active = false; // ReloadGameSettings rebuilt EmuConfig; video mode re-arms if a movie is still on
+	ReadGameResolution();
+	s_video_active = false;
 	s_game_ee_rate = EmuConfig.Speedhacks.EECycleRate;
-	ProbeLog("EE cycle rate: requested=%d active=%d saved=%d reloaded=%d file=%s\n", rate, s_game_ee_rate,
-		saved ? 1 : 0, reloaded ? 1 : 0, path.c_str());
+	ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
+	RepinWorkersForProfile();
+	ProbeLog("Game profile: reset=%d reloaded=%d upscale=%ux aspect=%u ee_rate=%d\n", reset ? 1 : 0, reloaded ? 1 : 0,
+		s_game_upscale, s_game_aspect, s_game_ee_rate);
 }
 
 // Forja SX2: automatic video mode. Measured on a PS4 Pro with Mega Man X Command Mission: during a movie
@@ -375,32 +496,29 @@ static void ApplyGameEECycleRate(int rate)
 // 50 %, and the game's own rate comes back when the movie ends. The rate is baked into recompiled EE
 // blocks, so each switch resets the EE recompiler (recResetEE defers that to a safe point).
 
-// Forja SX2: the EE rate for movies can be set per game, in its gamesettings ini ([Forja] VideoEECycleRate = -2). Tales of
-// the Abyss at -3 (50 %) dropped about a sixth of its movie's pictures and left ~5 short silences a second in the music, as
+// Forja SX2: the EE rate for movies can be set per game, in its profile ([Forja] VideoEECycleRate = -2; s_video_ee_rate). Tales
+// of the Abyss at -3 (50 %) dropped about a sixth of its movie's pictures and left ~5 short silences a second in the music, as
 // its player could not feed the sound in time; at -2 (60 %) it showed as many pictures a second and the silences were gone
 // (PS4 Pro, 2026-10-15). God of War II and Mega Man X Command Mission play their movies cleanly at -3, the default.
-static int VideoEECycleRateForGame()
-{
-	static u32 s_crc = 0;
-	static int s_rate = VIDEO_EE_RATE;
-	const u32 crc = VMManager::GetDiscCRC();
-	if (crc == s_crc)
-		return s_rate;
-	s_crc = crc;
-	s_rate = VIDEO_EE_RATE;
-	if (crc != 0)
-	{
-		INISettingsInterface ini(VMManager::GetGameSettingsPath(VMManager::GetDiscSerial(), crc));
-		if (ini.Load())
-			s_rate = std::clamp(ini.GetIntValue("Forja", "VideoEECycleRate", VIDEO_EE_RATE), -3, 0);
-	}
-	ProbeLog("Video mode: EE rate for this game's movies %d ([Forja] VideoEECycleRate, default %d)\n", s_rate, VIDEO_EE_RATE);
-	return s_rate;
-}
-
 static void UpdateVideoMode(double elapsed)
 {
-	if (!s_video_mode_enabled || elapsed - s_video_last_check < 0.5)
+	if (!s_video_mode_enabled)
+	{
+		// Turned off for this game from the L3+R3 menu while a movie played: the game's own rate comes back now.
+		if (s_video_active)
+		{
+			s_video_active = false;
+			s_video_busy_checks = 0;
+			if (EmuConfig.Speedhacks.EECycleRate != s_video_saved_rate)
+			{
+				EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(s_video_saved_rate);
+				Cpu->Reset();
+			}
+			ProbeLog("Video mode: turned off for this game, EE rate back to %d\n", s_video_saved_rate);
+		}
+		return;
+	}
+	if (elapsed - s_video_last_check < 0.5)
 		return;
 	const double interval = elapsed - s_video_last_check;
 	s_video_last_check = elapsed;
@@ -429,7 +547,7 @@ static void UpdateVideoMode(double elapsed)
 
 	if (want)
 	{
-		const int video_rate = VideoEECycleRateForGame();
+		const int video_rate = s_video_ee_rate;
 		s_video_saved_rate = EmuConfig.Speedhacks.EECycleRate;
 		s_video_since = elapsed;
 		s_video_active = true;
@@ -453,6 +571,109 @@ static void UpdateVideoMode(double elapsed)
 	Cpu->Reset();
 	ProbeLog("Video mode: %s (%.0f decodes/s), EE rate now %d (game's own %d)\n", want ? "ON" : "OFF", per_second,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), s_video_saved_rate);
+}
+
+// Forja SX2: the profile was read before boot from the library's scan of the image. If PCSX2 ends up with another serial or
+// CRC (a disc whose scan failed, a changed disc), the profile is read again for the game that is really running.
+static void UpdateGameProfile(double elapsed)
+{
+	if (elapsed - s_profile_last_check < 1.0)
+		return;
+	s_profile_last_check = elapsed;
+	const u32 crc = VMManager::GetDiscCRC();
+	if (crc == 0 || crc == s_profile.crc)
+		return;
+	const std::string serial = VMManager::GetDiscSerial();
+	ProbeLog("Game profile: PCSX2 runs %s %08X, the library's scan gave %s %08X; reading its profile\n", serial.c_str(), crc,
+		s_profile.serial.c_str(), s_profile.crc);
+	ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
+	RepinWorkersForProfile();
+}
+
+// Forja SX2: Left/Right (delta -1/+1), or X (+1) on the switch-like rows, on a row of the L3+R3 menu. Everything but the
+// performance overlay is saved in the game's profile (the player's file), like Dolphin's per-game properties.
+static void ChangeGameMenuRow(unsigned row, int delta)
+{
+	switch (row)
+	{
+		case PS4GameMenu::ROW_RESOLUTION:
+		{
+			const unsigned requested = static_cast<unsigned>(std::clamp(static_cast<int>(s_game_upscale) + delta,
+				1, static_cast<int>(s_max_game_upscale)));
+			if (requested == s_game_upscale)
+				break;
+			EmuConfig.GS.UpscaleMultiplier = static_cast<float>(requested);
+			MTGS::ApplySettings();
+			ReadGameResolution();
+			EmuConfig.GS.UpscaleMultiplier = static_cast<float>(s_game_upscale);
+			// Applied above already; the file is for the next time the game starts, so PCSX2's layers need no reload.
+			SavePlayerProfile("Internal resolution", [](INISettingsInterface& ini) {
+				ini.SetFloatValue("EmuCore/GS", "upscale_multiplier", static_cast<float>(s_game_upscale));
+			}, false);
+			ProbeLog("Internal resolution: requested=%ux applied=%ux menu_limit=%ux\n", requested, s_game_upscale, s_max_game_upscale);
+			break;
+		}
+		case PS4GameMenu::ROW_ASPECT:
+			s_game_aspect = static_cast<unsigned>((static_cast<int>(s_game_aspect) + delta + 5) % 5);
+			ApplyGameAspect(s_game_aspect);
+			SavePlayerProfile("Aspect ratio", [](INISettingsInterface& ini) {
+				ini.SetStringValue("EmuCore/GS", "AspectRatio", Pcsx2Config::GSOptions::AspectRatioNames[std::min(s_game_aspect, 4u)]);
+			}, false);
+			break;
+		case PS4GameMenu::ROW_OVERLAY:
+			s_game_show_performance_overlay = !s_game_show_performance_overlay;
+			ApplyPerformanceOverlay();
+			break;
+		case PS4GameMenu::ROW_EE_RATE:
+		{
+			const int requested = std::clamp(s_game_ee_rate + delta, -3, 3);
+			if (requested != s_game_ee_rate)
+				ApplyGameEECycleRate(requested);
+			break;
+		}
+		case PS4GameMenu::ROW_VIDEO_MODE:
+		{
+			// Off, 60 % and 50 % (VideoMenuValue's 0, 3 and 4); 100 % and 75 % can still be written in the ini by hand.
+			static constexpr unsigned steps[] = {0, 3, 4};
+			constexpr int count = static_cast<int>(std::size(steps));
+			const unsigned current = VideoMenuValue();
+			int position = 0;
+			for (int i = 0; i < count; i++)
+			{
+				if (steps[i] == current)
+					position = i;
+			}
+			const unsigned next = steps[(position + delta + count) % count];
+			// A movie playing now keeps its rate until it ends; turned off, UpdateVideoMode gives the game's rate back.
+			SavePlayerProfile("Video mode", [next](INISettingsInterface& ini) {
+				ini.SetIntValue("Forja", "VideoMode", next != 0 ? 1 : 0);
+				if (next != 0)
+					ini.SetIntValue("Forja", "VideoEECycleRate", 1 - static_cast<int>(next));
+			}, false);
+			break;
+		}
+		case PS4GameMenu::ROW_FRAME_GEN:
+		{
+			const bool wanted = !g_orbis_fg_wanted;
+			if (wanted)
+				s_frame_gen_blocked = false; // turned back on by hand after a hang guard
+			SavePlayerProfile("Frame generation", [wanted](INISettingsInterface& ini) { ini.SetIntValue("Forja", "FrameGen", wanted ? 1 : 0); },
+				false);
+			break;
+		}
+		case PS4GameMenu::ROW_CORES:
+		{
+			constexpr int count = static_cast<int>(std::size(CORE_PLANS));
+			const int current = static_cast<int>(CoresMenuValue());
+			const int next = current < count ? (current + delta + count) % count : 0;
+			const char* plan = CORE_PLANS[next];
+			SavePlayerProfile("Cores", [plan](INISettingsInterface& ini) { ini.SetStringValue("Forja", "Nucleos", plan); }, false);
+			RepinWorkersForProfile();
+			break;
+		}
+		default:
+			break;
+	}
 }
 
 void VMHostPoll()
@@ -484,7 +705,10 @@ void VMHostPoll()
 	s_last_input = elapsed;
 	PS4ThreadCPUMetrics::Sample(PS4ThreadCPUMetrics::Role::EE);
 	if (!is_paused_menu)
+	{
+		UpdateGameProfile(elapsed);
 		UpdateVideoMode(elapsed);
+	}
 	// (AI-assisted) Verbose 1s heartbeat when paused/menu open, 5s otherwise. Needs proper testing.
 	const bool should_log_heartbeat = s_verbose_diag ?
 		(s_game_menu_open || vm_state == VMState::Paused ? (elapsed - s_last_log >= 1.0) : (elapsed - s_last_log >= 2.0)) :
@@ -701,18 +925,19 @@ void VMHostPoll()
 
 	const bool cancel = (pressed & ORBIS_PAD_BUTTON_CIRCLE) != 0 || chord_edge;
 	const bool confirm = (pressed & ORBIS_PAD_BUTTON_CROSS) != 0;
-	if (cancel || (confirm && (s_game_menu_selection < 1 || s_game_menu_selection > 4)))
+	const unsigned row = s_game_menu_selection;
+	if (cancel || (confirm && (row == PS4GameMenu::ROW_RESUME || row == PS4GameMenu::ROW_LIBRARY || row == PS4GameMenu::ROW_EXIT)))
 	{
 		s_game_menu_open = false;
 		s_blocked_pad_buttons |= raw;
-		PS4GameMenu::SetInGameMenu(false, 0);
-		if (!cancel && s_game_menu_selection == 5)
+		PS4GameMenu::SetInGameMenu({});
+		if (!cancel && row == PS4GameMenu::ROW_LIBRARY)
 		{
 			s_return_to_main_menu.store(true, std::memory_order_release);
 			ProbeLog("VM stop request: return to main menu\n");
 			VMManager::SetState(VMState::Stopping);
 		}
-		else if (!cancel && s_game_menu_selection == 6)
+		else if (!cancel && row == PS4GameMenu::ROW_EXIT)
 		{
 			ProbeLog("VM stop request: exit application\n");
 			VMManager::SetState(VMState::Stopping);
@@ -727,10 +952,14 @@ void VMHostPoll()
 	}
 	else
 	{
-		if (confirm && s_game_menu_selection == 3)
+		// X changes the switch-like rows one step, and resets the game's profile on its row.
+		if (confirm && (row == PS4GameMenu::ROW_OVERLAY || row == PS4GameMenu::ROW_VIDEO_MODE || row == PS4GameMenu::ROW_FRAME_GEN ||
+						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_RESET_GAME))
 		{
-			s_game_show_performance_overlay = !s_game_show_performance_overlay;
-			ApplyPerformanceOverlay();
+			if (row != PS4GameMenu::ROW_RESET_GAME)
+				ChangeGameMenuRow(row, 1);
+			else if (s_profile.has_player)
+				ResetGameProfile();
 			PublishGameMenu();
 			s_game_menu_direction = 0;
 			return;
@@ -748,44 +977,11 @@ void VMHostPoll()
 		{
 			s_game_menu_next_repeat = elapsed + (navigation == s_game_menu_direction ? 0.12 : 0.35);
 			if (navigation == ORBIS_PAD_BUTTON_UP)
-				s_game_menu_selection = s_game_menu_selection == 0 ? 6 : s_game_menu_selection - 1;
+				s_game_menu_selection = s_game_menu_selection == 0 ? PS4GameMenu::ROW_COUNT - 1 : s_game_menu_selection - 1;
 			else if (navigation == ORBIS_PAD_BUTTON_DOWN)
-				s_game_menu_selection = (s_game_menu_selection + 1) % 7;
-			else if (s_game_menu_selection >= 1 && s_game_menu_selection <= 4)
-			{
-				const int delta = navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1;
-				if (s_game_menu_selection == 1)
-				{
-					const unsigned requested = static_cast<unsigned>(std::clamp(static_cast<int>(s_game_upscale) + delta,
-						1, static_cast<int>(s_max_game_upscale)));
-					if (requested != s_game_upscale)
-					{
-						EmuConfig.GS.UpscaleMultiplier = static_cast<float>(requested);
-						MTGS::ApplySettings();
-						ReadGameResolution();
-						EmuConfig.GS.UpscaleMultiplier = static_cast<float>(s_game_upscale);
-						ProbeLog("Internal resolution: requested=%ux applied=%ux menu_limit=%ux (session only)\n",
-							requested, s_game_upscale, s_max_game_upscale);
-					}
-				}
-				else if (s_game_menu_selection == 2)
-				{
-					s_game_aspect = static_cast<unsigned>((static_cast<int>(s_game_aspect) + delta + 5) % 5);
-					ApplyGameAspect(s_game_aspect);
-					ProbeLog("Aspect ratio: index=%u (session only)\n", s_game_aspect);
-				}
-				else if (s_game_menu_selection == 4)
-				{
-					const int requested = std::clamp(s_game_ee_rate + delta, -3, 3);
-					if (requested != s_game_ee_rate)
-						ApplyGameEECycleRate(requested);
-				}
-				else if (delta != 0)
-				{
-					s_game_show_performance_overlay = !s_game_show_performance_overlay;
-					ApplyPerformanceOverlay();
-				}
-			}
+				s_game_menu_selection = (s_game_menu_selection + 1) % PS4GameMenu::ROW_COUNT;
+			else if (row >= PS4GameMenu::ROW_RESOLUTION && row <= PS4GameMenu::ROW_CORES)
+				ChangeGameMenuRow(row, navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1);
 			PublishGameMenu();
 		}
 		s_game_menu_direction = navigation;
@@ -1055,15 +1251,24 @@ static void* RunVM(void*)
 		ForjaSettings::Values chosen = ForjaSettings::Load();
 		// Forja SX2: GSRendererPS4.cpp leaves fg-en-prueba while frame generation's first seconds run; if it is still
 		// here, the last try never got through them (the PS4's GPU hung on it once), so it is turned off and saved off.
-		if (access("/data/ForjaSX2/fg-en-prueba", F_OK) == 0)
+		if (std::FILE* guard = std::fopen("/data/ForjaSX2/fg-en-prueba", "r"))
 		{
+			// Since the per-game profiles the file names the game ("<serial> <crc>"): its profile gets FrameGen = 0 too.
+			char guard_serial[32] = {};
+			unsigned guard_crc = 0;
+			const bool named = std::fscanf(guard, "%31s %x", guard_serial, &guard_crc) == 2 && std::strcmp(guard_serial, "-") != 0;
+			std::fclose(guard);
 			unlink("/data/ForjaSX2/fg-en-prueba");
+			s_frame_gen_blocked = true;
+			if (named)
+				ForjaGameProfile::EditPlayer(guard_serial, guard_crc, [](INISettingsInterface& ini) { ini.SetIntValue("Forja", "FrameGen", 0); });
 			if (chosen.frame_gen)
 			{
 				chosen.frame_gen = false;
 				ForjaSettings::Save(chosen);
-				ProbeLog("Frame generation: turned off, the last try did not finish its first seconds (GPU hang?)\n");
 			}
+			ProbeLog("Frame generation: turned off, the last try did not finish its first seconds (GPU hang?) in %s %08X\n",
+				named ? guard_serial : "(unnamed)", guard_crc);
 		}
 		if (chosen.from_file)
 			settings->SetIntValue("EmuCore/Speedhacks", "EECycleRate", chosen.ee_rate);
@@ -1081,10 +1286,28 @@ static void* RunVM(void*)
 		settings->SetBoolValue("EmuCore", "EnableFastBootFastForward", fast_boot);
 		s_game_show_performance_overlay = chosen.overlay && access("/data/ForjaSX2/vm-hide-stats", F_OK) != 0;
 		ApplyPerformanceOverlay();
-		s_video_mode_enabled = chosen.video_mode;
-		// Frame generation (pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp, from PS5SX2): read by the GS at every new frame.
-		extern bool g_orbis_fg_wanted;
-		g_orbis_fg_wanted = chosen.frame_gen;
+		// Video mode and frame generation (pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp, from PS5SX2; read by the GS at every
+		// new frame): ajustes.ini gives the default, the game's profile can change it.
+		s_global_video_mode = chosen.video_mode;
+		s_global_frame_gen = chosen.frame_gen;
+		// Forja SX2: the game's profile, before the VM boots, so its cores and video settings are in place from the first frame.
+		// The library already scanned the image for its serial; GameList reads its boot ELF's CRC too (the ini's name).
+		{
+			const auto scan_start = Common::Timer::GetCurrentValue();
+			GameList::Entry entry;
+			std::string serial;
+			u32 crc = 0;
+			if (!s_selected_game.empty() && GameList::PopulateEntryFromPath(s_selected_game, &entry))
+			{
+				serial = entry.serial;
+				std::transform(serial.begin(), serial.end(), serial.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+				crc = entry.crc;
+			}
+			ProbeLog("Game profile: scanned %s -> %s %08X in %.0f ms\n", s_selected_game.c_str(), serial.empty() ? "(no serial)" : serial.c_str(),
+				crc, Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - scan_start));
+			ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
+			RepinWorkersForProfile();
+		}
 		VMManager::ApplySettings();
 		ProbeLog("Forja settings at game start: file=%d ee_rate=%d upscale=%dx aspect=%d overlay=%d stick=%d fast_cdvd=%d "
 				 "fast_boot=%d readback=%d video_mode=%d frame_gen=%d\n",
@@ -1165,6 +1388,15 @@ static void* RunVM(void*)
 		ProbeLog("Verbose diagnostics: %s (single marker /data/ForjaSX2/vm-verbose-log forces 1s heartbeat, TimedWaitGS, and GS/EE hotspot sampling)\n",
 			s_verbose_diag ? "ENABLED" : "disabled");
 		s_run_timer.Reset();
+		// Forja SX2: the video mode's and the profile's clocks count from this game's start too. Kept from the previous
+		// game, a movie in the next one went unnoticed for as long as the previous one had run.
+		s_video_active = false;
+		s_video_busy_checks = 0;
+		s_video_last_check = 0.0;
+		s_video_last_busy = -100.0;
+		s_video_since = 0.0;
+		s_video_last_decodes = g_forja_ipu_decodes;
+		s_profile_last_check = 0.0;
 		const bool hotspot_marker = access("/data/ForjaSX2/vm-ee-hotspots", F_OK) == 0 && access("/data/ForjaSX2/vm-no-ee-hotspots", F_OK) != 0;
 		PS4EEHotspots::Reset(hotspot_marker || s_verbose_diag);
 		ProbeLog("EE hotspots: %s; event and IPU-call frequencies, not CPU-time shares (disable with /data/ForjaSX2/vm-no-ee-hotspots)\n",

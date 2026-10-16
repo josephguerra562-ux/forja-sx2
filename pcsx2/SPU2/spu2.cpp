@@ -81,6 +81,8 @@ namespace
 		{
 			if (s_forja_audio_head.load(std::memory_order_acquire) == s_forja_audio_tail.load(std::memory_order_relaxed))
 			{
+				// This thread lives on from game to game: each game's profile can put it on another core.
+				PS4ThreadAffinity::RepinIfPlanChanged("Audio", 5);
 				usleep(1000);
 				continue;
 			}

@@ -76,6 +76,16 @@ foreach ($name in @('GameIndex.yaml', 'game_controller_db.txt')) {
   Copy-Item -LiteralPath $source -Destination (Join-Path $packageDir "resources/$name")
   $packageFiles += "resources/$name"
 }
+# Forja SX2: factory game profiles (resources/perfiles/<SERIAL>.ini), the per-game settings measured on the console.
+$profileRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'assets/perfiles'))
+$profileFiles = @(Get-ChildItem -LiteralPath $profileRoot -Filter '*.ini' -File)
+if ($profileFiles.Count -eq 0) { throw 'Forja SX2 factory game profiles are missing.' }
+New-Item -ItemType Directory -Force -Path (Join-Path $packageDir 'resources/perfiles') | Out-Null
+foreach ($profileFile in $profileFiles) {
+  $relative = 'resources/perfiles/' + $profileFile.Name
+  Copy-Item -LiteralPath $profileFile.FullName -Destination (Join-Path $packageDir $relative)
+  $packageFiles += $relative
+}
 # (AI-assisted) License notices for the bundled output resampler.
 New-Item -ItemType Directory -Force -Path (Join-Path $packageDir 'resources/licenses') | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'assets/licenses/speex-resampler.txt') -Destination (Join-Path $packageDir 'resources/licenses/speex-resampler.txt')

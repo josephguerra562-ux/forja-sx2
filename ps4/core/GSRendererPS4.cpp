@@ -838,8 +838,13 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				fg_speed, fg_nominal);
 			if (generated_presents > 0 && s_orbis_fg_guard == 0)
 			{
+				// The game goes in the file ("<serial> <crc>"), so main.cpp can turn frame generation off in its profile.
 				if (FILE* guard = std::fopen("/data/ForjaSX2/fg-en-prueba", "w"))
+				{
+					const std::string serial = VMManager::GetDiscSerial();
+					std::fprintf(guard, "%s %08X\n", serial.empty() ? "-" : serial.c_str(), VMManager::GetDiscCRC());
 					std::fclose(guard);
+				}
 				s_orbis_fg_guard = 1;
 			}
 			for (u32 i = 0; i < generated_presents; i++)
