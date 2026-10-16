@@ -3,6 +3,7 @@
 #include "GamePlatform.h"
 #include <atomic>
 #include <cstddef>
+#include <functional>
 #include <pthread.h>
 #include <string>
 #include <vector>
@@ -13,6 +14,11 @@ namespace PS4CoverHttp
 {
 	bool Get(const std::string& url, const char* user_agent, std::vector<unsigned char>& bytes,
 		size_t max_bytes);
+	// Forja SX2: a large download (the updater's package). Follows redirects (GitHub's release assets redirect to their
+	// storage host) and hands each chunk to `sink`, which returns false to stop. `total` gets the Content-Length, or 0.
+	// Gives up after `deadline_s` seconds in all; `error` says why it failed.
+	bool Stream(const std::string& url, const char* user_agent, const std::function<bool(const unsigned char*, size_t)>& sink,
+		size_t& total, unsigned deadline_s, std::string& error);
 }
 
 // (AI-assisted) One menu-owned request; no detached work or GPU access.

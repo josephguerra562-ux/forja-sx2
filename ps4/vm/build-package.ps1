@@ -17,6 +17,12 @@ $fontRoot = Join-Path $Toolchain 'samples/font/assets/fonts'
 $packageRoot = Join-Path $PSScriptRoot 'build/package'
 $packageDir = Join-Path $packageRoot ('staging-' + [Guid]::NewGuid().ToString('N'))
 $titleId = 'FRJA00002'
+# Forja SX2: the package's version is the build number (compilación 31 = 01.31, 131 = 02.31), as DolphinPS4 versions its
+# packages, so a new build installs over the old one with GoldHEN's Package Installer instead of needing the app deleted.
+$buildNumber = 0
+if ($env:GITHUB_RUN_NUMBER) { $buildNumber = [int]$env:GITHUB_RUN_NUMBER }
+$appVersion = '{0:00}.{1:00}' -f (1 + [math]::Floor($buildNumber / 100)), ($buildNumber % 100)
+Write-Host "Package version: $appVersion (build $buildNumber)"
 $contentId = 'IV0000-FRJA00002_00-FORJASX2EMULADOR'
 $resources = @('sce_sys/about/right.sprx', 'sce_module/libc.prx', 'sce_module/libSceFios2.prx')
 $iconSource = Join-Path $PSScriptRoot 'assets/sce_sys/icon0.png'
@@ -100,12 +106,12 @@ try {
   if ($LASTEXITCODE -ne 0) { throw "Could not create SFO ($LASTEXITCODE)." }
   $entries = @(
     # (AI-assisted) Restore game SFO metadata with PAID 0x3800000000000011.
-    @('APP_TYPE', 'Integer', '4', '1'), @('APP_VER', 'Utf8', '8', '01.00'),
+    @('APP_TYPE', 'Integer', '4', '1'), @('APP_VER', 'Utf8', '8', $appVersion),
     @('ATTRIBUTE', 'Integer', '4', $(if ($ModoPro) { '8454144' } else { '65536' })), @('CATEGORY', 'Utf8', '4', 'gd'),
 
     @('CONTENT_ID', 'Utf8', '48', $contentId), @('DOWNLOAD_DATA_SIZE', 'Integer', '4', '0'),
     @('SYSTEM_VER', 'Integer', '4', '0'), @('TITLE', 'Utf8', '128', 'Forja SX2'),
-    @('TITLE_ID', 'Utf8', '12', $titleId), @('VERSION', 'Utf8', '8', '01.00')
+    @('TITLE_ID', 'Utf8', '12', $titleId), @('VERSION', 'Utf8', '8', $appVersion)
   )
   foreach ($entry in $entries) {
     & $pkgTool sfo_setentry sce_sys/param.sfo $entry[0] --type $entry[1] --maxsize $entry[2] --value $entry[3] | Out-Null

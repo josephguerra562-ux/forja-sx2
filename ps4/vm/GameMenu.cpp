@@ -133,6 +133,11 @@ namespace PS4GameMenu
 		bool s_sidebar_focused = false;
 		bool s_exit_dialog_visible = false;
 		bool s_exit_confirm = false;
+		// Forja SX2: the updater's question (ReleaseCheck.cpp), drawn like the exit dialog. GS thread.
+		bool s_update_dialog_visible = false;
+		bool s_update_confirm = true;
+		// CPU thread: asked once per app run when a newer build shows up; OPTIONS asks again.
+		bool s_update_asked = false;
 		LibraryView s_library_view = LibraryView::Library;
 		// Forja SX2: the Settings page. The CPU thread owns the values; the GS thread draws this copy.
 		ForjaSettings::Values s_settings_gs;
@@ -528,13 +533,16 @@ namespace PS4GameMenu
 		}
 
 		void Present(size_t selected, const std::string& status, bool connected, bool sidebar_focused,
-			bool exit_dialog_visible, bool exit_confirm)
+			bool exit_dialog_visible, bool exit_confirm, bool update_dialog_visible = false, bool update_confirm = false)
 		{
-			MTGS::RunOnGSThread([selected, status, connected, sidebar_focused, exit_dialog_visible, exit_confirm]() {
+			MTGS::RunOnGSThread([selected, status, connected, sidebar_focused, exit_dialog_visible, exit_confirm, update_dialog_visible,
+									update_confirm]() {
 				s_connected = connected;
 				s_sidebar_focused = sidebar_focused;
 				s_exit_dialog_visible = exit_dialog_visible;
 				s_exit_confirm = exit_confirm;
+				s_update_dialog_visible = update_dialog_visible;
+				s_update_confirm = update_confirm;
 				s_selected = selected;
 				s_status = status;
 				GSPresentCurrentFrame();
@@ -781,7 +789,7 @@ namespace PS4GameMenu
 		PlayStartupSequence();
 		// (AI-assisted) Query the public release endpoint asynchronously. The
 		// launcher remains usable while DNS/HTTPS is in progress.
-		PS4Release::Start();
+		PS4Release::Start(FORJA_BUILD_NUMBER);
 		auto library = Scan();
 		auto favorites = LoadPathList(FavoritesFile);
 		auto recent = LoadPathList(RecentFile);
@@ -798,6 +806,8 @@ namespace PS4GameMenu
 		bool sidebar_focused = false;
 		bool exit_dialog_visible = false;
 		bool exit_confirm = false;
+		bool update_dialog_visible = false;
+		bool update_confirm = true;
 		std::string status;
 		// Forja SX2: Settings page state. Every change is saved at once (ajustes.ini) and used by the next game.
 		ForjaSettings::Values settings = ForjaSettings::Load();
@@ -957,6 +967,40 @@ namespace PS4GameMenu
 			const u32 buttons = connected ? data.buttons : 0;
 			const u32 pressed = buttons & ~previous;
 			previous = buttons;
+			// Forja SX2: the updater. A newer build than this one is offered once per app run; OPTIONS offers it again.
+			if (!s_update_asked && !exit_dialog_visible && PS4Release::HasUpdate())
+			{
+				s_update_asked = true;
+				update_dialog_visible = true;
+				update_confirm = true;
+			}
+			if (update_dialog_visible)
+			{
+				if (pressed & ORBIS_PAD_BUTTON_LEFT || (connected && data.leftStick.x < 72))
+					update_confirm = true;
+				else if (pressed & ORBIS_PAD_BUTTON_RIGHT || (connected && data.leftStick.x > 184))
+					update_confirm = false;
+				if (pressed & ORBIS_PAD_BUTTON_CIRCLE)
+					update_dialog_visible = false;
+				else if (pressed & ORBIS_PAD_BUTTON_CROSS)
+				{
+					if (update_confirm)
+						PS4Release::StartDownload();
+					update_dialog_visible = false;
+				}
+				Present(selected, status, connected, sidebar_focused, false, false, update_dialog_visible, update_confirm);
+				Threading::Sleep(16);
+				continue;
+			}
+			if ((pressed & ORBIS_PAD_BUTTON_OPTIONS) && PS4Release::HasUpdate() &&
+				PS4Release::State() != PS4Release::DownloadState::Downloading && PS4Release::State() != PS4Release::DownloadState::Ready)
+			{
+				update_dialog_visible = true;
+				update_confirm = true;
+				Present(selected, status, connected, sidebar_focused, false, false, true, true);
+				Threading::Sleep(16);
+				continue;
+			}
 			if (exit_dialog_visible)
 			{
 				u32 dialog_navigation = 0;
@@ -1203,6 +1247,7 @@ namespace PS4GameMenu
 			s_sidebar_focused = false;
 			s_exit_dialog_visible = false;
 			s_exit_confirm = false;
+			s_update_dialog_visible = false;
 			s_items.clear();
 			s_status.clear();
 			s_loading_visible = start;
@@ -1369,10 +1414,33 @@ namespace PS4GameMenu
 			std::snprintf(cores_description, sizeof(cores_description),
 				"Reparto de EE, VU1 y GS (Plan B: EE 1, VU1 2, GS 3). Para este juego  ·  ahora: %s",
 				origin_names[menu_state.cores_origin]);
-			const char* labels[] = {"Volver al juego", resolution, aspect_label, performance_label, ee_label, video_label,
-				frame_gen_label, cores_label, "Restablecer este juego", "Volver a la biblioteca", "Salir de la aplicación"};
+			// Forja SX2: save states (compilation 31). The slot is shared by the save and load rows.
+			const unsigned slot = menu_state.slot + 1;
+			char save_label[64], load_label[64], save_description[128], load_description[128];
+			std::snprintf(save_label, sizeof(save_label), "Guardar estado:  < Ranura %u >", slot);
+			std::snprintf(load_label, sizeof(load_label), "Cargar estado:  < Ranura %u >", slot);
+			if (menu_state.action == STATE_SAVED)
+				std::snprintf(save_description, sizeof(save_description), "Guardado en la ranura %u.", slot);
+			else if (menu_state.action == STATE_SAVE_FAILED)
+				std::snprintf(save_description, sizeof(save_description), "No se pudo guardar en la ranura %u.", slot);
+			else
+				std::snprintf(save_description, sizeof(save_description), "%s",
+					menu_state.slot_used ? "X: guarda aquí (reemplaza lo que hay en esta ranura)" : "X: guarda la partida en esta ranura (vacía)");
+			if (menu_state.action == STATE_EMPTY)
+				std::snprintf(load_description, sizeof(load_description), "La ranura %u está vacía.", slot);
+			else if (menu_state.action == STATE_LOAD_FAILED)
+				std::snprintf(load_description, sizeof(load_description), "No se pudo cargar la ranura %u.", slot);
+			else
+				std::snprintf(load_description, sizeof(load_description), "%s",
+					menu_state.slot_used ? "X: vuelve a ese momento y sigue jugando" : "Ranura vacía");
+			const char* labels[] = {"Volver al juego", save_label, load_label, "Reiniciar juego", resolution, aspect_label,
+				performance_label, ee_label, video_label, frame_gen_label, cores_label, "Restablecer ajustes de este juego",
+				"Volver a la biblioteca", "Salir de la aplicación"};
 			const char* descriptions[] = {
 				"Seguir jugando desde donde quedó",
+				save_description,
+				load_description,
+				"X: empieza el juego de nuevo sin cerrarlo (lo no guardado se pierde)",
 				"Más calidad de imagen (consume más). Se guarda para este juego",
 				"Forma de la imagen en pantalla. Se guarda para este juego",
 				"Mostrar u ocultar FPS, velocidad y tiempos",
@@ -1385,85 +1453,97 @@ namespace PS4GameMenu
 				"Cerrar el juego y volver a la biblioteca",
 				"Cerrar el juego y salir de Forja SX2"};
 			static_assert(sizeof(labels) / sizeof(labels[0]) == ROW_COUNT && sizeof(descriptions) / sizeof(descriptions[0]) == ROW_COUNT);
+			// Icons in a 22 px circle; the shapes are drawn on a +-16 grid scaled by 0.75.
 			const auto draw_option_icon = [&](unsigned row, float cx, float cy, bool selected) {
 				const ImU32 icon_bg = selected ? IM_COL32(34, 127, 214, 255) : IM_COL32(16, 55, 86, 255);
 				const ImU32 icon_line = selected ? IM_COL32(231, 247, 255, 255) : IM_COL32(155, 204, 235, 255);
-				draw->AddCircleFilled(point(cx, cy), 29.0f * scale, icon_bg, 32);
-				draw->AddCircle(point(cx, cy), 29.0f * scale, selected ? accent : IM_COL32(49, 111, 155, 255), 32, 1.5f * scale);
-				if (row == 0)
+				const auto ip = [&](float dx, float dy) { return point(cx + dx * 0.75f, cy + dy * 0.75f); };
+				const float lw = 2.0f * scale;
+				draw->AddCircleFilled(point(cx, cy), 22.0f * scale, icon_bg, 32);
+				draw->AddCircle(point(cx, cy), 22.0f * scale, selected ? accent : IM_COL32(49, 111, 155, 255), 32, 1.5f * scale);
+				switch (row)
 				{
-					draw->AddTriangleFilled(point(cx - 7, cy - 11), point(cx - 7, cy + 11), point(cx + 13, cy), icon_line);
-				}
-				else if (row == 1)
-				{
-					draw->AddRect(point(cx - 13, cy - 13), point(cx + 13, cy + 13), icon_line, 3 * scale, 2 * scale, 0);
-					draw->AddLine(point(cx - 7, cy + 6), point(cx + 7, cy + 6), icon_line, 2 * scale);
-				}
-				else if (row == 2)
-				{
-					draw->AddRect(point(cx - 15, cy - 10), point(cx + 15, cy + 10), icon_line, 3 * scale, 2 * scale, 0);
-					draw->AddLine(point(cx - 8, cy - 15), point(cx + 8, cy - 15), icon_line, 2 * scale);
-				}
-				else if (row == 3)
-				{
-					draw->AddRect(point(cx - 15, cy - 9), point(cx + 15, cy + 9), icon_line, 3 * scale, 2 * scale, 0);
-					draw->AddLine(point(cx - 9, cy), point(cx + 9, cy), icon_line, 2 * scale);
-					draw->AddCircle(point(cx, cy), 4 * scale, icon_line, 16, 2 * scale);
-				}
-				else if (row == 4)
-				{
-					draw->AddCircle(point(cx, cy + 4), 14 * scale, icon_line, 24, 2 * scale);
-					draw->AddLine(point(cx, cy + 4), point(cx + 8, cy - 6), icon_line, 3 * scale);
-				}
-				else if (row == ROW_VIDEO_MODE)
-				{
-					draw->AddRect(point(cx - 15, cy - 11), point(cx + 15, cy + 11), icon_line, 3 * scale, 2 * scale, 0);
-					draw->AddTriangleFilled(point(cx - 5, cy - 6), point(cx - 5, cy + 6), point(cx + 7, cy), icon_line);
-				}
-				else if (row == ROW_FRAME_GEN)
-				{
-					draw->AddRect(point(cx - 15, cy - 12), point(cx + 5, cy + 6), icon_line, 2 * scale, 2 * scale, 0);
-					draw->AddRect(point(cx - 5, cy - 6), point(cx + 15, cy + 12), icon_line, 2 * scale, 2 * scale, 0);
-				}
-				else if (row == ROW_CORES)
-				{
-					for (int i = 0; i < 4; i++)
-					{
-						const float x = cx + ((i & 1) ? 2.0f : -14.0f);
-						const float y = cy + ((i & 2) ? 2.0f : -14.0f);
-						draw->AddRect(point(x, y), point(x + 12, y + 12), icon_line, 2 * scale, 2 * scale, 0);
-					}
-				}
-				else if (row == ROW_RESET_GAME)
-				{
-					draw->PathArcTo(point(cx, cy), 13.0f * scale, 0.6f, 5.6f, 20);
-					draw->PathStroke(icon_line, 3 * scale);
-					draw->AddTriangleFilled(point(cx + 9, cy - 13), point(cx + 17, cy - 3), point(cx + 6, cy - 2), icon_line);
-				}
-				else if (row == ROW_LIBRARY)
-				{
-					draw->AddLine(point(cx - 12, cy), point(cx + 10, cy), icon_line, 3 * scale);
-					draw->AddLine(point(cx - 12, cy), point(cx - 2, cy - 9), icon_line, 3 * scale);
-					draw->AddLine(point(cx - 12, cy), point(cx - 2, cy + 9), icon_line, 3 * scale);
-				}
-				else
-				{
-					draw->AddLine(point(cx - 10, cy - 12), point(cx + 10, cy + 12), icon_line, 3 * scale);
-					draw->AddLine(point(cx + 10, cy - 12), point(cx - 10, cy + 12), icon_line, 3 * scale);
+					case ROW_RESUME:
+						draw->AddTriangleFilled(ip(-7, -11), ip(-7, 11), ip(13, 0), icon_line);
+						break;
+					case ROW_SAVE_STATE: // a floppy disk
+						draw->AddRect(ip(-13, -13), ip(13, 13), icon_line, 2 * scale, lw, 0);
+						draw->AddRectFilled(ip(-7, -13), ip(7, -5), icon_line);
+						draw->AddRect(ip(-8, 3), ip(8, 13), icon_line, 0, lw, 0);
+						break;
+					case ROW_LOAD_STATE: // an arrow out of a tray
+						draw->AddLine(ip(0, 6), ip(0, -12), icon_line, lw);
+						draw->AddLine(ip(0, -12), ip(-7, -5), icon_line, lw);
+						draw->AddLine(ip(0, -12), ip(7, -5), icon_line, lw);
+						draw->AddLine(ip(-13, 4), ip(-13, 13), icon_line, lw);
+						draw->AddLine(ip(-13, 13), ip(13, 13), icon_line, lw);
+						draw->AddLine(ip(13, 13), ip(13, 4), icon_line, lw);
+						break;
+					case ROW_RESTART: // a circular arrow
+						draw->PathArcTo(point(cx, cy), 10.0f * scale, 0.6f, 5.6f, 20);
+						draw->PathStroke(icon_line, lw);
+						draw->AddTriangleFilled(ip(9, -13), ip(17, -3), ip(6, -2), icon_line);
+						break;
+					case ROW_RESOLUTION:
+						draw->AddRect(ip(-13, -13), ip(13, 13), icon_line, 3 * scale, lw, 0);
+						draw->AddLine(ip(-7, 6), ip(7, 6), icon_line, lw);
+						break;
+					case ROW_ASPECT:
+						draw->AddRect(ip(-15, -10), ip(15, 10), icon_line, 3 * scale, lw, 0);
+						draw->AddLine(ip(-8, -15), ip(8, -15), icon_line, lw);
+						break;
+					case ROW_OVERLAY:
+						draw->AddRect(ip(-15, -9), ip(15, 9), icon_line, 3 * scale, lw, 0);
+						draw->AddLine(ip(-9, 0), ip(9, 0), icon_line, lw);
+						break;
+					case ROW_EE_RATE:
+						draw->AddCircle(ip(0, 4), 10.5f * scale, icon_line, 24, lw);
+						draw->AddLine(ip(0, 4), ip(8, -6), icon_line, lw);
+						break;
+					case ROW_VIDEO_MODE:
+						draw->AddRect(ip(-15, -11), ip(15, 11), icon_line, 3 * scale, lw, 0);
+						draw->AddTriangleFilled(ip(-5, -6), ip(-5, 6), ip(7, 0), icon_line);
+						break;
+					case ROW_FRAME_GEN:
+						draw->AddRect(ip(-15, -12), ip(5, 6), icon_line, 2 * scale, lw, 0);
+						draw->AddRect(ip(-5, -6), ip(15, 12), icon_line, 2 * scale, lw, 0);
+						break;
+					case ROW_CORES:
+						for (int i = 0; i < 4; i++)
+						{
+							const float x = (i & 1) ? 2.0f : -14.0f, y = (i & 2) ? 2.0f : -14.0f;
+							draw->AddRect(ip(x, y), ip(x + 12, y + 12), icon_line, 2 * scale, lw, 0);
+						}
+						break;
+					case ROW_RESET_PROFILE: // sliders back at their start
+						draw->AddLine(ip(-13, -7), ip(13, -7), icon_line, lw);
+						draw->AddLine(ip(-13, 7), ip(13, 7), icon_line, lw);
+						draw->AddCircleFilled(ip(-7, -7), 3.5f * scale, icon_line, 12);
+						draw->AddCircleFilled(ip(-7, 7), 3.5f * scale, icon_line, 12);
+						break;
+					case ROW_LIBRARY:
+						draw->AddLine(ip(-12, 0), ip(10, 0), icon_line, lw);
+						draw->AddLine(ip(-12, 0), ip(-2, -9), icon_line, lw);
+						draw->AddLine(ip(-12, 0), ip(-2, 9), icon_line, lw);
+						break;
+					default:
+						draw->AddLine(ip(-10, -12), ip(10, 12), icon_line, lw);
+						draw->AddLine(ip(10, -12), ip(-10, 12), icon_line, lw);
+						break;
 				}
 			};
-			// Forja SX2: eleven rows since the game's profile rows (5-8); 62 px apart instead of 77 so they fit the panel.
+			// Forja SX2: fourteen rows since the save state rows (1-3); 52 px apart so they fit the panel.
 			for (unsigned row = 0; row < ROW_COUNT; row++)
 			{
-				const float y = 218.0f + row * 62.0f;
+				const float y = 212.0f + row * 52.0f;
 				const bool selected = selected_row == row;
-				draw->AddRectFilled(point(112, y), point(1808, y + 56),
-					selected ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 255), 10.0f * scale);
+				draw->AddRectFilled(point(112, y), point(1808, y + 48),
+					selected ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 255), 9.0f * scale);
 				if (selected)
-					draw->AddRect(point(112, y), point(1808, y + 56), accent, 10.0f * scale, 2.0f * scale, 0);
-				draw_option_icon(row, 168, y + 28, selected);
-				draw->AddText(font, 24.0f * scale, point(226, y + 5), white, labels[row]);
-				draw->AddText(font, 15.0f * scale, point(226, y + 34), muted, descriptions[row]);
+					draw->AddRect(point(112, y), point(1808, y + 48), accent, 9.0f * scale, 2.0f * scale, 0);
+				draw_option_icon(row, 160, y + 24, selected);
+				draw->AddText(font, 21.0f * scale, point(206, y + 3), white, labels[row]);
+				draw->AddText(font, 14.0f * scale, point(206, y + 28), muted, descriptions[row]);
 				const char* action = nullptr;
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
 					action = "AJUSTAR";
@@ -1471,20 +1551,22 @@ namespace PS4GameMenu
 					action = "ELEGIR";
 				else if (row == ROW_OVERLAY || row == ROW_FRAME_GEN)
 					action = "CAMBIAR";
-				else if (row == ROW_RESET_GAME && menu_state.has_player)
+				else if (row == ROW_SAVE_STATE || (row == ROW_LOAD_STATE && menu_state.slot_used))
+					action = "X  ·  RANURA";
+				else if (row == ROW_RESTART || (row == ROW_RESET_PROFILE && menu_state.has_player))
 					action = "X";
 				if (action)
-					draw->AddText(font, 20.0f * scale, point(1580, y + 17), selected ? white : muted, action);
+					draw->AddText(font, 19.0f * scale, point(1560, y + 13), selected ? white : muted, action);
 			}
 			char hint[160];
 			std::snprintf(hint, sizeof(hint), "Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias aquí se guarda solo para este juego.",
 				max_upscale);
-			draw->AddText(font, 17.0f * scale, point(138, 908), muted, hint);
-			draw->AddText(font, 17.0f * scale, point(138, 936), muted, "Arriba/Abajo: elegir   Izq./Der.: cambiar   X: aceptar   Círculo: volver");
-			image("controle_x", 1480, 976, 30, 30);
-			draw->AddText(font, 20.0f * scale, point(1524, 981), white, "Aceptar");
-			image("controle_bola", 1690, 976, 30, 30);
-			draw->AddText(font, 20.0f * scale, point(1734, 981), muted, "Volver");
+			draw->AddText(font, 16.0f * scale, point(138, 946), muted, hint);
+			draw->AddText(font, 16.0f * scale, point(138, 970), muted, "Arriba/Abajo: elegir   Izq./Der.: cambiar o elegir ranura   X: aceptar   Círculo: volver");
+			image("controle_x", 1480, 994, 28, 28);
+			draw->AddText(font, 19.0f * scale, point(1522, 998), white, "Aceptar");
+			image("controle_bola", 1690, 994, 28, 28);
+			draw->AddText(font, 19.0f * scale, point(1732, 998), muted, "Volver");
 			return true;
 		}
 		if (!s_visible || s_items.empty())
@@ -1552,14 +1634,14 @@ namespace PS4GameMenu
 		const size_t selected = std::min(s_selected, s_items.size() - 1);
 		const Item& current = s_items[selected];
 		text(348, 59, 28, white, fit(current.name, 28, 1430).c_str());
-		if (PS4Release::HasUpdate())
+		// Forja SX2: the updater's line (a newer build, its download's progress, or where the package was left).
+		if (const std::string update_text = PS4Release::StatusText(); !update_text.empty())
 		{
-			fill(1480, 22, 408, 50, IM_COL32(8, 54, 91, 235), 10);
-			draw->AddRect(point(1480, 22), point(1888, 72), IM_COL32(42, 163, 255, 225), 10 * scale,
-				1.0f * scale, 0);
-			char update_text[96];
-			std::snprintf(update_text, sizeof(update_text), "Actualización disponible: %s", PS4Release::LatestVersion());
-			text(1502, 54, 17, white, update_text);
+			const float text_w = font->CalcTextSizeA(16.0f * scale, FLT_MAX, 0.0f, update_text.c_str()).x / scale;
+			const float box_w = std::min(text_w + 44.0f, 1000.0f), box_x = 1888.0f - box_w;
+			fill(box_x, 22, box_w, 50, IM_COL32(8, 54, 91, 235), 10);
+			draw->AddRect(point(box_x, 22), point(1888, 72), IM_COL32(42, 163, 255, 225), 10 * scale, 1.0f * scale, 0);
+			text(box_x + 22, 53, 16, white, update_text.c_str());
 		}
 		// The sidebar changes the data source while retaining the same grid.
 		static constexpr const char* sidebar_icons[] = {
@@ -1742,6 +1824,32 @@ namespace PS4GameMenu
 			};
 			dialog_button(670, "Salir de Forja SX2", s_exit_confirm);
 			dialog_button(990, "Cancelar", !s_exit_confirm);
+			image("controle_x", 780, 694, 28, 28);
+			text(816, 715, 16, white, "Aceptar");
+			image("controle_bola", 995, 694, 28, 28);
+			text(1031, 715, 16, muted, "Atrás");
+		}
+		// Forja SX2: the updater's question, laid out like the exit dialog above.
+		if (s_update_dialog_visible)
+		{
+			draw->AddRectFilled(ImVec2(0, 0), size, IM_COL32(0, 0, 0, 165));
+			fill(398, 282, 1124, 516, IM_COL32(0, 0, 0, 120), 20);
+			fill(438, 322, 1044, 436, IM_COL32(4, 17, 31, 252), 12);
+			draw->AddRect(point(438, 322), point(1482, 758), IM_COL32(35, 105, 161, 225), 12 * scale, 1.5f * scale, 0);
+			image("menu_logo", 790, 338, 340, 113);
+			char title[64];
+			std::snprintf(title, sizeof(title), "Compilación %d disponible", PS4Release::LatestBuild());
+			centered_text(960, 480, 32, white, title);
+			centered_text(960, 520, 18, muted, "Se baja a /data/pkg y se verifica. Después cierra Forja e instálala con GoldHEN.");
+			centered_text(960, 548, 16, muted, "Tus juegos, ajustes y perfiles se quedan como están.");
+			const auto update_button = [&](float x, const char* label, bool active) {
+				fill(x, 580, 260, 72, active ? IM_COL32(18, 88, 153, 255) : IM_COL32(11, 34, 54, 255), 10);
+				draw->AddRect(point(x, 580), point(x + 260, 652), active ? IM_COL32(48, 170, 255, 255) : IM_COL32(37, 80, 113, 190),
+					10 * scale, active ? 2.0f * scale : 1.0f * scale, 0);
+				centered_text(x + 130, 626, 20, active ? white : muted, label);
+			};
+			update_button(670, "Descargar", s_update_confirm);
+			update_button(990, "Ahora no", !s_update_confirm);
 			image("controle_x", 780, 694, 28, 28);
 			text(816, 715, 16, white, "Aceptar");
 			image("controle_bola", 995, 694, 28, 28);

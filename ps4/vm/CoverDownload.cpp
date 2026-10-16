@@ -132,6 +132,105 @@ bool PS4CoverHttp::Get(const std::string& url, const char* user_agent, std::vect
 	return true;
 }
 
+bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
+	const std::function<bool(const unsigned char*, size_t)>& sink, size_t& total, unsigned deadline_s, std::string& error)
+{
+	total = 0;
+	const int context = HttpContext();
+	if (context < 0 || url.empty() || !user_agent)
+	{
+		error = "sin red";
+		return false;
+	}
+	Request request;
+	request.tmpl = sceHttpCreateTemplate(context, user_agent, ORBIS_HTTP_VERSION_1_1, 0);
+	ProbeLog("Native HTTPS stream: template=%#x url=%s\n", request.tmpl, url.c_str());
+	if (request.tmpl < 0)
+	{
+		error = "sin conexión";
+		return false;
+	}
+	// GitHub's release downloads answer with a redirect to their storage host: this one follows it.
+	for (int rc : {sceHttpsEnableOption(request.tmpl, 0xbd),
+		sceHttpSetResolveTimeOut(request.tmpl, 8000000),
+		sceHttpSetConnectTimeOut(request.tmpl, 8000000),
+		sceHttpSetSendTimeOut(request.tmpl, 8000000),
+		CoverHttpRecvTimeout(request.tmpl, 30000000),
+		CoverHttpAutoRedirect(request.tmpl, 1)})
+	{
+		if (rc < 0)
+		{
+			ProbeLog("Native HTTPS stream: setup failed=%#x\n", rc);
+			error = "no se pudo preparar la conexión";
+			return false;
+		}
+	}
+	request.connection = sceHttpCreateConnectionWithURL(request.tmpl, url.c_str(), false);
+	if (request.connection >= 0)
+		request.request = sceHttpCreateRequestWithURL(request.connection, ORBIS_METHOD_GET, url.c_str(), 0);
+	if (request.request < 0 || sceHttpAddRequestHeader(request.request, "User-Agent", user_agent, 0) < 0 ||
+		sceHttpAddRequestHeader(request.request, "Accept", "application/octet-stream", 0) < 0)
+	{
+		error = "no se pudo crear la petición";
+		return false;
+	}
+	const int result = sceHttpSendRequest(request.request, nullptr, 0);
+	int http = 0;
+	const int status = result < 0 ? result : sceHttpGetStatusCode(request.request, &http);
+	ProbeLog("Native HTTPS stream: send=%#x status=%#x http=%d\n", result, status, http);
+	if (status < 0 || http != 200)
+	{
+		char text[64];
+		if (status < 0)
+			std::snprintf(text, sizeof(text), "error de red %#x", static_cast<unsigned>(status));
+		else
+			std::snprintf(text, sizeof(text), "respuesta HTTP %d", http);
+		error = text;
+		return false;
+	}
+	int length_result = 0;
+	size_t length = 0;
+	if (sceHttpGetResponseContentLength(request.request, &length_result, &length) == 0 && length_result == 0)
+		total = length;
+	std::vector<unsigned char> buffer(256 * 1024);
+	size_t received = 0;
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(deadline_s);
+	for (;;)
+	{
+		if (std::chrono::steady_clock::now() > deadline)
+		{
+			sceHttpAbortRequest(request.request);
+			error = "tardó demasiado";
+			return false;
+		}
+		const int count = sceHttpReadData(request.request, buffer.data(), static_cast<unsigned>(buffer.size()));
+		if (count < 0)
+		{
+			char text[48];
+			std::snprintf(text, sizeof(text), "se cortó la descarga (%#x)", static_cast<unsigned>(count));
+			error = text;
+			return false;
+		}
+		if (count == 0)
+			break;
+		received += static_cast<size_t>(count);
+		if (!sink(buffer.data(), static_cast<size_t>(count)))
+		{
+			sceHttpAbortRequest(request.request);
+			if (error.empty())
+				error = "cancelada";
+			return false;
+		}
+	}
+	ProbeLog("Native HTTPS stream: bytes=%zu content_length=%zu\n", received, total);
+	if (total != 0 && received != total)
+	{
+		error = "llegó incompleta";
+		return false;
+	}
+	return true;
+}
+
 DiscCoverDownload::~DiscCoverDownload()
 {
 	Cancel();

@@ -11,6 +11,9 @@ namespace PS4GameMenu
 	enum InGameMenuRow : unsigned
 	{
 		ROW_RESUME = 0,
+		ROW_SAVE_STATE, // compilation 31: save states and restart
+		ROW_LOAD_STATE,
+		ROW_RESTART,
 		ROW_RESOLUTION,
 		ROW_ASPECT,
 		ROW_OVERLAY,
@@ -18,7 +21,7 @@ namespace PS4GameMenu
 		ROW_VIDEO_MODE,
 		ROW_FRAME_GEN,
 		ROW_CORES,
-		ROW_RESET_GAME,
+		ROW_RESET_PROFILE,
 		ROW_LIBRARY,
 		ROW_EXIT,
 		ROW_COUNT
@@ -44,6 +47,20 @@ namespace PS4GameMenu
 		unsigned cores_origin = 0;
 		bool has_factory = false;
 		bool has_player = false;
+		// Forja SX2: save states. slot 0-4 (shown as 1-5), whether it holds a state, and how the last action went.
+		unsigned slot = 0;
+		bool slot_used = false;
+		unsigned action = 0; // StateAction
+	};
+
+	// What the last save state action did, for the rows' descriptions.
+	enum StateAction : unsigned
+	{
+		STATE_NONE = 0,
+		STATE_SAVED,
+		STATE_SAVE_FAILED,
+		STATE_LOAD_FAILED,
+		STATE_EMPTY,
 	};
 
 	constexpr std::uint64_t PackInGameMenuState(InGameMenuState value)
@@ -64,7 +81,10 @@ namespace PS4GameMenu
 			(static_cast<std::uint64_t>(std::min(value.cores, 3u)) << 32) |
 			(static_cast<std::uint64_t>(std::min(value.cores_origin, 2u)) << 34) |
 			(value.has_factory ? (std::uint64_t{1} << 36) : 0u) |
-			(value.has_player ? (std::uint64_t{1} << 37) : 0u);
+			(value.has_player ? (std::uint64_t{1} << 37) : 0u) |
+			(static_cast<std::uint64_t>(std::min(value.slot, 4u)) << 38) |
+			(value.slot_used ? (std::uint64_t{1} << 41) : 0u) |
+			(static_cast<std::uint64_t>(std::min(value.action, 7u)) << 42);
 	}
 
 	constexpr InGameMenuState UnpackInGameMenuState(std::uint64_t value)
@@ -90,6 +110,9 @@ namespace PS4GameMenu
 		state.cores_origin = std::min(static_cast<unsigned>((value >> 34) & 0x03u), 2u);
 		state.has_factory = (value & (std::uint64_t{1} << 36)) != 0;
 		state.has_player = (value & (std::uint64_t{1} << 37)) != 0;
+		state.slot = std::min(static_cast<unsigned>((value >> 38) & 0x07u), 4u);
+		state.slot_used = (value & (std::uint64_t{1} << 41)) != 0;
+		state.action = static_cast<unsigned>((value >> 42) & 0x07u);
 		return state;
 	}
 } // namespace PS4GameMenu

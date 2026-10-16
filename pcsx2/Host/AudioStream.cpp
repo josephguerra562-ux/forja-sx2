@@ -680,6 +680,27 @@ void AudioStream::UpdateStretchTempo()
 
 	float base_target_usage = static_cast<float>(m_target_buffer_size) * m_nominal_rate;
 
+	// Forja SX2: the cushion (AudioStream.h). Fights that run at 60 % of full speed kept about 60 ms queued, and any longer
+	// stall of the EE emptied it: 24 to 56 cuts a minute in God of War II (2026-10-16).
+	if (m_forja_adaptive_cushion)
+	{
+		const u32 underruns = m_forja_underruns.load(std::memory_order_relaxed);
+		u32 cushion = m_forja_cushion_q4.load(std::memory_order_relaxed);
+		if (underruns != m_forja_seen_underruns)
+		{
+			m_forja_seen_underruns = underruns;
+			m_forja_quiet_frames = 0;
+			cushion = std::min(cushion + 1, FORJA_CUSHION_MAX_Q4);
+		}
+		else if ((m_forja_quiet_frames += CHUNK_SIZE) >= m_sample_rate * 15)
+		{
+			m_forja_quiet_frames = 0;
+			cushion = std::max(cushion - 1, 4u);
+		}
+		m_forja_cushion_q4.store(cushion, std::memory_order_relaxed);
+		base_target_usage *= static_cast<float>(cushion) * 0.25f;
+	}
+
 	// state vars
 	if (m_stretch_reset >= STRETCH_RESET_THRESHOLD)
 	{
@@ -764,6 +785,7 @@ void AudioStream::StretchUnderrun()
 {
 	// Didn't produce enough frames in time.
 	m_stretch_reset++;
+	m_forja_underruns.fetch_add(1, std::memory_order_relaxed);
 }
 
 void AudioStream::StretchOverrun()

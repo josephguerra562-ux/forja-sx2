@@ -283,7 +283,12 @@ void VU_Thread::ExecuteRingBuffer()
 #if defined(PCSX2_PS4_VM_BOOT)
 			// (AI-assisted) Avoid a clock check for every VU command in a busy ring.
 			if ((++cpu_sample_commands & 255) == 0)
+			{
 				PS4ThreadCPUMetrics::Sample(PS4ThreadCPUMetrics::Role::VU1);
+				// Forja SX2: in heavy scenes the ring never empties, so the check above the wait is not reached for minutes:
+				// with Plan B picked in play the VU1 stayed on core 3, where the GS had just moved (2026-10-16, Tales).
+				PS4ThreadAffinity::RepinIfPlanChanged("VU1", 3);
+			}
 #endif
 			switch (tag)
 			{

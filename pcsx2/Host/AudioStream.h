@@ -133,11 +133,21 @@ protected:
 	bool m_filling = false;
 	bool m_paused = false;
 
+	// Forja SX2 (compilation 31): a cushion for slow scenes. Each underrun (counted on the output thread) raises the
+	// stretcher's target by a quarter of BufferMS, up to 2.5x, and 15 s of game audio without one lowers it a quarter
+	// again. Off unless the backend turns it on (AudioStreamPS4.cpp).
+	bool m_forja_adaptive_cushion = false;
+	std::atomic<u32> m_forja_underruns{0};
+	std::atomic<u32> m_forja_cushion_q4{4}; // the target in quarters of BufferMS (4 = as configured)
+
 private:
 	static constexpr u32 AVERAGING_BUFFER_SIZE = 256;
 	static constexpr u32 AVERAGING_WINDOW = 50;
 	static constexpr u32 STRETCH_RESET_THRESHOLD = 5;
 	static constexpr u32 TARGET_IPS = 691;
+	static constexpr u32 FORJA_CUSHION_MAX_Q4 = 10;
+	u32 m_forja_seen_underruns = 0;
+	u32 m_forja_quiet_frames = 0;
 
 	static std::vector<std::pair<std::string, std::string>> GetCubebDriverNames();
 	static std::vector<DeviceInfo> GetCubebOutputDevices(const char* driver);

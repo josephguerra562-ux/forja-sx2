@@ -5,6 +5,16 @@
 2. En la PS4 con GoldHEN, entra a Ajustes > Ajustes de depuración > Juego > Instalador de paquetes e instálalo.
 3. Abre Forja SX2 una vez y ciérralo. Así crea su carpeta `/data/ForjaSX2/`.
 
+### Actualizar a una compilación nueva
+- Desde la compilación 31, cada PKG trae su número de versión (la 31 es `01.31`, la 32 es `01.32`). La nueva debería
+  instalarse **encima** de la vieja con el mismo Instalador de paquetes, sin borrar nada. Si la PS4 dice que ya está
+  instalada, borra la app vieja y vuelve a instalar: tus juegos, ajustes y perfiles de `/data/ForjaSX2/` no se borran.
+- **Actualizador dentro de la app:** cuando salga una compilación más nueva que la tuya, la biblioteca lo pregunta una vez
+  (**Descargar** / **Ahora no**); **OPTIONS** lo vuelve a preguntar. Baja el PKG a `/data/pkg/ForjaSX2-compilacion-N.pkg`,
+  lo comprueba con el `SHA256SUMS.txt` de la versión y, si no coincide, lo borra. Arriba a la derecha se ve el avance.
+  Cuando diga "lista en /data/pkg", cierra Forja y en GoldHEN abre el **Package Installer**: el PKG aparece ahí.
+  Se probará de verdad cuando salga la 32 (la 31 no tiene a quién avisar).
+
 **Si tienes PS4 Pro:** activa Ajustes > Sistema > **Modo Boost**. El CPU sube de 1,6 a ~2,1 GHz (+33 %). Como el emulador está limitado por el CPU, es la mejora más grande que existe y no cuesta nada.
 
 ## 2. Carpetas en la PS4 (`/data/ForjaSX2/`)
@@ -16,6 +26,8 @@
 | `gamesettings/` | Ajustes POR JUEGO (sección 4) |
 | `patches/` | Parches `.pnach` por juego (sección 5) |
 | `logs/` | Registros: bajarlos por FTP cuando algo falle |
+| `logs/sesiones/` | Desde la 31: **las últimas 10 sesiones de juego**, una carpeta por sesión (`FECHA-HORA_SERIAL`, hora UTC = Ecuador + 5 h). Una prueba ya no borra la anterior |
+| `sstates/` | Los estados guardados con L3+R3 (sección 3) |
 
 Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xplorer desde la USB.
 
@@ -29,7 +41,13 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
   - **Modo video:** No / 60 % / 50 %. Es el CPU de la PS2 durante las cinemáticas.
   - **Generación de cuadros:** Sí / No.
   - **Núcleos de la CPU:** Global / Normal / Plan B. Ver la sección 7.
-  - **Restablecer este juego:** con X borra tus cambios de ese juego. Queda una copia `.bak`.
+  - **Restablecer ajustes de este juego:** con X borra tus cambios de ese juego. Queda una copia `.bak`.
+- **Estados guardados (desde la 31, EXPERIMENTAL):** las filas 2 a 4 del menú L3+R3.
+  - **Guardar estado:** Izq./Der. eligen la ranura (1 a 5) y X guarda ahí el momento exacto del juego (tarda ~1 s).
+  - **Cargar estado:** X vuelve a ese momento y el menú se cierra. Si la ranura está vacía, la fila lo dice.
+  - **Reiniciar juego:** X empieza el juego de nuevo sin volver a la biblioteca. Lo que no hayas guardado se pierde.
+  - Sirven para probar (repetir la misma pelea con otro ajuste, por ejemplo). Sigue guardando en la **memory card** del
+    juego: un estado de una compilación puede no cargar en la siguiente.
 - Cada fila dice de dónde sale su valor ahora: **global**, **perfil de fábrica** o **tu perfil**.
 
 ## 3b. Pestaña Ajustes (para todos los juegos)
@@ -101,6 +119,10 @@ Afectan a TODOS los juegos. Si el archivo existe, la opción se activa. Reinicia
 - `vm-ee-cycle-normal`, `vm-ee-cycle-underclock`, `vm-ee-cycle-skip`: velocidad del CPU de la PS2
 - `vm-fast-cdvd`: cargas rápidas · `vm-no-fast-boot`: mostrar el logo de la BIOS
 - `vm-no-audio`, `vm-audio-legacy-stretch`: audio
+- `vm-audio-cortes-antes`: el audio como en la compilación 30, para comparar. Desde la 31, cuando el juego va lento y el
+  sonido se queda sin datos, la cola de audio crece sola (hasta 200 ms, y baja otra vez tras 15 s sin cortes) y cada corte
+  se apaga y vuelve con un fundido corto en vez de un chasquido. El registro lo cuenta en `PS4 audio queue: ... underruns=`
+  (cortes), `soft_cuts=` (suavizados) y `cushion=` (tamaño de la cola, 100 % = normal).
 - `vm-no-fastmem`: si se cuelga al arrancar · `vm-verbose-log`: registro detallado para mandarme
 - `vm-no-thread-affinity`: dejar que la PS4 reparta los núcleos sola
 - `vm-cpu-flip`: manda la imagen a la tele desde el CPU, como antes de la compilación 30. Desde la 30, el cuadro se encola en
@@ -128,14 +150,18 @@ Compara los FPS (L3+R3 > contador) en la MISMA escena con y sin el archivo. El n
 
 **Por juego:** la fila "Núcleos de la CPU" del menú L3+R3, o `Nucleos =` en `[Forja]`, cambia el reparto solo para ese juego.
 Las opciones son "Global" (usa `nucleos.txt`), "Normal" (el reparto de arriba) y "Plan B". EE, VU1, GS y Audio se mueven al
-momento. Algunos hilos secundarios solo cambian al volver a abrir el juego, así que para medir, reabre el juego.
+momento (desde la 31 también el VU1 en escenas pesadas: antes se quedaba en su núcleo viejo y chocaba con el GS).
+Algunos hilos secundarios solo cambian al volver a abrir el juego, así que para medir, reabre el juego.
 
 ## 8. Medir una prueba
 Baja `/data/ForjaSX2/logs` por FTP y arrástrala encima de `Herramientas PC\ANALIZAR LOGS (arrastra la carpeta aqui).bat`.
 Te dice los FPS, la velocidad, los tirones y qué parte frenó el juego, y crea `INFORME_RENDIMIENTO.md`.
+Para una sesión anterior, usa su carpeta de `logs/sesiones/` (trae los mismos archivos, y `samples.log` si el muestreador estaba encendido).
+`herramientas\linea_de_tiempo.py` saca la línea de tiempo cada 5 s; desde la 31 incluye las columnas de cortes de audio.
 
 ## 9. Si algo falla
 - **Vuelve a la biblioteca al ver el logo de PS2:** casi siempre es la BIOS. Usa una de la misma región que el juego.
 - **Error al arrancar:** prueba `vm-no-fastmem`.
-- **Audio roto:** prueba `vm-audio-legacy-stretch`.
+- **Audio roto:** prueba `vm-audio-legacy-stretch`. Si lo nuevo de la 31 suena peor, prueba `vm-audio-cortes-antes` y avísame.
+- **Un estado no carga:** pasa si es de otra compilación. Usa la memory card del juego.
 - Para cualquier otra cosa: baja `/data/ForjaSX2/logs/` y `crash.log` por FTP y pásamelos.

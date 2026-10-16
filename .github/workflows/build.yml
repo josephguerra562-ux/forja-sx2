@@ -160,7 +160,8 @@ jobs:
 
   publish:
     # Forja SX2: cada compilación de main se publica como pre-release, para bajar el PKG sin iniciar sesión.
-    # Es pre-release a propósito: /releases/latest (el aviso de actualización) solo ve las versiones estables.
+    # Es pre-release a propósito. Desde la compilación 31 el actualizador de la app (ps4/vm/ReleaseCheck.cpp) lee
+    # /releases?per_page=1, que sí incluye las pre-releases, y baja el .pkg comprobándolo con SHA256SUMS.txt.
     name: Publicar PKG en Releases
     needs: package
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'

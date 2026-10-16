@@ -146,6 +146,11 @@ static u32 s_blocked_pad_buttons = 0;
 static bool s_menu_chord_latched = false;
 static bool s_game_menu_open = false;
 static unsigned s_game_menu_selection = 0;
+// Forja SX2: the L3+R3 menu's save state slot (0-4, shown as 1-5), whether it holds a state, and the last action's result
+// (PS4GameMenu::StateAction).
+static unsigned s_state_slot = 0;
+static bool s_state_slot_used = false;
+static unsigned s_state_action = 0;
 static unsigned s_game_upscale = 1;
 static unsigned s_max_game_upscale = 1;
 static unsigned s_game_aspect = 1;
@@ -370,6 +375,9 @@ static void PublishGameMenu()
 	state.cores_origin = static_cast<unsigned>(s_profile.cores_origin);
 	state.has_factory = s_profile.has_factory;
 	state.has_player = s_profile.has_player;
+	state.slot = s_state_slot;
+	state.slot_used = s_state_slot_used;
+	state.action = s_state_action;
 	PS4GameMenu::SetInGameMenu(state);
 }
 
@@ -676,6 +684,81 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 	}
 }
 
+static void RefreshStateSlot()
+{
+	s_state_slot_used = VMManager::HasSaveStateInSlot(VMManager::GetDiscSerial().c_str(), VMManager::GetDiscCRC(),
+		static_cast<s32>(s_state_slot + 1));
+}
+
+// A movie's lowered EE rate is not part of a save state: put the game's own rate back before a load or a restart, which
+// both clear the recompilers, so the new blocks get it.
+static void EndVideoModeForStateChange()
+{
+	if (!s_video_active)
+		return;
+	EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(s_video_saved_rate);
+	s_video_active = false;
+	s_video_busy_checks = 0;
+}
+
+// Forja SX2: "Guardar estado". The menu has the VM paused, outside VMManager::Execute, so the state is consistent; it is
+// zipped on this thread (about a second) so the row can say at once how it went.
+static void SaveGameState()
+{
+	const s32 slot = static_cast<s32>(s_state_slot + 1);
+	bool failed = false;
+	std::string failure;
+	const auto t0 = Common::Timer::GetCurrentValue();
+	VMManager::SaveStateToSlot(slot, false, [&failed, &failure](const std::string& error) {
+		failed = true;
+		failure = error;
+	});
+	s_state_action = failed ? PS4GameMenu::STATE_SAVE_FAILED : PS4GameMenu::STATE_SAVED;
+	RefreshStateSlot();
+	ProbeLog("Save state: slot %d %s in %.0f ms %s\n", slot, failed ? "FAILED" : "saved",
+		Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - t0), failure.c_str());
+}
+
+// Forja SX2: "Cargar estado". True when the game goes on from the loaded moment (the menu then closes).
+static bool LoadGameState()
+{
+	const s32 slot = static_cast<s32>(s_state_slot + 1);
+	if (!s_state_slot_used)
+	{
+		s_state_action = PS4GameMenu::STATE_EMPTY;
+		return false;
+	}
+	EndVideoModeForStateChange();
+	Error error;
+	const auto t0 = Common::Timer::GetCurrentValue();
+	const bool loaded = VMManager::LoadStateFromSlot(slot, false, &error);
+	if (!loaded)
+		s_state_action = PS4GameMenu::STATE_LOAD_FAILED;
+	ProbeLog("Save state: slot %d %s in %.0f ms %s\n", slot, loaded ? "loaded" : "LOAD FAILED",
+		Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - t0), loaded ? "" : error.GetDescription().c_str());
+	return loaded;
+}
+
+// Forja SX2: "Reiniciar juego". Paused, VMManager::Reset is immediate (outside a running VM it never has to wait for a
+// safe point), and the game boots again without leaving Forja.
+static void RestartGame()
+{
+	EndVideoModeForStateChange();
+	VMManager::Reset();
+	ProbeLog("Emulator menu: game restarted\n");
+}
+
+static void ResumeFromGameMenu(u32 raw)
+{
+	s_game_menu_open = false;
+	s_blocked_pad_buttons |= raw;
+	PS4GameMenu::SetInGameMenu({});
+	ProbeLog("Emulator menu: resume\n");
+	// Forja SX2: the GS's hitch detector (GSRendererPS4.cpp) does not count the time the menu was open as a hitch.
+	g_forja_resumes.fetch_add(1, std::memory_order_relaxed);
+	VMManager::SetPaused(false);
+}
+
 void VMHostPoll()
 {
 	++s_host_poll_calls;
@@ -862,6 +945,8 @@ void VMHostPoll()
 	{
 		s_game_menu_open = true;
 		s_game_menu_selection = 0;
+		s_state_action = PS4GameMenu::STATE_NONE;
+		RefreshStateSlot();
 		s_game_ee_rate = s_video_active ? s_video_saved_rate : EmuConfig.Speedhacks.EECycleRate;
 		s_game_menu_direction = 0;
 		s_game_menu_next_repeat = elapsed;
@@ -952,14 +1037,35 @@ void VMHostPoll()
 	}
 	else
 	{
-		// X changes the switch-like rows one step, and resets the game's profile on its row.
+		// X changes the switch-like rows one step, saves, loads or restarts on the save state rows, and resets the game's
+		// profile on its row.
 		if (confirm && (row == PS4GameMenu::ROW_OVERLAY || row == PS4GameMenu::ROW_VIDEO_MODE || row == PS4GameMenu::ROW_FRAME_GEN ||
-						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_RESET_GAME))
+						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_RESET_PROFILE || row == PS4GameMenu::ROW_SAVE_STATE ||
+						   row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART))
 		{
-			if (row != PS4GameMenu::ROW_RESET_GAME)
+			if (row == PS4GameMenu::ROW_SAVE_STATE)
+				SaveGameState();
+			else if (row == PS4GameMenu::ROW_LOAD_STATE)
+			{
+				if (LoadGameState())
+				{
+					ResumeFromGameMenu(raw);
+					return;
+				}
+			}
+			else if (row == PS4GameMenu::ROW_RESTART)
+			{
+				RestartGame();
+				ResumeFromGameMenu(raw);
+				return;
+			}
+			else if (row == PS4GameMenu::ROW_RESET_PROFILE)
+			{
+				if (s_profile.has_player)
+					ResetGameProfile();
+			}
+			else
 				ChangeGameMenuRow(row, 1);
-			else if (s_profile.has_player)
-				ResetGameProfile();
 			PublishGameMenu();
 			s_game_menu_direction = 0;
 			return;
@@ -980,6 +1086,12 @@ void VMHostPoll()
 				s_game_menu_selection = s_game_menu_selection == 0 ? PS4GameMenu::ROW_COUNT - 1 : s_game_menu_selection - 1;
 			else if (navigation == ORBIS_PAD_BUTTON_DOWN)
 				s_game_menu_selection = (s_game_menu_selection + 1) % PS4GameMenu::ROW_COUNT;
+			else if (row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE)
+			{
+				s_state_slot = (s_state_slot + (navigation == ORBIS_PAD_BUTTON_LEFT ? 4u : 1u)) % 5u;
+				s_state_action = PS4GameMenu::STATE_NONE;
+				RefreshStateSlot();
+			}
 			else if (row >= PS4GameMenu::ROW_RESOLUTION && row <= PS4GameMenu::ROW_CORES)
 				ChangeGameMenuRow(row, navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1);
 			PublishGameMenu();
@@ -1344,7 +1456,7 @@ static void* RunVM(void*)
 	}
 	boot.filename = s_selected_game;
 	ProbeLog("Session archive: platform marker saved=%d platform=%s\n",
-		PS4SessionLogs::MarkGame(platform) ? 1 : 0,
+		PS4SessionLogs::MarkGame(platform, s_profile.serial) ? 1 : 0,
 		platform == GamePlatform::PS1 ? "PS1" : platform == GamePlatform::PS2 ? "PS2" : "Other");
 	PS4Telemetry::GameSelect(boot.filename.c_str(),
 		platform == GamePlatform::PS1 ? "PS1" : platform == GamePlatform::PS2 ? "PS2" : "Other");
@@ -1589,8 +1701,8 @@ int main()
 	PS4Telemetry::Stage("boot");
 	ProbeLog("Telemetry: PC debug server target from /data/ForjaSX2/telemetry.conf (create with 'host=PC_IP port=19423')\n");
 	ProbeLog("Log directory: /data/ForjaSX2/logs migrated=%d\n", migrated_logs);
-	ProbeLog("Session archive: directory=%s moved=%d errno=%d\n",
-		archived_logs.directory, archived_logs.moved, archived_logs.error);
+	ProbeLog("Session archive: directory=%s moved=%d errno=%d history_files=%d (logs/sesiones, last %d sessions)\n",
+		archived_logs.directory, archived_logs.moved, archived_logs.error, archived_logs.history, PS4SessionLogs::HISTORY_KEEP);
 	ProbeLog("PS4 log startup: fd=%d synchronous_marker=%d kernel_mirror=%d thread_result=%d verbose=%d\n", s_log, synchronous_log, kernel_log, log_thread_result, s_verbose_diag ? 1 : 0);
 	PS4ProbeLogger::LogStatus();
 	StartForjaWatchdog();

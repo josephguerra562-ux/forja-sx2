@@ -13,6 +13,7 @@
 #include <cstring>
 #include <mutex>
 #include <pthread.h>
+#include <unistd.h>
 #include <orbis/AudioOut.h>
 #include <orbis/Sysmodule.h>
 
@@ -26,6 +27,8 @@ namespace
 		std::atomic<int> status{0}; // 1 = active, 0 = closed, negative = error
 		std::atomic<u64> buffers{0}, pcm_buffers{0}, input_short{0}, paused{0};
 		std::atomic<u64> refill_pending{0};
+		std::atomic<u32> underruns{0}, cushion_q4{4};
+		std::atomic<u64> concealed{0};
 		std::atomic<u32> queue_min{0}, queue_max{0};
 		std::atomic<u32> peak_q15{0}, rms_q15{0};
 		std::atomic<u64> invalid_samples{0}, clipped_samples{0};
@@ -41,6 +44,11 @@ namespace
 		PS4AudioStream(u32 sample_rate, const AudioStreamParameters& parameters)
 			: AudioStream(sample_rate, parameters)
 		{
+			// Forja SX2 (compilation 31): the underrun cushion (Host/AudioStream.h) and the soft cuts (Conceal). The marker
+			// brings back compilation 30's audio for comparing.
+			const bool before = access("/data/ForjaSX2/vm-audio-cortes-antes", F_OK) == 0;
+			m_forja_adaptive_cushion = !before;
+			m_conceal = !before;
 		}
 
 		~PS4AudioStream() override
@@ -85,6 +93,9 @@ namespace
 			s_output.input_short.store(0, std::memory_order_relaxed);
 			s_output.paused.store(0, std::memory_order_relaxed);
 			s_output.refill_pending.store(0, std::memory_order_relaxed);
+			s_output.underruns.store(0, std::memory_order_relaxed);
+			s_output.cushion_q4.store(4, std::memory_order_relaxed);
+			s_output.concealed.store(0, std::memory_order_relaxed);
 			s_output.queue_min.store(0, std::memory_order_relaxed);
 			s_output.queue_max.store(0, std::memory_order_relaxed);
 			s_output.peak_q15.store(0, std::memory_order_relaxed);
@@ -144,6 +155,8 @@ namespace
 				m_parameters.stretch_sequence_length_ms, m_parameters.stretch_seekwindow_ms,
 				m_parameters.stretch_overlap_ms, static_cast<unsigned>(m_parameters.stretch_use_quickseek),
 				m_parameters.buffer_ms);
+			ProbeLog("PS4 audio underruns: cushion %s (up to %u ms), soft cuts %s (/data/ForjaSX2/vm-audio-cortes-antes turns both off)\n",
+				m_forja_adaptive_cushion ? "adaptive" : "off", static_cast<unsigned>(m_parameters.buffer_ms) * 5 / 2, m_conceal ? "on" : "off");
 			pthread_attr_t attr;
 			int result = pthread_attr_init(&attr);
 			if (result == 0)
@@ -168,19 +181,28 @@ namespace
 
 		// Called with m_read_mutex held. Keep unconsumed input and filter state
 		// across hardware blocks: 512 output frames are not 512 PS1 input frames.
-		bool ReadOutputFrames(u64& input_short, u64& refill_pending, u32& queue_min, u32& queue_max)
+		// silent: every read of this block came back as underrun silence.
+		bool ReadOutputFrames(u64& input_short, u64& refill_pending, u32& queue_min, u32& queue_max, bool& silent)
 		{
+			u32 reads = 0, silent_reads = 0;
 			const auto read_source = [&](float* samples) {
 				const u32 queued = GetBufferedFramesRelaxed();
 				input_short += queued < GRAIN;
 				queue_min = std::min(queue_min, queued);
 				queue_max = std::max(queue_max, queued);
+				// ReadFrames plays silence while it refills after an underrun, or when the queue is empty; with a few
+				// frames it stretches them over the block instead.
+				const bool was_filling = m_filling;
 				ReadFrames(samples, GRAIN);
+				reads++;
+				silent_reads += (was_filling && m_filling) || (!was_filling && queued == 0);
 				refill_pending += m_filling;
 			};
+			silent = false;
 			if (!m_resampler)
 			{
 				read_source(m_samples);
+				silent = silent_reads == reads;
 				return true;
 			}
 			u32 produced = 0;
@@ -201,7 +223,44 @@ namespace
 				m_source_frames -= consumed;
 				produced += written;
 			}
+			silent = reads != 0 && silent_reads == reads;
 			return true;
+		}
+
+		// Forja SX2 (compilation 31): an underrun cut the music to dead silence from one sample to the next, a click, and
+		// brought it back the same way. The first silent block now plays the last block backwards, so it starts on the very
+		// sample the audio stopped on, fading to zero over its 10.7 ms; the block where the audio comes back fades in over
+		// 2.7 ms. The gap is still there while the queue refills, but without the clicks.
+		void Conceal(bool silent, u64& concealed)
+		{
+			static constexpr u32 FADE_IN = 128;
+			if (silent)
+			{
+				if (m_last_audible)
+				{
+					for (u32 i = 0; i < GRAIN; i++)
+					{
+						const float gain = static_cast<float>(GRAIN - 1 - i) / static_cast<float>(GRAIN);
+						const u32 from = GRAIN - 1 - i;
+						m_samples[i * 2] = m_last_block[from * 2] * gain;
+						m_samples[i * 2 + 1] = m_last_block[from * 2 + 1] * gain;
+					}
+					concealed++;
+				}
+				m_last_audible = false;
+				return;
+			}
+			if (!m_last_audible)
+			{
+				for (u32 i = 0; i < FADE_IN; i++)
+				{
+					const float gain = static_cast<float>(i) / static_cast<float>(FADE_IN);
+					m_samples[i * 2] *= gain;
+					m_samples[i * 2 + 1] *= gain;
+				}
+			}
+			std::memcpy(m_last_block, m_samples, sizeof(m_samples));
+			m_last_audible = true;
 		}
 
 		void RefreshPortState()
@@ -239,7 +298,7 @@ namespace
 			PS4ThreadAffinity::PinCurrentThread("Audio", 5);
 			u64 buffers = 0, pcm_buffers = 0, input_short = 0, paused_buffers = 0;
 			u64 invalid_samples = 0, clipped_samples = 0;
-			u64 refill_pending = 0;
+			u64 refill_pending = 0, concealed = 0;
 			u32 queue_min = UINT32_MAX, queue_max = 0;
 			u32 current_buffer = 0, window_frames = 0;
 			float window_peak = 0.0f, window_energy = 0.0f;
@@ -251,11 +310,15 @@ namespace
 					{
 						std::memset(m_samples, 0, sizeof(m_samples));
 						paused_buffers++;
+						m_last_audible = false; // the game comes back with a fade in
 					}
 					else
 					{
-						if (!ReadOutputFrames(input_short, refill_pending, queue_min, queue_max))
+						bool silent = false;
+						if (!ReadOutputFrames(input_short, refill_pending, queue_min, queue_max, silent))
 							return;
+						if (m_conceal)
+							Conceal(silent, concealed);
 					}
 				}
 				float peak = 0.0f;
@@ -293,6 +356,9 @@ namespace
 				s_output.input_short.store(input_short, std::memory_order_relaxed);
 				s_output.paused.store(paused_buffers, std::memory_order_relaxed);
 				s_output.refill_pending.store(refill_pending, std::memory_order_relaxed);
+				s_output.concealed.store(concealed, std::memory_order_relaxed);
+				s_output.underruns.store(m_forja_underruns.load(std::memory_order_relaxed), std::memory_order_relaxed);
+				s_output.cushion_q4.store(m_forja_cushion_q4.load(std::memory_order_relaxed), std::memory_order_relaxed);
 				window_peak = std::max(window_peak, peak);
 				window_frames += GRAIN;
 				if (window_frames >= OUTPUT_RATE)
@@ -323,6 +389,9 @@ namespace
 		std::mutex m_read_mutex;
 		SpeexResamplerState* m_resampler = nullptr;
 		u32 m_source_offset = 0, m_source_frames = 0;
+		bool m_conceal = false;
+		bool m_last_audible = false; // the last block played carried the game's audio (not underrun silence)
+		alignas(64) float m_last_block[GRAIN * 2]{};
 		alignas(64) float m_source[GRAIN * 2]{};
 		alignas(64) float m_samples[GRAIN * 2]{};
 		alignas(64) s16 m_pcm[2][GRAIN * 2]{};
@@ -339,9 +408,12 @@ void PS4Audio::LogStatus()
 		static_cast<unsigned long long>(s_output.pcm_buffers.load(std::memory_order_relaxed)),
 		static_cast<unsigned long long>(s_output.input_short.load(std::memory_order_relaxed)),
 		static_cast<unsigned long long>(s_output.paused.load(std::memory_order_relaxed)));
-	ProbeLog("PS4 audio queue: min_frames=%u max_frames=%u refill_pending=%llu\n",
+	ProbeLog("PS4 audio queue: min_frames=%u max_frames=%u refill_pending=%llu underruns=%u soft_cuts=%llu cushion=%u%%\n",
 		s_output.queue_min.load(std::memory_order_relaxed), s_output.queue_max.load(std::memory_order_relaxed),
-		static_cast<unsigned long long>(s_output.refill_pending.load(std::memory_order_relaxed)));
+		static_cast<unsigned long long>(s_output.refill_pending.load(std::memory_order_relaxed)),
+		s_output.underruns.load(std::memory_order_relaxed),
+		static_cast<unsigned long long>(s_output.concealed.load(std::memory_order_relaxed)),
+		s_output.cushion_q4.load(std::memory_order_relaxed) * 25);
 	ProbeLog("PS4 audio signal: peak_q15=%u rms_q15=%u invalid_samples=%llu clipped_samples=%llu "
 			 "port_result=%#x output=%#x channels=%u volume_raw=%d flags=%#llx\n",
 		s_output.peak_q15.load(std::memory_order_relaxed), s_output.rms_q15.load(std::memory_order_relaxed),
