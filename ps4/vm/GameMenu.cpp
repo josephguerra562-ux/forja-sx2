@@ -1437,7 +1437,7 @@ namespace PS4GameMenu
 				else if (row == ROW_RESET_GAME)
 				{
 					draw->PathArcTo(point(cx, cy), 13.0f * scale, 0.6f, 5.6f, 20);
-					draw->PathStroke(icon_line, 0, 3 * scale);
+					draw->PathStroke(icon_line, 3 * scale);
 					draw->AddTriangleFilled(point(cx + 9, cy - 13), point(cx + 17, cy - 3), point(cx + 6, cy - 2), icon_line);
 				}
 				else if (row == ROW_LIBRARY)
