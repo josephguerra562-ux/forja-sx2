@@ -178,8 +178,7 @@ void ForjaSPU2Sync()
 		if (!s_logged)
 		{
 			s_logged = true;
-			ProbeLog("Audio SPU2 thread: queue out of order (head %u tail %u), dropped
-", head, tail);
+			ProbeLog("Audio SPU2 thread: queue out of order (head %u tail %u), dropped\n", head, tail);
 		}
 		tail = head;
 	}
