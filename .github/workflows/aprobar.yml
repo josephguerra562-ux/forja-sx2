@@ -1,0 +1,41 @@
+name: Aprobar compilación
+
+# Forja SX2: pasa una pre-release "compilacion-N" que ya probaste en la PS4 a versión normal. El canal estable del
+# actualizador (ps4/vm/ReleaseCheck.cpp) lee /releases/latest, que solo ve las versiones normales, así que desde aquí
+# la compilación le llega a todos; el canal de pruebas (/data/ForjaSX2/canal-pruebas) ya la veía.
+# En la web: Actions > Aprobar compilación > Run workflow, y el número. Sin gh, desde PowerShell con el token del
+# administrador de credenciales: POST /repos/josephguerra562-ux/forja-sx2/actions/workflows/aprobar.yml/dispatches
+# con {"ref":"main","inputs":{"compilacion":"31"}}.
+
+on:
+  workflow_dispatch:
+    inputs:
+      compilacion:
+        description: 'Número de la compilación que ya probaste (por ejemplo 31)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  aprobar:
+    name: Pasar al canal estable
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Quitar la marca de pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMERO: ${{ inputs.compilacion }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$NUMERO" =~ ^[0-9]+$ ]]; then echo "::error::El número de compilación lleva solo cifras"; exit 1; fi
+          tag="compilacion-$NUMERO"
+          assets=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          echo "$assets"
+          grep -q '\.pkg$' <<< "$assets" || { echo "::error::$tag no tiene .pkg"; exit 1; }
+          grep -qx 'SHA256SUMS.txt' <<< "$assets" || { echo "::error::$tag no tiene SHA256SUMS.txt"; exit 1; }
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --prerelease=false --latest
+          estable=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')
+          echo "Canal estable: $estable"
+          echo "Compilación $NUMERO aprobada. El canal estable ofrece ahora: $estable" >> "$GITHUB_STEP_SUMMARY"

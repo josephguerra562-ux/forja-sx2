@@ -9,11 +9,22 @@
 - Desde la compilación 31, cada PKG trae su número de versión (la 31 es `01.31`, la 32 es `01.32`). La nueva debería
   instalarse **encima** de la vieja con el mismo Instalador de paquetes, sin borrar nada. Si la PS4 dice que ya está
   instalada, borra la app vieja y vuelve a instalar: tus juegos, ajustes y perfiles de `/data/ForjaSX2/` no se borran.
-- **Actualizador dentro de la app:** cuando salga una compilación más nueva que la tuya, la biblioteca lo pregunta una vez
-  (**Descargar** / **Ahora no**); **OPTIONS** lo vuelve a preguntar. Baja el PKG a `/data/pkg/ForjaSX2-compilacion-N.pkg`,
-  lo comprueba con el `SHA256SUMS.txt` de la versión y, si no coincide, lo borra. Arriba a la derecha se ve el avance.
-  Cuando diga "lista en /data/pkg", cierra Forja y en GoldHEN abre el **Package Installer**: el PKG aparece ahí.
-  Se probará de verdad cuando salga la 32 (la 31 no tiene a quién avisar).
+- **Actualizador dentro de la app:** cuando salga una compilación más nueva que la tuya **en tu canal**, la biblioteca lo
+  pregunta una vez (**Descargar** / **Ahora no**); **OPTIONS** lo vuelve a preguntar. Baja el PKG a
+  `/data/pkg/ForjaSX2-compilacion-N.pkg`, lo comprueba con el `SHA256SUMS.txt` de la versión y, si no coincide, lo borra.
+  Arriba a la derecha se ve el avance. Cuando diga "lista en /data/pkg", cierra Forja y en GoldHEN abre el
+  **Package Installer**: el PKG aparece ahí.
+- **Dos canales de actualización:**
+  - **Estable (el normal, para todos):** solo avisa de las compilaciones que ya probé en mi PS4 Pro y aprobé. En
+    [Releases](https://github.com/josephguerra562-ux/forja-sx2/releases) son las que **no** dicen "Pre-release"; la
+    más nueva dice "Latest". Mientras no haya ninguna aprobada, este canal no avisa de nada.
+  - **De pruebas:** avisa de **cada** compilación apenas sale de GitHub, aunque nadie la haya probado todavía. Puede
+    venir rota. Para entrar, crea el archivo vacío `/data/ForjaSX2/canal-pruebas` (sección 6); para volver al estable,
+    bórralo. Se lee al abrir la app.
+  - En `logs/`, la línea `Release check: channel=estable` (o `channel=pruebas`) dice en qué canal estás.
+  - La 31 todavía avisa de todas las compilaciones. Los canales empiezan en la compilación siguiente.
+- **Cómo apruebo una compilación:** en GitHub, Actions > **Aprobar compilación** > Run workflow, y el número. Eso le
+  quita la marca de pre-release y desde ese momento el canal estable la ofrece.
 
 **Si tienes PS4 Pro:** activa Ajustes > Sistema > **Modo Boost**. El CPU sube de 1,6 a ~2,1 GHz (+33 %). Como el emulador está limitado por el CPU, es la mejora más grande que existe y no cuesta nada.
 
@@ -129,6 +140,8 @@ Afectan a TODOS los juegos. Si el archivo existe, la opción se activa. Reinicia
   la GPU y el CPU ya no espera (como hace DolphinPS4). Si la app se colgó en los primeros segundos con el flip por GPU,
   Forja crea este archivo sola al abrir la siguiente vez. Bórralo para volver a probar.
 - `vm-sync-flip`: modo antiguo de mandar la imagen a la tele (más lento; solo si ves parpadeos o imagen cortada)
+- `canal-pruebas`: el actualizador avisa de **todas** las compilaciones nuevas, también de las que nadie probó (canal de
+  pruebas, sección 1). Sin este archivo solo avisa de las aprobadas (canal estable).
 
 ## 7. Reparto de núcleos (`nucleos.txt`): para experimentar
 El CPU de la PS4 son **dos grupos de 4 núcleos** (0-3 y 4-7). Cada grupo tiene su propia memoria rápida (caché L2) y pasar datos de un grupo al otro es lento.

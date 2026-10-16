@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0+
 // (AI-assisted) Checks the project's public GitHub release endpoint without
 // blocking the launcher or requiring a second networking implementation.
-// Forja SX2: every build of main is published as a pre-release "compilacion-N", which /releases/latest never shows, so
-// the newest release of any kind is read instead, and its number is compared with this build's. The updater downloads its
-// package into /data/pkg (as DolphinPS4 does since v03.36) and checks it against the release's SHA256SUMS.txt.
+// Forja SX2: every build of main is published as a pre-release "compilacion-N"; the ones Joseph approves are promoted to
+// normal releases (.github/workflows/aprobar.yml). Two channels: the stable one (the default) reads /releases/latest,
+// which only shows those, and the testing one (/data/ForjaSX2/canal-pruebas exists) reads the newest release of any kind.
+// The tag's number is compared with this build's. The updater downloads its package into /data/pkg (as DolphinPS4 does
+// since v03.36) and checks it against the release's SHA256SUMS.txt.
 #include "ReleaseCheck.h"
 #include "CoverDownload.h"
 #include "Sha256.h"
@@ -25,8 +27,9 @@ extern void ProbeLog(const char* format, ...);
 
 namespace
 {
-	constexpr const char* ReleasesUrl =
-		"https://api.github.com/repos/josephguerra562-ux/forja-sx2/releases?per_page=1";
+	constexpr const char* StableUrl = "https://api.github.com/repos/josephguerra562-ux/forja-sx2/releases/latest";
+	constexpr const char* TestingUrl = "https://api.github.com/repos/josephguerra562-ux/forja-sx2/releases?per_page=1";
+	constexpr const char* TestingMarker = "/data/ForjaSX2/canal-pruebas";
 	constexpr const char* PackageDirectory = "/data/pkg";
 	constexpr const char* PackagePrefix = "ForjaSX2-compilacion-";
 
@@ -90,17 +93,20 @@ namespace
 	void* Check(void*)
 	{
 		pthread_setname_np(pthread_self(), "PS4 release check");
+		const bool testing = access(TestingMarker, F_OK) == 0;
+		const char* channel = testing ? "pruebas" : "estable";
 		std::vector<unsigned char> bytes;
-		if (!PS4CoverHttp::Get(ReleasesUrl, "ForjaSX2 release-checker", bytes, 256 * 1024))
+		if (!PS4CoverHttp::Get(testing ? TestingUrl : StableUrl, "ForjaSX2 release-checker", bytes, 256 * 1024))
 		{
-			ProbeLog("Release check: GitHub request failed\n");
+			// The stable channel gets a 404 while no build has been approved yet.
+			ProbeLog("Release check: channel=%s GitHub request failed\n", channel);
 			return nullptr;
 		}
 		const std::string json(bytes.begin(), bytes.end());
 		std::string tag;
 		if (!JsonString(json, "tag_name", 0, tag))
 		{
-			ProbeLog("Release check: tag_name missing\n");
+			ProbeLog("Release check: channel=%s tag_name missing\n", channel);
 			return nullptr;
 		}
 		const int latest = BuildFromTag(tag);
@@ -117,8 +123,8 @@ namespace
 		s_latest_build.store(latest, std::memory_order_relaxed);
 		const bool newer = current > 0 && latest > current && !package_url.empty();
 		s_has_update.store(newer, std::memory_order_release);
-		ProbeLog("Release check: current=%d latest=%s (%d) update=%d package=%s sums=%s\n", current, tag.c_str(), latest,
-			newer ? 1 : 0, package_url.empty() ? "-" : "yes", sums_url.empty() ? "-" : "yes");
+		ProbeLog("Release check: channel=%s current=%d latest=%s (%d) update=%d package=%s sums=%s\n", channel, current,
+			tag.c_str(), latest, newer ? 1 : 0, package_url.empty() ? "-" : "yes", sums_url.empty() ? "-" : "yes");
 		return nullptr;
 	}
 

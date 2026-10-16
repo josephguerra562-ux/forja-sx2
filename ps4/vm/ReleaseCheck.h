@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0+
 // (AI-assisted) Non-blocking GitHub release notification for the PS4 launcher.
-// Forja SX2: and the updater, as DolphinPS4 updates itself: the newest build's package is downloaded into /data/pkg and
-// checked against the release's SHA256SUMS.txt; the player installs it with GoldHEN's Package Installer, over the app.
+// Forja SX2: and the updater, as DolphinPS4 updates itself: the newest build of the player's channel (stable, or testing
+// with /data/ForjaSX2/canal-pruebas) is downloaded into /data/pkg and checked against the release's SHA256SUMS.txt; the
+// player installs it with GoldHEN's Package Installer, over the app.
 #pragma once
 
 #include <string>

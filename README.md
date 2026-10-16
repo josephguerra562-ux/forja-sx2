@@ -1,12 +1,22 @@
-# PS4SX2 Emu
+# Forja SX2
 
-An experimental PlayStation 2 emulator for PlayStation 4, based on [PCSX2](https://github.com/PCSX2/pcsx2).
+Emulador de PlayStation 2 para PS4 con GoldHEN. Sale de [PS4SX2](https://github.com/Phoenixx1202/PS4SX2), que a su vez
+viene de [PCSX2](https://github.com/PCSX2/pcsx2), y le suma mejoras de rendimiento, perfiles por juego, estados guardados
+y un actualizador dentro de la app. Está en pruebas: cada juego va distinto y todavía puede haber tirones, cortes de
+audio o cierres.
 
-PS4SX2 brings the PCSX2 emulation core to PS4 with a controller-friendly game library, Vulkan rendering, audio output and a PC debugging dashboard. This repository contains the sources and resources used by the current PS4 application.
+- **Descargar:** el `.pkg` está en [Releases](https://github.com/josephguerra562-ux/forja-sx2/releases). Las versiones
+  que no dicen "Pre-release" ya se probaron en una PS4 Pro (canal estable). Las "Pre-release" salen solas con cada
+  cambio y nadie las probó todavía (canal de pruebas).
+- **Instalar y usar:** [LEEME_FORJA_SX2.md](LEEME_FORJA_SX2.md) explica la instalación, las carpetas, los controles, los
+  ajustes por juego y qué hacer si algo falla.
+- **No incluye BIOS ni juegos.** Necesitas tu propia BIOS de PS2, sacada de tu consola, y tus propias copias de los
+  juegos. No pidas ni compartas esos archivos aquí.
 
-**Alpha software:** compatibility, performance and stability vary by game. Slowdowns, audio artifacts, black screens and crashes are still possible. PS1 support is experimental, and full-speed emulation is not guaranteed. Package version **1.00** is an alpha milestone, not a stable release.
+Es un proyecto independiente, sin relación con Sony ni con el equipo de PCSX2. Los créditos están [al final](#credits).
 
-[Releases](https://github.com/Phoenixx1202/PS4SX2/releases) · [PCSX2 upstream](https://github.com/PCSX2/pcsx2)
+> La documentación técnica de abajo viene de PS4SX2 y está en inglés. En Forja SX2 las carpetas están en
+> `/data/ForjaSX2/` y la guía de uso al día es [LEEME_FORJA_SX2.md](LEEME_FORJA_SX2.md).
 
 ## Features
 
@@ -286,12 +296,15 @@ The public setup instructions are maintained in this README. Internal plans, mig
 ## Credits
 
 - **[PCSX2 Team and contributors](https://github.com/PCSX2/pcsx2)** — the emulator core, hardware emulation, renderers, game database and the years of work that make this project possible.
+- **[Phoenixx1202 — PS4SX2](https://github.com/Phoenixx1202/PS4SX2)** — the PS4 port Forja SX2 is built on, including its game library, Vulkan and audio backends, and the [PS4SX2 SDK](https://github.com/Phoenixx1202/PS4SX2-SDK) used by the GitHub Actions build.
+- **[swordpdf — PS5SX2](https://github.com/Swordpdf/PS5SX2)** — the PS5 port whose core optimizations (wait loops, GIF buffer, texture memory, instant DMA) are in this code, the AMD FSR 3 frame generation ported from it (`ps4/core/framegen`), and the reference for per-game profiles.
+- **[iHaiDeeZ — PS4SX2](https://github.com/iHaiDeeZ/PS4SX2) and [DolphinPS4](https://github.com/iHaiDeeZ/DolphinPS4)** — the PS4 adaptation of PS5SX2 used here as a reference, and the Dolphin port behind ideas used here: per-game profiles, the GPU-queued flip and the in-app updater that downloads to `/data/pkg`.
 - **[Al-Azif — ps-disc-detect](https://github.com/Al-Azif/ps-disc-detect)** — the reference implementation used for PS4 optical drive discovery and disc detection. The CAM discovery and sense-decoding work in this port was adapted from that project. Its dumper and Redump database are not bundled here.
 - **Spyros** — earlier console-port work from which parts of this adaptation are derived.
 - **DolphinPS4 and love-ps4 contributors** — PS4 runtime and toolchain integration used by this port.
 - **OpenOrbis, Mesa, Khronos and all third-party library authors** — the platform, graphics and supporting components used by the application.
 
-PS4SX2 is an independent project and is not affiliated with Sony or endorsed by the PCSX2 Team. Please keep PS4-port-specific reports with this project rather than treating them as confirmed upstream PCSX2 bugs.
+Forja SX2 and PS4SX2 are independent projects and are not affiliated with Sony or endorsed by the PCSX2 Team. Please keep PS4-port-specific reports with this project rather than treating them as confirmed upstream PCSX2 bugs.
 
 ## License
 
