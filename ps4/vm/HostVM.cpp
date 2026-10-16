@@ -173,9 +173,14 @@ void Host::OnGameChanged(const std::string& title, const std::string&, const std
 	Console.WriteLn("Game changed: %s", title.c_str());
 }
 
-std::string Host::TranslatePluralToString(const char*, const char*, const char*, int)
+std::string Host::TranslatePluralToString(const char*, const char* msg, const char*, int count)
 {
-	return "";
+	// Forja SX2 (compilation 33): no translations, but the message itself, with its count. An empty string made the patch
+	// notice say "No cheats or patches ... are found / enabled" while one was on (God of War II, 2026-10-16).
+	std::string text(msg ? msg : "");
+	for (size_t pos = text.find("%n"); pos != std::string::npos; pos = text.find("%n", pos))
+		text.replace(pos, 2, std::to_string(count));
+	return text;
 }
 
 bool Host::InBatchMode()

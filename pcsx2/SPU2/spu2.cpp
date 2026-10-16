@@ -118,9 +118,14 @@ namespace
 				_mm_pause();
 				continue;
 			}
+			// Compilation 33: head and tail again, now holding the lock. The EE thread can mix the whole queue between the
+			// look above and the lock (ForjaSPU2Sync); with the old head this thread then mixed up to 64 stale ring entries and
+			// left tail past head, and the EE thread's next sync mixed ~4 billion "samples" (God of War II froze within a
+			// minute of fighting, 2026-10-16: the EE thread at 100 % in the mix, no vsync for 8 s).
+			const u32 head_now = s_forja_spu2_head.load(std::memory_order_acquire);
 			u32 tail = s_forja_spu2_tail.load(std::memory_order_relaxed);
 			u32 mixed = 0;
-			while (tail != head && mixed < 64 && !s_forja_spu2_ee_wants.load(std::memory_order_relaxed))
+			while (tail != head_now && mixed < 64 && !s_forja_spu2_ee_wants.load(std::memory_order_relaxed))
 			{
 				const ForjaSPU2Sample& sample = s_forja_spu2_ring[tail % FORJA_SPU2_RING];
 				ForjaSPU2MixBack(sample.in0, sample.in1, sample.outpos, sample.cycles);
@@ -165,6 +170,19 @@ void ForjaSPU2Sync()
 	while (s_forja_spu2_mixing.exchange(true, std::memory_order_acquire))
 		_mm_pause();
 	u32 tail = s_forja_spu2_tail.load(std::memory_order_relaxed);
+	// Never more than the ring: a tail past head (the compilation 32 bug above) would be ~4 billion samples. Drop the
+	// queue instead, once, and say so.
+	if (head - tail > FORJA_SPU2_RING)
+	{
+		static bool s_logged = false;
+		if (!s_logged)
+		{
+			s_logged = true;
+			ProbeLog("Audio SPU2 thread: queue out of order (head %u tail %u), dropped
+", head, tail);
+		}
+		tail = head;
+	}
 	s_forja_spu2_stolen += head - tail;
 	while (tail != head)
 	{
