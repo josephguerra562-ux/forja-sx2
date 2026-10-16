@@ -45,6 +45,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
 ## 3. Controles
 - **Biblioteca:** X = jugar, Cuadrado = favorito, Triángulo = actualizar, Círculo = salir.
 - **En el juego:** OPTIONS = Start, clic en el touchpad = Select, **L3+R3 = menú del emulador**.
+- **El menú L3+R3 muestra 8 opciones grandes a la vez** (desde la 32): al bajar con la cruceta la lista se desplaza sola, como
+  una página. La barra azul de la derecha dice en qué parte estás y arriba dice "opción X de 14".
 - **Todo lo que cambies en L3+R3 se guarda solo para ese juego** (como las propiedades por juego de Dolphin), menos el
   contador de FPS. Se aplica al instante:
   - **Resolución interna** y **relación de aspecto**.

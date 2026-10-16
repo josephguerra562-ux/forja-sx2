@@ -1374,7 +1374,9 @@ namespace PS4GameMenu
 			draw->AddLine(point(64, 170), point(1856, 170), IM_COL32(38, 103, 157, 150), 1.0f * scale);
 			image("status_controle", 126, 82, 40, 34);
 			draw->AddText(font, 34.0f * scale, point(196, 82), white, "Menú del emulador");
-			draw->AddText(font, 18.0f * scale, point(138, 186), muted, "JUEGO EN PAUSA");
+			char paused_label[64];
+			std::snprintf(paused_label, sizeof(paused_label), "JUEGO EN PAUSA   ·   opción %u de %u", selected_row + 1, static_cast<unsigned>(ROW_COUNT));
+			draw->AddText(font, 18.0f * scale, point(138, 186), muted, paused_label);
 			// Forja SX2: which profiles this game has (pcsx2/ForjaGameProfile.h).
 			char profile_label[128];
 			std::snprintf(profile_label, sizeof(profile_label), "Perfil de este juego:  de fábrica %s  ·  tuyo %s",
@@ -1453,14 +1455,14 @@ namespace PS4GameMenu
 				"Cerrar el juego y volver a la biblioteca",
 				"Cerrar el juego y salir de Forja SX2"};
 			static_assert(sizeof(labels) / sizeof(labels[0]) == ROW_COUNT && sizeof(descriptions) / sizeof(descriptions[0]) == ROW_COUNT);
-			// Icons in a 22 px circle; the shapes are drawn on a +-16 grid scaled by 0.75.
+			// Icons in a 30 px circle; the shapes are drawn on a +-16 grid.
 			const auto draw_option_icon = [&](unsigned row, float cx, float cy, bool selected) {
 				const ImU32 icon_bg = selected ? IM_COL32(34, 127, 214, 255) : IM_COL32(16, 55, 86, 255);
 				const ImU32 icon_line = selected ? IM_COL32(231, 247, 255, 255) : IM_COL32(155, 204, 235, 255);
-				const auto ip = [&](float dx, float dy) { return point(cx + dx * 0.75f, cy + dy * 0.75f); };
-				const float lw = 2.0f * scale;
-				draw->AddCircleFilled(point(cx, cy), 22.0f * scale, icon_bg, 32);
-				draw->AddCircle(point(cx, cy), 22.0f * scale, selected ? accent : IM_COL32(49, 111, 155, 255), 32, 1.5f * scale);
+				const auto ip = [&](float dx, float dy) { return point(cx + dx, cy + dy); };
+				const float lw = 2.5f * scale;
+				draw->AddCircleFilled(point(cx, cy), 30.0f * scale, icon_bg, 40);
+				draw->AddCircle(point(cx, cy), 30.0f * scale, selected ? accent : IM_COL32(49, 111, 155, 255), 40, 1.5f * scale);
 				switch (row)
 				{
 					case ROW_RESUME:
@@ -1480,7 +1482,7 @@ namespace PS4GameMenu
 						draw->AddLine(ip(13, 13), ip(13, 4), icon_line, lw);
 						break;
 					case ROW_RESTART: // a circular arrow
-						draw->PathArcTo(point(cx, cy), 10.0f * scale, 0.6f, 5.6f, 20);
+						draw->PathArcTo(point(cx, cy), 13.0f * scale, 0.6f, 5.6f, 24);
 						draw->PathStroke(icon_line, lw);
 						draw->AddTriangleFilled(ip(9, -13), ip(17, -3), ip(6, -2), icon_line);
 						break;
@@ -1497,7 +1499,7 @@ namespace PS4GameMenu
 						draw->AddLine(ip(-9, 0), ip(9, 0), icon_line, lw);
 						break;
 					case ROW_EE_RATE:
-						draw->AddCircle(ip(0, 4), 10.5f * scale, icon_line, 24, lw);
+						draw->AddCircle(ip(0, 4), 14.0f * scale, icon_line, 28, lw);
 						draw->AddLine(ip(0, 4), ip(8, -6), icon_line, lw);
 						break;
 					case ROW_VIDEO_MODE:
@@ -1518,8 +1520,8 @@ namespace PS4GameMenu
 					case ROW_RESET_PROFILE: // sliders back at their start
 						draw->AddLine(ip(-13, -7), ip(13, -7), icon_line, lw);
 						draw->AddLine(ip(-13, 7), ip(13, 7), icon_line, lw);
-						draw->AddCircleFilled(ip(-7, -7), 3.5f * scale, icon_line, 12);
-						draw->AddCircleFilled(ip(-7, 7), 3.5f * scale, icon_line, 12);
+						draw->AddCircleFilled(ip(-7, -7), 4.5f * scale, icon_line, 12);
+						draw->AddCircleFilled(ip(-7, 7), 4.5f * scale, icon_line, 12);
 						break;
 					case ROW_LIBRARY:
 						draw->AddLine(ip(-12, 0), ip(10, 0), icon_line, lw);
@@ -1532,18 +1534,35 @@ namespace PS4GameMenu
 						break;
 				}
 			};
-			// Forja SX2: fourteen rows since the save state rows (1-3); 52 px apart so they fit the panel.
-			for (unsigned row = 0; row < ROW_COUNT; row++)
+			// Forja SX2 (compilation 32): fourteen rows at 52 px were too small to read from the sofa (Joseph, 2026-10-16).
+			// Eight big rows show at a time and the list scrolls like a page: the selected row stays in the middle, and the bar
+			// on the right says where the list is. The window follows the selection alone, so the CPU side needs no state.
+			constexpr unsigned VISIBLE_ROWS = 8;
+			constexpr float ROW_TOP = 218.0f, ROW_PITCH = 88.0f, ROW_HEIGHT = 80.0f;
+			const unsigned first_row = std::min(selected_row > VISIBLE_ROWS / 2 ? selected_row - VISIBLE_ROWS / 2 : 0u,
+				static_cast<unsigned>(ROW_COUNT) - VISIBLE_ROWS);
+			const float list_bottom = ROW_TOP + VISIBLE_ROWS * ROW_PITCH - (ROW_PITCH - ROW_HEIGHT);
+			// The scroll bar, and an arrow where rows are hidden.
+			const float track_h = list_bottom - ROW_TOP;
+			draw->AddRectFilled(point(1826, ROW_TOP), point(1838, list_bottom), IM_COL32(11, 33, 52, 255), 6.0f * scale);
+			const float thumb_y = ROW_TOP + track_h * static_cast<float>(first_row) / static_cast<float>(ROW_COUNT);
+			const float thumb_h = track_h * static_cast<float>(VISIBLE_ROWS) / static_cast<float>(ROW_COUNT);
+			draw->AddRectFilled(point(1826, thumb_y), point(1838, thumb_y + thumb_h), accent, 6.0f * scale);
+			if (first_row > 0)
+				draw->AddTriangleFilled(point(944, 210), point(976, 210), point(960, 194), accent);
+			if (first_row + VISIBLE_ROWS < ROW_COUNT)
+				draw->AddTriangleFilled(point(944, list_bottom + 6), point(976, list_bottom + 6), point(960, list_bottom + 22), accent);
+			for (unsigned row = first_row; row < first_row + VISIBLE_ROWS; row++)
 			{
-				const float y = 212.0f + row * 52.0f;
+				const float y = ROW_TOP + static_cast<float>(row - first_row) * ROW_PITCH;
 				const bool selected = selected_row == row;
-				draw->AddRectFilled(point(112, y), point(1808, y + 48),
-					selected ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 255), 9.0f * scale);
+				draw->AddRectFilled(point(112, y), point(1808, y + ROW_HEIGHT),
+					selected ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 255), 12.0f * scale);
 				if (selected)
-					draw->AddRect(point(112, y), point(1808, y + 48), accent, 9.0f * scale, 2.0f * scale, 0);
-				draw_option_icon(row, 160, y + 24, selected);
-				draw->AddText(font, 21.0f * scale, point(206, y + 3), white, labels[row]);
-				draw->AddText(font, 14.0f * scale, point(206, y + 28), muted, descriptions[row]);
+					draw->AddRect(point(112, y), point(1808, y + ROW_HEIGHT), accent, 12.0f * scale, 2.5f * scale, 0);
+				draw_option_icon(row, 170, y + ROW_HEIGHT * 0.5f, selected);
+				draw->AddText(font, 28.0f * scale, point(228, y + 8), white, labels[row]);
+				draw->AddText(font, 18.0f * scale, point(228, y + 46), muted, descriptions[row]);
 				const char* action = nullptr;
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
 					action = "AJUSTAR";
@@ -1556,17 +1575,17 @@ namespace PS4GameMenu
 				else if (row == ROW_RESTART || (row == ROW_RESET_PROFILE && menu_state.has_player))
 					action = "X";
 				if (action)
-					draw->AddText(font, 19.0f * scale, point(1560, y + 13), selected ? white : muted, action);
+					draw->AddText(font, 22.0f * scale, point(1560, y + 28), selected ? white : muted, action);
 			}
 			char hint[160];
 			std::snprintf(hint, sizeof(hint), "Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias aquí se guarda solo para este juego.",
 				max_upscale);
-			draw->AddText(font, 16.0f * scale, point(138, 946), muted, hint);
-			draw->AddText(font, 16.0f * scale, point(138, 970), muted, "Arriba/Abajo: elegir   Izq./Der.: cambiar o elegir ranura   X: aceptar   Círculo: volver");
-			image("controle_x", 1480, 994, 28, 28);
-			draw->AddText(font, 19.0f * scale, point(1522, 998), white, "Aceptar");
-			image("controle_bola", 1690, 994, 28, 28);
-			draw->AddText(font, 19.0f * scale, point(1732, 998), muted, "Volver");
+			draw->AddText(font, 18.0f * scale, point(138, 946), muted, hint);
+			draw->AddText(font, 18.0f * scale, point(138, 974), muted, "Arriba/Abajo: elegir (la lista baja sola)   Izq./Der.: cambiar o elegir ranura   X: aceptar   Círculo: volver");
+			image("controle_x", 1480, 998, 30, 30);
+			draw->AddText(font, 21.0f * scale, point(1522, 1001), white, "Aceptar");
+			image("controle_bola", 1690, 998, 30, 30);
+			draw->AddText(font, 21.0f * scale, point(1732, 1001), muted, "Volver");
 			return true;
 		}
 		if (!s_visible || s_items.empty())
