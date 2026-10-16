@@ -10,6 +10,10 @@
 #include <cstdio>
 #include <limits>
 
+// Forja SX2: in the Mesa of our SDK (DolphinPS4's port/mesa/ac_ps4_drm.c, RADV on GNM): queues a VideoOut flip of `buffer`
+// behind the GPU work submitted so far (sceGnmSubmitAndFlipCommandBuffers); `arg` comes back as flipArg once it is on screen.
+extern "C" int ac_ps4_submit_flip(int video, unsigned buffer, unsigned mode, std::int64_t arg);
+
 PS4Port::VulkanVideoOut::VulkanVideoOut(VkPhysicalDevice gpu, VkDevice device, const Dispatch& dispatch, Logger logger)
 	: m_gpu(gpu)
 	, m_device(device)
@@ -227,14 +231,48 @@ bool PS4Port::VulkanVideoOut::WaitForFlip(OrbisKernelUseconds timeout)
 	return true;
 }
 
+// Forja SX2: frame n draws into image n % ImageCount, last shown by frame n - ImageCount, which stays on screen until the flip
+// of frame n - ImageCount + 1 is. Flip arguments are 1-based frame numbers, so that flip's is n - ImageCount + 2.
+bool PS4Port::VulkanVideoOut::WaitNextImageOffScreen(OrbisKernelUseconds timeout)
+{
+	if (m_frame_count < ImageCount)
+		return true;
+	const std::int64_t needed = static_cast<std::int64_t>(m_frame_count - ImageCount + 2);
+	constexpr OrbisKernelUseconds slice = 2000;
+	OrbisKernelUseconds waited = 0;
+	for (;;)
+	{
+		OrbisVideoOutFlipStatus status{};
+		if (sceVideoOutGetFlipStatus(m_handle, &status) != 0 || status.flipArg >= needed)
+			return true;
+		if (waited >= timeout)
+		{
+			Log("VideoOut: GPU flip wait failed: timeout_us=%u frame=%llu shown=%lld needed=%lld gpu_pending=%d pending=%d",
+				static_cast<unsigned>(timeout), static_cast<unsigned long long>(m_frame_count), static_cast<long long>(status.flipArg),
+				static_cast<long long>(needed), status.numGpuFlipPending, status.numFlipPending);
+			return false;
+		}
+		OrbisKernelEvent event{};
+		int count = 0;
+		OrbisKernelUseconds current = slice;
+		sceKernelWaitEqueue(m_flip_queue, &event, 1, &count, &current);
+		waited += slice;
+	}
+}
+
 bool PS4Port::VulkanVideoOut::Acquire()
 {
 	if (m_buffer_set < 0)
 		return false;
 
+	if (m_gpu_flips)
+	{
+		if (!WaitNextImageOffScreen(5000000))
+			return false;
+	}
 	// (AI-assisted) With triple buffering, wait only when all pipelined buffers
 	// are in flight (pending >= ImageCount - 1), decoupling rendering from VSync.
-	if (!WaitPendingAtMost(ImageCount - 2, 5000000))
+	else if (!WaitPendingAtMost(ImageCount - 2, 5000000))
 		return false;
 
 	m_flip_pending = (m_pending_flips > 0);
@@ -248,7 +286,7 @@ bool PS4Port::VulkanVideoOut::Present()
 	if (!m_acquired || m_buffer_set < 0)
 		return false;
 	const int result = sceVideoOutSubmitFlip(m_handle, static_cast<int>(m_current_index), ORBIS_VIDEO_OUT_FLIP_VSYNC,
-		static_cast<std::int64_t>(m_frame_count));
+		static_cast<std::int64_t>(m_frame_count + 1));
 	if (result != 0)
 	{
 		Log("VideoOut: flip failed: %#x buffer=%u frame=%llu", result, m_current_index,
@@ -259,6 +297,28 @@ bool PS4Port::VulkanVideoOut::Present()
 	m_pending_flips++;
 	m_flip_pending = true;
 	m_acquired = false;
+	m_gpu_flips = false;
+	return true;
+}
+
+bool PS4Port::VulkanVideoOut::PresentFromGpu()
+{
+	if (!m_acquired || m_buffer_set < 0)
+		return false;
+	const int result = ac_ps4_submit_flip(m_handle, m_current_index, ORBIS_VIDEO_OUT_FLIP_VSYNC,
+		static_cast<std::int64_t>(m_frame_count + 1));
+	if (result != 0)
+	{
+		Log("VideoOut: GPU-side flip refused: %#x buffer=%u frame=%llu", result, m_current_index,
+			static_cast<unsigned long long>(m_frame_count));
+		return false;
+	}
+	if (m_gpu_flip_count++ < 3)
+		Log("VideoOut: GPU-side flip %llu: buffer=%u", static_cast<unsigned long long>(m_frame_count + 1), m_current_index);
+	m_frame_count++;
+	m_flip_pending = true;
+	m_acquired = false;
+	m_gpu_flips = true;
 	return true;
 }
 
@@ -290,7 +350,7 @@ bool PS4Port::VulkanVideoOut::Destroy()
 			if (m_frame_count != 0)
 			{
 				const int blank_result = sceVideoOutSubmitFlip(m_handle, -1, ORBIS_VIDEO_OUT_FLIP_VSYNC,
-					static_cast<std::int64_t>(m_frame_count));
+					static_cast<std::int64_t>(m_frame_count + 1));
 				Log("VideoOut: blank flip = %#x", blank_result);
 				if (blank_result == 0)
 				{
@@ -346,6 +406,7 @@ bool PS4Port::VulkanVideoOut::Destroy()
 	m_pixel_pitch = 0;
 	m_flip_pending = false;
 	m_acquired = false;
+	m_gpu_flips = false;
 	Log("VideoOut: cleanup = %s", cleanup_ok ? "OK" : "FAILED");
 	return cleanup_ok;
 }

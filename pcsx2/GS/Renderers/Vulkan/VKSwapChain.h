@@ -85,6 +85,8 @@ public:
 	VkFormat GetTextureFormat() const;
 	VkResult AcquireNextImage();
 	bool PresentCurrentImage();
+	// Forja SX2: PS4 VideoOut, GPU-side flip queued behind the submitted frame (VulkanVideoOut::PresentFromGpu).
+	bool PresentCurrentImageFromGpu();
 	void ReleaseCurrentImage();
 	void ResetImageAcquireResult();
 

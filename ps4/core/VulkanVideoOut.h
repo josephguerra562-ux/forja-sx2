@@ -47,6 +47,10 @@ namespace PS4Port
 		bool Create();
 		bool Acquire();
 		bool Present();
+		// Forja SX2: GPU-side flip, as DolphinPS4 presents (ac_ps4_submit_flip, in the Mesa of our SDK: RADV on Sony's GNM
+		// driver). The flip is queued behind the GPU work submitted so far, so the CPU waits neither for the GPU to finish
+		// the frame nor for vblank. Call it right after the frame's vkQueueSubmit. False if the driver refused it (logged).
+		bool PresentFromGpu();
 		void Release() { m_acquired = false; }
 		bool WaitForFlip(OrbisKernelUseconds timeout = 5000000);
 		// (AI-assisted) Destroy image views first; GPU completion and console teardown still need proper testing.
@@ -64,6 +68,8 @@ namespace PS4Port
 		void SyncPendingFlips();
 		// Waits until at most max_pending flips remain, up to timeout microseconds.
 		bool WaitPendingAtMost(std::uint32_t max_pending, OrbisKernelUseconds timeout);
+		// Forja SX2: with GPU-side flips, until the image of the next frame is off screen (flipArg, as DolphinPS4 does).
+		bool WaitNextImageOffScreen(OrbisKernelUseconds timeout);
 		struct ImageMemory
 		{
 			VkImage image = VK_NULL_HANDLE;
@@ -87,5 +93,9 @@ namespace PS4Port
 		std::uint32_t m_pending_flips = 0;
 		bool m_flip_pending = false;
 		bool m_acquired = false;
+		// Forja SX2: the last flip was GPU-side, so the system's pending count may not include it yet: Acquire waits by
+		// flipArg instead (each flip's argument is its 1-based frame number).
+		bool m_gpu_flips = false;
+		std::uint64_t m_gpu_flip_count = 0;
 	};
 } // namespace PS4Port

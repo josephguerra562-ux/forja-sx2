@@ -37,6 +37,7 @@
 #include "OrbisExit.h" // vk-285-115: the app ends through the system (_exit() is a SIGSYS on the console)
 #endif
 #if defined(PCSX2_PS4)
+#include <cstdio> // Forja SX2: the GPU-side flip's guard file
 #include <unistd.h> // (AI-assisted) access() for the PS4 flip marker
 #endif
 
@@ -2537,6 +2538,36 @@ void GSDeviceVK::SubmitCommandBuffer(VKSwapChain* present_swap_chain)
 	if (present_swap_chain && present_swap_chain->IsVideoOut())
 	{
 #if defined(PCSX2_PS4)
+		// Forja SX2: GPU-side flip. The flip is queued behind the submission above, so neither this thread nor the next
+		// frame's BeginPresent waits for the GPU to finish this frame (at 4x that wait was ~6 ms a frame on a PS4 Pro).
+		if (m_ps4_gpu_flip_next)
+		{
+			m_ps4_gpu_flip_next = false;
+			if (present_swap_chain->PresentCurrentImageFromGpu())
+			{
+				m_ps4_defer_next_flip = false;
+				// The hang guard: left while the session's first 300 GPU flips run (main.cpp's frame generation guard does the
+				// same). Found at the next start, it turns the GPU flip off for good (vm-cpu-flip).
+				if (m_ps4_gpu_flips_ok == 0)
+				{
+					if (std::FILE* guard = std::fopen("/data/ForjaSX2/flip-gpu-en-prueba", "w"))
+					{
+						std::fclose(guard);
+						m_ps4_gpu_flip_guard = true;
+					}
+				}
+				if (++m_ps4_gpu_flips_ok == 300 && m_ps4_gpu_flip_guard)
+				{
+					unlink("/data/ForjaSX2/flip-gpu-en-prueba");
+					m_ps4_gpu_flip_guard = false;
+					Console.WriteLn("PS4 GS: 300 GPU-side flips done, hang guard cleared");
+				}
+				return;
+			}
+			// Refused by the driver: this frame and the rest of the session use the CPU flip below.
+			m_ps4_gpu_flip = false;
+			Console.Warning("PS4 GS: GPU-side flip refused, the CPU flip is used for the rest of the session");
+		}
 		// (AI-assisted) Waiting here kept the GS thread idle for the whole frame's GPU time. Record the
 		// fence counter instead; PS4CompleteDeferredFlip flips once it completes, before the next acquire.
 		if (m_ps4_defer_next_flip)
@@ -3653,6 +3684,12 @@ void GSDeviceVK::Destroy()
 #if defined(PCSX2_PS4)
 	PS4CompleteDeferredFlip(UINT64_MAX);
 	OrbisFrameGenRelease(); // Forja SX2: its images and pipelines before the device
+	// Forja SX2: a normal close is no hang: the GPU-side flip's guard goes, even before its 300 frames.
+	if (m_ps4_gpu_flip_guard)
+	{
+		unlink("/data/ForjaSX2/flip-gpu-en-prueba");
+		m_ps4_gpu_flip_guard = false;
+	}
 #endif
 
 	m_swap_chain.reset();
@@ -3954,11 +3991,13 @@ void GSDeviceVK::EndPresent()
 	g_perfmon.Put(GSPerfMon::RenderPasses, 1);
 
 #if defined(PCSX2_PS4)
+	m_ps4_gpu_flip_next = m_ps4_gpu_flip && m_swap_chain->IsVideoOut();
 	m_ps4_defer_next_flip = m_ps4_async_flip && m_swap_chain->IsVideoOut();
 #endif
 	SubmitCommandBuffer(m_swap_chain.get());
 #if defined(PCSX2_PS4)
-	m_ps4_defer_next_flip = false; // Not consumed if the submission failed.
+	m_ps4_gpu_flip_next = false; // Not consumed if the submission failed.
+	m_ps4_defer_next_flip = false;
 #endif
 	MoveToNextCommandBuffer();
 
@@ -4204,7 +4243,20 @@ bool GSDeviceVK::CreateDeviceAndSwapChain()
 	}
 	m_ps4_async_flip = access("/data/ForjaSX2/vm-sync-flip", F_OK) != 0;
 	m_ps4_defer_next_flip = m_ps4_flip_deferred = false;
-	Console.WriteLn("PS4 GS: VideoOut flip %s (create /data/ForjaSX2/vm-sync-flip for the old GPU wait per frame)",
+	// Forja SX2: flip-gpu-en-prueba still here means the GPU-side flips of the last session never got through their first
+	// 300 frames (a GPU hang or a crash): vm-cpu-flip is written, so the CPU flip stays on until it is deleted.
+	if (access("/data/ForjaSX2/flip-gpu-en-prueba", F_OK) == 0)
+	{
+		unlink("/data/ForjaSX2/flip-gpu-en-prueba");
+		if (std::FILE* marker = std::fopen("/data/ForjaSX2/vm-cpu-flip", "w"))
+			std::fclose(marker);
+		Console.Warning("PS4 GS: the last GPU-side flips did not get through their first seconds; vm-cpu-flip written");
+	}
+	m_ps4_gpu_flip = m_ps4_async_flip && access("/data/ForjaSX2/vm-cpu-flip", F_OK) != 0;
+	m_ps4_gpu_flip_next = m_ps4_gpu_flip_guard = false;
+	m_ps4_gpu_flips_ok = 0;
+	Console.WriteLn("PS4 GS: VideoOut flip %s (vm-cpu-flip: CPU flip once the frame completes; vm-sync-flip: GPU wait per frame)",
+		m_ps4_gpu_flip ? "queued on the GPU behind each frame" :
 		m_ps4_async_flip ? "deferred until the frame completes" : "waits for the GPU in the present call");
 #else
 	if (surface != VK_NULL_HANDLE)

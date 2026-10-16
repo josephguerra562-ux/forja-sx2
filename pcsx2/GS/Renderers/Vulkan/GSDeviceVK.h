@@ -305,6 +305,12 @@ private:
 	bool m_ps4_async_flip = true;
 	bool m_ps4_defer_next_flip = false;
 	bool m_ps4_flip_deferred = false;
+	// Forja SX2: GPU-side flip, queued behind the frame's GPU work (VulkanVideoOut::PresentFromGpu, as DolphinPS4 presents).
+	// The default; /data/ForjaSX2/vm-cpu-flip (or vm-sync-flip) keeps the CPU flip above. GS thread only.
+	bool m_ps4_gpu_flip = true;
+	bool m_ps4_gpu_flip_next = false;
+	bool m_ps4_gpu_flip_guard = false; // flip-gpu-en-prueba written, until 300 GPU flips got through
+	u32 m_ps4_gpu_flips_ok = 0;
 #endif
 
 	bool m_last_submit_failed = false;

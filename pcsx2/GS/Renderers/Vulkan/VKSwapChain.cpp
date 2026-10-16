@@ -730,6 +730,8 @@ VkResult VKSwapChain::AcquireNextImage()
 #if defined(PCSX2_PS4)
 	if (m_is_video_out)
 	{
+		// Forja SX2: the [vkwait] line's acquire time here too: with the GPU-side flip, the wait for a free image is here.
+		ORBIS_VKW(3);
 		if (!m_video_out || !m_video_out->Acquire())
 			return VK_ERROR_SURFACE_LOST_KHR;
 		m_current_image = m_video_out->GetCurrentIndex();
@@ -761,6 +763,19 @@ bool VKSwapChain::PresentCurrentImage()
 	const bool result = m_is_video_out && m_video_out && m_video_out->Present();
 	m_image_acquire_result.reset();
 	return result;
+#else
+	return false;
+#endif
+}
+
+bool VKSwapChain::PresentCurrentImageFromGpu()
+{
+#if defined(PCSX2_PS4)
+	// Refused: the image stays acquired, so the caller can still present it with the CPU flip.
+	if (!m_is_video_out || !m_video_out || !m_video_out->PresentFromGpu())
+		return false;
+	m_image_acquire_result.reset();
+	return true;
 #else
 	return false;
 #endif

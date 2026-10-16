@@ -103,6 +103,9 @@ Afectan a TODOS los juegos. Si el archivo existe, la opción se activa. Reinicia
 - `vm-no-audio`, `vm-audio-legacy-stretch`: audio
 - `vm-no-fastmem`: si se cuelga al arrancar · `vm-verbose-log`: registro detallado para mandarme
 - `vm-no-thread-affinity`: dejar que la PS4 reparta los núcleos sola
+- `vm-cpu-flip`: manda la imagen a la tele desde el CPU, como antes de la compilación 30. Desde la 30, el cuadro se encola en
+  la GPU y el CPU ya no espera (como hace DolphinPS4). Si la app se colgó en los primeros segundos con el flip por GPU,
+  Forja crea este archivo sola al abrir la siguiente vez. Bórralo para volver a probar.
 - `vm-sync-flip`: modo antiguo de mandar la imagen a la tele (más lento; solo si ves parpadeos o imagen cortada)
 
 ## 7. Reparto de núcleos (`nucleos.txt`): para experimentar
