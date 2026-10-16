@@ -9,8 +9,8 @@
 #include "IopHw.h"
 #include "Config.h"
 
-// Forja SX2: stopped SPU2 voices are replayed in batches (Mixer.cpp); they catch up before a DMA changes SPU2 memory they read.
-extern void (*g_forja_spu2_catch_up)();
+// Forja SX2: the SPU2 mixing thread's queue and the stopped voices replayed in batches (Mixer.cpp) catch up before a DMA
+// changes SPU2 memory they read, or reads memory they write (ForjaSPU2CatchUp, defs.h).
 
 static constexpr int CYCLES_PER_WORD = 24;
 
@@ -96,8 +96,7 @@ void V_Core::LogAutoDMA(FILE* fp)
 
 void V_Core::AutoDMAReadBuffer(int mode) //mode: 0= split stereo; 1 = do not split stereo
 {
-	if (g_forja_spu2_catch_up)
-		g_forja_spu2_catch_up();
+	ForjaSPU2CatchUp();
 	u32 spos = InputPosWrite & 0x100; // Starting position passed by TSA
 	bool leftbuffer = !(InputPosWrite & 0x80);
 
@@ -241,8 +240,7 @@ void V_Core::PlainDMAWrite(u16* pMem, u32 size)
 
 void V_Core::FinishDMAwrite()
 {
-	if (g_forja_spu2_catch_up)
-		g_forja_spu2_catch_up();
+	ForjaSPU2CatchUp();
 	if (DMAPtr == nullptr)
 	{
 		DMAPtr = (u16*)iopPhysMem(MADR);
@@ -363,6 +361,7 @@ void V_Core::FinishDMAwrite()
 
 void V_Core::FinishDMAread()
 {
+	ForjaSPU2CatchUp(); // Forja SX2: the copy below reads what the mixing thread writes (the output areas, the reverb)
 	u32 buff1end = ActiveTSA + std::min(ReadSize, (u32)0x100 + std::abs(DMAICounter / CYCLES_PER_WORD));
 	u32 buff2end = 0;
 

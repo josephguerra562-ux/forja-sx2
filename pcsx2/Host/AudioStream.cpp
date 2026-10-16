@@ -785,7 +785,8 @@ void AudioStream::StretchUnderrun()
 {
 	// Didn't produce enough frames in time.
 	m_stretch_reset++;
-	m_forja_underruns.fetch_add(1, std::memory_order_relaxed);
+	if (m_forja_count_underruns)
+		m_forja_underruns.fetch_add(1, std::memory_order_relaxed);
 }
 
 void AudioStream::StretchOverrun()

@@ -137,6 +137,9 @@ protected:
 	// stretcher's target by a quarter of BufferMS, up to 2.5x, and 15 s of game audio without one lowers it a quarter
 	// again. Off unless the backend turns it on (AudioStreamPS4.cpp).
 	bool m_forja_adaptive_cushion = false;
+	// Compilation 32: whether an underrun counts. The PS4 stream leaves it off while the game boots (AudioStreamPS4.cpp): the
+	// queue runs dry at the start and in the first loads, and the cushion started every game at 250 % (2026-10-16).
+	bool m_forja_count_underruns = true;
 	std::atomic<u32> m_forja_underruns{0};
 	std::atomic<u32> m_forja_cushion_q4{4}; // the target in quarters of BufferMS (4 = as configured)
 

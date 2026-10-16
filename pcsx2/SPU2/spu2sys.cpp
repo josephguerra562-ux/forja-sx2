@@ -38,6 +38,10 @@ s32 (*ReverbDownsample)(V_Core& core, bool right);
 
 // Function pointer for multi-isa mixer 
 void (*spu2Mix)();
+// Forja SX2: the mix after the input (defs.h), and the sample it is mixing.
+void (*ForjaSPU2MixBack)(StereoOut32 in0, StereoOut32 in1, u16 outpos, u32 cycles);
+u16 g_forja_mix_outpos = 0;
+u32 g_forja_mix_cycles = 0;
 
 static bool psxmode = false;
 
@@ -343,6 +347,10 @@ __forceinline void TimeUpdate(u64 cClocks)
 		dClocks -= TickInterval;
 		lClocks += TickInterval;
 		Cycles++;
+
+		// Forja SX2: a key on or off changes voices the SPU2 mixing thread may still be mixing (spu2.cpp).
+		if (Cores[0].KeyOff | Cores[0].KeyOn | Cores[1].KeyOff | Cores[1].KeyOn)
+			ForjaSPU2Sync();
 
 		for(int c = 0; c < 2; c++)
 		{

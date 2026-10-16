@@ -20,9 +20,12 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstring>
+#include <emmintrin.h>
 #include <mutex>
 #include <thread>
 #include <unistd.h>
+
+extern void ProbeLog(const char* format, ...);
 
 const StereoOut32 StereoOut32::Empty(0, 0);
 
@@ -44,10 +47,175 @@ static bool s_output_muted = false;
 // anything reads or writes the SPU2's registers, and dropped on a reset or a loaded savestate.
 extern void (*g_forja_spu2_catch_up)();
 extern void ForjaSPU2ClearPending();
-static inline void ForjaSPU2CatchUp()
+
+// Forja SX2 (compilation 32): the SPU2 mix on a thread of its own, on the audio core (nucleos.txt AUDIO=).
+// The mix took 8 to 14 % of the EE thread in every game (2026-10-16: the voices, the cores' mix and reverb, the output), and
+// the EE thread is what limits God of War II's movies and Tales of the Abyss. The game cannot see a sample's mix until it next
+// touches the SPU2: it reads or writes a register (SPU2read/SPU2write, after their TimeUpdate), a DMA writes or reads SPU2
+// memory, a voice is keyed on or off, a savestate is taken. So the EE thread reads the sample's input (the ADMA stream: its
+// requests and interrupts are timing the game sees), queues the rest, and goes on; this thread mixes the queue. Before any of
+// those, ForjaSPU2Sync() mixes whatever is still queued right there on the EE thread: the EE thread never waits for this thread
+// to wake up (on the PS4, waking a thread cost more than the work: see ForjaAudioThread above), at most for the one sample it is
+// in the middle of. While an IRQ address is armed (a voice, the reverb or the output reaching it raises the IOP's interrupt at
+// that very sample) and in CDDA mode, every sample is mixed on the EE thread, as before. /data/ForjaSX2/vm-spu2-mismo-hilo
+// keeps every sample on the EE thread.
+namespace
 {
+	struct ForjaSPU2Sample
+	{
+		StereoOut32 in0, in1;
+		u32 cycles;
+		u16 outpos;
+	};
+	constexpr u32 FORJA_SPU2_RING = 4096; // 85 ms of samples
+	std::array<ForjaSPU2Sample, FORJA_SPU2_RING> s_forja_spu2_ring;
+	std::atomic<u32> s_forja_spu2_head{0}; // the next sample to queue: written by the EE thread
+	std::atomic<u32> s_forja_spu2_tail{0}; // the next sample to mix: written while holding s_forja_spu2_mixing
+	std::atomic<bool> s_forja_spu2_mixing{false}; // whoever mixes queued samples holds it
+	std::atomic<bool> s_forja_spu2_ee_wants{false}; // the EE thread is waiting for it: the thread stops after its sample
+	int s_forja_spu2_threaded = -1; // read from the marker at the first sample
+	bool s_forja_spu2_thread_started = false;
+	// For the heartbeat line (EE thread, but s_forja_spu2_thread_mixed).
+	u64 s_forja_spu2_queued = 0, s_forja_spu2_direct = 0, s_forja_spu2_direct_irq = 0, s_forja_spu2_stolen = 0;
+	u64 s_forja_spu2_syncs = 0, s_forja_spu2_sync_ticks = 0;
+	std::atomic<u64> s_forja_spu2_thread_mixed{0};
+	u32 s_forja_spu2_log_counter = 0;
+	Common::Timer::Value s_forja_spu2_log_start = 0;
+
+	void ForjaSPU2Thread()
+	{
+		PS4ThreadAffinity::PinCurrentThread("Audio", 5);
+		// Between bursts of samples it keeps looking for ~50 us, then naps 0.2 ms at a time, and 2 ms at a time once nothing
+		// came for 0.1 s (a pause, the library): being late costs nothing but the EE thread mixing those samples itself.
+		const Common::Timer::Value spin_ticks = Common::Timer::ConvertNanosecondsToValue(50000.0);
+		const Common::Timer::Value long_idle_ticks = Common::Timer::ConvertMillisecondsToValue(100.0);
+		Common::Timer::Value idle_since = 0;
+		u32 idle_checks = 0;
+		for (;;)
+		{
+			const u32 head = s_forja_spu2_head.load(std::memory_order_acquire);
+			if (s_forja_spu2_tail.load(std::memory_order_relaxed) == head || s_forja_spu2_ee_wants.load(std::memory_order_relaxed))
+			{
+				if (idle_checks++ == 0)
+					idle_since = Common::Timer::GetCurrentValue();
+				else if ((idle_checks & 63) == 0)
+				{
+					const Common::Timer::Value idle = Common::Timer::GetCurrentValue() - idle_since;
+					if (idle > spin_ticks)
+					{
+						// This thread lives on from game to game: each game's profile can put it on another core.
+						PS4ThreadAffinity::RepinIfPlanChanged("Audio", 5);
+						usleep(idle > long_idle_ticks ? 2000 : 200);
+						continue;
+					}
+				}
+				_mm_pause();
+				continue;
+			}
+			idle_checks = 0;
+			if (s_forja_spu2_mixing.exchange(true, std::memory_order_acquire))
+			{
+				_mm_pause();
+				continue;
+			}
+			u32 tail = s_forja_spu2_tail.load(std::memory_order_relaxed);
+			u32 mixed = 0;
+			while (tail != head && mixed < 64 && !s_forja_spu2_ee_wants.load(std::memory_order_relaxed))
+			{
+				const ForjaSPU2Sample& sample = s_forja_spu2_ring[tail % FORJA_SPU2_RING];
+				ForjaSPU2MixBack(sample.in0, sample.in1, sample.outpos, sample.cycles);
+				tail++;
+				mixed++;
+			}
+			s_forja_spu2_tail.store(tail, std::memory_order_release);
+			s_forja_spu2_mixing.store(false, std::memory_order_release);
+			s_forja_spu2_thread_mixed.fetch_add(mixed, std::memory_order_relaxed);
+		}
+	}
+
+	// Every ~5 s of the game's audio: where its samples were mixed and what keeping up cost the EE thread.
+	void ForjaSPU2LogMaybe()
+	{
+		if (++s_forja_spu2_log_counter < 48000 * 5)
+			return;
+		s_forja_spu2_log_counter = 0;
+		const Common::Timer::Value now = Common::Timer::GetCurrentValue();
+		const double seconds = s_forja_spu2_log_start ? Common::Timer::ConvertValueToSeconds(now - s_forja_spu2_log_start) : 0.0;
+		s_forja_spu2_log_start = now;
+		const u64 thread_mixed = s_forja_spu2_thread_mixed.exchange(0, std::memory_order_relaxed);
+		const double total = static_cast<double>(s_forja_spu2_queued + s_forja_spu2_direct);
+		if (seconds > 0.0 && total > 0.0)
+			ProbeLog("Audio SPU2 thread: on=%d mixed_by_thread_pct=%.1f by_EE_at_sync_pct=%.1f by_EE_direct_pct=%.1f "
+					 "(irq_armed_pct=%.1f) syncs_per_second=%.0f EE_sync_ms_per_second=%.1f\n",
+				s_forja_spu2_threaded, thread_mixed * 100.0 / total, s_forja_spu2_stolen * 100.0 / total,
+				s_forja_spu2_direct * 100.0 / total, s_forja_spu2_direct_irq * 100.0 / total, s_forja_spu2_syncs / seconds,
+				Common::Timer::ConvertValueToMilliseconds(s_forja_spu2_sync_ticks) / seconds);
+		s_forja_spu2_queued = s_forja_spu2_direct = s_forja_spu2_direct_irq = s_forja_spu2_stolen = 0;
+		s_forja_spu2_syncs = s_forja_spu2_sync_ticks = 0;
+	}
+} // namespace
+
+void ForjaSPU2Sync()
+{
+	const u32 head = s_forja_spu2_head.load(std::memory_order_relaxed);
+	if (s_forja_spu2_tail.load(std::memory_order_acquire) == head)
+		return;
+	const Common::Timer::Value start = Common::Timer::GetCurrentValue();
+	s_forja_spu2_ee_wants.store(true, std::memory_order_relaxed);
+	while (s_forja_spu2_mixing.exchange(true, std::memory_order_acquire))
+		_mm_pause();
+	u32 tail = s_forja_spu2_tail.load(std::memory_order_relaxed);
+	s_forja_spu2_stolen += head - tail;
+	while (tail != head)
+	{
+		const ForjaSPU2Sample& sample = s_forja_spu2_ring[tail % FORJA_SPU2_RING];
+		ForjaSPU2MixBack(sample.in0, sample.in1, sample.outpos, sample.cycles);
+		tail++;
+	}
+	s_forja_spu2_tail.store(tail, std::memory_order_release);
+	s_forja_spu2_mixing.store(false, std::memory_order_release);
+	s_forja_spu2_ee_wants.store(false, std::memory_order_relaxed);
+	s_forja_spu2_syncs++;
+	s_forja_spu2_sync_ticks += Common::Timer::GetCurrentValue() - start;
+}
+
+void ForjaSPU2CatchUp()
+{
+	ForjaSPU2Sync();
 	if (g_forja_spu2_catch_up)
 		g_forja_spu2_catch_up();
+}
+
+void ForjaSPU2Submit(StereoOut32 in0, StereoOut32 in1, u16 outpos, u32 cycles)
+{
+	if (s_forja_spu2_threaded < 0)
+	{
+		s_forja_spu2_threaded = access("/data/ForjaSX2/vm-spu2-mismo-hilo", F_OK) != 0 ? 1 : 0;
+		ProbeLog("Audio SPU2 thread: %s (/data/ForjaSX2/vm-spu2-mismo-hilo keeps the mix on the EE thread)\n",
+			s_forja_spu2_threaded ? "the mix runs on the audio core" : "off, the mix stays on the EE thread");
+	}
+	const bool irq_armed = Cores[0].IRQEnable || Cores[1].IRQEnable;
+	if (!s_forja_spu2_threaded || irq_armed || (PlayMode & 8))
+	{
+		ForjaSPU2Sync(); // the queue first: samples are mixed in order
+		ForjaSPU2MixBack(in0, in1, outpos, cycles);
+		s_forja_spu2_direct++;
+		s_forja_spu2_direct_irq += irq_armed ? 1 : 0;
+		ForjaSPU2LogMaybe();
+		return;
+	}
+	if (!s_forja_spu2_thread_started)
+	{
+		s_forja_spu2_thread_started = true;
+		std::thread(ForjaSPU2Thread).detach();
+	}
+	const u32 head = s_forja_spu2_head.load(std::memory_order_relaxed);
+	if (head - s_forja_spu2_tail.load(std::memory_order_acquire) >= FORJA_SPU2_RING)
+		ForjaSPU2Sync(); // the thread is 85 ms behind: the EE thread mixes the queue
+	s_forja_spu2_ring[head % FORJA_SPU2_RING] = {in0, in1, cycles, outpos};
+	s_forja_spu2_head.store(head + 1, std::memory_order_release);
+	s_forja_spu2_queued++;
+	ForjaSPU2LogMaybe();
 }
 
 static std::unique_ptr<AudioStream> s_output_stream;
@@ -202,6 +370,7 @@ void SPU2writeDMA7Mem(u16* pMem, u32 size)
 
 void SPU2::CreateOutputStream()
 {
+	ForjaSPU2Sync(); // Forja SX2: the SPU2 mixing thread writes chunks to the stream (before the lock: it may need it)
 	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	// Initialize volume and mute settings on new session.
 	if (!s_output_stream)
@@ -335,7 +504,9 @@ bool SPU2::IsAudioCaptureActive()
 
 void SPU2::InternalReset(bool psxmode)
 {
+	ForjaSPU2Sync(); // Forja SX2: the queued samples belong to the SPU2 being reset
 	spu2Mix = MULTI_ISA_SELECT(spu2Mix);
+	ForjaSPU2MixBack = MULTI_ISA_SELECT(ForjaSPU2MixBack);
 	ReverbDownsample = MULTI_ISA_SELECT(ReverbDownsample);
 	ReverbUpsample = MULTI_ISA_SELECT(ReverbUpsample);
 
@@ -367,6 +538,7 @@ void SPU2::Reset(bool psxmode)
 
 void SPU2::OnTargetSpeedChanged()
 {
+	ForjaSPU2Sync(); // Forja SX2: s_current_chunk_pos below is the SPU2 mixing thread's too
 	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	if (!s_output_stream)
 		return;
@@ -423,6 +595,7 @@ bool SPU2::Open()
 
 void SPU2::Close()
 {
+	ForjaSPU2Sync(); // Forja SX2: the SPU2 mixing thread's last samples go to the stream before it closes
 	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	FileLog("[%10d] SPU2 Close\n", Cycles);
 
@@ -599,6 +772,7 @@ s32 SPU2freeze(FreezeAction mode, freezeData* data)
 	switch (mode)
 	{
 		case FreezeAction::Load:
+			ForjaSPU2Sync();
 			ForjaSPU2ClearPending();
 			return SPU2Savestate::ThawIt(spud);
 		case FreezeAction::Save:

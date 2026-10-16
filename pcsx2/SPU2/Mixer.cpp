@@ -443,9 +443,9 @@ static __forceinline StereoOut32 MixVoice(uint coreidx, uint voiceidx)
 
 	// Write-back of raw voice data (post ADSR applied)
 	if (voiceidx == 1)
-		spu2M_WriteFast(((0 == coreidx) ? 0x400 : 0xc00) + OutPos, Value);
+		spu2M_WriteFast(((0 == coreidx) ? 0x400 : 0xc00) + g_forja_mix_outpos, Value);
 	else if (voiceidx == 3)
-		spu2M_WriteFast(((0 == coreidx) ? 0x600 : 0xe00) + OutPos, Value);
+		spu2M_WriteFast(((0 == coreidx) ? 0x600 : 0xe00) + g_forja_mix_outpos, Value);
 
 	return voiceOut;
 }
@@ -599,10 +599,10 @@ static __forceinline StereoOut32 MixCore(const uint coreidx, const VoiceMixSet& 
 	const VoiceMixSet Voices(clamp_mix(inVoices.Dry), clamp_mix(inVoices.Wet));
 
 	// Write Mixed results To Output Area
-	spu2M_WriteFast(((0 == thiscore.Index) ? 0x1000 : 0x1800) + OutPos, Voices.Dry.Left);
-	spu2M_WriteFast(((0 == thiscore.Index) ? 0x1200 : 0x1A00) + OutPos, Voices.Dry.Right);
-	spu2M_WriteFast(((0 == thiscore.Index) ? 0x1400 : 0x1C00) + OutPos, Voices.Wet.Left);
-	spu2M_WriteFast(((0 == thiscore.Index) ? 0x1600 : 0x1E00) + OutPos, Voices.Wet.Right);
+	spu2M_WriteFast(((0 == thiscore.Index) ? 0x1000 : 0x1800) + g_forja_mix_outpos, Voices.Dry.Left);
+	spu2M_WriteFast(((0 == thiscore.Index) ? 0x1200 : 0x1A00) + g_forja_mix_outpos, Voices.Dry.Right);
+	spu2M_WriteFast(((0 == thiscore.Index) ? 0x1400 : 0x1C00) + g_forja_mix_outpos, Voices.Wet.Left);
+	spu2M_WriteFast(((0 == thiscore.Index) ? 0x1600 : 0x1E00) + g_forja_mix_outpos, Voices.Wet.Right);
 
 	// Write mixed results to logfile (if enabled)
 
@@ -675,10 +675,11 @@ static __forceinline StereoOut32 MixCore(const uint coreidx, const VoiceMixSet& 
 // (The counters themselves are defined once, at the top of the file, outside the per-ISA namespace.)
 static u32 s_forja_spu2_split_counter = 0;
 
+// Forja SX2 (compilation 32): a sample in two parts. This one, on the EE thread, reads the input (the ADMA stream: its
+// interrupts and DMA requests are timing the game sees) and moves OutPos on; ForjaSPU2MixBack() below mixes the rest, on the SPU2
+// mixing thread or right away (spu2.cpp, ForjaSPU2Submit).
 void spu2Mix()
 {
-	const bool forja_timed = (++s_forja_spu2_split_counter & 15) == 0;
-	const Common::Timer::Value forja_t0 = forja_timed ? Common::Timer::GetCurrentValue() : 0;
 	// Note: Playmode 4 is SPDIF, which overrides other inputs.
 	StereoOut32 InputData[2] =
 		{
@@ -695,6 +696,45 @@ void spu2Mix()
 	WaveDump::WriteCore(0, CoreSrc_Input, InputData[0]);
 	WaveDump::WriteCore(1, CoreSrc_Input, InputData[1]);
 #endif
+
+	ForjaSPU2Submit(InputData[0], InputData[1], OutPos, Cycles);
+
+	// Update AutoDMA output positioning
+	OutPos++;
+	if (OutPos >= 0x200)
+		OutPos = 0;
+
+	if constexpr (IsDevBuild)
+	{
+		// used to throttle the output rate of cache stat reports
+		static int p_cachestat_counter = 0;
+
+		p_cachestat_counter++;
+		if (p_cachestat_counter > (48000 * 10))
+		{
+			p_cachestat_counter = 0;
+			if (SPU2::MsgCache())
+			{
+				SPU2::ConLog(" * SPU2 > CacheStats > Hits: %d  Misses: %d  Ignores: %d\n",
+					g_counter_cache_hits,
+					g_counter_cache_misses,
+					g_counter_cache_ignores);
+			}
+
+			g_counter_cache_hits =
+				g_counter_cache_misses =
+					g_counter_cache_ignores = 0;
+		}
+	}
+}
+
+void ForjaSPU2MixBack(StereoOut32 in0, StereoOut32 in1, u16 outpos, u32 cycles)
+{
+	g_forja_mix_outpos = outpos;
+	g_forja_mix_cycles = cycles;
+	const bool forja_timed = (++s_forja_spu2_split_counter & 15) == 0;
+	const Common::Timer::Value forja_t0 = forja_timed ? Common::Timer::GetCurrentValue() : 0;
+	const StereoOut32 InputData[2] = {in0, in1};
 
 	// Todo: Replace me with memzero initializer!
 	VoiceMixSet VoiceData[2] = {{StereoOut32(), StereoOut32()}, {StereoOut32(), StereoOut32()}}; // mixed voice data for each core.
@@ -713,8 +753,8 @@ void spu2Mix()
 	}
 
 	// Commit Core 0 output to ram before mixing Core 1:
-	spu2M_WriteFast(0x800 + OutPos, Ext.Left);
-	spu2M_WriteFast(0xA00 + OutPos, Ext.Right);
+	spu2M_WriteFast(0x800 + g_forja_mix_outpos, Ext.Left);
+	spu2M_WriteFast(0xA00 + g_forja_mix_outpos, Ext.Right);
 
 #ifdef PCSX2_DEVBUILD
 	WaveDump::WriteCore(0, CoreSrc_External, Ext);
@@ -759,34 +799,6 @@ void spu2Mix()
 			g_forja_spu2_split_fx_on += Cores[c].FxEnable ? 1 : 0;
 			g_forja_spu2_split_fx_heard += (Cores[c].FxVol.Left != 0 || Cores[c].FxVol.Right != 0) ? 1 : 0;
 			g_forja_spu2_split_fx_area += Cores[c].EffectsStartA < Cores[c].EffectsEndA ? 1 : 0;
-		}
-	}
-
-	// Update AutoDMA output positioning
-	OutPos++;
-	if (OutPos >= 0x200)
-		OutPos = 0;
-
-	if constexpr (IsDevBuild)
-	{
-		// used to throttle the output rate of cache stat reports
-		static int p_cachestat_counter = 0;
-
-		p_cachestat_counter++;
-		if (p_cachestat_counter > (48000 * 10))
-		{
-			p_cachestat_counter = 0;
-			if (SPU2::MsgCache())
-			{
-				SPU2::ConLog(" * SPU2 > CacheStats > Hits: %d  Misses: %d  Ignores: %d\n",
-					g_counter_cache_hits,
-					g_counter_cache_misses,
-					g_counter_cache_ignores);
-			}
-
-			g_counter_cache_hits =
-				g_counter_cache_misses =
-					g_counter_cache_ignores = 0;
 		}
 	}
 }

@@ -71,6 +71,20 @@ extern void spu2M_Write(u32 addr, u16 value);
 MULTI_ISA_DEF(void spu2Mix();)
 extern void spu2Output(StereoOut32 out);
 
+// Forja SX2 (compilation 32): the part of a sample's mix the game cannot see until it next touches the SPU2 (the voices, the
+// cores' mix and reverb, the output), handed to the SPU2 mixing thread (spu2.cpp, ForjaSPU2Submit) or mixed right away on the
+// EE thread. `outpos` and `cycles` are that sample's OutPos and Cycles: the EE thread has moved on when the thread mixes it.
+extern void (*ForjaSPU2MixBack)(StereoOut32 in0, StereoOut32 in1, u16 outpos, u32 cycles);
+MULTI_ISA_DEF(void ForjaSPU2MixBack(StereoOut32 in0, StereoOut32 in1, u16 outpos, u32 cycles);)
+extern void ForjaSPU2Submit(StereoOut32 in0, StereoOut32 in1, u16 outpos, u32 cycles);
+// Mixes whatever is queued, here on the EE thread, so the SPU2 can be read or changed (spu2.cpp).
+extern void ForjaSPU2Sync();
+// ForjaSPU2Sync(), then the stopped voices replayed in batches (Mixer.cpp): before anything reads or writes the SPU2.
+extern void ForjaSPU2CatchUp();
+// The sample being mixed: its OutPos and Cycles (MixVoice, MixCore and the reverb use these, not the EE thread's).
+extern u16 g_forja_mix_outpos;
+extern u32 g_forja_mix_cycles;
+
 static __forceinline s16 SignExtend16(u16 v)
 {
 	return (s16)v;

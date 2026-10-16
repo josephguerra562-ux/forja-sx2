@@ -49,7 +49,7 @@ __forceinline s32 V_Core::RevbGetIndexer(s32 offset)
 	u32 start = EffectsStartA & 0x3f'ffff;
 	u32 end = (EffectsEndA & 0x3f'ffff) | 0xffff;
 
-	u32 x = ((Cycles >> 1) + offset) % ((end - start) + 1);
+	u32 x = ((g_forja_mix_cycles >> 1) + offset) % ((end - start) + 1); // Forja SX2: the sample's Cycles (defs.h)
 
 	x += start;
 
@@ -104,7 +104,7 @@ StereoOut32 V_Core::DoReverb(StereoOut32 Input)
 	RevbDownBuf[0][RevbSampleBufPos | 64] = Input.Left;
 	RevbDownBuf[1][RevbSampleBufPos | 64] = Input.Right;
 
-	bool R = Cycles & 1;
+	bool R = g_forja_mix_cycles & 1; // Forja SX2: the sample's Cycles (defs.h)
 
 	// Calculate the read/write addresses we'll be needing for this session of reverb.
 

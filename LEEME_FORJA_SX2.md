@@ -132,6 +132,9 @@ Afectan a TODOS los juegos. Si el archivo existe, la opción se activa. Reinicia
 - `vm-ee-cycle-normal`, `vm-ee-cycle-underclock`, `vm-ee-cycle-skip`: velocidad del CPU de la PS2
 - `vm-fast-cdvd`: cargas rápidas · `vm-no-fast-boot`: mostrar el logo de la BIOS
 - `vm-no-audio`, `vm-audio-legacy-stretch`: audio
+- `vm-spu2-mismo-hilo`: deja la mezcla del sonido en el hilo del juego (EE), como hasta la 31. Desde la 32 la mezcla
+  (voces, reverberación y salida) corre en el núcleo del audio y el EE queda más libre; el registro lo cuenta en la línea
+  `Audio SPU2 thread:` (qué parte mezcló el hilo nuevo y cuánto esperó el EE). Si un juego suena raro o se cuelga, prueba con este archivo.
 - `vm-audio-cortes-antes`: el audio como en la compilación 30, para comparar. Desde la 31, cuando el juego va lento y el
   sonido se queda sin datos, la cola de audio crece sola (hasta 200 ms, y baja otra vez tras 15 s sin cortes) y cada corte
   se apaga y vuelve con un fundido corto en vez de un chasquido. El registro lo cuenta en `PS4 audio queue: ... underruns=`

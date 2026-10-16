@@ -49,6 +49,8 @@ namespace
 			const bool before = access("/data/ForjaSX2/vm-audio-cortes-antes", F_OK) == 0;
 			m_forja_adaptive_cushion = !before;
 			m_conceal = !before;
+			// Compilation 32: the boot's underruns do not grow the cushion (Run() turns the count on after STARTUP_BLOCKS).
+			m_forja_count_underruns = before;
 		}
 
 		~PS4AudioStream() override
@@ -178,6 +180,7 @@ namespace
 	private:
 		static constexpr u32 GRAIN = 512;
 		static constexpr u32 OUTPUT_RATE = 48000;
+		static constexpr u64 STARTUP_BLOCKS = 20ull * OUTPUT_RATE / GRAIN; // 20 s of output
 
 		// Called with m_read_mutex held. Keep unconsumed input and filter state
 		// across hardware blocks: 512 output frames are not 512 PS1 input frames.
@@ -349,6 +352,8 @@ namespace
 				}
 				current_buffer ^= 1;
 				buffers++;
+				if (buffers == STARTUP_BLOCKS)
+					m_forja_count_underruns = true; // ReadFrames, the one that counts them, runs on this thread too
 				if (peak > 0.00001f)
 					pcm_buffers++;
 				s_output.buffers.store(buffers, std::memory_order_relaxed);
