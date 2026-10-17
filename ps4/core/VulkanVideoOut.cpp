@@ -9,10 +9,62 @@
 #include <cstdarg>
 #include <cstdio>
 #include <limits>
+#include <unistd.h>
 
 // Forja SX2: in the Mesa of our SDK (DolphinPS4's port/mesa/ac_ps4_drm.c, RADV on GNM): queues a VideoOut flip of `buffer`
 // behind the GPU work submitted so far (sceGnmSubmitAndFlipCommandBuffers); `arg` comes back as flipArg once it is on screen.
 extern "C" int ac_ps4_submit_flip(int video, unsigned buffer, unsigned mode, std::int64_t arg);
+
+namespace
+{
+	// Forja SX2 (compilation 37): the output mode, as shadPS4 (src/core/libraries/videoout) and fpPS4 (ps4_libscevideoout.pas)
+	// describe SceVideoOutMode and sceVideoOutConfigureOutputMode_. The SDK's header declares both functions without
+	// their arguments, so they are called through these types.
+	struct OutputMode
+	{
+		std::uint32_t size;
+		std::uint8_t signal_encoding;
+		std::uint8_t signal_range;
+		std::uint8_t colorimetry;
+		std::uint8_t depth;
+		std::uint64_t refresh_rate;
+		std::uint64_t resolution;
+		std::uint8_t content_type;
+		std::uint8_t reserved0[3];
+		std::uint32_t reserved1;
+	};
+	static_assert(sizeof(OutputMode) == 32, "SceVideoOutMode is 32 bytes");
+
+	struct OutputOptions
+	{
+		std::uint16_t vertical_offset;
+		std::uint16_t reserved0;
+		std::uint32_t reserved1[3];
+	};
+
+	using ModeSetAnyFn = void (*)(OutputMode*, std::uint32_t);
+	using ConfigureOutputModeFn = int (*)(int, std::uint32_t, const OutputMode*, const OutputOptions*, std::uint32_t, std::uint32_t);
+
+	constexpr std::uint64_t REFRESH_50HZ = 2; // SCE_VIDEO_OUT_REFRESH_RATE_50HZ
+	constexpr std::uint64_t REFRESH_ANY = ~std::uint64_t{0};
+	// Left while the first 90 s at 50 Hz run: a TV that shows nothing at 50 Hz gets the app closed from the PS button, and the
+	// next game finds it here and stays at the system's rate (vm-sin-50hz is written; main.cpp).
+	constexpr const char* OUTPUT_GUARD = "/data/ForjaSX2/salida-50hz-en-prueba";
+
+	int RefreshMillihertz(std::uint64_t refresh_rate)
+	{
+		switch (refresh_rate)
+		{
+			case 1: return 23976;
+			case 2: return 50000;
+			case 3: return 59940;
+			case 6: return 29970;
+			case 13: return 119880;
+			case 35: return 89910;
+			default: return 0;
+		}
+	}
+} // namespace
 
 PS4Port::VulkanVideoOut::VulkanVideoOut(VkPhysicalDevice gpu, VkDevice device, const Dispatch& dispatch, Logger logger)
 	: m_gpu(gpu)
@@ -260,10 +312,89 @@ bool PS4Port::VulkanVideoOut::WaitNextImageOffScreen(OrbisKernelUseconds timeout
 	}
 }
 
+// Forja SX2 (compilation 37): the output's refresh, on the GS thread before a frame. Asks VideoOut for g_output_hz_request when it
+// changes; reads the rate VideoOut reports about once a second.
+void PS4Port::VulkanVideoOut::UpdateOutputRate()
+{
+	const int wanted = g_output_hz_request.load(std::memory_order_relaxed);
+	if (wanted != m_output_hz && !(wanted == 50 && m_output_failed))
+	{
+		const bool fifty = wanted == 50;
+		if (fifty && !m_output_guard)
+		{
+			if (std::FILE* guard = std::fopen(OUTPUT_GUARD, "w"))
+			{
+				std::fclose(guard);
+				m_output_guard = true;
+			}
+		}
+		const bool ok = ConfigureRefresh(fifty ? REFRESH_50HZ : REFRESH_ANY, fifty ? "a PAL game" : "the system's rate again");
+		if (fifty && !ok)
+		{
+			m_output_failed = true; // not asked again in this game
+			if (m_output_guard)
+			{
+				unlink(OUTPUT_GUARD);
+				m_output_guard = false;
+			}
+		}
+		m_output_hz = ok || !fifty ? wanted : m_output_hz;
+		m_output_since_frame = m_frame_count;
+		m_output_read_frame = m_frame_count + 30; // the TV takes a moment to switch
+	}
+	if (m_output_guard && m_output_hz == 50 && m_frame_count - m_output_since_frame >= 90 * 50)
+	{
+		unlink(OUTPUT_GUARD);
+		m_output_guard = false;
+		Log("VideoOut: 90 s at 50 Hz, guard cleared");
+	}
+	if (m_frame_count >= m_output_read_frame)
+	{
+		m_output_read_frame = m_frame_count + 60;
+		ReadOutputRate(false);
+	}
+}
+
+bool PS4Port::VulkanVideoOut::ConfigureRefresh(std::uint64_t refresh_rate, const char* why)
+{
+	if (m_handle < 0)
+		return false;
+	OutputMode mode{};
+	reinterpret_cast<ModeSetAnyFn>(&sceVideoOutModeSetAny_)(&mode, sizeof(mode));
+	mode.size = sizeof(mode);
+	mode.refresh_rate = refresh_rate;
+	const auto configure = reinterpret_cast<ConfigureOutputModeFn>(&sceVideoOutConfigureOutputMode_);
+	OutputOptions options{};
+	int result = configure(m_handle, 0, &mode, &options, sizeof(mode), sizeof(options));
+	int without_options = 0;
+	if (result != 0)
+		result = without_options = configure(m_handle, 0, &mode, nullptr, sizeof(mode), 0);
+	Log("VideoOut: output refresh %s for %s: result=%#x%s", refresh_rate == REFRESH_50HZ ? "50 Hz" : "any",
+		why, static_cast<unsigned>(result), without_options != 0 ? " (also without options)" : "");
+	return result == 0;
+}
+
+void PS4Port::VulkanVideoOut::ReadOutputRate(bool log)
+{
+	OrbisVideoOutResolutionStatus status{};
+	if (m_handle < 0 || sceVideoOutGetResolutionStatus(m_handle, &status) != 0)
+		return;
+	const int millihz = RefreshMillihertz(status.refreshRate);
+	if (millihz != 0)
+		g_output_millihz.store(millihz, std::memory_order_relaxed);
+	if (log || status.refreshRate != m_output_reported)
+	{
+		m_output_reported = status.refreshRate;
+		Log("VideoOut: the TV now at %.2f Hz (refreshRate=%llu, %ux%u)", millihz / 1000.0,
+			static_cast<unsigned long long>(status.refreshRate), status.width, status.height);
+	}
+}
+
 bool PS4Port::VulkanVideoOut::Acquire()
 {
 	if (m_buffer_set < 0)
 		return false;
+	UpdateOutputRate();
 
 	if (m_gpu_flips)
 	{
@@ -342,6 +473,18 @@ bool PS4Port::VulkanVideoOut::Destroy()
 	// Needs proper testing across console teardowns.
 	const bool flip_ok = WaitForFlip(100000);
 	cleanup_ok = cleanup_ok && flip_ok;
+	// Forja SX2 (compilation 37): the system's rate back before the output closes, and a normal close clears the 50 Hz guard.
+	if (m_handle >= 0 && m_output_hz != 0)
+	{
+		ConfigureRefresh(REFRESH_ANY, "the end of the game");
+		m_output_hz = 0;
+	}
+	if (m_output_guard)
+	{
+		unlink(OUTPUT_GUARD);
+		m_output_guard = false;
+	}
+	g_output_millihz.store(59940, std::memory_order_relaxed);
 	if (m_handle >= 0)
 	{
 		if (m_buffer_set >= 0)

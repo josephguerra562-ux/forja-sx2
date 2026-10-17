@@ -4693,7 +4693,7 @@ bool g_orbis_fg_engaged = false; // vk-285-133: the pacing has room for generate
 // The driver's measured refresh of the output its swapchain presents to (ps5vk's high-frame-rate output, 2026-10-08); a driver
 // without it presents at 59.94 Hz.
 // Forja SX2 (PS4): no such driver call here, and an undefined weak import could stop the PS4 loader from starting
-// the app. VideoOut on the PS4 runs at 59.94/60 Hz.
+// the app. VideoOut on the PS4 runs at 59.94/60 Hz, or at 50 for a PAL game since compilation 37 (VulkanVideoOut.h).
 
 namespace
 {
@@ -4809,7 +4809,8 @@ void main()
 
 	double OrbisFrameGenDisplayHz()
 	{
-		return 59.94;
+		// Forja SX2 (compilation 37): 50 while a PAL game has the TV at 50 Hz (VulkanVideoOut.h).
+		return PS4Port::g_output_millihz.load(std::memory_order_relaxed) / 1000.0;
 	}
 }
 

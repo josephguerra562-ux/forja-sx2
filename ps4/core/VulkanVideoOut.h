@@ -9,10 +9,19 @@
 #include <orbis/libkernel.h>
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 
 namespace PS4Port
 {
+	// Forja SX2 (compilation 37): the TV's refresh. A PAL game's 50 frames a second on the system's 59.94 Hz output leave one
+	// frame in five on screen for two refreshes: a stutter ten times a second, at any speed (God of War II, 2026-10-17: "it
+	// runs at full speed but doesn't look smooth"). At 50 Hz each PS2 frame is one refresh. main.cpp asks for 50 while a PAL
+	// game runs; the GS thread switches the output in Acquire; g_output_millihz is what VideoOut reports (frame generation's
+	// pacing reads it).
+	inline std::atomic<int> g_output_hz_request{0}; // 0: the system's own rate; 50: 50 Hz
+	inline std::atomic<int> g_output_millihz{59940};
+
 	class VulkanVideoOut
 	{
 	public:
@@ -70,6 +79,10 @@ namespace PS4Port
 		bool WaitPendingAtMost(std::uint32_t max_pending, OrbisKernelUseconds timeout);
 		// Forja SX2: with GPU-side flips, until the image of the next frame is off screen (flipArg, as DolphinPS4 does).
 		bool WaitNextImageOffScreen(OrbisKernelUseconds timeout);
+		// Forja SX2 (compilation 37): g_output_hz_request against the rate set now, and what VideoOut reports.
+		void UpdateOutputRate();
+		bool ConfigureRefresh(std::uint64_t refresh_rate, const char* why);
+		void ReadOutputRate(bool log);
 		struct ImageMemory
 		{
 			VkImage image = VK_NULL_HANDLE;
@@ -97,5 +110,13 @@ namespace PS4Port
 		// flipArg instead (each flip's argument is its 1-based frame number).
 		bool m_gpu_flips = false;
 		std::uint64_t m_gpu_flip_count = 0;
+		// Forja SX2 (compilation 37): the refresh asked of VideoOut (0: never changed), the frame of the switch to 50 Hz and
+		// whether its guard file is down, and when the reported rate is read next.
+		int m_output_hz = 0;
+		bool m_output_failed = false;
+		bool m_output_guard = false;
+		std::uint64_t m_output_since_frame = 0;
+		std::uint64_t m_output_read_frame = 0;
+		std::uint64_t m_output_reported = 0;
 	};
 } // namespace PS4Port

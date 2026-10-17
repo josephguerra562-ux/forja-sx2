@@ -56,15 +56,23 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
   - **Resolución interna** y **relación de aspecto**.
   - **Velocidad del CPU de la PS2:** de 27 % a 300 %; por defecto, 75 %. Menos % = más FPS en la PS4, pero el juego puede perder cuadros.
     **Desde la 36, EXPERIMENTAL: 36 %, 31 % y 27 %** (marcados "exp."). Sirven para juegos que con 50 % siguen dibujando
-    todos sus cuadros: con menos CPU el juego dibuja a la mitad (25 en PAL) y el VU1 hace la mitad del trabajo por segundo.
-    Si el juego calcula su movimiento por tiempo, va a velocidad normal con menos cuadros, y la **generación de cuadros**
-    rellena hasta 50. Si se ve en cámara lenta, ese juego no sirve con esto: vuelve a 50 % o más.
+    todos sus cuadros: con menos CPU el juego dibuja menos cuadros y el VU1 hace menos trabajo por segundo. Si el juego
+    calcula su movimiento por tiempo, va a velocidad normal. Si se ve en cámara lenta, ese juego no sirve con esto: vuelve
+    a 50 % o más. **God of War II va al 27 % de fábrica desde la 37** (medido: 98 % de velocidad media, contra ~70 % en
+    las peleas al 100 %).
   - **CPU automático** (desde la 35): No / Hasta 75 % / Hasta 60 % / Hasta 50 % (desde la 36 también hasta 36, 31 y 27 %,
     experimental). Si el juego va por debajo del 92 % unos 3 segundos, baja un paso el CPU de la PS2. Cuando hay margen
     otra vez, vuelve a subir. Cada cambio da un tironcito, así que hay como mucho uno cada 6 s. La fila dice a qué velocidad
     va **ahora**. En God of War II viene apagado desde la 36: medido, las peleas pesadas iban igual al 50, 60, 75 y 100 %.
   - **Modo video:** No / 60 % / 50 %. Es el CPU de la PS2 durante las cinemáticas.
   - **Generación de cuadros:** Sí / No.
+- **Salida a 50 Hz para juegos PAL (desde la 37, automática):** la PS4 manda la imagen a 60 Hz, y un juego PAL hace 50
+  cuadros por segundo. 50 en 60 no reparte parejo: 1 de cada 5 cuadros queda el doble en pantalla y se nota un tironcito
+  10 veces por segundo. Ahora, 3 segundos después de que un juego PAL arranca, Forja pone la tele a 50 Hz, y al salir del
+  juego la vuelve a su frecuencia normal. La pantalla parpadea en negro un momento cuando cambia: es normal.
+  - **Si la tele se queda en negro:** espera unos segundos; si no vuelve, cierra la app con el botón PS. La próxima vez
+    Forja queda sola a 60 Hz (escribe `/data/ForjaSX2/vm-sin-50hz`). Para volver a probar, borra ese archivo.
+  - El registro lo cuenta en las líneas `Output rate:` y `VideoOut: the TV now at ... Hz`.
   - **Núcleos de la CPU:** Global / Normal / Plan B. Ver la sección 7.
   - **Restablecer ajustes de este juego:** con X borra tus cambios de ese juego. Queda una copia `.bak`.
 - **Estados guardados (desde la 31, EXPERIMENTAL):** las filas 2 a 4 del menú L3+R3.
@@ -160,6 +168,7 @@ Afectan a TODOS los juegos. Si el archivo existe, la opción se activa. Reinicia
 - `vm-ee-cycle-normal`, `vm-ee-cycle-underclock`, `vm-ee-cycle-skip`: velocidad del CPU de la PS2
 - `vm-fast-cdvd`: cargas rápidas · `vm-no-fast-boot`: mostrar el logo de la BIOS
 - `vm-no-audio`, `vm-audio-legacy-stretch`: audio
+- `vm-sin-50hz`: la tele siempre a su frecuencia normal, también con juegos PAL (ver "Salida a 50 Hz")
 - **Medidor del VU1** (desde la 35, siempre activo): cada 5 s el registro anota en `VU1 programs:` los 8 programas del VU1
   que más tiempo toman. Así se ve qué efecto de un juego cuesta más, para quitarlo juego por juego.
 - `vm-spu2-mismo-hilo`: deja la mezcla del sonido en el hilo del juego (EE), como hasta la 31. Desde la 32 la mezcla

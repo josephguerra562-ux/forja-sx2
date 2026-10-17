@@ -207,6 +207,10 @@ static double s_cpu_auto_last_check = 0.0;
 static double s_cpu_auto_last_change = -100.0;
 static unsigned s_cpu_auto_slow_checks = 0;
 static unsigned s_cpu_auto_room_checks = 0;
+// Forja SX2 (compilation 37): the TV at 50 Hz for PAL games (UpdateOutputRate); vm-sin-50hz turns it off.
+static bool s_output_50hz_enabled = true;
+static double s_output_last_check = 0.0;
+static double s_output_pal_since = -1.0;
 static double s_profile_last_check = 0.0;
 static u32 s_game_menu_direction = 0;
 static double s_game_menu_next_repeat = 0.0;
@@ -597,6 +601,27 @@ static void UpdateVideoMode(double elapsed)
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), s_video_saved_rate);
 }
 
+extern double GetVerticalFrequency(); // pcsx2/GS.h (Counters.cpp): the PS2's refresh now
+
+// Forja SX2 (compilation 37): the TV at 50 Hz while a PAL game runs (VulkanVideoOut.h has why). The PS2's own rate is checked
+// once a second, and it takes 3 s at ~50 Hz, so the BIOS's NTSC logo or a game's own 50/60 Hz question don't switch the TV
+// back and forth. The GS thread does the switch before its next frame.
+static void UpdateOutputRate(double elapsed)
+{
+	if (elapsed - s_output_last_check < 1.0)
+		return;
+	s_output_last_check = elapsed;
+	const double ps2_hz = GetVerticalFrequency();
+	const bool pal = s_output_50hz_enabled && ps2_hz > 49.0 && ps2_hz < 51.0;
+	if (!pal)
+		s_output_pal_since = -1.0;
+	else if (s_output_pal_since < 0.0)
+		s_output_pal_since = elapsed;
+	const int wanted = pal && elapsed - s_output_pal_since >= 3.0 ? 50 : 0;
+	if (PS4Port::g_output_hz_request.exchange(wanted, std::memory_order_relaxed) != wanted)
+		ProbeLog("Output rate: %s (the PS2 at %.2f Hz)\n", wanted == 50 ? "50 Hz for this PAL game" : "the system's rate", ps2_hz);
+}
+
 // Forja SX2 (compilation 35): automatic PS2 CPU speed, as DolphinPS4's cpu_clock=auto. In God of War II's heaviest fights
 // the VU1 is the limit (2026-10-16: 28-33 ms a frame, with the GS and the EE waiting for it) and the whole game slows down,
 // its music and its moves too. A lower EE rate gives the game fewer cycles a second: it draws fewer frames, so the VU1 and
@@ -888,6 +913,7 @@ void VMHostPoll()
 		UpdateGameProfile(elapsed);
 		UpdateVideoMode(elapsed);
 		UpdateCpuAuto(elapsed);
+		UpdateOutputRate(elapsed);
 	}
 	// (AI-assisted) Verbose 1s heartbeat when paused/menu open, 5s otherwise. Needs proper testing.
 	const bool should_log_heartbeat = s_verbose_diag ?
@@ -1622,6 +1648,20 @@ static void* RunVM(void*)
 		s_video_since = 0.0;
 		s_video_last_decodes = g_forja_ipu_decodes;
 		s_profile_last_check = 0.0;
+		// Forja SX2 (compilation 37): the 50 Hz output's guard still here means a game at 50 Hz never closed normally in its
+		// first 90 s (a TV that showed nothing, the app closed from the PS button): this console keeps the system's rate.
+		if (access("/data/ForjaSX2/salida-50hz-en-prueba", F_OK) == 0)
+		{
+			unlink("/data/ForjaSX2/salida-50hz-en-prueba");
+			if (std::FILE* marker = std::fopen("/data/ForjaSX2/vm-sin-50hz", "w"))
+				std::fclose(marker);
+			ProbeLog("Output rate: the last game at 50 Hz did not close normally; vm-sin-50hz written\n");
+		}
+		s_output_50hz_enabled = access("/data/ForjaSX2/vm-sin-50hz", F_OK) != 0;
+		s_output_last_check = 0.0;
+		s_output_pal_since = -1.0;
+		PS4Port::g_output_hz_request.store(0, std::memory_order_relaxed);
+		ProbeLog("Output rate: 50 Hz for PAL games %s (/data/ForjaSX2/vm-sin-50hz turns it off)\n", s_output_50hz_enabled ? "on" : "off");
 		const bool hotspot_marker = access("/data/ForjaSX2/vm-ee-hotspots", F_OK) == 0 && access("/data/ForjaSX2/vm-no-ee-hotspots", F_OK) != 0;
 		PS4EEHotspots::Reset(hotspot_marker || s_verbose_diag);
 		ProbeLog("EE hotspots: %s; event and IPU-call frequencies, not CPU-time shares (disable with /data/ForjaSX2/vm-no-ee-hotspots)\n",
@@ -1689,6 +1729,9 @@ static void* RunVM(void*)
 		ProbeLog("STAGE: VMManager::Shutdown\n");
 		PS4Telemetry::Stage("vm-shutdown");
 		VMManager::Shutdown(false);
+		// Forja SX2 (compilation 37): a normal end: the 50 Hz output worked or was never asked for.
+		PS4Port::g_output_hz_request.store(0, std::memory_order_relaxed);
+		unlink("/data/ForjaSX2/salida-50hz-en-prueba");
 	}
 	else
 	{
