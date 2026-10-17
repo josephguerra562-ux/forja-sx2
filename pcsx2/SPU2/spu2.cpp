@@ -212,6 +212,10 @@ void ForjaSPU2CatchUp()
 // thread (and the stopped voices' replay) only change the voices, the master volume's slide and ENDX: a read of anything
 // else (DMA status, ATTR, IRQA, TSA, the reverb's settings...) returns what only the EE thread writes, and needs no wait.
 // The PS1 registers and those past 0x800 still wait, as before.
+// Compilation 36: of a voice, only where it reads (NAX) and its loop start (LSAX) wait, with ENDX. Its envelope (ENVX) and
+// its current volumes are levels, read as the mix left them a millisecond or two ago, as a real SPU2 is read while it plays;
+// its settings (pitch, ADSR, volumes, start address) change only through SPU2write, which waits. God of War II read the
+// voices ~11,600 times a second (2026-10-17), most likely their envelopes to find free ones, and each read waited.
 static bool ForjaSPU2ReadNeedsMix(u32 rmem, u32 mem)
 {
 	if ((rmem >> 16) == 0x1f80 || mem >= 0x800)
@@ -225,8 +229,17 @@ static bool ForjaSPU2ReadNeedsMix(u32 rmem, u32 mem)
 	};
 	for (const V_Core& core : Cores)
 	{
-		if (within(core.Voices) || within(core.MasterVol) || within(core.Regs.ENDX))
+		if (within(core.Regs.ENDX))
 			return true;
+		if (within(core.Voices))
+		{
+			// Which voice field: its offset inside one V_Voice.
+			const u8* first = reinterpret_cast<const u8*>(&core.Voices[0]);
+			const size_t offset = static_cast<size_t>(field - first) % sizeof(V_Voice);
+			const size_t next_a = static_cast<size_t>(reinterpret_cast<const u8*>(&core.Voices[0].NextA) - first);
+			const size_t loop_a = static_cast<size_t>(reinterpret_cast<const u8*>(&core.Voices[0].LoopStartA) - first);
+			return (offset >= next_a && offset < next_a + sizeof(u32)) || (offset >= loop_a && offset < loop_a + sizeof(u32));
+		}
 	}
 	return false;
 }

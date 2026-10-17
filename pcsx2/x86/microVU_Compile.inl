@@ -455,6 +455,15 @@ void mVUtestCycles(microVU& mVU, microFlagCycles& mFC)
 	{
 		switch (std::min(static_cast<int>(EmuConfig.Speedhacks.EECycleRate), static_cast<int>(mVUcycles)))
 		{
+			case -6: // Forja SX2: ~27 % (the recompiler's 15/32 scaling against 4/32)
+				mVUcycles *= 3.75f;
+				break;
+			case -5: // ~31 %
+				mVUcycles *= 3.25f;
+				break;
+			case -4: // ~36 %
+				mVUcycles *= 2.75f;
+				break;
 			case -3: // 50%
 				mVUcycles *= 2.0f;
 				break;

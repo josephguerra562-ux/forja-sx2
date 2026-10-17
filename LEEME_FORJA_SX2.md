@@ -54,11 +54,15 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
 - **Todo lo que cambies en L3+R3 se guarda solo para ese juego** (como las propiedades por juego de Dolphin), menos el
   contador de FPS. Se aplica al instante:
   - **Resolución interna** y **relación de aspecto**.
-  - **Velocidad del CPU de la PS2:** de 50 % a 300 %; por defecto, 75 %. Menos % = más FPS en la PS4, pero el juego puede perder cuadros.
-  - **CPU automático** (desde la 35): No / Hasta 75 % / Hasta 60 % / Hasta 50 %. Si el juego va por debajo del 92 % unos
-    3 segundos, baja un paso el CPU de la PS2. Cuando hay margen otra vez, vuelve a subir. Cambia la cámara lenta de una
-    escena pesada por velocidad normal con menos cuadros. Cada cambio da un tironcito, así que hay como mucho uno cada 6 s.
-    La fila dice a qué velocidad va **ahora**. God of War II lo trae en "Hasta 60 %" desde fábrica.
+  - **Velocidad del CPU de la PS2:** de 27 % a 300 %; por defecto, 75 %. Menos % = más FPS en la PS4, pero el juego puede perder cuadros.
+    **Desde la 36, EXPERIMENTAL: 36 %, 31 % y 27 %** (marcados "exp."). Sirven para juegos que con 50 % siguen dibujando
+    todos sus cuadros: con menos CPU el juego dibuja a la mitad (25 en PAL) y el VU1 hace la mitad del trabajo por segundo.
+    Si el juego calcula su movimiento por tiempo, va a velocidad normal con menos cuadros, y la **generación de cuadros**
+    rellena hasta 50. Si se ve en cámara lenta, ese juego no sirve con esto: vuelve a 50 % o más.
+  - **CPU automático** (desde la 35): No / Hasta 75 % / Hasta 60 % / Hasta 50 % (desde la 36 también hasta 36, 31 y 27 %,
+    experimental). Si el juego va por debajo del 92 % unos 3 segundos, baja un paso el CPU de la PS2. Cuando hay margen
+    otra vez, vuelve a subir. Cada cambio da un tironcito, así que hay como mucho uno cada 6 s. La fila dice a qué velocidad
+    va **ahora**. En God of War II viene apagado desde la 36: medido, las peleas pesadas iban igual al 50, 60, 75 y 100 %.
   - **Modo video:** No / 60 % / 50 %. Es el CPU de la PS2 durante las cinemáticas.
   - **Generación de cuadros:** Sí / No.
   - **Núcleos de la CPU:** Global / Normal / Plan B. Ver la sección 7.
@@ -161,6 +165,9 @@ Afectan a TODOS los juegos. Si el archivo existe, la opción se activa. Reinicia
 - `vm-spu2-mismo-hilo`: deja la mezcla del sonido en el hilo del juego (EE), como hasta la 31. Desde la 32 la mezcla
   (voces, reverberación y salida) corre en el núcleo del audio y el EE queda más libre; el registro lo cuenta en la línea
   `Audio SPU2 thread:` (qué parte mezcló el hilo nuevo y cuánto esperó el EE). Si un juego suena raro o se cuelga, prueba con este archivo.
+  Desde la 35 las lecturas que no tocan las voces no esperan la mezcla, y desde la 36 tampoco las del volumen y la envolvente
+  de cada voz (God of War II las leía ~11 600 veces por segundo, y cada una paraba al EE). Solo esperan la posición de
+  lectura de una voz, su inicio de bucle y ENDX. El registro las cuenta en `reads_free_per_second` y `reads_mixed_per_second`.
 - `vm-audio-cortes-antes`: el audio como en la compilación 30, para comparar. Desde la 31, cuando el juego va lento y el
   sonido se queda sin datos, la cola de audio crece sola (hasta 200 ms, y baja otra vez tras 15 s sin cortes) y cada corte
   se apaga y vuelve con un fundido corto en vez de un chasquido. El registro lo cuenta en `PS4 audio queue: ... underruns=`

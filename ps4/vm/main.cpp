@@ -198,7 +198,7 @@ static bool s_global_video_mode = true; // ajustes.ini
 static bool s_global_frame_gen = false; // ajustes.ini
 static bool s_frame_gen_blocked = false; // the last try hung the GPU (fg-en-prueba): off for this launch
 static int s_video_ee_rate = VIDEO_EE_RATE;
-// Forja SX2 (compilation 35): the automatic PS2 CPU speed (UpdateCpuAuto). floor: 0 off, -1..-3 the lowest EE rate it may use;
+// Forja SX2 (compilation 35): the automatic PS2 CPU speed (UpdateCpuAuto). floor: 0 off, -1..-6 the lowest EE rate it may use;
 // base: the game's own rate while it is lowered; steps: how many steps below base it runs now.
 static int s_cpu_auto_floor = 0;
 static int s_cpu_auto_base = 0;
@@ -488,7 +488,7 @@ static void SavePlayerProfile(const char* what, Edit&& edit, bool reload_pcsx2)
 // Forja SX2: the pause menu's "PS2 CPU speed" row (EECycleRate, a PCSX2 key: the recompilers need the reload).
 static void ApplyGameEECycleRate(int rate)
 {
-	rate = std::clamp(rate, -3, 3);
+	rate = std::clamp(rate, -6, 3);
 	SavePlayerProfile("EE cycle rate", [rate](INISettingsInterface& ini) { ini.SetIntValue("EmuCore/Speedhacks", "EECycleRate", rate); },
 		true);
 	ProbeLog("EE cycle rate: requested=%d active=%d\n", rate, s_game_ee_rate);
@@ -604,11 +604,12 @@ static void UpdateVideoMode(double elapsed)
 // up. One step down, to the floor of [Forja] CpuAuto at most, after ~3 s below 92 % speed; one step back up after ~8 s at
 // full speed in which the busiest of the EE, VU1 and GS threads would still have room at the faster rate. At most one change
 // every 6 s: each one resets the EE recompiler (a short hitch). Movies are the video mode's (UpdateVideoMode).
-static constexpr int EE_RATE_PERCENT[] = {50, 60, 75, 100, 130, 180, 300}; // EECycleRate -3..3
+// EECycleRate -6..3. -1..-3 as PCSX2 names them; -4..-6 (compilation 36) as the recompiler scales them (11, 13, 15 / 32).
+static constexpr int EE_RATE_PERCENT[] = {27, 31, 36, 50, 60, 75, 100, 130, 180, 300};
 
 static int EERatePercent(int rate)
 {
-	return EE_RATE_PERCENT[std::clamp(rate, -3, 3) + 3];
+	return EE_RATE_PERCENT[std::clamp(rate, -6, 3) + 6];
 }
 
 static void SetCpuAutoRate(int rate, const char* why, double speed, double busiest)
@@ -722,7 +723,7 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			break;
 		case PS4GameMenu::ROW_EE_RATE:
 		{
-			const int requested = std::clamp(s_game_ee_rate + delta, -3, 3);
+			const int requested = std::clamp(s_game_ee_rate + delta, -6, 3);
 			if (requested != s_game_ee_rate)
 				ApplyGameEECycleRate(requested);
 			break;
@@ -759,8 +760,8 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		}
 		case PS4GameMenu::ROW_CPU_AUTO:
 		{
-			// No, down to 75 %, to 60 %, to 50 % ([Forja] CpuAuto 0, -1, -2, -3). UpdateCpuAuto takes the change from here.
-			const int next = (-s_cpu_auto_floor + delta + 4) % 4;
+			// No, down to 75 %, 60 %, 50 %, 36 %, 31 % or 27 % ([Forja] CpuAuto 0, -1 ... -6). UpdateCpuAuto takes the change from here.
+			const int next = (-s_cpu_auto_floor + delta + 7) % 7;
 			SavePlayerProfile("CPU auto", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "CpuAuto", -next); }, false);
 			break;
 		}

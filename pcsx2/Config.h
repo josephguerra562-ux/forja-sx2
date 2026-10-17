@@ -1133,7 +1133,10 @@ struct Pcsx2Config
 	// ------------------------------------------------------------------------
 	struct SpeedhackOptions
 	{
-		static constexpr s8 MIN_EE_CYCLE_RATE = -3;
+		// Forja SX2 (compilation 36): down to -6 (~27 %): the recompilers' scaling (iR5900.cpp, Interpreter.cpp) carries on
+		// past -3, and a game whose frame fits at -3 (God of War II) only drops to half its frames, and halves the VU1's
+		// work a second, below that.
+		static constexpr s8 MIN_EE_CYCLE_RATE = -6;
 		static constexpr s8 MAX_EE_CYCLE_RATE = 3;
 		static constexpr u8 MAX_EE_CYCLE_SKIP = 3;
 

@@ -278,6 +278,15 @@ void InterpVU0::Execute(u32 cycles)
 		VU0.cycle -= cycle_change;
 		switch (std::min(static_cast<int>(EmuConfig.Speedhacks.EECycleRate), static_cast<int>(cycle_change)))
 		{
+			case -6: // Forja SX2: ~27 % (the recompiler's 15/32 scaling against 4/32)
+				cycle_change *= 3.75f;
+				break;
+			case -5: // ~31 %
+				cycle_change *= 3.25f;
+				break;
+			case -4: // ~36 %
+				cycle_change *= 2.75f;
+				break;
 			case -3: // 50%
 				cycle_change *= 2.0f;
 				break;

@@ -1390,10 +1390,11 @@ namespace PS4GameMenu
 			char performance_label[96];
 			std::snprintf(performance_label, sizeof(performance_label), "Contador de rendimiento:  < %s >",
 				show_performance_overlay ? "Sí" : "No");
-			// Forja SX2: los mismos porcentajes que muestra PCSX2 para EECycleRate -3..3.
-			static constexpr const char* ee_names[] = {"50 %", "60 %", "75 %", "100 % (PS2 real)", "130 %", "180 %", "300 %"};
+			// Forja SX2: los mismos porcentajes que muestra PCSX2 para EECycleRate -3..3; -4..-6 (compilación 36) son experimentales.
+			static constexpr const char* ee_names[] = {"27 % (exp.)", "31 % (exp.)", "36 % (exp.)", "50 %", "60 %", "75 %",
+				"100 % (PS2 real)", "130 %", "180 %", "300 %"};
 			char ee_label[96];
-			std::snprintf(ee_label, sizeof(ee_label), "Velocidad del CPU de la PS2:  < %s >", ee_names[std::clamp(ee_rate, -3, 3) + 3]);
+			std::snprintf(ee_label, sizeof(ee_label), "Velocidad del CPU de la PS2:  < %s >", ee_names[std::clamp(ee_rate, -6, 3) + 6]);
 			// Forja SX2: the game's profile rows. Video mode: the EE rate while a movie plays (0 = off).
 			static constexpr const char* video_names[] = {"No", "100 %", "75 %", "60 %", "50 %"};
 			char video_label[96];
@@ -1415,9 +1416,10 @@ namespace PS4GameMenu
 				"Reparto de EE, VU1 y GS (Plan B: EE 1, VU1 2, GS 3). Para este juego  ·  ahora: %s",
 				origin_names[menu_state.cores_origin]);
 			// Forja SX2 (compilation 35): the automatic PS2 CPU speed (main.cpp, UpdateCpuAuto).
-			static constexpr const char* cpu_auto_names[] = {"No", "Hasta 75 %", "Hasta 60 %", "Hasta 50 %"};
+			static constexpr const char* cpu_auto_names[] = {"No", "Hasta 75 %", "Hasta 60 %", "Hasta 50 %", "Hasta 36 % (exp.)",
+				"Hasta 31 % (exp.)", "Hasta 27 % (exp.)"};
 			char cpu_auto_label[96];
-			std::snprintf(cpu_auto_label, sizeof(cpu_auto_label), "CPU automático:  < %s >", cpu_auto_names[std::min(menu_state.cpu_auto, 3u)]);
+			std::snprintf(cpu_auto_label, sizeof(cpu_auto_label), "CPU automático:  < %s >", cpu_auto_names[std::min(menu_state.cpu_auto, 6u)]);
 			char cpu_auto_description[192];
 			if (menu_state.cpu_auto == 0)
 				std::snprintf(cpu_auto_description, sizeof(cpu_auto_description), "%s",
@@ -1425,7 +1427,7 @@ namespace PS4GameMenu
 			else
 				std::snprintf(cpu_auto_description, sizeof(cpu_auto_description),
 					"Solo en escenas pesadas, para este juego  ·  ahora: %s  ·  %s",
-					menu_state.cpu_auto_steps > 0 ? ee_names[std::clamp(ee_rate - static_cast<int>(menu_state.cpu_auto_steps), -3, 3) + 3] :
+					menu_state.cpu_auto_steps > 0 ? ee_names[std::clamp(ee_rate - static_cast<int>(menu_state.cpu_auto_steps), -6, 3) + 6] :
 													"sin bajar",
 					origin_names[menu_state.cpu_auto_origin]);
 			// Forja SX2: save states (compilation 31). The slot is shared by the save and load rows.

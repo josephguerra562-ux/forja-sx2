@@ -53,7 +53,7 @@ namespace PS4GameMenu
 		unsigned max_upscale = 1;
 		unsigned aspect = 1;
 		bool show_overlay = true;
-		int ee_rate = -1; // Forja SX2: EECycleRate, -3..3
+		int ee_rate = -1; // Forja SX2: EECycleRate, -6..3 (-4..-6 since compilation 36)
 		// Forja SX2: the game's profile. video: 0 off, 1 100 %, 2 75 %, 3 60 %, 4 50 % (EE rate during movies).
 		unsigned video = 4;
 		bool frame_gen = false;
@@ -69,7 +69,7 @@ namespace PS4GameMenu
 		unsigned slot = 0;
 		bool slot_used = false;
 		unsigned action = 0; // StateAction
-		// Forja SX2 (compilation 35): the automatic PS2 CPU speed. cpu_auto: 0 off, 1 down to 75 %, 2 to 60 %, 3 to 50 %;
+		// Forja SX2 (compilation 35): the automatic PS2 CPU speed. cpu_auto: 0 off, 1-6 down to EECycleRate -1..-6;
 		// cpu_auto_steps: how many steps below the game's own speed it runs right now; and where the setting comes from.
 		unsigned cpu_auto = 0;
 		unsigned cpu_auto_steps = 0;
@@ -96,7 +96,6 @@ namespace PS4GameMenu
 				(limit << 12) |
 				(std::min(value.aspect, 4u) << 16) |
 				(value.show_overlay ? (1u << 20) : 0u) |
-				(static_cast<unsigned>(std::clamp(value.ee_rate, -3, 3) + 3) << 21) |
 				(std::min(value.video, 4u) << 24) |
 				(std::min(value.video_origin, 2u) << 27) |
 				(value.frame_gen ? (1u << 29) : 0u) |
@@ -108,9 +107,11 @@ namespace PS4GameMenu
 			(static_cast<std::uint64_t>(std::min(value.slot, 4u)) << 38) |
 			(value.slot_used ? (std::uint64_t{1} << 41) : 0u) |
 			(static_cast<std::uint64_t>(std::min(value.action, 7u)) << 42) |
-			(static_cast<std::uint64_t>(std::min(value.cpu_auto, 3u)) << 45) |
-			(static_cast<std::uint64_t>(std::min(value.cpu_auto_steps, 7u)) << 47) |
-			(static_cast<std::uint64_t>(std::min(value.cpu_auto_origin, 2u)) << 50);
+			(static_cast<std::uint64_t>(std::min(value.cpu_auto, 6u)) << 45) |
+			(static_cast<std::uint64_t>(std::min(value.cpu_auto_steps, 15u)) << 48) |
+			(static_cast<std::uint64_t>(std::min(value.cpu_auto_origin, 2u)) << 52) |
+			// Compilation 36: the EE rate in four bits of its own, -6..3 (it had three at bit 21, -3..3).
+			(static_cast<std::uint64_t>(std::clamp(value.ee_rate, -6, 3) + 6) << 54);
 	}
 
 	constexpr InGameMenuState UnpackInGameMenuState(std::uint64_t value)
@@ -127,7 +128,7 @@ namespace PS4GameMenu
 		state.max_upscale = limit;
 		state.aspect = std::min((low >> 16) & 0x0fu, 4u);
 		state.show_overlay = (low & (1u << 20)) != 0;
-		state.ee_rate = static_cast<int>(std::min((low >> 21) & 0x07u, 6u)) - 3;
+		state.ee_rate = static_cast<int>(std::min(static_cast<unsigned>((value >> 54) & 0x0fu), 9u)) - 6;
 		state.video = std::min((low >> 24) & 0x07u, 4u);
 		state.video_origin = std::min((low >> 27) & 0x03u, 2u);
 		state.frame_gen = (low & (1u << 29)) != 0;
@@ -139,9 +140,9 @@ namespace PS4GameMenu
 		state.slot = std::min(static_cast<unsigned>((value >> 38) & 0x07u), 4u);
 		state.slot_used = (value & (std::uint64_t{1} << 41)) != 0;
 		state.action = static_cast<unsigned>((value >> 42) & 0x07u);
-		state.cpu_auto = static_cast<unsigned>((value >> 45) & 0x03u);
-		state.cpu_auto_steps = static_cast<unsigned>((value >> 47) & 0x07u);
-		state.cpu_auto_origin = std::min(static_cast<unsigned>((value >> 50) & 0x03u), 2u);
+		state.cpu_auto = std::min(static_cast<unsigned>((value >> 45) & 0x07u), 6u);
+		state.cpu_auto_steps = static_cast<unsigned>((value >> 48) & 0x0fu);
+		state.cpu_auto_origin = std::min(static_cast<unsigned>((value >> 52) & 0x03u), 2u);
 		return state;
 	}
 } // namespace PS4GameMenu
