@@ -8,7 +8,7 @@ jobs="${1:-4}"
 mkdir -p "$stage" "$repo/ps4/vm/build"
 cd "$repo"
 rsync -aR --exclude=.git --exclude=build --exclude='*.log' \
-  common pcsx2 3rdparty bin/resources ps4/core ps4/compat ps4/vm \
+  VERSION common pcsx2 3rdparty bin/resources ps4/core ps4/compat ps4/vm \
   ps4/toolchain ps4/runtime ps4/deps/prefix "$stage/"
 export OPENORBIS="${OPENORBIS:-/opt/pacbrew/ps4/openorbis}"
 export PS4_SYSROOT="${PS4_SYSROOT:-/root/dolphinps4-build/sysroot}"

@@ -71,7 +71,7 @@ jobs:
       - name: Report compile errors
         if: failure()
         run: |
-          grep -E "error:|error [A-Z][0-9]|undefined (reference|symbol)" ci-output/compile.log | head -10 | sed -e 's/%/%25/g' | while IFS= read -r line; do echo "::error::${line:0:900}"; done || true
+          grep -E "error:|error [A-Z][0-9]|undefined (reference|symbol)|CMake Error" ci-output/compile.log | head -10 | sed -e 's/%/%25/g' | while IFS= read -r line; do echo "::error::${line:0:900}"; done || true
 
       - name: Upload executable and symbols
         uses: actions/upload-artifact@v7
