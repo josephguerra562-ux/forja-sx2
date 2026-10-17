@@ -27,6 +27,74 @@ std::atomic<int> g_orbis_vu_waiting{0}; // vk-285-29: the VU1 profiler skips the
 // request the GS thread raises when /data/PCSX2/flags/vudump appears (served here, between
 // programs, where the recompiler's lists can't change under it; x86/microVU.cpp).
 std::atomic<u64> g_orbis_vu1_cycles{0}, g_orbis_vu1_runs{0};
+
+#if defined(PCSX2_PS4_VM_BOOT)
+extern void ProbeLog(const char* format, ...);
+// Forja SX2 (compilation 35): the VU1's programs by the time they take, for a game's heaviest scenes. In God of War II's
+// biggest fights the VU1 is the limit (2026-10-16: ~66 % of its thread in the game's own microcode), and a game's effects are
+// VU1 programs of their own: this tells which start addresses (MSCAL) cost the most, the first step towards leaving out a
+// costly effect per game, as Sony's emulator does for God of War. Every ~5 s the boot log gets "VU1 programs:" with the 8
+// costliest, their share of the VU1's run time, their runs and their VU cycles a second. Only this thread writes the table.
+namespace
+{
+	struct ForjaVU1Program
+	{
+		u64 ticks = 0, cycles = 0;
+		u32 runs = 0;
+	};
+	ForjaVU1Program s_forja_vu1_programs[2048]; // by start address / 8
+	u64 s_forja_vu1_programs_since = 0;
+
+	void ForjaVU1ProgramsLog(u64 now)
+	{
+		if (s_forja_vu1_programs_since == 0)
+		{
+			s_forja_vu1_programs_since = now;
+			return;
+		}
+		if (now - s_forja_vu1_programs_since < 5ull * 1600000000ull) // the PS4's TSC runs at ~1.6 GHz
+			return;
+		const double seconds = static_cast<double>(now - s_forja_vu1_programs_since) / 1600000000.0;
+		s_forja_vu1_programs_since = now;
+		u64 total = 0;
+		for (const ForjaVU1Program& program : s_forja_vu1_programs)
+			total += program.ticks;
+		if (total == 0)
+			return;
+		// The 8 costliest, highest first (insertion into a short sorted list).
+		unsigned top[8] = {};
+		unsigned found = 0;
+		for (unsigned i = 0; i < 2048; i++)
+		{
+			const u64 ticks = s_forja_vu1_programs[i].ticks;
+			if (ticks == 0 || (found == 8 && ticks <= s_forja_vu1_programs[top[7]].ticks))
+				continue;
+			unsigned at = found < 8 ? found : 7;
+			while (at > 0 && s_forja_vu1_programs[top[at - 1]].ticks < ticks)
+			{
+				top[at] = top[at - 1];
+				at--;
+			}
+			top[at] = i;
+			if (found < 8)
+				found++;
+		}
+		char line[640];
+		int len = std::snprintf(line, sizeof(line), "VU1 programs: run_time_pct=%.1f top8(start=share/runs_per_s/kcycles_per_s):",
+			static_cast<double>(total) * 100.0 / (seconds * 1600000000.0));
+		for (unsigned k = 0; k < found && len > 0 && len < static_cast<int>(sizeof(line)); k++)
+		{
+			const ForjaVU1Program& program = s_forja_vu1_programs[top[k]];
+			len += std::snprintf(line + len, sizeof(line) - len, " %04x=%.1f%%/%.0f/%.0f", top[k] * 8,
+				static_cast<double>(program.ticks) * 100.0 / static_cast<double>(total), program.runs / seconds,
+				static_cast<double>(program.cycles) / seconds / 1000.0);
+		}
+		ProbeLog("%s\n", line);
+		for (ForjaVU1Program& program : s_forja_vu1_programs)
+			program = ForjaVU1Program();
+	}
+} // namespace
+#endif
 std::atomic<int> g_orbis_vu1_dump_request{0};
 void OrbisVU1Dump();
 // vk-285-75: the emulated VU1 speed in percent, for Instant VU1 off (ExecuteVU): the busy time the EE
@@ -334,10 +402,23 @@ void VU_Thread::ExecuteRingBuffer()
 					const u16 orbis_start_vi3 = VU1.VI[3].US[0], orbis_start_vi4 = VU1.VI[4].US[0];
 					const u32 orbis_start_q0 = reinterpret_cast<const u32*>(VU1.Mem)[0];
 					CpuVU1->SetStartPC(VU1.VI[REG_TPC].UL << 3);
+#if defined(PCSX2_PS4_VM_BOOT)
+					const u64 forja_t0 = __builtin_ia32_rdtsc();
+#endif
 					{
 						PS4_WORKER_SCOPE(VUExecute);
 						CpuVU1->Execute(vu1RunCycles);
 					}
+#if defined(PCSX2_PS4_VM_BOOT)
+					{
+						const u64 forja_t1 = __builtin_ia32_rdtsc();
+						ForjaVU1Program& program = s_forja_vu1_programs[(orbis_start_tpc / 8) & 2047];
+						program.ticks += forja_t1 - forja_t0;
+						program.cycles += VU1.cycle;
+						program.runs++;
+						ForjaVU1ProgramsLog(forja_t1);
+					}
+#endif
 					gifUnit.gifPath[GIF_PATH_1].FinishGSPacketMTVU();
 					semaXGkick.Post(); // Tell MTGS a path1 packet is complete
 					vuCycles[vuCycleIdx].store(VU1.cycle, std::memory_order_release);

@@ -78,6 +78,7 @@ namespace
 	// For the heartbeat line (EE thread, but s_forja_spu2_thread_mixed).
 	u64 s_forja_spu2_queued = 0, s_forja_spu2_direct = 0, s_forja_spu2_direct_irq = 0, s_forja_spu2_stolen = 0;
 	u64 s_forja_spu2_syncs = 0, s_forja_spu2_sync_ticks = 0;
+	u64 s_forja_spu2_reads_free = 0, s_forja_spu2_reads_mixed = 0; // compilation 35: SPU2read with and without the catch-up
 	std::atomic<u64> s_forja_spu2_thread_mixed{0};
 	u32 s_forja_spu2_log_counter = 0;
 	Common::Timer::Value s_forja_spu2_log_start = 0;
@@ -151,12 +152,15 @@ namespace
 		const double total = static_cast<double>(s_forja_spu2_queued + s_forja_spu2_direct);
 		if (seconds > 0.0 && total > 0.0)
 			ProbeLog("Audio SPU2 thread: on=%d mixed_by_thread_pct=%.1f by_EE_at_sync_pct=%.1f by_EE_direct_pct=%.1f "
-					 "(irq_armed_pct=%.1f) syncs_per_second=%.0f EE_sync_ms_per_second=%.1f\n",
+					 "(irq_armed_pct=%.1f) syncs_per_second=%.0f EE_sync_ms_per_second=%.1f reads_free_per_second=%.0f "
+					 "reads_mixed_per_second=%.0f\n",
 				s_forja_spu2_threaded, thread_mixed * 100.0 / total, s_forja_spu2_stolen * 100.0 / total,
 				s_forja_spu2_direct * 100.0 / total, s_forja_spu2_direct_irq * 100.0 / total, s_forja_spu2_syncs / seconds,
-				Common::Timer::ConvertValueToMilliseconds(s_forja_spu2_sync_ticks) / seconds);
+				Common::Timer::ConvertValueToMilliseconds(s_forja_spu2_sync_ticks) / seconds, s_forja_spu2_reads_free / seconds,
+				s_forja_spu2_reads_mixed / seconds);
 		s_forja_spu2_queued = s_forja_spu2_direct = s_forja_spu2_direct_irq = s_forja_spu2_stolen = 0;
 		s_forja_spu2_syncs = s_forja_spu2_sync_ticks = 0;
+		s_forja_spu2_reads_free = s_forja_spu2_reads_mixed = 0;
 	}
 } // namespace
 
@@ -201,6 +205,30 @@ void ForjaSPU2CatchUp()
 	ForjaSPU2Sync();
 	if (g_forja_spu2_catch_up)
 		g_forja_spu2_catch_up();
+}
+
+// Forja SX2 (compilation 35): whether a register read must wait for the mix. In God of War II's fights the game read the SPU2
+// ~2,400 times a second, and every read had the EE thread mix the queue itself (half of the mix, 2026-10-16). The mixing
+// thread (and the stopped voices' replay) only change the voices, the master volume's slide and ENDX: a read of anything
+// else (DMA status, ATTR, IRQA, TSA, the reverb's settings...) returns what only the EE thread writes, and needs no wait.
+// The PS1 registers and those past 0x800 still wait, as before.
+static bool ForjaSPU2ReadNeedsMix(u32 rmem, u32 mem)
+{
+	if ((rmem >> 16) == 0x1f80 || mem >= 0x800)
+		return true;
+	const u8* field = reinterpret_cast<const u8*>(regtable[mem >> 1]);
+	if (!field)
+		return true;
+	const auto within = [field](const auto& object) {
+		const u8* start = reinterpret_cast<const u8*>(&object);
+		return field >= start && field < start + sizeof(object);
+	};
+	for (const V_Core& core : Cores)
+	{
+		if (within(core.Voices) || within(core.MasterVol) || within(core.Regs.ENDX))
+			return true;
+	}
+	return false;
 }
 
 void ForjaSPU2Submit(StereoOut32 in0, StereoOut32 in1, u16 outpos, u32 cycles)
@@ -716,7 +744,13 @@ u16 SPU2read(u32 rmem)
 	else
 	{
 		TimeUpdate(psxRegs.cycle);
-		ForjaSPU2CatchUp();
+		if (ForjaSPU2ReadNeedsMix(rmem, mem))
+		{
+			ForjaSPU2CatchUp();
+			s_forja_spu2_reads_mixed++;
+		}
+		else
+			s_forja_spu2_reads_free++;
 
 		if (rmem >> 16 == 0x1f80)
 		{

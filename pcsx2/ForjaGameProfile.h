@@ -50,6 +50,10 @@ namespace ForjaGameProfile
 		// nucleos.txt (or the built-in cores).
 		std::string cores;
 		Origin cores_origin = Origin::Global;
+		// [Forja] CpuAuto (compilation 35): the automatic PS2 CPU speed's floor, -3..-1 (50 %, 60 %, 75 %); 0 off; 1 = not set
+		// (off). The emulator lowers the EE rate towards it while the game cannot keep full speed (main.cpp, UpdateCpuAuto).
+		int cpu_auto = 1;
+		Origin cpu_auto_origin = Origin::Global;
 	};
 
 	inline std::string FactoryPath(std::string_view serial)
@@ -128,6 +132,7 @@ namespace ForjaGameProfile
 		read_int("VideoMode", &v.video_mode, &v.video_mode_origin);
 		read_int("VideoEECycleRate", &v.video_ee_rate, &v.video_ee_rate_origin);
 		read_int("FrameGen", &v.frame_gen, &v.frame_gen_origin);
+		read_int("CpuAuto", &v.cpu_auto, &v.cpu_auto_origin);
 		if (v.has_player && player.GetStringValue("Forja", "Nucleos", &v.cores))
 			v.cores_origin = Origin::Player;
 		else if (v.has_factory && factory.GetStringValue("Forja", "Nucleos", &v.cores))
@@ -139,6 +144,10 @@ namespace ForjaGameProfile
 			v.video_ee_rate = std::clamp(v.video_ee_rate, -3, 0);
 		if (v.frame_gen >= 0)
 			v.frame_gen = v.frame_gen != 0 ? 1 : 0;
+		if (v.cpu_auto <= 0)
+			v.cpu_auto = std::clamp(v.cpu_auto, -3, 0);
+		else
+			v.cpu_auto = 0;
 		return v;
 	}
 

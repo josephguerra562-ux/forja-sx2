@@ -92,6 +92,15 @@ foreach ($profileFile in $profileFiles) {
   Copy-Item -LiteralPath $profileFile.FullName -Destination (Join-Path $packageDir $relative)
   $packageFiles += $relative
 }
+# Forja SX2 (compilation 35): factory patches (resources/parches/<SERIAL>_<CRC>_forja.pnach), which pcsx2/Patch.cpp reads after
+# the player's own /data/ForjaSX2/patches. The Orbis build has no zip, so they go as loose files.
+$patchRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'assets/parches'))
+New-Item -ItemType Directory -Force -Path (Join-Path $packageDir 'resources/parches') | Out-Null
+foreach ($patchFile in @(Get-ChildItem -LiteralPath $patchRoot -Filter '*.pnach' -File)) {
+  $relative = 'resources/parches/' + $patchFile.Name
+  Copy-Item -LiteralPath $patchFile.FullName -Destination (Join-Path $packageDir $relative)
+  $packageFiles += $relative
+}
 # (AI-assisted) License notices for the bundled output resampler.
 New-Item -ItemType Directory -Force -Path (Join-Path $packageDir 'resources/licenses') | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'assets/licenses/speex-resampler.txt') -Destination (Join-Path $packageDir 'resources/licenses/speex-resampler.txt')

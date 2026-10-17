@@ -1,0 +1,45 @@
+gametitle=God of War II (PAL) SCES-54206 44A8A22A
+
+// Forja SX2: parches que vienen en el PKG para God of War II (PAL). Se activan por juego con [Patches] Enable = <nombre> en
+// gamesettings/SCES-54206_44A8A22A.ini; el perfil de fábrica activa solo "Saltar cinemáticas". Un grupo con el mismo nombre en
+// /data/ForjaSX2/patches gana a este.
+
+[Saltar cinemáticas]
+author=Ezedequias (PCSX2/pcsx2_patches)
+description=Permite saltar las cinemáticas con cualquier botón de acción.
+patch=1,EE,002D7B24,byte,01
+
+// El "speedhack by removing some effects" de la config de GoW2 USA (SCUS-97481) para el emulador de PS2 de Sony en PS4,
+// pasado a la PAL y partido en tres. Cada uno hace que una función regrese al instante (jr ra; nop). Quitan efectos visuales
+// a cambio de velocidad en las peleas (de ~66 % a ~87 % en promedio con el 2 y el 3, PS4 Pro, 2026-10-16).
+
+[Menos efectos 1 (Sony)]
+author=Forja SX2
+description=Apaga la actualización de los efectos de una lista (0x170730). En prueba: con los tres juntos hubo una caída.
+// USA 0xfe6ec -> PAL 0xfef30 (el mismo código, 0x844 bytes más adelante)
+patch=1,EE,00170730,word,03e00008
+patch=1,EE,00170734,word,00000000
+
+[Menos efectos 2 (Sony)]
+author=Forja SX2
+description=Apaga una función de efectos que busca en una tabla y arma su envío (0x16e770).
+// USA 0xfc72c -> PAL 0xfcf70 (también +0x844)
+patch=1,EE,0016e770,word,03e00008
+patch=1,EE,0016e774,word,00000000
+
+[Menos efectos 3 (Sony)]
+author=Forja SX2
+description=Apaga el método de dibujo de un tipo de objeto (0x126eb0, en la tabla 0x2f2ae4): no arma su paquete de dibujo.
+// USA 0xb4ebc -> PAL 0xb56b0 (+0x7f4)
+patch=1,EE,00126eb0,word,03e00008
+patch=1,EE,00126eb4,word,00000000
+
+[Pantalla ancha 16:9]
+gsaspectratio=16:9
+author=CRASHARKI y ShaolinAssassin (PCSX2/pcsx2_patches)
+description=Activa el 16:9 propio del juego. Muestra más escena: cuesta algo más de VU1 y GS.
+patch=1,EE,002D8068,byte,01
+patch=1,EE,0032ED00,word,3FE38E39
+patch=1,EE,0032ED38,word,3FE38E39
+patch=1,EE,00363210,word,3FE38E39
+patch=1,EE,002348A0,word,46000406

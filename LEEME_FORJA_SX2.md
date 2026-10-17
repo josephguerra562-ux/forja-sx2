@@ -45,12 +45,20 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
 ## 3. Controles
 - **Biblioteca:** X = jugar, Cuadrado = favorito, Triángulo = actualizar, Círculo = salir.
 - **En el juego:** OPTIONS = Start, clic en el touchpad = Select, **L3+R3 = menú del emulador**.
-- **El menú L3+R3 muestra 8 opciones grandes a la vez** (desde la 32): al bajar con la cruceta la lista se desplaza sola, como
-  una página. La barra azul de la derecha dice en qué parte estás y arriba dice "opción X de 14".
+- **El menú L3+R3 va en 4 pestañas** (desde la 35, como el menú rápido de Dolphin). **L1 y R1** cambian de pestaña,
+  Arriba/Abajo eligen dentro de ella e Izq./Der. cambian el valor:
+  - **Partida:** volver al juego, guardar estado, cargar estado y reiniciar el juego.
+  - **Imagen:** resolución interna, relación de aspecto, generación de cuadros y contador de FPS.
+  - **Rendimiento:** velocidad del CPU de la PS2, **CPU automático**, modo video y núcleos.
+  - **Sistema:** restablecer los ajustes del juego, volver a la biblioteca y salir.
 - **Todo lo que cambies en L3+R3 se guarda solo para ese juego** (como las propiedades por juego de Dolphin), menos el
   contador de FPS. Se aplica al instante:
   - **Resolución interna** y **relación de aspecto**.
   - **Velocidad del CPU de la PS2:** de 50 % a 300 %; por defecto, 75 %. Menos % = más FPS en la PS4, pero el juego puede perder cuadros.
+  - **CPU automático** (desde la 35): No / Hasta 75 % / Hasta 60 % / Hasta 50 %. Si el juego va por debajo del 92 % unos
+    3 segundos, baja un paso el CPU de la PS2. Cuando hay margen otra vez, vuelve a subir. Cambia la cámara lenta de una
+    escena pesada por velocidad normal con menos cuadros. Cada cambio da un tironcito, así que hay como mucho uno cada 6 s.
+    La fila dice a qué velocidad va **ahora**. God of War II lo trae en "Hasta 60 %" desde fábrica.
   - **Modo video:** No / 60 % / 50 %. Es el CPU de la PS2 durante las cinemáticas.
   - **Generación de cuadros:** Sí / No.
   - **Núcleos de la CPU:** Global / Normal / Plan B. Ver la sección 7.
@@ -127,11 +135,29 @@ Lo que diga este archivo **manda sobre** los interruptores generales, solo para 
 Archivo `SERIAL_CRC.pnach` (mismo nombre que el .ini pero con `.pnach`), en formato de PCSX2.
 Sirve para pantalla ancha, 60 FPS o trucos.
 
+**Parches que vienen en el PKG** (desde la 35, en `resources/parches/`). Por ahora son para God of War II (PAL):
+- **Saltar cinemáticas** (de la comunidad): con cualquier botón de acción. Viene activo de fábrica.
+- **Menos efectos 1, 2 y 3 (Sony):** del emulador de Sony para God of War II USA, pasados a la PAL. Quitan algunos efectos
+  a cambio de velocidad en las peleas. Con el 2 y el 3, el promedio pasó de ~66 % a ~87 %. El 1 todavía está en prueba.
+- **Pantalla ancha 16:9** (de la comunidad): muestra más escena, así que cuesta algo más.
+
+Para activarlos, en `gamesettings/SCES-54206_44A8A22A.ini`:
+```ini
+[Patches]
+Enable = Saltar cinemáticas
+Enable = Menos efectos 2 (Sony)
+Enable = Menos efectos 3 (Sony)
+```
+Si tu archivo tiene su propia sección `[Patches]`, esa lista manda sobre la de fábrica, así que agrega ahí también
+"Saltar cinemáticas". Un parche con el mismo nombre en `/data/ForjaSX2/patches` gana al que viene en el PKG.
+
 ## 6. Interruptores generales (archivos vacíos en `/data/ForjaSX2/`)
 Afectan a TODOS los juegos. Si el archivo existe, la opción se activa. Reinicia la app después de ponerlo o quitarlo.
 - `vm-ee-cycle-normal`, `vm-ee-cycle-underclock`, `vm-ee-cycle-skip`: velocidad del CPU de la PS2
 - `vm-fast-cdvd`: cargas rápidas · `vm-no-fast-boot`: mostrar el logo de la BIOS
 - `vm-no-audio`, `vm-audio-legacy-stretch`: audio
+- **Medidor del VU1** (desde la 35, siempre activo): cada 5 s el registro anota en `VU1 programs:` los 8 programas del VU1
+  que más tiempo toman. Así se ve qué efecto de un juego cuesta más, para quitarlo juego por juego.
 - `vm-spu2-mismo-hilo`: deja la mezcla del sonido en el hilo del juego (EE), como hasta la 31. Desde la 32 la mezcla
   (voces, reverberación y salida) corre en el núcleo del audio y el EE queda más libre; el registro lo cuenta en la línea
   `Audio SPU2 thread:` (qué parte mezcló el hilo nuevo y cuánto esperó el EE). Si un juego suena raro o se cuelga, prueba con este archivo.

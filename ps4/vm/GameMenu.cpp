@@ -1374,14 +1374,12 @@ namespace PS4GameMenu
 			draw->AddLine(point(64, 170), point(1856, 170), IM_COL32(38, 103, 157, 150), 1.0f * scale);
 			image("status_controle", 126, 82, 40, 34);
 			draw->AddText(font, 34.0f * scale, point(196, 82), white, "Menú del emulador");
-			char paused_label[64];
-			std::snprintf(paused_label, sizeof(paused_label), "JUEGO EN PAUSA   ·   opción %u de %u", selected_row + 1, static_cast<unsigned>(ROW_COUNT));
-			draw->AddText(font, 18.0f * scale, point(138, 186), muted, paused_label);
+			draw->AddText(font, 18.0f * scale, point(1180, 66), muted, "JUEGO EN PAUSA");
 			// Forja SX2: which profiles this game has (pcsx2/ForjaGameProfile.h).
 			char profile_label[128];
 			std::snprintf(profile_label, sizeof(profile_label), "Perfil de este juego:  de fábrica %s  ·  tuyo %s",
 				menu_state.has_factory ? "sí" : "no", menu_state.has_player ? "sí" : "no");
-			draw->AddText(font, 18.0f * scale, point(1180, 186), muted, profile_label);
+			draw->AddText(font, 18.0f * scale, point(1180, 104), muted, profile_label);
 			static constexpr const char* origin_names[] = {"global", "perfil de fábrica", "tu perfil"};
 			char resolution[96];
 			std::snprintf(resolution, sizeof(resolution), "Resolución interna:  < %ux >%s", upscale,
@@ -1416,6 +1414,20 @@ namespace PS4GameMenu
 			std::snprintf(cores_description, sizeof(cores_description),
 				"Reparto de EE, VU1 y GS (Plan B: EE 1, VU1 2, GS 3). Para este juego  ·  ahora: %s",
 				origin_names[menu_state.cores_origin]);
+			// Forja SX2 (compilation 35): the automatic PS2 CPU speed (main.cpp, UpdateCpuAuto).
+			static constexpr const char* cpu_auto_names[] = {"No", "Hasta 75 %", "Hasta 60 %", "Hasta 50 %"};
+			char cpu_auto_label[96];
+			std::snprintf(cpu_auto_label, sizeof(cpu_auto_label), "CPU automático:  < %s >", cpu_auto_names[std::min(menu_state.cpu_auto, 3u)]);
+			char cpu_auto_description[192];
+			if (menu_state.cpu_auto == 0)
+				std::snprintf(cpu_auto_description, sizeof(cpu_auto_description), "%s",
+					"Baja el CPU de la PS2 solo en escenas pesadas: el juego va a su velocidad, con menos cuadros");
+			else
+				std::snprintf(cpu_auto_description, sizeof(cpu_auto_description),
+					"Solo en escenas pesadas, para este juego  ·  ahora: %s  ·  %s",
+					menu_state.cpu_auto_steps > 0 ? ee_names[std::clamp(ee_rate - static_cast<int>(menu_state.cpu_auto_steps), -3, 3) + 3] :
+													"sin bajar",
+					origin_names[menu_state.cpu_auto_origin]);
 			// Forja SX2: save states (compilation 31). The slot is shared by the save and load rows.
 			const unsigned slot = menu_state.slot + 1;
 			char save_label[64], load_label[64], save_description[128], load_description[128];
@@ -1435,34 +1447,57 @@ namespace PS4GameMenu
 			else
 				std::snprintf(load_description, sizeof(load_description), "%s",
 					menu_state.slot_used ? "X: vuelve a ese momento y sigue jugando" : "Ranura vacía");
-			const char* labels[] = {"Volver al juego", save_label, load_label, "Reiniciar juego", resolution, aspect_label,
-				performance_label, ee_label, video_label, frame_gen_label, cores_label, "Restablecer ajustes de este juego",
-				"Volver a la biblioteca", "Salir de la aplicación"};
-			const char* descriptions[] = {
-				"Seguir jugando desde donde quedó",
-				save_description,
-				load_description,
-				"X: empieza el juego de nuevo sin cerrarlo (lo no guardado se pierde)",
-				"Más calidad de imagen (consume más). Se guarda para este juego",
-				"Forma de la imagen en pantalla. Se guarda para este juego",
-				"Mostrar u ocultar FPS, velocidad y tiempos",
-				"Menos % = más FPS en la PS4 (el juego puede perder cuadros). Se guarda para este juego",
-				video_description,
-				frame_gen_description,
-				cores_description,
-				menu_state.has_player ? "X: borra tus cambios de este juego (queda copia .bak). Siguen el perfil de fábrica y los globales" :
-				                        "Este juego no tiene cambios tuyos",
-				"Cerrar el juego y volver a la biblioteca",
-				"Cerrar el juego y salir de Forja SX2"};
-			static_assert(sizeof(labels) / sizeof(labels[0]) == ROW_COUNT && sizeof(descriptions) / sizeof(descriptions[0]) == ROW_COUNT);
-			// Icons in a 30 px circle; the shapes are drawn on a +-16 grid.
+			// Each row's text by its name, not by its place: the rows moved into tabs in compilation 35.
+			const auto label_of = [&](unsigned row) -> const char* {
+				switch (row)
+				{
+					case ROW_RESUME: return "Volver al juego";
+					case ROW_SAVE_STATE: return save_label;
+					case ROW_LOAD_STATE: return load_label;
+					case ROW_RESTART: return "Reiniciar juego";
+					case ROW_RESOLUTION: return resolution;
+					case ROW_ASPECT: return aspect_label;
+					case ROW_FRAME_GEN: return frame_gen_label;
+					case ROW_OVERLAY: return performance_label;
+					case ROW_EE_RATE: return ee_label;
+					case ROW_CPU_AUTO: return cpu_auto_label;
+					case ROW_VIDEO_MODE: return video_label;
+					case ROW_CORES: return cores_label;
+					case ROW_RESET_PROFILE: return "Restablecer ajustes de este juego";
+					case ROW_LIBRARY: return "Volver a la biblioteca";
+					default: return "Salir de la aplicación";
+				}
+			};
+			const auto description_of = [&](unsigned row) -> const char* {
+				switch (row)
+				{
+					case ROW_RESUME: return "Seguir jugando desde donde quedó";
+					case ROW_SAVE_STATE: return save_description;
+					case ROW_LOAD_STATE: return load_description;
+					case ROW_RESTART: return "X: empieza el juego de nuevo sin cerrarlo (lo no guardado se pierde)";
+					case ROW_RESOLUTION: return "Más calidad de imagen (consume más). Se guarda para este juego";
+					case ROW_ASPECT: return "Forma de la imagen en pantalla. Se guarda para este juego";
+					case ROW_FRAME_GEN: return frame_gen_description;
+					case ROW_OVERLAY: return "Mostrar u ocultar FPS, velocidad y tiempos";
+					case ROW_EE_RATE: return "Menos % = más FPS en la PS4 (el juego puede perder cuadros). Se guarda para este juego";
+					case ROW_CPU_AUTO: return cpu_auto_description;
+					case ROW_VIDEO_MODE: return video_description;
+					case ROW_CORES: return cores_description;
+					case ROW_RESET_PROFILE:
+						return menu_state.has_player ? "X: borra tus cambios de este juego (queda copia .bak). Siguen el perfil de fábrica y los globales" :
+													   "Este juego no tiene cambios tuyos";
+					case ROW_LIBRARY: return "Cerrar el juego y volver a la biblioteca";
+					default: return "Cerrar el juego y salir de Forja SX2";
+				}
+			};
+			// Icons in a 32 px circle; the shapes are drawn on a +-16 grid.
 			const auto draw_option_icon = [&](unsigned row, float cx, float cy, bool selected) {
 				const ImU32 icon_bg = selected ? IM_COL32(34, 127, 214, 255) : IM_COL32(16, 55, 86, 255);
 				const ImU32 icon_line = selected ? IM_COL32(231, 247, 255, 255) : IM_COL32(155, 204, 235, 255);
 				const auto ip = [&](float dx, float dy) { return point(cx + dx, cy + dy); };
 				const float lw = 2.5f * scale;
-				draw->AddCircleFilled(point(cx, cy), 30.0f * scale, icon_bg, 40);
-				draw->AddCircle(point(cx, cy), 30.0f * scale, selected ? accent : IM_COL32(49, 111, 155, 255), 40, 1.5f * scale);
+				draw->AddCircleFilled(point(cx, cy), 32.0f * scale, icon_bg, 40);
+				draw->AddCircle(point(cx, cy), 32.0f * scale, selected ? accent : IM_COL32(49, 111, 155, 255), 40, 1.5f * scale);
 				switch (row)
 				{
 					case ROW_RESUME:
@@ -1502,6 +1537,11 @@ namespace PS4GameMenu
 						draw->AddCircle(ip(0, 4), 14.0f * scale, icon_line, 28, lw);
 						draw->AddLine(ip(0, 4), ip(8, -6), icon_line, lw);
 						break;
+					case ROW_CPU_AUTO: // the gauge with an arrow going down and up
+						draw->AddCircle(ip(0, 4), 14.0f * scale, icon_line, 28, lw);
+						draw->AddLine(ip(0, 4), ip(-8, -6), icon_line, lw);
+						draw->AddTriangleFilled(ip(10, -14), ip(16, -6), ip(4, -6), icon_line);
+						break;
 					case ROW_VIDEO_MODE:
 						draw->AddRect(ip(-15, -11), ip(15, 11), icon_line, 3 * scale, lw, 0);
 						draw->AddTriangleFilled(ip(-5, -6), ip(-5, 6), ip(7, 0), icon_line);
@@ -1534,39 +1574,41 @@ namespace PS4GameMenu
 						break;
 				}
 			};
-			// Forja SX2 (compilation 32): fourteen rows at 52 px were too small to read from the sofa (Joseph, 2026-10-16).
-			// Eight big rows show at a time and the list scrolls like a page: the selected row stays in the middle, and the bar
-			// on the right says where the list is. The window follows the selection alone, so the CPU side needs no state.
-			constexpr unsigned VISIBLE_ROWS = 8;
-			constexpr float ROW_TOP = 218.0f, ROW_PITCH = 88.0f, ROW_HEIGHT = 80.0f;
-			const unsigned first_row = std::min(selected_row > VISIBLE_ROWS / 2 ? selected_row - VISIBLE_ROWS / 2 : 0u,
-				static_cast<unsigned>(ROW_COUNT) - VISIBLE_ROWS);
-			const float list_bottom = ROW_TOP + VISIBLE_ROWS * ROW_PITCH - (ROW_PITCH - ROW_HEIGHT);
-			// The scroll bar, and an arrow where rows are hidden.
-			const float track_h = list_bottom - ROW_TOP;
-			draw->AddRectFilled(point(1826, ROW_TOP), point(1838, list_bottom), IM_COL32(11, 33, 52, 255), 6.0f * scale);
-			const float thumb_y = ROW_TOP + track_h * static_cast<float>(first_row) / static_cast<float>(ROW_COUNT);
-			const float thumb_h = track_h * static_cast<float>(VISIBLE_ROWS) / static_cast<float>(ROW_COUNT);
-			draw->AddRectFilled(point(1826, thumb_y), point(1838, thumb_y + thumb_h), accent, 6.0f * scale);
-			if (first_row > 0)
-				draw->AddTriangleFilled(point(944, 210), point(976, 210), point(960, 194), accent);
-			if (first_row + VISIBLE_ROWS < ROW_COUNT)
-				draw->AddTriangleFilled(point(944, list_bottom + 6), point(976, list_bottom + 6), point(960, list_bottom + 22), accent);
-			for (unsigned row = first_row; row < first_row + VISIBLE_ROWS; row++)
+			// Forja SX2 (compilation 35): the rows in four tabs, as Dolphin's quick menu (Joseph, 2026-10-16: one list of fifteen
+			// rows was hard to follow). L1/R1 move between the tabs (main.cpp); each tab fits without scrolling.
+			static constexpr const char* tab_names[TAB_COUNT] = {"Partida", "Imagen", "Rendimiento", "Sistema"};
+			const unsigned active_tab = TabOfRow(selected_row);
+			draw->AddText(font, 20.0f * scale, point(112, 198), muted, "L1");
+			float tab_x = 152.0f;
+			for (unsigned tab = 0; tab < TAB_COUNT; tab++)
 			{
-				const float y = ROW_TOP + static_cast<float>(row - first_row) * ROW_PITCH;
+				const float text_w = font->CalcTextSizeA(26.0f * scale, FLT_MAX, 0.0f, tab_names[tab]).x / scale;
+				const float w = text_w + 64.0f;
+				const bool on = tab == active_tab;
+				draw->AddRectFilled(point(tab_x, 186), point(tab_x + w, 238), on ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 255),
+					26.0f * scale);
+				if (on)
+					draw->AddRect(point(tab_x, 186), point(tab_x + w, 238), accent, 26.0f * scale, 2.0f * scale, 0);
+				draw->AddText(font, 26.0f * scale, point(tab_x + 32, 196), on ? white : muted, tab_names[tab]);
+				tab_x += w + 16.0f;
+			}
+			draw->AddText(font, 20.0f * scale, point(tab_x + 8, 198), muted, "R1");
+			constexpr float ROW_TOP = 270.0f, ROW_PITCH = 112.0f, ROW_HEIGHT = 100.0f;
+			for (unsigned row = TAB_FIRST_ROW[active_tab]; row < TAB_FIRST_ROW[active_tab + 1]; row++)
+			{
+				const float y = ROW_TOP + static_cast<float>(row - TAB_FIRST_ROW[active_tab]) * ROW_PITCH;
 				const bool selected = selected_row == row;
 				draw->AddRectFilled(point(112, y), point(1808, y + ROW_HEIGHT),
-					selected ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 255), 12.0f * scale);
+					selected ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 255), 14.0f * scale);
 				if (selected)
-					draw->AddRect(point(112, y), point(1808, y + ROW_HEIGHT), accent, 12.0f * scale, 2.5f * scale, 0);
-				draw_option_icon(row, 170, y + ROW_HEIGHT * 0.5f, selected);
-				draw->AddText(font, 28.0f * scale, point(228, y + 8), white, labels[row]);
-				draw->AddText(font, 18.0f * scale, point(228, y + 46), muted, descriptions[row]);
+					draw->AddRect(point(112, y), point(1808, y + ROW_HEIGHT), accent, 14.0f * scale, 2.5f * scale, 0);
+				draw_option_icon(row, 176, y + ROW_HEIGHT * 0.5f, selected);
+				draw->AddText(font, 32.0f * scale, point(240, y + 12), white, label_of(row));
+				draw->AddText(font, 20.0f * scale, point(240, y + 60), muted, description_of(row));
 				const char* action = nullptr;
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
 					action = "AJUSTAR";
-				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES)
+				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO)
 					action = "ELEGIR";
 				else if (row == ROW_OVERLAY || row == ROW_FRAME_GEN)
 					action = "CAMBIAR";
@@ -1575,13 +1617,13 @@ namespace PS4GameMenu
 				else if (row == ROW_RESTART || (row == ROW_RESET_PROFILE && menu_state.has_player))
 					action = "X";
 				if (action)
-					draw->AddText(font, 22.0f * scale, point(1560, y + 28), selected ? white : muted, action);
+					draw->AddText(font, 24.0f * scale, point(1560, y + 36), selected ? white : muted, action);
 			}
 			char hint[160];
-			std::snprintf(hint, sizeof(hint), "Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias aquí se guarda solo para este juego.",
+			std::snprintf(hint, sizeof(hint), "Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.",
 				max_upscale);
-			draw->AddText(font, 18.0f * scale, point(138, 946), muted, hint);
-			draw->AddText(font, 18.0f * scale, point(138, 974), muted, "Arriba/Abajo: elegir (la lista baja sola)   Izq./Der.: cambiar o elegir ranura   X: aceptar   Círculo: volver");
+			draw->AddText(font, 20.0f * scale, point(138, 940), muted, "L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura");
+			draw->AddText(font, 17.0f * scale, point(138, 972), muted, hint);
 			image("controle_x", 1480, 998, 30, 30);
 			draw->AddText(font, 21.0f * scale, point(1522, 1001), white, "Aceptar");
 			image("controle_bola", 1690, 998, 30, 30);

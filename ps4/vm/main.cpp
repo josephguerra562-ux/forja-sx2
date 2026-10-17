@@ -18,6 +18,7 @@
 #include "INISettingsInterface.h"
 #include "ForjaGameProfile.h"
 #include "GameList.h"
+#include "PerformanceMetrics.h"
 #include "common/Timer.h"
 #include "ps2/BiosTools.h"
 #include "R5900.h"
@@ -197,6 +198,15 @@ static bool s_global_video_mode = true; // ajustes.ini
 static bool s_global_frame_gen = false; // ajustes.ini
 static bool s_frame_gen_blocked = false; // the last try hung the GPU (fg-en-prueba): off for this launch
 static int s_video_ee_rate = VIDEO_EE_RATE;
+// Forja SX2 (compilation 35): the automatic PS2 CPU speed (UpdateCpuAuto). floor: 0 off, -1..-3 the lowest EE rate it may use;
+// base: the game's own rate while it is lowered; steps: how many steps below base it runs now.
+static int s_cpu_auto_floor = 0;
+static int s_cpu_auto_base = 0;
+static int s_cpu_auto_steps = 0;
+static double s_cpu_auto_last_check = 0.0;
+static double s_cpu_auto_last_change = -100.0;
+static unsigned s_cpu_auto_slow_checks = 0;
+static unsigned s_cpu_auto_room_checks = 0;
 static double s_profile_last_check = 0.0;
 static u32 s_game_menu_direction = 0;
 static double s_game_menu_next_repeat = 0.0;
@@ -378,6 +388,9 @@ static void PublishGameMenu()
 	state.slot = s_state_slot;
 	state.slot_used = s_state_slot_used;
 	state.action = s_state_action;
+	state.cpu_auto = static_cast<unsigned>(-s_cpu_auto_floor);
+	state.cpu_auto_steps = static_cast<unsigned>(s_cpu_auto_steps);
+	state.cpu_auto_origin = static_cast<unsigned>(s_profile.cpu_auto_origin);
 	PS4GameMenu::SetInGameMenu(state);
 }
 
@@ -420,13 +433,14 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	s_video_mode_enabled = s_profile.video_mode >= 0 ? s_profile.video_mode != 0 : s_global_video_mode;
 	s_video_ee_rate = s_profile.video_ee_rate <= 0 ? s_profile.video_ee_rate : VIDEO_EE_RATE;
 	g_orbis_fg_wanted = !s_frame_gen_blocked && (s_profile.frame_gen >= 0 ? s_profile.frame_gen != 0 : s_global_frame_gen);
+	s_cpu_auto_floor = s_profile.cpu_auto;
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
 	ProbeLog("Game profile: %s %08X factory=%d player=%d video_mode=%d (%s) video_ee_rate=%d (%s) frame_gen=%d (%s) "
-			 "cores=\"%s\" (%s)\n",
+			 "cores=\"%s\" (%s) cpu_auto=%d (%s)\n",
 		s_profile.serial.empty() ? "(no serial)" : s_profile.serial.c_str(), s_profile.crc, s_profile.has_factory ? 1 : 0,
 		s_profile.has_player ? 1 : 0, s_video_mode_enabled ? 1 : 0, ProfileOriginName(s_profile.video_mode_origin), s_video_ee_rate,
 		ProfileOriginName(s_profile.video_ee_rate_origin), g_orbis_fg_wanted ? 1 : 0, ProfileOriginName(s_profile.frame_gen_origin),
-		s_profile.cores.c_str(), ProfileOriginName(s_profile.cores_origin));
+		s_profile.cores.c_str(), ProfileOriginName(s_profile.cores_origin), s_cpu_auto_floor, ProfileOriginName(s_profile.cpu_auto_origin));
 }
 
 // The EE is the thread that calls this; the GS moves on its own thread (or pins itself with the plan when it starts). The VU1
@@ -463,6 +477,7 @@ static void SavePlayerProfile(const char* what, Edit&& edit, bool reload_pcsx2)
 		MTGS::ApplySettings();
 		MTGS::WaitGS(false, false, false);
 		s_video_active = false;
+		s_cpu_auto_steps = 0;
 		s_game_ee_rate = EmuConfig.Speedhacks.EECycleRate;
 	}
 	ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
@@ -490,6 +505,7 @@ static void ResetGameProfile()
 	MTGS::WaitGS(false, false, false);
 	ReadGameResolution();
 	s_video_active = false;
+	s_cpu_auto_steps = 0;
 	s_game_ee_rate = EmuConfig.Speedhacks.EECycleRate;
 	ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
 	RepinWorkersForProfile();
@@ -581,6 +597,78 @@ static void UpdateVideoMode(double elapsed)
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), s_video_saved_rate);
 }
 
+// Forja SX2 (compilation 35): automatic PS2 CPU speed, as DolphinPS4's cpu_clock=auto. In God of War II's heaviest fights
+// the VU1 is the limit (2026-10-16: 28-33 ms a frame, with the GS and the EE waiting for it) and the whole game slows down,
+// its music and its moves too. A lower EE rate gives the game fewer cycles a second: it draws fewer frames, so the VU1 and
+// the GS have less to do each second, and the game keeps its real speed with fewer frames, as a PS2 does when it cannot keep
+// up. One step down, to the floor of [Forja] CpuAuto at most, after ~3 s below 92 % speed; one step back up after ~8 s at
+// full speed in which the busiest of the EE, VU1 and GS threads would still have room at the faster rate. At most one change
+// every 6 s: each one resets the EE recompiler (a short hitch). Movies are the video mode's (UpdateVideoMode).
+static constexpr int EE_RATE_PERCENT[] = {50, 60, 75, 100, 130, 180, 300}; // EECycleRate -3..3
+
+static int EERatePercent(int rate)
+{
+	return EE_RATE_PERCENT[std::clamp(rate, -3, 3) + 3];
+}
+
+static void SetCpuAutoRate(int rate, const char* why, double speed, double busiest)
+{
+	const int before = EmuConfig.Speedhacks.EECycleRate;
+	EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(rate);
+	Cpu->Reset();
+	ProbeLog("CPU auto: %s at %.0f %% speed (busiest thread %.0f %%): EE rate %d -> %d (game's own %d, floor %d)\n", why, speed,
+		busiest, before, rate, s_cpu_auto_base, s_cpu_auto_floor);
+}
+
+static void UpdateCpuAuto(double elapsed)
+{
+	if (s_video_active)
+	{
+		s_cpu_auto_slow_checks = s_cpu_auto_room_checks = 0;
+		return;
+	}
+	const int rate = EmuConfig.Speedhacks.EECycleRate;
+	// Turned off, or a higher floor picked in the menu: back to the game's rate, or to the new floor.
+	if (s_cpu_auto_steps > 0 && (s_cpu_auto_floor == 0 || rate < s_cpu_auto_floor))
+	{
+		const int target = s_cpu_auto_floor == 0 ? s_cpu_auto_base : std::min(s_cpu_auto_floor, s_cpu_auto_base);
+		s_cpu_auto_steps = s_cpu_auto_base - target;
+		SetCpuAutoRate(target, s_cpu_auto_floor == 0 ? "turned off" : "new floor", PerformanceMetrics::GetSpeed(), 0.0);
+		s_cpu_auto_last_change = elapsed;
+		return;
+	}
+	if (s_cpu_auto_floor == 0)
+		return;
+	if (elapsed - s_cpu_auto_last_check < 0.5)
+		return;
+	s_cpu_auto_last_check = elapsed;
+	if (s_cpu_auto_steps == 0)
+		s_cpu_auto_base = rate;
+	const double speed = PerformanceMetrics::GetSpeed();
+	const double busiest = std::max({PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()),
+		static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
+	s_cpu_auto_slow_checks = speed < 92.0 ? s_cpu_auto_slow_checks + 1 : 0;
+	const bool room = s_cpu_auto_steps > 0 && speed >= 98.0 &&
+					  busiest * EERatePercent(rate + 1) / EERatePercent(rate) < 90.0;
+	s_cpu_auto_room_checks = room ? s_cpu_auto_room_checks + 1 : 0;
+	if (elapsed - s_cpu_auto_last_change < 6.0)
+		return;
+	if (s_cpu_auto_slow_checks >= 6 && rate > s_cpu_auto_floor)
+	{
+		s_cpu_auto_steps++;
+		SetCpuAutoRate(rate - 1, "slow", speed, busiest);
+	}
+	else if (s_cpu_auto_room_checks >= 16)
+	{
+		s_cpu_auto_steps--;
+		SetCpuAutoRate(rate + 1, "room", speed, busiest);
+	}
+	else
+		return;
+	s_cpu_auto_last_change = elapsed;
+	s_cpu_auto_slow_checks = s_cpu_auto_room_checks = 0;
+}
+
 // Forja SX2: the profile was read before boot from the library's scan of the image. If PCSX2 ends up with another serial or
 // CRC (a disc whose scan failed, a changed disc), the profile is read again for the game that is really running.
 static void UpdateGameProfile(double elapsed)
@@ -667,6 +755,13 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 				s_frame_gen_blocked = false; // turned back on by hand after a hang guard
 			SavePlayerProfile("Frame generation", [wanted](INISettingsInterface& ini) { ini.SetIntValue("Forja", "FrameGen", wanted ? 1 : 0); },
 				false);
+			break;
+		}
+		case PS4GameMenu::ROW_CPU_AUTO:
+		{
+			// No, down to 75 %, to 60 %, to 50 % ([Forja] CpuAuto 0, -1, -2, -3). UpdateCpuAuto takes the change from here.
+			const int next = (-s_cpu_auto_floor + delta + 4) % 4;
+			SavePlayerProfile("CPU auto", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "CpuAuto", -next); }, false);
 			break;
 		}
 		case PS4GameMenu::ROW_CORES:
@@ -791,6 +886,7 @@ void VMHostPoll()
 	{
 		UpdateGameProfile(elapsed);
 		UpdateVideoMode(elapsed);
+		UpdateCpuAuto(elapsed);
 	}
 	// (AI-assisted) Verbose 1s heartbeat when paused/menu open, 5s otherwise. Needs proper testing.
 	const bool should_log_heartbeat = s_verbose_diag ?
@@ -947,7 +1043,8 @@ void VMHostPoll()
 		s_game_menu_selection = 0;
 		s_state_action = PS4GameMenu::STATE_NONE;
 		RefreshStateSlot();
-		s_game_ee_rate = s_video_active ? s_video_saved_rate : EmuConfig.Speedhacks.EECycleRate;
+		// The game's own rate, not the one a movie (video mode) or the automatic speed lowered it to.
+		s_game_ee_rate = s_cpu_auto_steps > 0 ? s_cpu_auto_base : s_video_active ? s_video_saved_rate : EmuConfig.Speedhacks.EECycleRate;
 		s_game_menu_direction = 0;
 		s_game_menu_next_repeat = elapsed;
 	}
@@ -1040,8 +1137,8 @@ void VMHostPoll()
 		// X changes the switch-like rows one step, saves, loads or restarts on the save state rows, and resets the game's
 		// profile on its row.
 		if (confirm && (row == PS4GameMenu::ROW_OVERLAY || row == PS4GameMenu::ROW_VIDEO_MODE || row == PS4GameMenu::ROW_FRAME_GEN ||
-						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_RESET_PROFILE || row == PS4GameMenu::ROW_SAVE_STATE ||
-						   row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART))
+						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_CPU_AUTO || row == PS4GameMenu::ROW_RESET_PROFILE ||
+						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART))
 		{
 			if (row == PS4GameMenu::ROW_SAVE_STATE)
 				SaveGameState();
@@ -1070,6 +1167,17 @@ void VMHostPoll()
 			s_game_menu_direction = 0;
 			return;
 		}
+		// Forja SX2 (compilation 35): L1 and R1 move between the menu's tabs, onto the first row of the next one.
+		const bool tab_left = (pressed & ORBIS_PAD_BUTTON_L1) != 0, tab_right = (pressed & ORBIS_PAD_BUTTON_R1) != 0;
+		if (tab_left != tab_right)
+		{
+			const unsigned tab = PS4GameMenu::TabOfRow(row);
+			const unsigned next = (tab + (tab_left ? PS4GameMenu::TAB_COUNT - 1 : 1)) % PS4GameMenu::TAB_COUNT;
+			s_game_menu_selection = PS4GameMenu::TAB_FIRST_ROW[next];
+			PublishGameMenu();
+			s_game_menu_direction = 0;
+			return;
+		}
 		u32 navigation = 0;
 		if (raw & ORBIS_PAD_BUTTON_UP || analog_up)
 			navigation = ORBIS_PAD_BUTTON_UP;
@@ -1082,17 +1190,20 @@ void VMHostPoll()
 		if (navigation && (navigation != s_game_menu_direction || elapsed >= s_game_menu_next_repeat))
 		{
 			s_game_menu_next_repeat = elapsed + (navigation == s_game_menu_direction ? 0.12 : 0.35);
+			// Up and Down stay in the tab, wrapping around inside it.
+			const unsigned tab = PS4GameMenu::TabOfRow(row);
+			const unsigned first = PS4GameMenu::TAB_FIRST_ROW[tab], count = PS4GameMenu::TAB_FIRST_ROW[tab + 1] - first;
 			if (navigation == ORBIS_PAD_BUTTON_UP)
-				s_game_menu_selection = s_game_menu_selection == 0 ? PS4GameMenu::ROW_COUNT - 1 : s_game_menu_selection - 1;
+				s_game_menu_selection = first + (row - first + count - 1) % count;
 			else if (navigation == ORBIS_PAD_BUTTON_DOWN)
-				s_game_menu_selection = (s_game_menu_selection + 1) % PS4GameMenu::ROW_COUNT;
+				s_game_menu_selection = first + (row - first + 1) % count;
 			else if (row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE)
 			{
 				s_state_slot = (s_state_slot + (navigation == ORBIS_PAD_BUTTON_LEFT ? 4u : 1u)) % 5u;
 				s_state_action = PS4GameMenu::STATE_NONE;
 				RefreshStateSlot();
 			}
-			else if (row >= PS4GameMenu::ROW_RESOLUTION && row <= PS4GameMenu::ROW_CORES)
+			else if (PS4GameMenu::TabOfRow(row) == 1 || PS4GameMenu::TabOfRow(row) == 2) // Imagen and Rendimiento
 				ChangeGameMenuRow(row, navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1);
 			PublishGameMenu();
 		}
@@ -1417,6 +1528,7 @@ static void* RunVM(void*)
 			}
 			ProbeLog("Game profile: scanned %s -> %s %08X in %.0f ms\n", s_selected_game.c_str(), serial.empty() ? "(no serial)" : serial.c_str(),
 				crc, Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - scan_start));
+			s_cpu_auto_steps = 0;
 			ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
 			RepinWorkersForProfile();
 		}

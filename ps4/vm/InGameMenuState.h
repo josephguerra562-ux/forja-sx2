@@ -7,25 +7,43 @@
 
 namespace PS4GameMenu
 {
-	// Forja SX2: rows of the L3+R3 menu.
+	// Forja SX2: rows of the L3+R3 menu, in the order of its tabs (compilation 35: four tabs, as Dolphin groups its quick
+	// menu, instead of one list of fifteen rows).
 	enum InGameMenuRow : unsigned
 	{
+		// Partida
 		ROW_RESUME = 0,
-		ROW_SAVE_STATE, // compilation 31: save states and restart
+		ROW_SAVE_STATE,
 		ROW_LOAD_STATE,
 		ROW_RESTART,
+		// Imagen
 		ROW_RESOLUTION,
 		ROW_ASPECT,
-		ROW_OVERLAY,
-		ROW_EE_RATE,
-		ROW_VIDEO_MODE,
 		ROW_FRAME_GEN,
+		ROW_OVERLAY,
+		// Rendimiento
+		ROW_EE_RATE,
+		ROW_CPU_AUTO,
+		ROW_VIDEO_MODE,
 		ROW_CORES,
+		// Sistema
 		ROW_RESET_PROFILE,
 		ROW_LIBRARY,
 		ROW_EXIT,
 		ROW_COUNT
 	};
+
+	constexpr unsigned TAB_COUNT = 4;
+	// The first row of each tab, and ROW_COUNT after the last.
+	constexpr unsigned TAB_FIRST_ROW[TAB_COUNT + 1] = {ROW_RESUME, ROW_RESOLUTION, ROW_EE_RATE, ROW_RESET_PROFILE, ROW_COUNT};
+
+	constexpr unsigned TabOfRow(unsigned row)
+	{
+		unsigned tab = 0;
+		while (tab + 1 < TAB_COUNT && row >= TAB_FIRST_ROW[tab + 1])
+			tab++;
+		return tab;
+	}
 
 	struct InGameMenuState
 	{
@@ -51,6 +69,11 @@ namespace PS4GameMenu
 		unsigned slot = 0;
 		bool slot_used = false;
 		unsigned action = 0; // StateAction
+		// Forja SX2 (compilation 35): the automatic PS2 CPU speed. cpu_auto: 0 off, 1 down to 75 %, 2 to 60 %, 3 to 50 %;
+		// cpu_auto_steps: how many steps below the game's own speed it runs right now; and where the setting comes from.
+		unsigned cpu_auto = 0;
+		unsigned cpu_auto_steps = 0;
+		unsigned cpu_auto_origin = 0;
 	};
 
 	// What the last save state action did, for the rows' descriptions.
@@ -84,7 +107,10 @@ namespace PS4GameMenu
 			(value.has_player ? (std::uint64_t{1} << 37) : 0u) |
 			(static_cast<std::uint64_t>(std::min(value.slot, 4u)) << 38) |
 			(value.slot_used ? (std::uint64_t{1} << 41) : 0u) |
-			(static_cast<std::uint64_t>(std::min(value.action, 7u)) << 42);
+			(static_cast<std::uint64_t>(std::min(value.action, 7u)) << 42) |
+			(static_cast<std::uint64_t>(std::min(value.cpu_auto, 3u)) << 45) |
+			(static_cast<std::uint64_t>(std::min(value.cpu_auto_steps, 7u)) << 47) |
+			(static_cast<std::uint64_t>(std::min(value.cpu_auto_origin, 2u)) << 50);
 	}
 
 	constexpr InGameMenuState UnpackInGameMenuState(std::uint64_t value)
@@ -113,6 +139,9 @@ namespace PS4GameMenu
 		state.slot = std::min(static_cast<unsigned>((value >> 38) & 0x07u), 4u);
 		state.slot_used = (value & (std::uint64_t{1} << 41)) != 0;
 		state.action = static_cast<unsigned>((value >> 42) & 0x07u);
+		state.cpu_auto = static_cast<unsigned>((value >> 45) & 0x03u);
+		state.cpu_auto_steps = static_cast<unsigned>((value >> 47) & 0x07u);
+		state.cpu_auto_origin = std::min(static_cast<unsigned>((value >> 50) & 0x03u), 2u);
 		return state;
 	}
 } // namespace PS4GameMenu

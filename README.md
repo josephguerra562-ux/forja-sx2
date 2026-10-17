@@ -15,6 +15,20 @@ audio o cierres.
 
 Es un proyecto independiente, sin relación con Sony ni con el equipo de PCSX2. Los créditos están [al final](#credits).
 
+## Compatibilidad
+
+Medido en una PS4 Pro con el Modo optimizado activado, en 1x, salvo que se diga otra cosa. Los ajustes recomendados ya vienen en
+el perfil de fábrica de cada juego (`resources/perfiles/`), y lo que cambies en el menú L3+R3 manda sobre ellos.
+
+| Estado | Juego | Región | Cómo va | Ajustes de fábrica |
+|---|---|---|---|---|
+| Jugable | God of War II | PAL (SCES-54206) | Zonas normales a 100 % (50 FPS). Las peleas más pesadas (el Coloso de Rodas, muchos enemigos) van al 60-85 %, limitadas por el VU1. Promedio de una partida de 13 min: 87 %. | vuFlagHack, Plan B de núcleos, CPU automático hasta 60 % (compilación 35, en prueba), saltar cinemáticas. Opcionales: "Menos efectos 2 y 3 (Sony)". |
+| Jugable | Tales of the Abyss | USA (SLUS-21386) | Jugando, 93-100 %. Cinemáticas ~78 % (23 FPS) sin modo video. | CPU de la PS2 al 100 %, núcleos normales. |
+| Jugable | Mega Man X Command Mission | USA (SLUS-20903) | Versión de 30 FPS: 30 FPS fijos, incluso a 4x. La intro va al 80-90 % con el modo video. | Clamp normal del VU1. |
+
+¿Probaste otro juego? Abre un issue con el juego, su región y su serial, cómo fue (FPS y velocidad del contador) y la carpeta
+`logs/sesiones` de esa partida.
+
 > La documentación técnica de abajo viene de PS4SX2 y está en inglés. En Forja SX2 las carpetas están en
 > `/data/ForjaSX2/` y la guía de uso al día es [LEEME_FORJA_SX2.md](LEEME_FORJA_SX2.md).
 

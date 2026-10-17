@@ -351,6 +351,18 @@ std::vector<std::string> Patch::FindPatchFilesOnDisk(const std::string_view seri
 	for (FILESYSTEM_FIND_DATA& fd : files)
 		ret.push_back(std::move(fd.FileName));
 
+	// Forja SX2 (compilation 35): the patches that come in the package (resources/parches/<SERIAL>_<CRC>_forja.pnach: Sony's
+	// "fewer effects" for God of War II, the community's skip cutscenes...), after the player's own: a group of the same name
+	// in a player's file is the one used. The Orbis build has no zip, so PCSX2's patches.zip cannot carry them.
+	if (!cheats)
+	{
+		const std::string factory = Path::Combine(EmuFolders::Resources, "parches");
+		FileSystem::FindFiles(factory.c_str(), GetPnachTemplate(serial, crc, true, true, all_crcs).c_str(),
+			FILESYSTEM_FIND_FILES | FILESYSTEM_FIND_HIDDEN_FILES, &files);
+		for (FILESYSTEM_FIND_DATA& fd : files)
+			ret.push_back(std::move(fd.FileName));
+	}
+
 	return ret;
 }
 
