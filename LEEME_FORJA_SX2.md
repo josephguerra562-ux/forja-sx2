@@ -95,6 +95,19 @@ lecturas de la GPU (readbacks), **Modo video automático** (sube la velocidad mi
 **Generación de cuadros (30 a 60 FPS)**, que es EXPERIMENTAL, viene apagada e inventa el cuadro intermedio en juegos que van estables a 30.
 Lo que se guarde para un juego en L3+R3 manda sobre esto.
 
+## 3c. Tus discos de PS2: jugar y copiarlos a la PS4 (desde la 41)
+- Mete el DVD de PS2 en la PS4 y ve a **Disco** en la biblioteca. La unidad de la PS4 lee DVD, no CD: los juegos de PS2
+  en CD (los de disco azul) no se pueden usar.
+- **X:** jugar desde el disco. **□:** copiarlo a la PS4. La copia va a `/data/ForjaSX2/roms/<juego> (<serial>).iso` y
+  tarda según la unidad (un DVD de 4 GB, unos 15-30 min). Puedes seguir en la biblioteca mientras copia; la línea de abajo
+  dice el porcentaje, la velocidad y lo que falta. **□ otra vez la cancela** y no deja nada a medias. No saques el disco
+  mientras copia.
+- **Con la copia hecha, el disco es la llave:** cada vez que lo metas, X en Disco abre la copia de la PS4, que carga más
+  rápido y sin ruido de la unidad. La copia también sale en la Biblioteca como cualquier juego.
+- Si un sector del disco no se puede leer (un rayón), va en ceros y el aviso final dice cuántos. El registro anota el
+  CRC-32 de la copia (`Disc copy: done`), para compararlo con redump.org.
+- Basado en la copia de discos de PS5SX2 (swordpdf, GPL-3.0).
+
 ## 4. Perfiles por juego (como Dolphin)
 Cada juego arma sus ajustes en tres capas. La de más abajo gana:
 1. **Global:** la pestaña Ajustes y `nucleos.txt`.

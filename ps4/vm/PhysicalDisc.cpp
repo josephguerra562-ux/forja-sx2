@@ -221,6 +221,36 @@ namespace PS4Disc
 			return true;
 		}
 
+		// Forja SX2 (compilation 41): `count` sectors in one READ(12) while the drive takes it; after the first refusal, one at a
+		// time (Read) for the rest of this handle.
+		bool bulk = true;
+		bool ReadMany(uint32_t sector, uint32_t count, uint8_t* data)
+		{
+			if (!count || sector >= info.sectors || count > info.sectors - sector)
+				return false;
+			if (bulk && count > 1)
+			{
+				uint8_t cdb[12]{0xa8};
+				PutBE32(cdb + 2, sector);
+				PutBE32(cdb + 6, count);
+				if (Command(cdb, sizeof(cdb), data, count * 2048, true, 0, 10000))
+				{
+					sectors_read += count;
+					return true;
+				}
+				bulk = false;
+				ProbeLog("Physical disc: %u-sector read refused at LBA=%u; one sector at a time from now on\n", count, sector);
+				if (!Ready())
+					return false;
+			}
+			for (uint32_t done = 0; done < count; done += 16)
+			{
+				if (!Read(sector + done, std::min(16u, count - done), data + static_cast<size_t>(done) * 2048))
+					return false;
+			}
+			return true;
+		}
+
 		bool Identify()
 		{
 			if (!Connect())
@@ -401,6 +431,14 @@ namespace PS4Disc
 		if (!m_impl->Ready())
 			m_impl->failed = true;
 		return !m_impl->failed;
+	}
+	bool Reader::ReadSectors(uint32_t sector, uint32_t count, uint8_t* buffer)
+	{
+		auto& r = *m_impl;
+		std::lock_guard<std::mutex> lock(r.mutex);
+		if (r.failed)
+			return false;
+		return r.ReadMany(sector, count, buffer);
 	}
 	bool Reader::ReadSector(uint32_t sector, uint8_t* buffer)
 	{

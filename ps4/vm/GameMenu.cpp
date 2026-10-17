@@ -4,6 +4,7 @@
 #include "ForjaSettings.h"
 #include "InGameMenuState.h"
 #include "PhysicalDisc.h"
+#include "DiscCopy.h"
 #include "CoverDownload.h"
 #include "ReleaseCheck.h"
 #include "GameDatabase.h"
@@ -830,6 +831,9 @@ namespace PS4GameMenu
 		size_t library_cover_index = 0;
 		std::string disc_status;
 		bool boot_disc_when_ready = false;
+		// Forja SX2 (compilation 41): the disc in the drive (its title) and its copy in roms/ if there is one: X plays the copy.
+		std::string disc_title, disc_copy_path;
+		double copy_status_at = 0.0;
 		const auto pump_library_cover = [&]() {
 			if (library_cover.Active())
 				return;
@@ -850,6 +854,14 @@ namespace PS4GameMenu
 		double disc_probe_at = 0.0;
 		const auto probe_disc = [&](bool boot) {
 			if (disc_probe.active) return;
+			if (PS4DiscCopy::Busy())
+			{
+				// The drive is the copy's until it ends.
+				items = {{disc_title.empty() ? "Copiando el disco" : disc_title, {}, {}, false}};
+				Publish(items, view);
+				status = disc_status = PS4DiscCopy::StatusText();
+				return;
+			}
 			disc_probe_at = 0.0;
 			boot_disc_when_ready = boot;
 			const bool started = disc_probe.Start();
@@ -870,7 +882,13 @@ namespace PS4GameMenu
 			ProbeLog("Game menu: view %u\n", static_cast<unsigned>(view));
 			if (view == LibraryView::Disc)
 			{
-				if (!disc_probe.active)
+				if (PS4DiscCopy::Busy())
+				{
+					items = {{disc_title.empty() ? "Copiando el disco" : disc_title, {}, {}, false}};
+					Publish(items, view);
+					status = disc_status = PS4DiscCopy::StatusText();
+				}
+				else if (!disc_probe.active)
 				{
 					disc_probe_at = timer.GetTimeSeconds() + 0.7;
 					items = {{"Revisando el DVD...", {}, {}, false}};
@@ -898,6 +916,26 @@ namespace PS4GameMenu
 				disc_probe_at = 0.0;
 				if (view == LibraryView::Disc && !disc_probe.active)
 					probe_disc(false);
+			}
+			// Forja SX2 (compilation 41): the disc copy's progress on the status line, and the library again once it ends.
+			if (PS4DiscCopy::TakeFinished())
+			{
+				library = Scan();
+				library_cover_index = 0;
+				pump_library_cover();
+				if (view != LibraryView::Disc)
+				{
+					items = BuildView(library, view, favorites, recent);
+					selected = std::min(selected, items.empty() ? size_t{0} : items.size() - 1);
+					Publish(items, view);
+				}
+				disc_copy_path = PS4DiscCopy::ResultPath();
+				status = disc_status = PS4DiscCopy::StatusText();
+			}
+			else if (PS4DiscCopy::Busy() && now >= copy_status_at)
+			{
+				copy_status_at = now + 0.5;
+				status = disc_status = PS4DiscCopy::StatusText();
 			}
 			if (library_cover.Collect())
 			{
@@ -936,7 +974,29 @@ namespace PS4GameMenu
 					if (!cover && !boot_disc_when_ready && !disc_cover.Active())
 						disc_cover.Start(disc.serial);
 					items = {{title, PS4Disc::DevicePath, std::move(cover), false}};
-					status = disc.serial + (disc.dual_type ? " | DVD doble capa | Pulsa X para iniciar." : " | DVD | Pulsa X para iniciar.");
+					// Forja SX2 (compilation 41): a copy of this disc in roms/ (the same serial) is what X plays.
+					disc_title = title;
+					disc_copy_path.clear();
+					for (const Item& item : library)
+					{
+						if (item.serial == disc.serial && item.path != PS4Disc::DevicePath)
+						{
+							disc_copy_path = item.path;
+							break;
+						}
+					}
+					status = disc.serial + (disc.dual_type ? " | DVD doble capa" : " | DVD") +
+					         (disc_copy_path.empty() ? " | X: jugar desde el disco · □: copiarlo a la PS4" :
+					                                   " | Ya está copiado en la PS4 · X: jugar la copia");
+					if (boot_disc_when_ready && !disc_copy_path.empty())
+					{
+						// The disc is the key: its copy starts, read from the console's storage (faster, and the drive rests).
+						path = disc_copy_path;
+						platform = GamePlatform::PS2;
+						start = true;
+						ProbeLog("Game menu: physical DVD %s is copied, starting %s\n", title.c_str(), path.c_str());
+						break;
+					}
 					if (boot_disc_when_ready)
 					{
 						path = PS4Disc::DevicePath;
@@ -1141,6 +1201,27 @@ namespace PS4GameMenu
 					status.clear();
 			}
 			held_direction = navigation;
+			// Forja SX2 (compilation 41): Square on the Disc panel copies the disc to the PS4, or cancels the copy running.
+			if ((pressed & ORBIS_PAD_BUTTON_SQUARE) && !sidebar_focused && view == LibraryView::Disc)
+			{
+				if (PS4DiscCopy::Busy())
+				{
+					PS4DiscCopy::Cancel();
+					status = disc_status = "Cancelando la copia...";
+				}
+				else if (!disc_copy_path.empty())
+					status = "Este disco ya está copiado en la PS4. X para jugar la copia.";
+				else if (!disc_probe.active && disc_probe.reader)
+				{
+					std::string error;
+					if (PS4DiscCopy::Start(std::move(disc_probe.reader), disc_title, error))
+						status = disc_status = PS4DiscCopy::StatusText();
+					else
+						status = error;
+				}
+				else
+					status = "Pulsa Triángulo para leer el disco y después □ para copiarlo.";
+			}
 			if ((pressed & ORBIS_PAD_BUTTON_SQUARE) && !sidebar_focused && view != LibraryView::Disc)
 			{
 				const std::string selected_path = items[selected].path;
@@ -1172,6 +1253,14 @@ namespace PS4GameMenu
 				{
 					// Forja SX2: X moves the selected setting to its next choice (and wraps around).
 					change_setting(1, true);
+					Present(selected, status, connected, false, false, false);
+					Threading::Sleep(16);
+					continue;
+				}
+				if (PS4DiscCopy::Busy())
+				{
+					// Forja SX2 (compilation 41): no game while the drive and the storage are the copy's.
+					status = "Hay una copia del disco en curso: espera a que termine o cancélala con □ en Disco.";
 					Present(selected, status, connected, false, false, false);
 					Threading::Sleep(16);
 					continue;
@@ -1768,7 +1857,19 @@ namespace PS4GameMenu
 			else
 				image("menu_disc", 810, 280, 180, 180);
 			text(1030, 340, 30, white, "DVD de PS2");
-			text(1030, 390, 20, muted, detected ? "Disco detectado. Pulsa X para iniciar." : "Mete un DVD y pulsa Triángulo para actualizar.");
+			if (PS4DiscCopy::Busy())
+			{
+				// Forja SX2 (compilation 41): the progress is on the status line below.
+				text(1030, 390, 20, muted, "Copiando el disco a la PS4. Puedes seguir en la biblioteca.");
+				text(1030, 424, 18, muted, "□ cancela la copia. No saques el disco hasta que termine.");
+			}
+			else
+			{
+				text(1030, 390, 20, muted, detected ? "Disco detectado. X para jugar · □ para copiarlo a la PS4." :
+				                                      "Mete un DVD y pulsa Triángulo para actualizar.");
+				if (detected)
+					text(1030, 424, 18, muted, "Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.");
+			}
 		}
 		// Forja SX2: the Settings page, one row per choice with its value on the right.
 		const bool settings_view = s_library_view == LibraryView::Settings;
