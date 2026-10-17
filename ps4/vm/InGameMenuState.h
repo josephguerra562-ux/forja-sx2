@@ -56,7 +56,7 @@ namespace PS4GameMenu
 		int ee_rate = -1; // Forja SX2: EECycleRate, -6..3 (-4..-6 since compilation 36)
 		// Forja SX2: the game's profile. video: 0 off, 1 100 %, 2 75 %, 3 60 %, 4 50 % (EE rate during movies).
 		unsigned video = 4;
-		bool frame_gen = false;
+		unsigned frame_gen = 0; // 0 no, 1 yes, 2 fluid (compilation 40)
 		// cores: 0 global (nucleos.txt), 1 normal, 2 plan B, 3 another plan written by hand.
 		unsigned cores = 0;
 		// Where each one comes from: 0 global, 1 factory profile, 2 the player's profile (ForjaGameProfile::Origin).
@@ -98,7 +98,8 @@ namespace PS4GameMenu
 				(value.show_overlay ? (1u << 20) : 0u) |
 				(std::min(value.video, 4u) << 24) |
 				(std::min(value.video_origin, 2u) << 27) |
-				(value.frame_gen ? (1u << 29) : 0u) |
+				(value.frame_gen != 0 ? (1u << 29) : 0u) |
+				(value.frame_gen >= 2 ? (1u << 21) : 0u) | // compilation 40: fluid; bits 21-23 are free since 36
 				(std::min(value.frame_gen_origin, 2u) << 30)) |
 			(static_cast<std::uint64_t>(std::min(value.cores, 3u)) << 32) |
 			(static_cast<std::uint64_t>(std::min(value.cores_origin, 2u)) << 34) |
@@ -131,7 +132,7 @@ namespace PS4GameMenu
 		state.ee_rate = static_cast<int>(std::min(static_cast<unsigned>((value >> 54) & 0x0fu), 9u)) - 6;
 		state.video = std::min((low >> 24) & 0x07u, 4u);
 		state.video_origin = std::min((low >> 27) & 0x03u, 2u);
-		state.frame_gen = (low & (1u << 29)) != 0;
+		state.frame_gen = (low & (1u << 29)) == 0 ? 0u : (low & (1u << 21)) != 0 ? 2u : 1u;
 		state.frame_gen_origin = std::min((low >> 30) & 0x03u, 2u);
 		state.cores = static_cast<unsigned>((value >> 32) & 0x03u);
 		state.cores_origin = std::min(static_cast<unsigned>((value >> 34) & 0x03u), 2u);

@@ -193,6 +193,7 @@ static constexpr double VIDEO_DECODES_PER_SECOND = 2000.0; // a movie: tens of t
 // Forja SX2: the running game's profile (pcsx2/ForjaGameProfile.h): its factory profile under the player's own. Read before
 // the VM boots, from the library's scan of the image, and again if PCSX2 identifies another disc.
 extern bool g_orbis_fg_wanted; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp: frame generation, read by the GS at every frame
+extern bool g_orbis_fg_fluid;  // ...and its fluid mode (compilation 40: [Forja] FrameGen = 2)
 static ForjaGameProfile::Values s_profile;
 static bool s_global_video_mode = true; // ajustes.ini
 static bool s_global_frame_gen = false; // ajustes.ini
@@ -383,7 +384,7 @@ static void PublishGameMenu()
 	state.ee_rate = s_game_ee_rate;
 	state.video = VideoMenuValue();
 	state.video_origin = static_cast<unsigned>(std::max(s_profile.video_mode_origin, s_profile.video_ee_rate_origin));
-	state.frame_gen = g_orbis_fg_wanted;
+	state.frame_gen = g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2u : 1u) : 0u;
 	state.frame_gen_origin = static_cast<unsigned>(s_profile.frame_gen_origin);
 	state.cores = CoresMenuValue();
 	state.cores_origin = static_cast<unsigned>(s_profile.cores_origin);
@@ -436,14 +437,17 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	s_profile = std::move(profile);
 	s_video_mode_enabled = s_profile.video_mode >= 0 ? s_profile.video_mode != 0 : s_global_video_mode;
 	s_video_ee_rate = s_profile.video_ee_rate <= 0 ? s_profile.video_ee_rate : VIDEO_EE_RATE;
-	g_orbis_fg_wanted = !s_frame_gen_blocked && (s_profile.frame_gen >= 0 ? s_profile.frame_gen != 0 : s_global_frame_gen);
+	const int frame_gen = s_profile.frame_gen >= 0 ? s_profile.frame_gen : (s_global_frame_gen ? 1 : 0);
+	g_orbis_fg_wanted = !s_frame_gen_blocked && frame_gen != 0;
+	g_orbis_fg_fluid = frame_gen == 2;
 	s_cpu_auto_floor = s_profile.cpu_auto;
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
 	ProbeLog("Game profile: %s %08X factory=%d player=%d video_mode=%d (%s) video_ee_rate=%d (%s) frame_gen=%d (%s) "
 			 "cores=\"%s\" (%s) cpu_auto=%d (%s)\n",
 		s_profile.serial.empty() ? "(no serial)" : s_profile.serial.c_str(), s_profile.crc, s_profile.has_factory ? 1 : 0,
 		s_profile.has_player ? 1 : 0, s_video_mode_enabled ? 1 : 0, ProfileOriginName(s_profile.video_mode_origin), s_video_ee_rate,
-		ProfileOriginName(s_profile.video_ee_rate_origin), g_orbis_fg_wanted ? 1 : 0, ProfileOriginName(s_profile.frame_gen_origin),
+		ProfileOriginName(s_profile.video_ee_rate_origin), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0,
+		ProfileOriginName(s_profile.frame_gen_origin),
 		s_profile.cores.c_str(), ProfileOriginName(s_profile.cores_origin), s_cpu_auto_floor, ProfileOriginName(s_profile.cpu_auto_origin));
 }
 
@@ -776,10 +780,12 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		}
 		case PS4GameMenu::ROW_FRAME_GEN:
 		{
-			const bool wanted = !g_orbis_fg_wanted;
-			if (wanted)
+			// No, yes, fluid ([Forja] FrameGen 0, 1, 2; compilation 40).
+			const int current = g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0;
+			const int next = (current + delta + 3) % 3;
+			if (next != 0)
 				s_frame_gen_blocked = false; // turned back on by hand after a hang guard
-			SavePlayerProfile("Frame generation", [wanted](INISettingsInterface& ini) { ini.SetIntValue("Forja", "FrameGen", wanted ? 1 : 0); },
+			SavePlayerProfile("Frame generation", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "FrameGen", next); },
 				false);
 			break;
 		}

@@ -43,7 +43,8 @@ namespace ForjaGameProfile
 		// [Forja] VideoEECycleRate: the EE rate while a movie plays, -3..0; 1 = not set (-3).
 		int video_ee_rate = 1;
 		Origin video_ee_rate_origin = Origin::Global;
-		// [Forja] FrameGen: -1 not set (ajustes.ini decides), 0 off, 1 on.
+		// [Forja] FrameGen: -1 not set (ajustes.ini decides), 0 off, 1 on, 2 fluid (compilation 40: every refresh the game's
+		// frames leave gets a generated one; OrbisFrameGenPacing.h).
 		int frame_gen = -1;
 		Origin frame_gen_origin = Origin::Global;
 		// [Forja] Nucleos: nucleos.txt's syntax on one line ("EE=1 VU1=2 GS=3 AUDIO=5 AYUDANTES=4"); empty or "global" =
@@ -143,7 +144,7 @@ namespace ForjaGameProfile
 		if (v.video_ee_rate <= 0)
 			v.video_ee_rate = std::clamp(v.video_ee_rate, -3, 0);
 		if (v.frame_gen >= 0)
-			v.frame_gen = v.frame_gen != 0 ? 1 : 0;
+			v.frame_gen = std::min(v.frame_gen, 2);
 		if (v.cpu_auto <= 0)
 			v.cpu_auto = std::clamp(v.cpu_auto, -6, 0);
 		else

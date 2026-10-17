@@ -1406,11 +1406,15 @@ namespace PS4GameMenu
 			char video_description[160];
 			std::snprintf(video_description, sizeof(video_description),
 				"CPU de la PS2 durante las cinemáticas. Para este juego  ·  ahora: %s", origin_names[menu_state.video_origin]);
+			// Forja SX2 (compilation 40): No, Sí (PS5SX2's, for a steady 30) and Fluida (every refresh the game leaves empty).
+			static constexpr const char* frame_gen_names[] = {"No", "Sí", "Fluida"};
 			char frame_gen_label[96];
-			std::snprintf(frame_gen_label, sizeof(frame_gen_label), "Generación de cuadros:  < %s >", menu_state.frame_gen ? "Sí" : "No");
-			char frame_gen_description[160];
-			std::snprintf(frame_gen_description, sizeof(frame_gen_description),
-				"Muestra a 60 un juego estable a 30 (experimental). Para este juego  ·  ahora: %s",
+			std::snprintf(frame_gen_label, sizeof(frame_gen_label), "Generación de cuadros:  < %s >",
+				frame_gen_names[std::min(menu_state.frame_gen, 2u)]);
+			char frame_gen_description[192];
+			std::snprintf(frame_gen_description, sizeof(frame_gen_description), "%s Para este juego  ·  ahora: %s",
+				menu_state.frame_gen >= 2 ? "Rellena cada refresco que la tele repetiría (juegos PAL, cuadros desparejos)." :
+											"Muestra a 60 un juego estable a 30 (experimental).",
 				origin_names[menu_state.frame_gen_origin]);
 			static constexpr const char* cores_names[] = {"Global", "Normal", "Plan B", "Propio"};
 			char cores_label[96];
@@ -1614,9 +1618,9 @@ namespace PS4GameMenu
 				const char* action = nullptr;
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
 					action = "AJUSTAR";
-				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO)
+				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN)
 					action = "ELEGIR";
-				else if (row == ROW_OVERLAY || row == ROW_FRAME_GEN)
+				else if (row == ROW_OVERLAY)
 					action = "CAMBIAR";
 				else if (row == ROW_SAVE_STATE || (row == ROW_LOAD_STATE && menu_state.slot_used))
 					action = "X  ·  RANURA";

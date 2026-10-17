@@ -4689,6 +4689,7 @@ void OrbisVkPresentBlend(GSTexture* tex, const GSVector4& sRect, const GSVector4
 bool g_orbis_fg_wanted = false; // main-boot.cpp sets it from PS5SX2/FrameGeneration before the GS opens
 std::atomic<bool> g_orbis_fg_active{false}; // frames are being generated (the FPS box says "FG")
 bool g_orbis_fg_engaged = false; // vk-285-133: the pacing has room for generated frames (GSRenderer.cpp skips the repeats then)
+bool g_orbis_fg_fluid = false; // Forja SX2 (compilation 40): main.cpp, [Forja] FrameGen = 2 (OrbisFrameGenPacing.h's fluid mode)
 
 // The driver's measured refresh of the output its swapchain presents to (ps5vk's high-frame-rate output, 2026-10-08); a driver
 // without it presents at 59.94 Hz.
@@ -4867,9 +4868,14 @@ namespace
 		switch (p.GetState())
 		{
 			case orbis_fg::State::Generating:
-				printf("[fg] generating: a new frame every %.1f PS2 vsyncs (%.2f Hz) is %.2f refreshes at %.2f Hz; the generated frame "
-					   "presented %u time(s) before the game's\n",
-					p.MedianVsyncs(), ps2_hz, p.Refreshes(), s.hz, p.Repeats());
+				if (p.Fluid())
+					printf("[fg] generating (fluid): a new frame every %.1f PS2 vsyncs (%.2f Hz) is %.2f refreshes at %.2f Hz; each "
+						   "refresh the game's frames leave gets a generated frame\n",
+						p.MedianVsyncs(), ps2_hz, p.Refreshes(), s.hz);
+				else
+					printf("[fg] generating: a new frame every %.1f PS2 vsyncs (%.2f Hz) is %.2f refreshes at %.2f Hz; the generated frame "
+						   "presented %u time(s) before the game's\n",
+						p.MedianVsyncs(), ps2_hz, p.Refreshes(), s.hz, p.Repeats());
 				break;
 			case orbis_fg::State::NoRoom:
 				printf("[fg] not generating: a new frame every %.1f PS2 vsyncs (%.2f Hz) is %.2f refreshes at %.2f Hz, no room for "
@@ -4943,6 +4949,7 @@ u32 GSDeviceVK::OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv,
 	const auto now = std::chrono::steady_clock::now();
 	const double now_s = std::chrono::duration<double>(now.time_since_epoch()).count();
 	s.hz = OrbisFrameGenDisplayHz(); // the driver's, each frame: the output goes back to 60 Hz before the process ends
+	s.pacing.SetFluid(g_orbis_fg_fluid);
 	const orbis_fg::Decision decision = s.pacing.Frame(vsyncs, already, ps2_hz, s.hz, now_s, speed, nominal);
 	OrbisFrameGenLogEvent(s, s.pacing.TakeEvent());
 	OrbisFrameGenLogState(s, now, ps2_hz);

@@ -29,10 +29,21 @@
 // than 50". One generated frame before each of the game's on frames of uneven length makes the motion speed up and slow
 // down from refresh to refresh, on top of the in-between frames' artifacts and the frame of lag; an even rate (60 to 120,
 // 30 to 60) is what it doubles well. Uneven stretches show the game's own frames.
+//
+// Forja SX2 (compilation 40): the fluid mode ([Forja] FrameGen = 2). A PAL game's frame is 1.2 refreshes of a 59.94 Hz TV, and
+// the PS4 keeps its games at 59.94 (a 50 Hz output is refused: 0x80290016, unsupported output mode, 2026-10-18), so one frame
+// in five stays on screen for two refreshes: a stutter ten times a second, even at full speed. God of War II at a 27 % EE
+// rate also mixes frames of one and two vsyncs. Here the refreshes each interval had (vsyncs x display Hz / PS2 Hz, with its
+// fraction) go to a budget, less the presents made in it; each whole refresh left is one present of the generated frame
+// before the game's. 50 frames a second at 59.94 Hz get one generated frame in every five, where the TV would repeat one;
+// frames of uneven length get as many as their refreshes leave, so every refresh shows a new picture. The game's frames all
+// come one refresh later, the same for each (vk-285-135's complaint was the lag that changed from frame to frame). No steady
+// rate is asked for; the warm-up, the limiter's check and the safety net are the same.
 
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 
 namespace orbis_fg
@@ -82,6 +93,19 @@ namespace orbis_fg
 		static constexpr double kCostly = 3.0;         // points of speed a pause has to win back to blame the generated frames
 		static constexpr uint32_t kSteadyStart = 7;    // vk-285-135: intervals of the window's usual length, to start generating...
 		static constexpr uint32_t kSteadyKeep = 6;     // ...and to go on
+		static constexpr double kMaxCredit = 4.0;      // Forja SX2 (compilation 40): the fluid mode's budget, in refreshes
+		static constexpr uint32_t kMaxFluidPresents = 3;
+
+		// Forja SX2 (compilation 40): the fluid mode, set before each frame. A change starts the budget and the interpolator over.
+		void SetFluid(bool fluid)
+		{
+			if (fluid == m_fluid)
+				return;
+			m_fluid = fluid;
+			m_credit = 0.0;
+			m_reset = true;
+		}
+		bool Fluid() const { return m_fluid; }
 
 		// One new frame of the game: `vsyncs` since the last new frame (1 at 60 fps, 2 at 30), `already` the presents made since
 		// the last one was given here (its own game frame and any repeat presented after it), the PS2's and the display's rates
@@ -124,6 +148,8 @@ namespace orbis_fg
 				m_repeats--;
 
 			Second(now, speed);
+			if (m_fluid)
+				return FluidFrame(d, gap, ratio, now_refreshes, already, nominal);
 
 			const bool warm = m_count >= kWindow;
 			m_room = warm && m_refreshes >= (m_room ? kDisengage : kEngage);
@@ -172,6 +198,39 @@ namespace orbis_fg
 		double Floor(double now) const { return now < m_floor_until ? m_floor : kSlowSpeed; }
 
 	private:
+		// Forja SX2 (compilation 40): the fluid mode's frame (see the top of this file).
+		Decision FluidFrame(Decision d, bool gap, double ratio, double now_refreshes, uint32_t already, bool nominal)
+		{
+			const bool warm = m_count >= kWindow;
+			// Nothing to fill when every frame is one PS2 vsync on a display of the PS2's rate (a 60 fps game at 60 Hz).
+			const bool all_single = m_median <= 1.0 && m_steady == m_count;
+			const bool fills = !all_single || std::fabs(ratio - std::round(ratio)) > 0.02;
+			m_room = warm && fills;
+			m_state = !warm ? State::Warming : !m_room ? State::NoRoom : !nominal ? State::NotNominal :
+			          Paused() ? State::Paused : State::Generating;
+			d.engaged = m_state == State::Generating;
+			if (!d.engaged || gap)
+			{
+				m_credit = 0.0;
+				m_reset = true;
+				return d;
+			}
+			// This interval's refreshes, less the presents made in it (the last frame of the game's own, and a repeat if any).
+			m_credit = std::clamp(m_credit + now_refreshes - static_cast<double>(already), -1.0, kMaxCredit);
+			uint32_t presents = 0;
+			while (presents < kMaxFluidPresents && m_credit >= 0.97)
+			{
+				presents++;
+				m_credit -= 1.0;
+			}
+			d.presents = presents;
+			d.reset = m_reset;
+			m_reset = false;
+			if (presents > 0)
+				m_generated_this_second = true;
+			return d;
+		}
+
 		double Median() const
 		{
 			if (m_count == 0)
@@ -273,6 +332,8 @@ namespace orbis_fg
 		uint32_t m_next = 0, m_count = 0;
 		double m_median = 0.0;
 		uint32_t m_steady = 0; // vk-285-135
+		bool m_fluid = false;  // Forja SX2 (compilation 40)
+		double m_credit = 0.0; // the fluid mode's refreshes not yet presented
 		double m_refreshes = 0.0;
 		uint32_t m_repeats = 1;
 		bool m_room = false;

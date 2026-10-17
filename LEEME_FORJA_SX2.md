@@ -65,11 +65,14 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     otra vez, vuelve a subir. Cada cambio da un tironcito, así que hay como mucho uno cada 6 s. La fila dice a qué velocidad
     va **ahora**. En God of War II viene apagado desde la 36: medido, las peleas pesadas iban igual al 50, 60, 75 y 100 %.
   - **Modo video:** No / 60 % / 50 %. Es el CPU de la PS2 durante las cinemáticas.
-  - **Generación de cuadros:** Sí / No.
-- **Salida a 50 Hz para juegos PAL (desde la 37, automática):** la PS4 manda la imagen a 60 Hz, y un juego PAL hace 50
-  cuadros por segundo. 50 en 60 no reparte parejo: 1 de cada 5 cuadros queda el doble en pantalla y se nota un tironcito
-  10 veces por segundo. Ahora, 3 segundos después de que un juego PAL arranca, Forja pone la tele a 50 Hz, y al salir del
-  juego la vuelve a su frecuencia normal. La pantalla parpadea en negro un momento cuando cambia: es normal.
+  - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
+    cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
+    60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %,
+    que la trae de fábrica. Cuesta trabajo a la gráfica: mejor en 1x o 2x.
+- **Salida a 50 Hz para juegos PAL (desde la 37):** la PS4 manda la imagen a 60 Hz, y un juego PAL hace 50 cuadros por
+  segundo. 50 en 60 no reparte parejo: 1 de cada 5 cuadros queda el doble en pantalla y se nota un tironcito 10 veces por
+  segundo. Forja le pide 50 Hz a la PS4 al empezar un juego PAL, pero una PS4 Pro probada lo rechaza
+  (`0x80290016`, modo no soportado) y se queda a 60 sin que se note nada. Para eso está la generación de cuadros "Fluida".
   - **Si la tele se queda en negro:** espera unos segundos; si no vuelve, cierra la app con el botón PS. La próxima vez
     Forja queda sola a 60 Hz (escribe `/data/ForjaSX2/vm-sin-50hz`). Para volver a probar, borra ese archivo.
   - El registro lo cuenta en las líneas `Output rate:` y `VideoOut: the TV now at ... Hz`.
