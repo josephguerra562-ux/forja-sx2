@@ -35,7 +35,13 @@ jobs:
           echo "$assets"
           grep -q '\.pkg$' <<< "$assets" || { echo "::error::$tag no tiene .pkg"; exit 1; }
           grep -qx 'SHA256SUMS.txt' <<< "$assets" || { echo "::error::$tag no tiene SHA256SUMS.txt"; exit 1; }
-          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --prerelease=false --latest
+          # Forja SX2: the stable release is named after its version, from the package's name (ForjaSX2-Emulador-v1.01.pkg).
+          version=$(grep -oE 'ForjaSX2-Emulador-v[0-9]+\.[0-9]+\.pkg' <<< "$assets" | sed -E 's/.*-v([0-9.]+)\.pkg/\1/' | head -n1 || true)
+          if [ -n "$version" ]; then
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --prerelease=false --latest --title "Forja SX2 v$version"
+          else
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --prerelease=false --latest
+          fi
           estable=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')
           echo "Canal estable: $estable"
           echo "Compilación $NUMERO aprobada. El canal estable ofrece ahora: $estable" >> "$GITHUB_STEP_SUMMARY"

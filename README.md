@@ -5,9 +5,10 @@ viene de [PCSX2](https://github.com/PCSX2/pcsx2), y le suma mejoras de rendimien
 y un actualizador dentro de la app. Está en pruebas: cada juego va distinto y todavía puede haber tirones, cortes de
 audio o cierres.
 
-- **Descargar:** el `.pkg` está en [Releases](https://github.com/josephguerra562-ux/forja-sx2/releases). Las versiones
-  que no dicen "Pre-release" ya se probaron en una PS4 Pro (canal estable). Las "Pre-release" salen solas con cada
-  cambio y nadie las probó todavía (canal de pruebas).
+- **Descargar:** la versión recomendada es la marcada **Latest** en
+  [Releases](https://github.com/josephguerra562-ux/forja-sx2/releases/latest), por ejemplo
+  `ForjaSX2-Emulador-v1.00.pkg`: ya se probó en una PS4 Pro (canal estable). Las "Pre-release" (Forja SX2 v1.01
+  (prueba 38), por ejemplo) salen solas con cada cambio y pueden fallar (canal de pruebas). Puedes bajar la que quieras.
 - **Instalar y usar:** [LEEME_FORJA_SX2.md](LEEME_FORJA_SX2.md) explica la instalación, las carpetas, los controles, los
   ajustes por juego y qué hacer si algo falla.
 - **No incluye BIOS ni juegos.** Necesitas tu propia BIOS de PS2, sacada de tu consola, y tus propias copias de los

@@ -45,6 +45,10 @@ extern std::atomic<bool> g_forja_menu_active;
 #ifndef FORJA_BUILD_NUMBER
 #define FORJA_BUILD_NUMBER 0
 #endif
+#ifndef FORJA_VERSION_MAJOR
+#define FORJA_VERSION_MAJOR 1
+#define FORJA_VERSION_MINOR 0
+#endif
 
 namespace PS4GameMenu
 {
@@ -1724,15 +1728,17 @@ namespace PS4GameMenu
 			image(sidebar_icons[i], 43, y + 12, 34, 34);
 			text(91, y + 37, active ? 19 : 18, active ? white : muted, sidebar_labels[i]);
 		}
-		// Forja SX2: the build number, so a tester sees at a glance whether the new package is the one installed.
-		if (FORJA_BUILD_NUMBER > 0)
+		// Forja SX2: the public version (VERSION) and, in brackets, the build, so a tester sees at a glance whether the new
+		// package is the one installed.
 		{
-			char build_text[32];
-			std::snprintf(build_text, sizeof(build_text), "Compilación %d", FORJA_BUILD_NUMBER);
+			char build_text[48];
+			if (FORJA_BUILD_NUMBER > 0)
+				std::snprintf(build_text, sizeof(build_text), "Versión %d.%02d (%d)", FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR,
+					FORJA_BUILD_NUMBER);
+			else
+				std::snprintf(build_text, sizeof(build_text), "Versión %d.%02d (local)", FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR);
 			text(43, 1023, 16, muted, build_text);
 		}
-		else
-			text(43, 1023, 16, muted, "Compilación local");
 		const size_t total_rows = (s_items.size() + GridColumns - 1) / GridColumns;
 		const size_t selected_row = selected / GridColumns;
 		const size_t max_first_row = total_rows > VisibleRows ? total_rows - VisibleRows : 0;
@@ -1901,7 +1907,7 @@ namespace PS4GameMenu
 			draw->AddRect(point(438, 322), point(1482, 758), IM_COL32(35, 105, 161, 225), 12 * scale, 1.5f * scale, 0);
 			image("menu_logo", 790, 338, 340, 113);
 			char title[64];
-			std::snprintf(title, sizeof(title), "Compilación %d disponible", PS4Release::LatestBuild());
+			std::snprintf(title, sizeof(title), "%s disponible", PS4Release::LatestName().c_str());
 			centered_text(960, 480, 32, white, title);
 			centered_text(960, 520, 18, muted, "Se baja a /data/pkg y se verifica. Después cierra Forja e instálala con GoldHEN.");
 			centered_text(960, 548, 16, muted, "Tus juegos, ajustes y perfiles se quedan como están.");

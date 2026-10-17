@@ -329,7 +329,18 @@ set(FORJA_BUILD_NUMBER "$ENV{GITHUB_RUN_NUMBER}")
 if(NOT FORJA_BUILD_NUMBER MATCHES "^[0-9]+$")
   set(FORJA_BUILD_NUMBER 0)
 endif()
-set_source_files_properties(main.cpp GameMenu.cpp PROPERTIES COMPILE_DEFINITIONS FORJA_BUILD_NUMBER=${FORJA_BUILD_NUMBER})
+# Forja SX2: the public version (VERSION at the repository's root, "1.01"), shown in the library as "Versión 1.01 (38)". The
+# stable releases are named after it (Forja SX2 v1.00); the run number still tells the builds of one version apart.
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/../../VERSION" FORJA_VERSION LIMIT_COUNT 1)
+string(STRIP "${FORJA_VERSION}" FORJA_VERSION)
+if(NOT FORJA_VERSION MATCHES "^([0-9]+)\\.([0-9][0-9])$")
+  message(FATAL_ERROR "VERSION must look like 1.01, not '${FORJA_VERSION}'")
+endif()
+set(FORJA_VERSION_MAJOR "${CMAKE_MATCH_1}")
+string(REGEX REPLACE "^0([0-9])$" "\\1" FORJA_VERSION_MINOR "${CMAKE_MATCH_2}")
+message(STATUS "Forja SX2 version ${FORJA_VERSION_MAJOR}.${FORJA_VERSION_MINOR} build ${FORJA_BUILD_NUMBER}")
+set_source_files_properties(main.cpp GameMenu.cpp PROPERTIES COMPILE_DEFINITIONS
+  "FORJA_BUILD_NUMBER=${FORJA_BUILD_NUMBER};FORJA_VERSION_MAJOR=${FORJA_VERSION_MAJOR};FORJA_VERSION_MINOR=${FORJA_VERSION_MINOR}")
 ps4_link_mesa(vm_boot)
 target_link_libraries(vm_boot PRIVATE glslang glslang-default-resource-limits ryml ps4_audio_resampler ps4_chd
   png jpeg webp z ${PCSX2_ROOT}/ps4/deps/prefix/lib/libzstd.a ${PCSX2_ROOT}/ps4/deps/prefix/lib/liblz4.a

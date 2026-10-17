@@ -41,6 +41,7 @@ namespace
 	std::atomic<unsigned> s_progress{0};
 	std::mutex s_mutex; // guards the strings below
 	std::string s_package_url, s_sums_url, s_package_name, s_message;
+	std::string s_latest_version; // "1.01", from the release's title; empty for the builds named before versions
 
 	// The value of the first "key": "value" pair at or after `from`; npos-safe.
 	bool JsonString(const std::string& json, const char* key, size_t from, std::string& value, size_t* end_out = nullptr)
@@ -84,6 +85,20 @@ namespace
 		return std::atoi(tag.c_str() + dash + 1);
 	}
 
+	// "Forja SX2 v1.01 (prueba 38)" -> "1.01"; empty if the title has no version.
+	std::string VersionFromTitle(const std::string& title)
+	{
+		for (size_t v = title.find('v'); v != std::string::npos; v = title.find('v', v + 1))
+		{
+			size_t end = v + 1;
+			while (end < title.size() && ((title[end] >= '0' && title[end] <= '9') || title[end] == '.'))
+				end++;
+			if (end > v + 1 && title[v + 1] >= '0' && title[v + 1] <= '9' && title.find('.', v + 1) < end)
+				return title.substr(v + 1, end - v - 1);
+		}
+		return {};
+	}
+
 	void SetMessage(const std::string& message)
 	{
 		std::lock_guard lock(s_mutex);
@@ -104,11 +119,15 @@ namespace
 		}
 		const std::string json(bytes.begin(), bytes.end());
 		std::string tag;
-		if (!JsonString(json, "tag_name", 0, tag))
+		size_t tag_end = 0;
+		if (!JsonString(json, "tag_name", 0, tag, &tag_end))
 		{
 			ProbeLog("Release check: channel=%s tag_name missing\n", channel);
 			return nullptr;
 		}
+		// The release's title comes right after its tag in GitHub's answer ("name": "Forja SX2 v1.01 (prueba 38)").
+		std::string title;
+		JsonString(json, "name", tag_end, title);
 		const int latest = BuildFromTag(tag);
 		const int current = s_current_build.load(std::memory_order_relaxed);
 		std::string package_url = AssetUrl(json, ".pkg");
@@ -119,6 +138,7 @@ namespace
 			s_sums_url = sums_url;
 			const size_t slash = package_url.rfind('/');
 			s_package_name = slash == std::string::npos ? std::string() : package_url.substr(slash + 1);
+			s_latest_version = VersionFromTitle(title);
 		}
 		s_latest_build.store(latest, std::memory_order_relaxed);
 		const bool newer = current > 0 && latest > current && !package_url.empty();
@@ -249,7 +269,7 @@ namespace
 		}
 		ProbeLog("Updater: build %d ready at %s (%zu bytes, sha256 %s)\n", latest, final_path.c_str(), received, actual.c_str());
 		s_progress.store(100, std::memory_order_relaxed);
-		SetMessage("Compilación " + std::to_string(latest) + " lista en /data/pkg · instálala con GoldHEN");
+		SetMessage(PS4Release::LatestName() + " lista en /data/pkg · instálala con GoldHEN");
 		s_state.store(PS4Release::DownloadState::Ready, std::memory_order_release);
 		return nullptr;
 	}
@@ -281,6 +301,15 @@ namespace PS4Release
 		return s_latest_build.load(std::memory_order_relaxed);
 	}
 
+	std::string LatestName()
+	{
+		const int build = LatestBuild();
+		std::lock_guard lock(s_mutex);
+		if (s_latest_version.empty())
+			return "Compilación " + std::to_string(build);
+		return "Versión " + s_latest_version + " (" + std::to_string(build) + ")";
+	}
+
 	void StartDownload()
 	{
 		if (!HasUpdate())
@@ -309,12 +338,10 @@ namespace PS4Release
 
 	std::string StatusText()
 	{
-		const int latest = LatestBuild();
 		switch (State())
 		{
 			case DownloadState::Downloading:
-				return "Bajando la compilación " + std::to_string(latest) + ": " +
-				       std::to_string(s_progress.load(std::memory_order_relaxed)) + " %";
+				return "Bajando " + LatestName() + ": " + std::to_string(s_progress.load(std::memory_order_relaxed)) + " %";
 			case DownloadState::Ready:
 			case DownloadState::Failed:
 			{
@@ -322,7 +349,7 @@ namespace PS4Release
 				return s_message;
 			}
 			default:
-				return HasUpdate() ? "Compilación " + std::to_string(latest) + " disponible · OPTIONS para bajarla" : std::string();
+				return HasUpdate() ? LatestName() + " disponible · OPTIONS para bajarla" : std::string();
 		}
 	}
 } // namespace PS4Release

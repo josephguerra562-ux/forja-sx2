@@ -131,10 +131,14 @@ jobs:
           & ./ps4/vm/build-package.ps1 -Toolchain "$env:RUNNER_TEMP/ps4-sdk/windows/openorbis" *> ci-output/package.log
           $packages = @(Get-ChildItem ps4/vm/build/package -Filter '*.pkg' -File)
           if ($packages.Count -ne 1) { throw 'Expected exactly one validated package.' }
-          Copy-Item -LiteralPath $packages[0].FullName -Destination ci-output
+          # Forja SX2: the download is named after the public version (VERSION): ForjaSX2-Emulador-v1.01.pkg.
+          $version = (Get-Content -LiteralPath VERSION -TotalCount 1).Trim()
+          if ($version -notmatch '^\d+\.\d\d$') { throw "VERSION must look like 1.01, not '$version'" }
+          $pkgName = "ForjaSX2-Emulador-v$version.pkg"
+          Copy-Item -LiteralPath $packages[0].FullName -Destination (Join-Path ci-output $pkgName)
           Copy-Item ps4/vm/build/build-info.txt ci-output
           $hash = Get-FileHash -LiteralPath $packages[0].FullName -Algorithm SHA256
-          "$($hash.Hash.ToLowerInvariant())  $($packages[0].Name)" | Set-Content ci-output/SHA256SUMS.txt
+          "$($hash.Hash.ToLowerInvariant())  $pkgName" | Set-Content ci-output/SHA256SUMS.txt
           "Built PS4SX2 from commit $env:GITHUB_SHA. Download the PS4SX2-PKG artifact below." >> $env:GITHUB_STEP_SUMMARY
 
       - name: Upload installable package
@@ -191,10 +195,13 @@ jobs:
         run: |
           set -euo pipefail
           tag="compilacion-${{ github.run_number }}"
+          pkg=$(basename release/*.pkg)
+          version=$(sed -E 's/^ForjaSX2-Emulador-v([0-9]+\.[0-9]+)\.pkg$/\1/' <<< "$pkg")
           {
-            echo "Compilación automática de Forja SX2 (commit ${GITHUB_SHA::7})."
+            echo "**Versión de prueba** de Forja SX2 v$version (compilación ${{ github.run_number }}, commit ${GITHUB_SHA::7})."
+            echo "Sale sola con cada cambio y puede fallar. La versión recomendada para todos es la marcada como **Latest**."
             echo
-            echo "Instalar el .pkg en la PS4 con GoldHEN. Guía: LEEME_FORJA_SX2.md"
+            echo "Instalar \`$pkg\` en la PS4 con GoldHEN. Guía: LEEME_FORJA_SX2.md"
             echo
             echo '```'
             cat release/SHA256SUMS.txt
@@ -202,4 +209,4 @@ jobs:
           } > notas.md
           gh release create "$tag" release/*.pkg release/SHA256SUMS.txt release/vm_boot.sym.gz \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
-            --title "Forja SX2 - compilación ${{ github.run_number }}" --notes-file notas.md
+            --title "Forja SX2 v$version (prueba ${{ github.run_number }})" --notes-file notas.md

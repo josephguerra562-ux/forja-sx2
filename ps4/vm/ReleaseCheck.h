@@ -13,6 +13,8 @@ namespace PS4Release
 	void Start(int current_build);
 	bool HasUpdate();
 	int LatestBuild();
+	// "Versión 1.01 (38)" from the release's title ("Forja SX2 v1.01 ..."), or "Compilación 38" for the older ones.
+	std::string LatestName();
 
 	enum class DownloadState
 	{
@@ -24,6 +26,6 @@ namespace PS4Release
 	// Starts downloading the newest build's package (once at a time). No effect without an update.
 	void StartDownload();
 	DownloadState State();
-	// The library's notice line: "Compilación 32 disponible...", the download's progress, or how it ended.
+	// The library's notice line: "Versión 1.01 (38) disponible...", the download's progress, or how it ended.
 	std::string StatusText();
 }

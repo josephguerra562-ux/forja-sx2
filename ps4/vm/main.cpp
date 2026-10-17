@@ -1758,6 +1758,10 @@ std::atomic<bool> g_forja_menu_active{false};
 #ifndef FORJA_BUILD_NUMBER
 #define FORJA_BUILD_NUMBER 0
 #endif
+#ifndef FORJA_VERSION_MAJOR
+#define FORJA_VERSION_MAJOR 1
+#define FORJA_VERSION_MINOR 0
+#endif
 extern std::atomic<u64> g_forja_gs_vsyncs; // ps4/core/GSRendererPS4.cpp
 
 static void* ForjaWatchdog(void*)
@@ -1852,7 +1856,8 @@ int main()
 	// Live telemetry to PC debug server (reads /data/ForjaSX2/telemetry.conf). Needs proper testing.
 	const bool telemetry_started = PS4Telemetry::Start();
 	// Record entry before module loading, so a stalled re-launch still has a startup marker.
-	ProbeLog("Forja SX2 1.00 (base PS4SX2 1.00) BUILD: FORJASX2-1.00 compilacion=%d\n", FORJA_BUILD_NUMBER);
+	ProbeLog("Forja SX2 %d.%02d (base PS4SX2 1.00) BUILD: FORJASX2-%d.%02d compilacion=%d\n", FORJA_VERSION_MAJOR,
+		FORJA_VERSION_MINOR, FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER);
 	ProbeLog("Telemetry: start=%d\n", telemetry_started ? 1 : 0);
 	PS4Telemetry::Stage("boot");
 	ProbeLog("Telemetry: PC debug server target from /data/ForjaSX2/telemetry.conf (create with 'host=PC_IP port=19423')\n");
