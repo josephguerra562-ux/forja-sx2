@@ -8,7 +8,7 @@
 namespace PS4GameMenu
 {
 	// Forja SX2: rows of the L3+R3 menu, in the order of its tabs (compilation 35: four tabs, as Dolphin groups its quick
-	// menu, instead of one list of fifteen rows).
+	// menu, instead of one list of fifteen rows; compilation 42: a fifth, Parches).
 	enum InGameMenuRow : unsigned
 	{
 		// Partida
@@ -26,6 +26,8 @@ namespace PS4GameMenu
 		ROW_CPU_AUTO,
 		ROW_VIDEO_MODE,
 		ROW_CORES,
+		// Parches (compilation 42): the game's patch groups, one at a time (main.cpp, PublishPatchMenuText)
+		ROW_PATCH,
 		// Sistema
 		ROW_RESET_PROFILE,
 		ROW_LIBRARY,
@@ -33,9 +35,10 @@ namespace PS4GameMenu
 		ROW_COUNT
 	};
 
-	constexpr unsigned TAB_COUNT = 4;
+	constexpr unsigned TAB_COUNT = 5;
+	constexpr unsigned TAB_PATCHES = 3;
 	// The first row of each tab, and ROW_COUNT after the last.
-	constexpr unsigned TAB_FIRST_ROW[TAB_COUNT + 1] = {ROW_RESUME, ROW_RESOLUTION, ROW_EE_RATE, ROW_RESET_PROFILE, ROW_COUNT};
+	constexpr unsigned TAB_FIRST_ROW[TAB_COUNT + 1] = {ROW_RESUME, ROW_RESOLUTION, ROW_EE_RATE, ROW_PATCH, ROW_RESET_PROFILE, ROW_COUNT};
 
 	constexpr unsigned TabOfRow(unsigned row)
 	{

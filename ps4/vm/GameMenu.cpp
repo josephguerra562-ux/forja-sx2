@@ -26,6 +26,7 @@
 #include <orbis/UserService.h>
 #include <algorithm>
 #include <atomic>
+#include <mutex>
 #include <cctype>
 #include <cmath>
 #include <cstdio>
@@ -53,6 +54,21 @@ extern std::atomic<bool> g_forja_menu_active;
 
 namespace PS4GameMenu
 {
+	// Forja SX2 (compilation 42): the Parches row's text, from the CPU thread (SetPatchMenuText) to the GS thread's render.
+	namespace
+	{
+		std::mutex s_patch_text_mutex;
+		std::string s_patch_label = "Parches";
+		std::string s_patch_description;
+	} // namespace
+
+	void SetPatchMenuText(const std::string& label, const std::string& description)
+	{
+		std::lock_guard lock(s_patch_text_mutex);
+		s_patch_label = label;
+		s_patch_description = description;
+	}
+
 	namespace
 	{
 		constexpr const char* Directory = "/data/ForjaSX2/roms";
@@ -1547,9 +1563,16 @@ namespace PS4GameMenu
 				std::snprintf(load_description, sizeof(load_description), "%s",
 					menu_state.slot_used ? "X: vuelve a ese momento y sigue jugando" : "Ranura vacía");
 			// Each row's text by its name, not by its place: the rows moved into tabs in compilation 35.
+			std::string patch_label, patch_description;
+			{
+				std::lock_guard lock(s_patch_text_mutex);
+				patch_label = s_patch_label;
+				patch_description = s_patch_description;
+			}
 			const auto label_of = [&](unsigned row) -> const char* {
 				switch (row)
 				{
+					case ROW_PATCH: return patch_label.c_str();
 					case ROW_RESUME: return "Volver al juego";
 					case ROW_SAVE_STATE: return save_label;
 					case ROW_LOAD_STATE: return load_label;
@@ -1570,6 +1593,7 @@ namespace PS4GameMenu
 			const auto description_of = [&](unsigned row) -> const char* {
 				switch (row)
 				{
+					case ROW_PATCH: return patch_description.c_str();
 					case ROW_RESUME: return "Seguir jugando desde donde quedó";
 					case ROW_SAVE_STATE: return save_description;
 					case ROW_LOAD_STATE: return load_description;
@@ -1636,6 +1660,11 @@ namespace PS4GameMenu
 						draw->AddCircle(ip(0, 4), 14.0f * scale, icon_line, 28, lw);
 						draw->AddLine(ip(0, 4), ip(8, -6), icon_line, lw);
 						break;
+					case ROW_PATCH: // a bandage
+						draw->AddRect(ip(-15, -7), ip(15, 7), icon_line, 7 * scale, lw, 0);
+						draw->AddLine(ip(-4, -7), ip(-4, 7), icon_line, lw);
+						draw->AddLine(ip(4, -7), ip(4, 7), icon_line, lw);
+						break;
 					case ROW_CPU_AUTO: // the gauge with an arrow going down and up
 						draw->AddCircle(ip(0, 4), 14.0f * scale, icon_line, 28, lw);
 						draw->AddLine(ip(0, 4), ip(-8, -6), icon_line, lw);
@@ -1675,7 +1704,7 @@ namespace PS4GameMenu
 			};
 			// Forja SX2 (compilation 35): the rows in four tabs, as Dolphin's quick menu (Joseph, 2026-10-16: one list of fifteen
 			// rows was hard to follow). L1/R1 move between the tabs (main.cpp); each tab fits without scrolling.
-			static constexpr const char* tab_names[TAB_COUNT] = {"Partida", "Imagen", "Rendimiento", "Sistema"};
+			static constexpr const char* tab_names[TAB_COUNT] = {"Partida", "Imagen", "Rendimiento", "Parches", "Sistema"};
 			const unsigned active_tab = TabOfRow(selected_row);
 			draw->AddText(font, 20.0f * scale, point(112, 198), muted, "L1");
 			float tab_x = 152.0f;
@@ -1709,6 +1738,8 @@ namespace PS4GameMenu
 					action = "AJUSTAR";
 				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN)
 					action = "ELEGIR";
+				else if (row == ROW_PATCH)
+					action = "ELEGIR  ·  X";
 				else if (row == ROW_OVERLAY)
 					action = "CAMBIAR";
 				else if (row == ROW_SAVE_STATE || (row == ROW_LOAD_STATE && menu_state.slot_used))

@@ -1,37 +1,47 @@
 # Forja SX2
 
-Emulador de PlayStation 2 para PS4 con GoldHEN. Sale de [PS4SX2](https://github.com/Phoenixx1202/PS4SX2), que a su vez
-viene de [PCSX2](https://github.com/PCSX2/pcsx2), y le suma mejoras de rendimiento, perfiles por juego, estados guardados
-y un actualizador dentro de la app. Está en pruebas: cada juego va distinto y todavía puede haber tirones, cortes de
-audio o cierres.
+PlayStation 2 emulator for jailbroken PS4 consoles (GoldHEN). It is based on [PS4SX2](https://github.com/Phoenixx1202/PS4SX2),
+which comes from [PCSX2](https://github.com/PCSX2/pcsx2), and adds performance work, per-game profiles, save states, frame
+generation, PS2 DVD copying and an in-app updater. It is still in testing: every game behaves differently, and there can be
+stutters, audio dropouts or crashes.
 
-- **Descargar:** la versión recomendada es la marcada **Latest** en
-  [Releases](https://github.com/josephguerra562-ux/forja-sx2/releases/latest), por ejemplo
-  `ForjaSX2-Emulador-v1.00.pkg`: ya se probó en una PS4 Pro (canal estable). Las "Pre-release" (Forja SX2 v1.01
-  (prueba 38), por ejemplo) salen solas con cada cambio y pueden fallar (canal de pruebas). Puedes bajar la que quieras.
-- **Instalar y usar:** [LEEME_FORJA_SX2.md](LEEME_FORJA_SX2.md) explica la instalación, las carpetas, los controles, los
-  ajustes por juego y qué hacer si algo falla.
-- **No incluye BIOS ni juegos.** Necesitas tu propia BIOS de PS2, sacada de tu consola, y tus propias copias de los
-  juegos. No pidas ni compartas esos archivos aquí.
+- **Download:** the recommended version is the one marked **Latest** in
+  [Releases](https://github.com/josephguerra562-ux/forja-sx2/releases/latest), for example `ForjaSX2-Emulador-v1.00.pkg`.
+  It has been tested on a PS4 Pro (stable channel). The "Pre-release" builds (such as "Forja SX2 v1.01 (prueba 41)") are
+  published automatically with every change and may break (testing channel). You can download whichever you like.
+- **Install and use:** the full guide is in Spanish, [LEEME_FORJA_SX2.md](LEEME_FORJA_SX2.md) (installation, folders,
+  controls, per-game settings and troubleshooting). The app's menus are in Spanish.
+- **No BIOS or games are included.** You need your own PS2 BIOS, dumped from your console, and your own copies of your
+  games. Please do not ask for or share those files here.
 
-Es un proyecto independiente, sin relación con Sony ni con el equipo de PCSX2. Los créditos están [al final](#credits).
+This is an independent project, not affiliated with Sony or the PCSX2 team. Credits are [at the end](#credits).
 
-## Compatibilidad
+## Compatibility
 
-Medido en una PS4 Pro con el Modo optimizado activado, en 1x, salvo que se diga otra cosa. Los ajustes recomendados ya vienen en
-el perfil de fábrica de cada juego (`resources/perfiles/`), y lo que cambies en el menú L3+R3 manda sobre ellos.
+Measured on a PS4 Pro with Boost Mode on, at 1x internal resolution unless stated otherwise. The recommended settings ship
+in each game's factory profile (`resources/perfiles/`); whatever you change in the L3+R3 menu overrides them.
 
-| Estado | Juego | Región | Cómo va | Ajustes de fábrica |
+| Status | Game | Region | How it runs | Factory settings |
 |---|---|---|---|---|
-| Jugable | God of War II | PAL (SCES-54206) | Zonas normales a 100 % (50 FPS). Las peleas más pesadas (el Coloso de Rodas, muchos enemigos) van al 60-85 %, limitadas por el VU1. Promedio de una partida de 13 min: 87 %. | vuFlagHack, Plan B de núcleos, saltar cinemáticas, CPU de la PS2 al 27 % (98 % de velocidad media, compilación 36). Opcionales: "Menos efectos 2 y 3 (Sony)". |
-| Jugable | Tales of the Abyss | USA (SLUS-21386) | Jugando, 93-100 %. Cinemáticas ~78 % (23 FPS) sin modo video. | CPU de la PS2 al 100 %, núcleos normales. |
-| Jugable | Mega Man X Command Mission | USA (SLUS-20903) | Versión de 30 FPS: 30 FPS fijos, incluso a 4x. La intro va al 80-90 % con el modo video. | Clamp normal del VU1. |
+| Playable | God of War II | PAL (SCES-54206) | With the PS2 CPU at 27 %: 98 % average speed, full speed 83 % of the time. At 100 % CPU the heaviest fights (Colossus of Rhodes, many enemies) run at 60-85 %, limited by the VU1. | vuFlagHack, cores "Plan B", skip cutscenes, PS2 CPU at 27 %, "Fluid" frame generation. Optional: "Menos efectos 2 y 3 (Sony)" (fewer effects). |
+| Playable | Tales of the Abyss | USA (SLUS-21386) | Gameplay 93-100 %. Cutscenes ~78 % (23 FPS) without video mode. | PS2 CPU at 100 %, normal cores. |
+| Playable | Mega Man X Command Mission | USA (SLUS-20903) | 30 FPS version: locked 30 FPS, even at 4x. The intro runs at 80-90 % with video mode. | Normal VU1 clamping. |
 
-¿Probaste otro juego? Abre un issue con el juego, su región y su serial, cómo fue (FPS y velocidad del contador) y la carpeta
-`logs/sesiones` de esa partida.
+Tried another game? Open an issue with the game, its region and serial, how it ran (FPS and speed from the overlay) and that
+session's `logs/sesiones` folder.
 
-> La documentación técnica de abajo viene de PS4SX2 y está en inglés. En Forja SX2 las carpetas están en
-> `/data/ForjaSX2/` y la guía de uso al día es [LEEME_FORJA_SX2.md](LEEME_FORJA_SX2.md).
+## Reporting a problem
+
+Open an [issue](https://github.com/josephguerra562-ux/forja-sx2/issues/new/choose) and include:
+
+1. **Console model** (CUH-xxxx; PS4 Fat, Slim or Pro) and **firmware** (for example 9.00 or 11.00), and your GoldHEN version.
+2. **Forja SX2 version** (bottom left of the library, for example "Versión 1.01 (41)").
+3. **What happens:** the app doesn't open, the game closes, black screen, slow... and any error code the PS4 shows (CE-xxxxx-x).
+4. **The logs:** the `/data/ForjaSX2/logs` folder (via FTP). If the app closes before the library appears, that folder still
+   shows how far it got.
+
+> The technical documentation below comes from PS4SX2. In Forja SX2 the folders are under `/data/ForjaSX2/`, and the up to
+> date user guide (in Spanish) is [LEEME_FORJA_SX2.md](LEEME_FORJA_SX2.md).
 
 ## Features
 
@@ -45,7 +55,7 @@ el perfil de fábrica de cada juego (`resources/perfiles/`), y lo que cambies en
 - Memory cards, shader caching, session logs and release notifications.
 - Live PC telemetry with a browser dashboard and FTP tools.
 
-The application interface is in English. BIOS files, games and user saves are not included. Physical CD media and disc swapping are not currently supported. Save states and complete desktop PCSX2 feature parity are not available.
+Forja SX2's menus are in Spanish. BIOS files, games and user saves are not included. The PS4's drive reads DVDs only, so PS2 CD games can't be played or copied from disc, and disc swapping isn't supported. Save states are available (L3+R3); complete desktop PCSX2 feature parity is not.
 
 ## Installation and console setup
 

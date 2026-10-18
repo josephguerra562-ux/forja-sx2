@@ -50,6 +50,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
   - **Partida:** volver al juego, guardar estado, cargar estado y reiniciar el juego.
   - **Imagen:** resolución interna, relación de aspecto, generación de cuadros y contador de FPS.
   - **Rendimiento:** velocidad del CPU de la PS2, **CPU automático**, modo video y núcleos.
+  - **Parches** (desde la 42): los parches de ese juego, uno por uno. ←/→ elige, **X** lo pone o lo quita y se guarda para
+    ese juego. Algunos piden reiniciar el juego para quitarse del todo.
   - **Sistema:** restablecer los ajustes del juego, volver a la biblioteca y salir.
 - **Todo lo que cambies en L3+R3 se guarda solo para ese juego** (como las propiedades por juego de Dolphin), menos el
   contador de FPS. Se aplica al instante:
@@ -161,7 +163,16 @@ Lo que diga este archivo **manda sobre** los interruptores generales, solo para 
 
 ## 5. Parches (`patches/`)
 Archivo `SERIAL_CRC.pnach` (mismo nombre que el .ini pero con `.pnach`), en formato de PCSX2.
-Sirve para pantalla ancha, 60 FPS o trucos.
+Sirve para pantalla ancha, 60 FPS o trucos. **Desde la 42 se ponen y se quitan en L3+R3 > Parches**, sin editar archivos.
+
+**Cómo sabe Forja que un parche es de tu juego:** por el serial del disco y el CRC del programa del juego, que van en el
+nombre del archivo (`SCES-54206_44A8A22A`). Otra región u otra versión tiene otro CRC, así que no carga parches ajenos.
+
+**Parches de la comunidad de PCSX2 (desde la 42):** al empezar un juego, Forja baja de
+[github.com/PCSX2/pcsx2_patches](https://github.com/PCSX2/pcsx2_patches) el archivo de ese juego exacto a
+`patches/<SERIAL>_<CRC>_comunidad.pnach` (pantalla ancha, sin entrelazado, saltar videos...). Necesita internet y lo vuelve
+a bajar a los 7 días. Ninguno se activa solo: los eliges en L3+R3 > Parches. No vienen dentro del PKG porque ese repositorio
+no tiene licencia; los baja tu consola desde su fuente. `vm-sin-parches-comunidad` apaga la descarga.
 
 **Parches que vienen en el PKG** (desde la 35, en `resources/parches/`). Por ahora son para God of War II (PAL):
 - **Saltar cinemáticas** (de la comunidad): con cualquier botón de acción. Viene activo de fábrica.

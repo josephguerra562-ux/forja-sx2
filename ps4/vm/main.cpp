@@ -17,6 +17,8 @@
 #include "common/MemorySettingsInterface.h"
 #include "INISettingsInterface.h"
 #include "ForjaGameProfile.h"
+#include "Patch.h"
+#include "PatchDownload.h"
 #include "GameList.h"
 #include "PerformanceMetrics.h"
 #include "common/Timer.h"
@@ -372,6 +374,76 @@ static unsigned CoresMenuValue()
 	return 3;
 }
 
+// Forja SX2 (compilation 42): the L3+R3 menu's Parches tab. The game's patch groups (the player's file, the package's and the
+// community's, Patch::GetPatchInfo), one at a time: Left/Right pick, X turns it on or off in the player's profile ([Patches]
+// Enable, and Disable so a factory profile's can be turned off too).
+static std::vector<Patch::PatchInfo> s_patch_infos;
+static std::vector<std::string> s_patch_enabled, s_patch_disabled;
+static unsigned s_patch_index = 0;
+static u32 s_patch_fetch_crc = 0;
+
+static bool PatchIsOn(const std::string& name)
+{
+	return std::find(s_patch_enabled.begin(), s_patch_enabled.end(), name) != s_patch_enabled.end() &&
+	       std::find(s_patch_disabled.begin(), s_patch_disabled.end(), name) == s_patch_disabled.end();
+}
+
+static void PublishPatchMenuText()
+{
+	if (s_patch_infos.empty())
+	{
+		PS4GameMenu::SetPatchMenuText("Parches:  ninguno para este juego",
+			"Al empezar un juego se bajan los de la comunidad de PCSX2 (con internet). Los tuyos van en /data/ForjaSX2/patches");
+		return;
+	}
+	const Patch::PatchInfo& patch = s_patch_infos[s_patch_index];
+	const bool on = PatchIsOn(patch.name);
+	char label[256];
+	std::snprintf(label, sizeof(label), "Parche %u de %zu:  < %s >  %s", s_patch_index + 1, s_patch_infos.size(), patch.name.c_str(),
+		on ? "Sí" : "No");
+	std::string description = patch.description.empty() ? std::string("Sin descripción") : patch.description;
+	if (!patch.author.empty())
+		description += "  ·  " + patch.author;
+	description += on ? "  ·  X: quitar (algunos piden reiniciar el juego)" : "  ·  X: poner";
+	if (description.size() > 180)
+		description = description.substr(0, 177) + "...";
+	PS4GameMenu::SetPatchMenuText(label, description);
+}
+
+static void ReloadPatchMenu()
+{
+	const std::string serial = VMManager::GetDiscSerial();
+	const u32 crc = VMManager::GetDiscCRC();
+	s_patch_infos = crc != 0 ? Patch::GetPatchInfo(serial, crc, false, false, nullptr) : std::vector<Patch::PatchInfo>{};
+	s_patch_enabled = Host::GetStringListSetting(Patch::PATCHES_CONFIG_SECTION, Patch::PATCH_ENABLE_CONFIG_KEY);
+	s_patch_disabled = Host::GetStringListSetting(Patch::PATCHES_CONFIG_SECTION, Patch::PATCH_DISABLE_CONFIG_KEY);
+	if (s_patch_index >= s_patch_infos.size())
+		s_patch_index = 0;
+	PublishPatchMenuText();
+}
+
+template <typename Edit>
+static void SavePlayerProfile(const char* what, Edit&& edit, bool reload_pcsx2);
+
+static void TogglePatch()
+{
+	if (s_patch_infos.empty())
+		return;
+	const std::string name = s_patch_infos[s_patch_index].name;
+	const bool turning_on = !PatchIsOn(name);
+	std::vector<std::string> enabled = s_patch_enabled, disabled = s_patch_disabled;
+	enabled.erase(std::remove(enabled.begin(), enabled.end(), name), enabled.end());
+	disabled.erase(std::remove(disabled.begin(), disabled.end(), name), disabled.end());
+	(turning_on ? enabled : disabled).push_back(name);
+	SavePlayerProfile("Patches", [enabled, disabled](INISettingsInterface& ini) {
+		ini.SetStringList(Patch::PATCHES_CONFIG_SECTION, Patch::PATCH_ENABLE_CONFIG_KEY, enabled);
+		ini.SetStringList(Patch::PATCHES_CONFIG_SECTION, Patch::PATCH_DISABLE_CONFIG_KEY, disabled);
+	}, true);
+	VMManager::ReloadPatches(false, true, false, true);
+	ProbeLog("Patches: \"%s\" %s\n", name.c_str(), turning_on ? "on" : "off");
+	ReloadPatchMenu();
+}
+
 static void PublishGameMenu()
 {
 	PS4GameMenu::InGameMenuState state;
@@ -707,6 +779,18 @@ static void UpdateGameProfile(double elapsed)
 		return;
 	s_profile_last_check = elapsed;
 	const u32 crc = VMManager::GetDiscCRC();
+	// Forja SX2 (compilation 42): the community's patches for this disc, fetched in the background; once they arrive, the
+	// patches are read again (they stay off until the player turns them on in L3+R3 > Parches).
+	if (crc != 0 && crc != s_patch_fetch_crc)
+	{
+		s_patch_fetch_crc = crc;
+		ForjaPatches::FetchCommunity(VMManager::GetDiscSerial(), crc);
+	}
+	if (ForjaPatches::TakeArrived())
+	{
+		VMManager::ReloadPatches(true, true, false, true);
+		ProbeLog("Community patches: reloaded\n");
+	}
 	if (crc == 0 || crc == s_profile.crc)
 		return;
 	const std::string serial = VMManager::GetDiscSerial();
@@ -722,6 +806,16 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 {
 	switch (row)
 	{
+		case PS4GameMenu::ROW_PATCH:
+		{
+			if (!s_patch_infos.empty())
+			{
+				const int count = static_cast<int>(s_patch_infos.size());
+				s_patch_index = static_cast<unsigned>((static_cast<int>(s_patch_index) + delta % count + count) % count);
+				PublishPatchMenuText();
+			}
+			break;
+		}
 		case PS4GameMenu::ROW_RESOLUTION:
 		{
 			const unsigned requested = static_cast<unsigned>(std::clamp(static_cast<int>(s_game_upscale) + delta,
@@ -1076,6 +1170,7 @@ void VMHostPoll()
 		s_game_menu_selection = 0;
 		s_state_action = PS4GameMenu::STATE_NONE;
 		RefreshStateSlot();
+		ReloadPatchMenu(); // Forja SX2 (compilation 42): the Parches tab
 		// The game's own rate, not the one a movie (video mode) or the automatic speed lowered it to.
 		s_game_ee_rate = s_cpu_auto_steps > 0 ? s_cpu_auto_base : s_video_active ? s_video_saved_rate : EmuConfig.Speedhacks.EECycleRate;
 		s_game_menu_direction = 0;
@@ -1171,7 +1266,8 @@ void VMHostPoll()
 		// profile on its row.
 		if (confirm && (row == PS4GameMenu::ROW_OVERLAY || row == PS4GameMenu::ROW_VIDEO_MODE || row == PS4GameMenu::ROW_FRAME_GEN ||
 						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_CPU_AUTO || row == PS4GameMenu::ROW_RESET_PROFILE ||
-						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART))
+						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART ||
+						   row == PS4GameMenu::ROW_PATCH))
 		{
 			if (row == PS4GameMenu::ROW_SAVE_STATE)
 				SaveGameState();
@@ -1194,6 +1290,8 @@ void VMHostPoll()
 				if (s_profile.has_player)
 					ResetGameProfile();
 			}
+			else if (row == PS4GameMenu::ROW_PATCH)
+				TogglePatch();
 			else
 				ChangeGameMenuRow(row, 1);
 			PublishGameMenu();
@@ -1236,7 +1334,8 @@ void VMHostPoll()
 				s_state_action = PS4GameMenu::STATE_NONE;
 				RefreshStateSlot();
 			}
-			else if (PS4GameMenu::TabOfRow(row) == 1 || PS4GameMenu::TabOfRow(row) == 2) // Imagen and Rendimiento
+			else if (PS4GameMenu::TabOfRow(row) == 1 || PS4GameMenu::TabOfRow(row) == 2 ||
+					 PS4GameMenu::TabOfRow(row) == PS4GameMenu::TAB_PATCHES) // Imagen, Rendimiento and Parches
 				ChangeGameMenuRow(row, navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1);
 			PublishGameMenu();
 		}

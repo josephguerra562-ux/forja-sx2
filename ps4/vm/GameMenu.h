@@ -16,4 +16,7 @@ namespace PS4GameMenu
 	void HideLoading();
 	// CPU thread: publish the pause panel and request a presentation while paused (a state with visible = false hides it).
 	void SetInGameMenu(const InGameMenuState& state);
+	// CPU thread (compilation 42): the Parches tab's row, which the u64 state can't carry: "Parche 1 de 3:  < name >  Sí" and its
+	// description.
+	void SetPatchMenuText(const std::string& label, const std::string& description);
 } // namespace PS4GameMenu
