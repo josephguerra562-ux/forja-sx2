@@ -12,6 +12,7 @@
 #include "common/BitUtils.h"
 #include "common/StringUtil.h"
 #include <bit>
+#include <unistd.h>
 // PS5 port (vk-285-107): this file's printf/fflush(stdout) go to the deferred log (OrbisDeferredLog.h), which the
 // ticker thread writes out: the [gsout] line's printf+fflush every 200 frames left the GS thread asleep ~33 ms in a
 // write now and then (vk-285-106's [vsslow], the "output" phase).
@@ -2791,7 +2792,7 @@ static inline void OrbisDrawProfRead()
 	if (!s_orbis_drawprof_read)
 	{
 		s_orbis_drawprof_read = true;
-		s_orbis_drawprof = OrbisFlag("drawprof");
+		s_orbis_drawprof = OrbisFlag("drawprof") || access("/data/ForjaSX2/vm-drawprof", F_OK) == 0; // Forja SX2 (compilation 47)
 		s_orbis_decal_modulate = OrbisFlag("decal_modulate"); // vk-285-118
 	}
 }
@@ -2917,8 +2918,13 @@ struct OrbisHwDrawTimer
 	}
 };
 
+// Forja SX2 (compilation 47): set while "Saltar cuadros" leaves a frame of the game out (ps4/core/GSRendererPS4.cpp, VSync).
+extern bool g_forja_gs_skip_drawing;
+
 void GSRendererHW::Draw()
 {
+	if (g_forja_gs_skip_drawing) [[unlikely]]
+		return;
 	PS4_GS_SCOPE(HWDraw);
 	OrbisHwDrawTimer orbis_hwdraw_timer;
 	g_orbis_ctx = m_context; g_orbis_tme = PRIM->TME; g_orbis_prim = (unsigned)m_vt.m_primclass; g_orbis_verts = (unsigned)m_index->tail;

@@ -222,6 +222,15 @@ static double s_cpu_auto_last_check = 0.0;
 static double s_cpu_auto_last_change = -100.0;
 static unsigned s_cpu_auto_slow_checks = 0;
 static unsigned s_cpu_auto_room_checks = 0;
+// Forja SX2 (compilation 47): "Saltar cuadros" (UpdateGsSkip). mode: 0 off, 1 auto, 2 always; the GS reads the atomic.
+extern std::atomic<bool> g_forja_gs_skip_active;     // ps4/core/GSRendererPS4.cpp
+extern std::atomic<unsigned> g_forja_gs_skipped_frames;
+static int s_gs_skip_mode = 0;
+static double s_gs_skip_last_check = 0.0;
+static double s_gs_skip_last_change = -100.0;
+static double s_gs_skip_last_report = 0.0;
+static unsigned s_gs_skip_slow_checks = 0;
+static unsigned s_gs_skip_room_checks = 0;
 // Forja SX2 (compilation 37): the TV at 50 Hz for PAL games (UpdateOutputRate); vm-sin-50hz turns it off.
 static bool s_output_50hz_enabled = true;
 static double s_output_last_check = 0.0;
@@ -769,9 +778,9 @@ static void ChangeToSelectedDisc()
 // when it changed, so where a session started was a guess).
 static void LogGameSettings(const char* why)
 {
-	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s]\n", why,
+	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
-		s_game_sharpness, s_game_textures, Vu1SkipList().c_str());
+		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode);
 }
 
 static void PublishGameMenu()
@@ -799,6 +808,9 @@ static void PublishGameMenu()
 	state.cpu_auto = static_cast<unsigned>(-s_cpu_auto_floor);
 	state.cpu_auto_steps = static_cast<unsigned>(s_cpu_auto_steps);
 	state.cpu_auto_origin = static_cast<unsigned>(s_profile.cpu_auto_origin);
+	state.gs_skip = static_cast<unsigned>(s_gs_skip_mode);
+	state.gs_skip_active = g_forja_gs_skip_active.load(std::memory_order_relaxed);
+	state.gs_skip_origin = static_cast<unsigned>(s_profile.gs_skip_origin);
 	PS4GameMenu::SetInGameMenu(state);
 }
 
@@ -872,6 +884,16 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	g_orbis_fg_fluid = frame_gen == 2;
 	// Compilation 45: a game without its own CpuAuto (player or factory) takes the Settings page's.
 	s_cpu_auto_floor = s_profile.cpu_auto_origin == ForjaGameProfile::Origin::Global ? s_global_cpu_auto : s_profile.cpu_auto;
+	// Compilation 47: "Saltar cuadros". Always on at 2; auto (1) starts off and UpdateGsSkip turns it on when the GS holds the game back.
+	{
+		const int gs_skip = s_profile.gs_skip >= 0 ? s_profile.gs_skip : 0;
+		if (gs_skip != s_gs_skip_mode)
+		{
+			s_gs_skip_mode = gs_skip;
+			s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
+			g_forja_gs_skip_active.store(gs_skip == 2, std::memory_order_relaxed);
+		}
+	}
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
 	ApplyVu1SkipList(s_profile.vu1_skip); // compilation 44: the VU1 filter
 	ProbeLog("Game profile: %s %08X factory=%d player=%d video_mode=%d (%s) video_ee_rate=%d (%s) frame_gen=%d (%s) "
@@ -1083,6 +1105,51 @@ static void SetCpuAutoRate(int rate, const char* why, double speed, double busie
 		busiest, before, rate, s_cpu_auto_base, s_cpu_auto_floor);
 }
 
+// Forja SX2 (compilation 47): "Saltar cuadros" on auto. When the GS thread is what holds the game back (the busiest one, at 90 %
+// or more, with the speed under 92 % for ~3 s), the GS draws every other frame of the game (GSRendererPS4.cpp, VSync): the
+// game keeps its speed, its music and its moves, with half the GS work. It draws them all again after ~8 s at full speed
+// with the GS under 45 % (drawing every frame it would stay under 90 %). Dragon Ball Z Budokai Tenkaichi 4 (2026-10-18):
+// ~2,100 draws a frame in its fights, 25 us each for the PS4's CPU, 31 ms a vsync for the GS, 48 % speed.
+static void UpdateGsSkip(double elapsed)
+{
+	if (s_gs_skip_mode == 0)
+		return;
+	if (elapsed - s_gs_skip_last_report >= 5.0)
+	{
+		if (const unsigned skipped = g_forja_gs_skipped_frames.exchange(0, std::memory_order_relaxed))
+			ProbeLog("GS skip: %u frames of the game not drawn in the last %.0f s\n", skipped, elapsed - s_gs_skip_last_report);
+		s_gs_skip_last_report = elapsed;
+	}
+	if (s_gs_skip_mode != 1 || s_video_active || elapsed - s_gs_skip_last_check < 0.5)
+		return;
+	s_gs_skip_last_check = elapsed;
+	const double speed = PerformanceMetrics::GetSpeed();
+	const double gs = PerformanceMetrics::GetGSThreadUsage();
+	const double others = std::max(PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()));
+	const bool active = g_forja_gs_skip_active.load(std::memory_order_relaxed);
+	if (!active)
+		s_gs_skip_slow_checks = (speed < 92.0 && gs >= 90.0 && gs >= others) ? s_gs_skip_slow_checks + 1 : 0;
+	else
+		s_gs_skip_room_checks = (speed >= 98.0 && gs < 45.0) ? s_gs_skip_room_checks + 1 : 0;
+	if (elapsed - s_gs_skip_last_change < 6.0)
+		return;
+	if (!active && s_gs_skip_slow_checks >= 6)
+	{
+		g_forja_gs_skip_active.store(true, std::memory_order_relaxed);
+		ProbeLog("GS skip: on at %.0f %% speed (GS %.0f %%, EE/VU1 %.0f %%): one frame in two\n", speed, gs, others);
+	}
+	else if (active && s_gs_skip_room_checks >= 16)
+	{
+		g_forja_gs_skip_active.store(false, std::memory_order_relaxed);
+		ProbeLog("GS skip: off at %.0f %% speed (GS %.0f %% drawing half): every frame again\n", speed, gs);
+	}
+	else
+		return;
+	s_gs_skip_last_change = elapsed;
+	s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
+	PublishGameMenu();
+}
+
 static void UpdateCpuAuto(double elapsed)
 {
 	if (s_video_active)
@@ -1274,6 +1341,13 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			SavePlayerProfile("CPU auto", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "CpuAuto", -next); }, false);
 			break;
 		}
+		case PS4GameMenu::ROW_GS_SKIP:
+		{
+			// No, auto, one frame in two ([Forja] SaltarCuadros 0, 1, 2; compilation 47). ApplyGameProfile takes it from the file.
+			const int next = (s_gs_skip_mode + delta + 3) % 3;
+			SavePlayerProfile("GS skip", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "SaltarCuadros", next); }, false);
+			break;
+		}
 		case PS4GameMenu::ROW_CORES:
 		{
 			constexpr int count = static_cast<int>(std::size(CORE_PLANS));
@@ -1397,6 +1471,7 @@ void VMHostPoll()
 		UpdateGameProfile(elapsed);
 		UpdateVideoMode(elapsed);
 		UpdateCpuAuto(elapsed);
+		UpdateGsSkip(elapsed);
 		UpdateOutputRate(elapsed);
 	}
 	// (AI-assisted) Verbose 1s heartbeat when paused/menu open, 5s otherwise. Needs proper testing.
@@ -1667,6 +1742,7 @@ void VMHostPoll()
 		if (confirm && (row == PS4GameMenu::ROW_OVERLAY || row == PS4GameMenu::ROW_VIDEO_MODE || row == PS4GameMenu::ROW_FRAME_GEN ||
 						   row == PS4GameMenu::ROW_SHARPNESS ||
 						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_CPU_AUTO || row == PS4GameMenu::ROW_RESET_PROFILE ||
+						   row == PS4GameMenu::ROW_GS_SKIP ||
 						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART ||
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_TEXTURES ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC))
@@ -2077,6 +2153,7 @@ static void* RunVM(void*)
 			ProbeLog("Game profile: scanned %s -> %s %08X in %.0f ms\n", s_selected_game.c_str(), serial.empty() ? "(no serial)" : serial.c_str(),
 				crc, Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - scan_start));
 			s_cpu_auto_steps = 0;
+			s_gs_skip_mode = -1; // compilation 47: a new game starts drawing every frame (ApplyGameProfile sets it again)
 			ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
 			RepinWorkersForProfile();
 		}

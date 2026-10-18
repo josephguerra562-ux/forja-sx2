@@ -37,6 +37,15 @@
 
 static void DumpGSPrivRegs(const GSPrivRegSet& r, const std::string& filename);
 
+// Forja SX2 (compilation 47): "Saltar cuadros" (ps4/vm/main.cpp, UpdateGsSkip, turns it on and off). While it is on, the GS
+// draws every other frame of the game: GSRendererHW::Draw returns at once while g_forja_gs_skip_drawing is set, and the TV
+// keeps the last frame drawn (the skipped one is never presented). The game, its music and its speed stay whole.
+std::atomic<bool> g_forja_gs_skip_active{false};
+std::atomic<unsigned> g_forja_gs_skipped_frames{0};
+bool g_forja_gs_skip_drawing = false; // GS thread only
+static bool s_forja_showing_skipped = false;
+static unsigned s_forja_vsyncs_since_frame = 0;
+
 static constexpr std::array<PresentShader, 8> s_tv_shader_indices = {
 	PresentShader::COPY, PresentShader::SCANLINE,
 	PresentShader::DIAGONAL_FILTER, PresentShader::TRIANGULAR_FILTER,
@@ -742,6 +751,34 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 	}
 
 #endif
+	// Forja SX2 (compilation 47): "Saltar cuadros". A new frame of the game is a write of the privileged registers (GS-reg, the
+	// way God of War II and Dragon Ball announce theirs); a game that announces them with a blit draws everything. At each new
+	// frame, the one just shown is hidden if its draws were skipped, and the next one is drawn or skipped in turn. When it is
+	// turned off, the frame being skipped is still hidden at its turn, so no half-drawn frame reaches the TV.
+	{
+		const bool forja_want = g_forja_gs_skip_active.load(std::memory_order_relaxed) &&
+			PerformanceMetrics::GetInternalFPSMethod() == PerformanceMetrics::InternalFPSMethod::GSPrivilegedRegister;
+		if (forja_want || g_forja_gs_skip_drawing || s_forja_showing_skipped)
+		{
+			if (registers_written)
+			{
+				s_forja_showing_skipped = g_forja_gs_skip_drawing;
+				g_forja_gs_skip_drawing = forja_want && !g_forja_gs_skip_drawing;
+				s_forja_vsyncs_since_frame = 0;
+				if (s_forja_showing_skipped)
+					g_forja_gs_skipped_frames.fetch_add(1, std::memory_order_relaxed);
+			}
+			else if (++s_forja_vsyncs_since_frame > 8)
+			{
+				// No new frame for a while (loading, a pause, a movie): draw everything until the next one.
+				g_forja_gs_skip_drawing = false;
+				s_forja_showing_skipped = false;
+			}
+			if (s_forja_showing_skipped)
+				skip_frame = true;
+		}
+	}
+
 	const bool blank_frame = !Merge(field);
 
 	m_last_draw_n = s_n;

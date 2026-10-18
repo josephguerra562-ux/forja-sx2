@@ -33,6 +33,7 @@
 #endif
 #include "PerformanceMetrics.h"
 #include "Patch.h"
+#include "ForjaAlchemy.h"
 #include "R3000A.h"
 #include "R5900.h"
 #include "Recording/InputRecording.h"
@@ -3051,6 +3052,9 @@ void VMManager::Internal::EntryPointCompilingOnCPUThread()
 	HandleELFChange(true);
 
 	Patch::ApplyBootPatches();
+
+	// Forja SX2 (compilation 47): a game on the Alchemy engine gets a frame rate patch of its own (ForjaAlchemy.h).
+	ForjaAlchemy::OnGameStart();
 
 	// If the config changes at this point, it's a reset, so the game doesn't currently know about the memcard
 	// so there's no need to leave the eject running.

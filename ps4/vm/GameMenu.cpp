@@ -1545,6 +1545,14 @@ namespace PS4GameMenu
 				menu_state.frame_gen >= 2 ? "Rellena cada refresco que la tele repetiría (juegos PAL, cuadros desparejos)." :
 											"Muestra a 60 un juego estable a 30 (experimental).",
 				origin_names[menu_state.frame_gen_origin]);
+			// Forja SX2 (compilation 47): "Saltar cuadros" (main.cpp, UpdateGsSkip; GSRendererPS4.cpp, VSync).
+			static constexpr const char* gs_skip_names[] = {"No", "Auto", "1 de 2"};
+			char gs_skip_label[96];
+			std::snprintf(gs_skip_label, sizeof(gs_skip_label), "Saltar cuadros (GS):  < %s >", gs_skip_names[std::min(menu_state.gs_skip, 2u)]);
+			char gs_skip_description[192];
+			std::snprintf(gs_skip_description, sizeof(gs_skip_description),
+				"Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s",
+				menu_state.gs_skip_active ? "saltando" : "dibuja todos", origin_names[menu_state.gs_skip_origin]);
 			static constexpr const char* cores_names[] = {"Global", "Normal", "Plan B", "Propio"};
 			char cores_label[96];
 			std::snprintf(cores_label, sizeof(cores_label), "Núcleos de la CPU:  < %s >", cores_names[std::min(menu_state.cores, 3u)]);
@@ -1614,6 +1622,7 @@ namespace PS4GameMenu
 					case ROW_CPU_AUTO: return cpu_auto_label;
 					case ROW_VIDEO_MODE: return video_label;
 					case ROW_CORES: return cores_label;
+					case ROW_GS_SKIP: return gs_skip_label;
 					case ROW_RESET_PROFILE: return "Restablecer ajustes de este juego";
 					case ROW_LIBRARY: return "Volver a la biblioteca";
 					default: return "Salir de la aplicación";
@@ -1637,6 +1646,7 @@ namespace PS4GameMenu
 					case ROW_CPU_AUTO: return cpu_auto_description;
 					case ROW_VIDEO_MODE: return video_description;
 					case ROW_CORES: return cores_description;
+					case ROW_GS_SKIP: return gs_skip_description;
 					case ROW_RESET_PROFILE:
 						return menu_state.has_player ? "X: borra tus cambios de este juego (queda copia .bak). Siguen el perfil de fábrica y los globales" :
 													   "Este juego no tiene cambios tuyos";
@@ -1738,6 +1748,11 @@ namespace PS4GameMenu
 						draw->AddRect(ip(-15, -12), ip(5, 6), icon_line, 2 * scale, lw, 0);
 						draw->AddRect(ip(-5, -6), ip(15, 12), icon_line, 2 * scale, lw, 0);
 						break;
+					case ROW_GS_SKIP: // two frames, the second one crossed out
+						draw->AddRect(ip(-16, -9), ip(-2, 9), icon_line, 2 * scale, lw, 0);
+						draw->AddRect(ip(2, -9), ip(16, 9), icon_line, 2 * scale, lw, 0);
+						draw->AddLine(ip(2, 9), ip(16, -9), icon_line, lw);
+						break;
 					case ROW_CORES:
 						for (int i = 0; i < 4; i++)
 						{
@@ -1797,7 +1812,7 @@ namespace PS4GameMenu
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
 					action = "AJUSTAR";
 				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
-				         row == ROW_SHARPNESS)
+				         row == ROW_SHARPNESS || row == ROW_GS_SKIP)
 					action = "ELEGIR";
 				else if (row == ROW_PATCH || row == ROW_VU1_FILTER || row == ROW_CHANGE_DISC)
 					action = "ELEGIR  ·  X";

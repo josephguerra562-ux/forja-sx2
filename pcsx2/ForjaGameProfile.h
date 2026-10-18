@@ -59,6 +59,10 @@ namespace ForjaGameProfile
 		// [Forja] VU1Quitar (compilation 44): the VU1 programs the filter leaves out, their start addresses in hex ("0d30,0f48").
 		std::string vu1_skip;
 		Origin vu1_skip_origin = Origin::Global;
+		// [Forja] SaltarCuadros (compilation 47): the GS frame skip, -1 not set (off), 0 off, 1 auto, 2 always (one frame in
+		// two). main.cpp, UpdateGsSkip; GSRendererPS4.cpp, VSync.
+		int gs_skip = -1;
+		Origin gs_skip_origin = Origin::Global;
 	};
 
 	// Forja SX2 (compilation 44): the settings center's copy (/data/ForjaSX2/centro/perfiles, fetched from the project's GitHub by
@@ -154,6 +158,7 @@ namespace ForjaGameProfile
 		read_int("VideoEECycleRate", &v.video_ee_rate, &v.video_ee_rate_origin);
 		read_int("FrameGen", &v.frame_gen, &v.frame_gen_origin);
 		read_int("CpuAuto", &v.cpu_auto, &v.cpu_auto_origin);
+		read_int("SaltarCuadros", &v.gs_skip, &v.gs_skip_origin);
 		if (v.has_player && player.GetStringValue("Forja", "Nucleos", &v.cores))
 			v.cores_origin = Origin::Player;
 		else if (v.has_factory && factory.GetStringValue("Forja", "Nucleos", &v.cores))
@@ -173,6 +178,8 @@ namespace ForjaGameProfile
 			v.cpu_auto = std::clamp(v.cpu_auto, -6, 0);
 		else
 			v.cpu_auto = 0;
+		if (v.gs_skip >= 0)
+			v.gs_skip = std::min(v.gs_skip, 2);
 		return v;
 	}
 

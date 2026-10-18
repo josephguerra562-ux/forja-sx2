@@ -28,6 +28,7 @@ namespace PS4GameMenu
 		ROW_CPU_AUTO,
 		ROW_VIDEO_MODE,
 		ROW_CORES,
+		ROW_GS_SKIP, // compilation 47
 		// Extras (compilation 42 "Parches", 44 "Extras"): the game's patch groups one at a time (main.cpp, PublishPatchMenuText),
 		// the VU1 filter, HD textures and where the recommended settings come from
 		ROW_PATCH,
@@ -85,6 +86,10 @@ namespace PS4GameMenu
 		unsigned cpu_auto = 0;
 		unsigned cpu_auto_steps = 0;
 		unsigned cpu_auto_origin = 0;
+		// Forja SX2 (compilation 47): "Saltar cuadros" (GS frame skip): 0 no, 1 auto, 2 one frame in two; whether it skips now.
+		unsigned gs_skip = 0;
+		bool gs_skip_active = false;
+		unsigned gs_skip_origin = 0;
 	};
 
 	// What the last save state action did, for the rows' descriptions.
@@ -111,6 +116,7 @@ namespace PS4GameMenu
 				(std::min(value.video_origin, 2u) << 27) |
 				(value.frame_gen != 0 ? (1u << 29) : 0u) |
 				(value.frame_gen >= 2 ? (1u << 21) : 0u) | // compilation 40: fluid; bits 21-23 are free since 36
+				(std::min(value.gs_skip, 2u) << 22) | // compilation 47
 				(std::min(value.frame_gen_origin, 2u) << 30)) |
 			(static_cast<std::uint64_t>(std::min(value.cores, 3u)) << 32) |
 			(static_cast<std::uint64_t>(std::min(value.cores_origin, 2u)) << 34) |
@@ -124,7 +130,9 @@ namespace PS4GameMenu
 			(static_cast<std::uint64_t>(std::min(value.cpu_auto_origin, 2u)) << 52) |
 			// Compilation 36: the EE rate in four bits of its own, -6..3 (it had three at bit 21, -3..3).
 			(static_cast<std::uint64_t>(std::clamp(value.ee_rate, -6, 3) + 6) << 54) |
-			(static_cast<std::uint64_t>(std::min(value.sharpness, 4u)) << 58); // compilation 44
+			(static_cast<std::uint64_t>(std::min(value.sharpness, 4u)) << 58) | // compilation 44
+			(value.gs_skip_active ? (std::uint64_t{1} << 61) : 0u) | // compilation 47
+			(static_cast<std::uint64_t>(std::min(value.gs_skip_origin, 2u)) << 62);
 	}
 
 	constexpr InGameMenuState UnpackInGameMenuState(std::uint64_t value)
@@ -157,6 +165,9 @@ namespace PS4GameMenu
 		state.cpu_auto_steps = static_cast<unsigned>((value >> 48) & 0x0fu);
 		state.cpu_auto_origin = std::min(static_cast<unsigned>((value >> 52) & 0x03u), 2u);
 		state.sharpness = std::min(static_cast<unsigned>((value >> 58) & 0x07u), 4u);
+		state.gs_skip = std::min((low >> 22) & 0x03u, 2u);
+		state.gs_skip_active = (value & (std::uint64_t{1} << 61)) != 0;
+		state.gs_skip_origin = std::min(static_cast<unsigned>((value >> 62) & 0x03u), 2u);
 		return state;
 	}
 } // namespace PS4GameMenu

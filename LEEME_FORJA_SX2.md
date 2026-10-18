@@ -88,6 +88,13 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     Desde la 45, un juego sin ajuste propio usa el de la pestaña Ajustes (de fábrica, "Hasta 27 %"): si le subes el CPU y se
     pone lento en una escena pesada, baja solo, como mucho hasta el 27 %.
   - **Modo video:** No / 60 % / 50 %. Es el CPU de la PS2 durante las cinemáticas.
+  - **Saltar cuadros (GS)** (desde la 47, experimental): No / Auto / 1 de 2. Para juegos en los que el GS de la PS4 no da
+    abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
+    1 de cada 2 cuadros del juego y la tele sigue mostrando el último dibujado: el juego, su música y sus movimientos van
+    a su velocidad, con la mitad de cuadros en pantalla. **Auto** lo prende solo cuando el GS es el que frena (velocidad
+    bajo 92 % unos 3 s con el GS al 90 % o más) y lo apaga cuando sobra. Solo funciona en juegos que anuncian cada cuadro
+    con los registros de pantalla (God of War II, Dragon Ball); en los demás dibuja todo. Puede dejar algún efecto a medias
+    en juegos que dibujan algo una sola vez y lo reusan: si pasa, ponlo en No.
   - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
     cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
     60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %,
@@ -196,6 +203,12 @@ nombre del archivo (`SCES-54206_44A8A22A`). Otra región u otra versión tiene o
 `patches/<SERIAL>_<CRC>_comunidad.pnach` (pantalla ancha, sin entrelazado, saltar videos...). Necesita internet y lo vuelve
 a bajar a los 7 días. Ninguno se activa solo: los eliges en L3+R3 > Extras. No vienen dentro del PKG porque ese repositorio
 no tiene licencia; los baja tu consola desde su fuente. `vm-sin-parches-comunidad` apaga la descarga.
+
+**Más cuadros automáticos para el motor Alchemy (desde la 47).** Activision usó ese motor en muchos juegos de PS2 (el de
+Crash Nitro Kart). Cuando un juego arranca, Forja busca en su memoria la configuración del motor ("[INSIGHT]") y, si el
+juego no tiene ya un parche de FPS, le escribe uno en `patches/<SERIAL>_<CRC>_alchemy.pnach`: aparece en L3+R3 > Extras
+como "50 FPS (motor Alchemy, experimental)" (60 en juegos NTSC), apagado. Se activa ahí y vale desde Partida > Reiniciar
+juego. Si el juego va acelerado (su lógica cuenta cuadros), apágalo.
 
 **Crash Nitro Kart (PAL), desde la 46: "50 FPS (experimental)".** El juego va a 25 cuadros por segundo en carrera. Su
 motor (Alchemy) trae su configuración escrita dentro del juego; el parche le agrega "un cuadro por refresco" y "hasta 50
