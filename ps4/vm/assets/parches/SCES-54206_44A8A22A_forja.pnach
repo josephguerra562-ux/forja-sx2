@@ -34,6 +34,12 @@ description=Apaga el método de dibujo de un tipo de objeto (0x126eb0, en la tab
 patch=1,EE,00126eb0,word,03e00008
 patch=1,EE,00126eb4,word,00000000
 
+[Menos efectos 4 (de God of War 1, experimental)]
+author=Forja SX2, a partir de la config de Sony para God of War 1
+description=Sony apaga esta función en God of War 1 (SCUS-97399); aquí está en 0x1740e8. Sin probar: puede quitar otro efecto.
+patch=1,EE,001740e8,word,03e00008
+patch=1,EE,001740ec,word,00000000
+
 [Pantalla ancha 16:9]
 gsaspectratio=16:9
 author=CRASHARKI y ShaolinAssassin (PCSX2/pcsx2_patches)

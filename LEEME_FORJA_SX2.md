@@ -179,6 +179,20 @@ no tiene licencia; los baja tu consola desde su fuente. `vm-sin-parches-comunida
 - **Menos efectos 1, 2 y 3 (Sony):** del emulador de Sony para God of War II USA, pasados a la PAL. Quitan algunos efectos
   a cambio de velocidad en las peleas. Con el 2 y el 3, el promedio pasó de ~66 % a ~87 %. El 1 todavía está en prueba.
 - **Pantalla ancha 16:9** (de la comunidad): muestra más escena, así que cuesta algo más.
+- **Menos efectos 4 (de God of War 1, experimental)** (desde la 43): Sony apaga esa función en God of War 1 y en God of
+  War II existe la misma. Sin probar: puede quitar otro efecto.
+
+**Los parches de rendimiento de Sony, traducidos (desde la 43).** De los 39 scripts que Sony usa en su emulador de PS2 para
+PS4, solo dos ganan velocidad: los de God of War y God of War II (EE. UU.), que apagan funciones de efectos. Los demás
+arreglan fallos de su propio emulador (una puerta que no abre, música que se corta) que PCSX2 no tiene. Forja los escribe
+como parches propios, "dinámicos": en vez de una dirección fija, buscan el principio exacto de cada función (8 instrucciones
+sacadas de God of War II PAL) y la apagan donde la encuentren. Así sirven en otra región sin el disco a mano, y si la
+función no es idéntica, no hacen nada. Vienen para:
+- **God of War II USA** (`SCUS-97481_2F123FD8`): Menos efectos 1, 2, 3 y 4. Sin probar. Su perfil de fábrica trae el CPU al
+  27 % y vuFlagHack, igual que la PAL.
+- **God of War USA y PAL** (`SCUS-97399_D6385328`, `SCES-53133_FB0E6D72`): Menos efectos A y B (dos de las cuatro funciones
+  de Sony; las otras dos no se pueden reconocer sin ese disco). Sin probar.
+Se ponen en L3+R3 > Parches. Los dinámicos valen desde el próximo arranque del juego (Partida > Reiniciar juego).
 
 Para activarlos, en `gamesettings/SCES-54206_44A8A22A.ini`:
 ```ini

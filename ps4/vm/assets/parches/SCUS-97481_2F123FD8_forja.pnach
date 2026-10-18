@@ -1,0 +1,29 @@
+gametitle=God of War II (USA) SCUS-97481 2F123FD8
+
+// El "speedhack by removing some effects" de la config de Sony para God of War II (EE. UU.) en su emulador de PS2 de PS4,
+// escrito por Forja SX2. Sony cambia las mismas funciones en el disco; aquí se buscan por su contenido.
+// Forja SX2: parches "dinámicos" (dpatch). En vez de una dirección fija, cada uno busca el principio exacto de la función
+// (8 instrucciones sacadas de God of War II PAL, sin las que llevan direcciones propias de la región) y, si lo encuentra cuando
+// el juego la traduce, la hace regresar al instante (jr ra; nop). Si en esta versión la función no es idéntica, no pasa nada.
+// Cada patrón aparece una sola vez en el ejecutable de GoW2 PAL. Se aplican al traducir la función: si lo pones con el juego
+// andando, vale desde el próximo arranque (Partida > Reiniciar juego).
+
+[Menos efectos 1 (Sony)]
+author=Forja SX2, a partir de la config de Sony
+description=Apaga la actualización de los efectos de una lista. En la PAL, con los tres juntos hubo una caída una vez: pruébalo solo.
+dpatch=0,8,2,0,27bdfee0,4,7fb300d0,8,7fb00100,c,0080982d,10,7fb100f0,14,7fb400c0,18,7fb500b0,1c,ffbf00a0,0,03e00008,4,00000000
+
+[Menos efectos 2 (Sony)]
+author=Forja SX2, a partir de la config de Sony
+description=Apaga una función de efectos. En la PAL, con el 2 y el 3 las peleas pasaron de ~66 % a ~87 %.
+dpatch=0,8,2,0,27bdff50,8,afa80000,c,7fb60040,10,7fb70030,14,00c0b02d,18,7fbe0020,1c,00e8b821,20,00a0f02d,0,03e00008,4,00000000
+
+[Menos efectos 3 (Sony)]
+author=Forja SX2, a partir de la config de Sony
+description=Apaga el dibujo de un tipo de objeto (efectos). Junto con el 2, el que más ayuda.
+dpatch=0,8,2,0,27bdff60,4,7fb10080,8,7fb20070,c,0000882d,10,7fbe0010,14,0080902d,18,7fb00090,1c,7fb30060,0,03e00008,4,00000000
+
+[Menos efectos 4 (de God of War 1, experimental)]
+author=Forja SX2, a partir de la config de Sony para God of War 1
+description=Sony apaga esta función en God of War 1; en God of War II existe la misma. Sin probar: puede quitar otro efecto.
+dpatch=0,8,2,0,27bdff40,4,00052900,8,7fb000b0,c,00a42821,10,7fb100a0,14,00073880,18,7fb60050,20,7fb20090,0,03e00008,4,00000000

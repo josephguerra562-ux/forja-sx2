@@ -1,0 +1,20 @@
+gametitle=God of War (PAL) SCES-53133 FB0E6D72
+
+// El "speedhack" de la config de Sony para God of War (EE. UU., SCUS-97399), escrito por Forja SX2. Sony apaga cuatro
+// funciones; dos existen igual en el motor de God of War II, y esas se buscan aquí por su contenido. Las otras dos no se
+// pueden reconocer sin el disco de God of War 1 y no están. Sin probar en God of War 1.
+// Forja SX2: parches "dinámicos" (dpatch). En vez de una dirección fija, cada uno busca el principio exacto de la función
+// (8 instrucciones sacadas de God of War II PAL, sin las que llevan direcciones propias de la región) y, si lo encuentra cuando
+// el juego la traduce, la hace regresar al instante (jr ra; nop). Si en esta versión la función no es idéntica, no pasa nada.
+// Cada patrón aparece una sola vez en el ejecutable de GoW2 PAL. Se aplican al traducir la función: si lo pones con el juego
+// andando, vale desde el próximo arranque (Partida > Reiniciar juego).
+
+[Menos efectos A (Sony)]
+author=Forja SX2, a partir de la config de Sony
+description=Apaga la actualización de los efectos de una lista (la misma función que "Menos efectos 1" de God of War II). Sin probar.
+dpatch=0,8,2,0,27bdfee0,4,7fb300d0,8,7fb00100,c,0080982d,10,7fb100f0,14,7fb400c0,18,7fb500b0,1c,ffbf00a0,0,03e00008,4,00000000
+
+[Menos efectos B (Sony)]
+author=Forja SX2, a partir de la config de Sony
+description=Apaga otra función de efectos que Sony quita en este juego. Sin probar.
+dpatch=0,8,2,0,27bdff40,4,00052900,8,7fb000b0,c,00a42821,10,7fb100a0,14,00073880,18,7fb60050,20,7fb20090,0,03e00008,4,00000000
