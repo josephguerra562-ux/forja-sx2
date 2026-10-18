@@ -45,7 +45,11 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
 ## 3. Controles
 - **Biblioteca:** X = jugar, Cuadrado = favorito, Triángulo = actualizar, Círculo = salir.
 - **En el juego:** OPTIONS = Start, clic en el touchpad = Select, **L3+R3 = menú del emulador**.
-- **El menú L3+R3 va en 4 pestañas** (desde la 35, como el menú rápido de Dolphin). **L1 y R1** cambian de pestaña,
+- **Dos jugadores (desde la 43):** prende el segundo control. La PS4 pregunta "¿Quién usa este control?": elige otro
+  usuario o **Usuario nuevo > Jugar**, que es el usuario temporal de la PS4 y no queda guardado. En un segundo Forja lo
+  conecta al puerto 2 de la PS2, sin tocar nada más. Si ese usuario cierra sesión, el puerto 2 queda libre para el siguiente.
+  El menú L3+R3 lo maneja solo el jugador 1. (Tres o cuatro jugadores, con el multitap, todavía no.)
+- **El menú L3+R3 va en 5 pestañas** (desde la 35, como el menú rápido de Dolphin). **L1 y R1** cambian de pestaña,
   Arriba/Abajo eligen dentro de ella e Izq./Der. cambian el valor:
   - **Partida:** volver al juego, guardar estado, cargar estado y reiniciar el juego.
   - **Imagen:** resolución interna, relación de aspecto, generación de cuadros y contador de FPS.

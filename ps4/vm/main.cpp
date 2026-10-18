@@ -145,6 +145,14 @@ static std::string s_selected_game;
 static bool s_use_vulkan_selector = false;
 static u32 s_previous_pad_buttons = 0;
 static u32 s_previous_host_buttons = 0;
+// Forja SX2 (compilation 43): the second player. The PS4 ties each controller to a signed-in user: a second controller works
+// once someone signs in with it (any user, or the PS4's temporary one: New User > Play, which isn't kept). UpdateSecondPad
+// opens that user's pad and VMHostPoll gives it to the PS2's second port.
+static int s_pad2 = -1;
+static OrbisUserServiceUserId s_pad1_user = ORBIS_USER_SERVICE_USER_ID_INVALID;
+static OrbisUserServiceUserId s_pad2_user = ORBIS_USER_SERVICE_USER_ID_INVALID;
+static u32 s_previous_pad2_buttons = 0;
+static double s_pad2_last_check = -10.0;
 static u32 s_blocked_pad_buttons = 0;
 static bool s_menu_chord_latched = false;
 static bool s_game_menu_open = false;
@@ -272,8 +280,8 @@ static std::pair<u8, u8> MapStick(u8 raw_x, u8 raw_y)
 	return {to_u8(dx), to_u8(dy)};
 }
 
-// (AI-assisted) Forward the PS4 controller to the first emulated DualShock 2.
-static void VMHostUpdateController(const OrbisPadData& data)
+// (AI-assisted) Forward a PS4 controller to an emulated DualShock 2 (port 0, and port 1 for the second player since 43).
+static void VMHostUpdateController(u32 port, const OrbisPadData& data, u32& previous_buttons)
 {
 	struct ButtonMapping
 	{
@@ -298,20 +306,61 @@ static void VMHostUpdateController(const OrbisPadData& data)
 	};
 	for (const ButtonMapping& mapping : mappings)
 	{
-		const bool was_pressed = (s_previous_pad_buttons & mapping.host_mask) != 0;
+		const bool was_pressed = (previous_buttons & mapping.host_mask) != 0;
 		const bool is_pressed = (data.buttons & mapping.host_mask) != 0;
 		if (was_pressed != is_pressed)
-			Pad::SetControllerState(0, mapping.ps2_button, is_pressed ? 1.0f : 0.0f);
+			Pad::SetControllerState(port, mapping.ps2_button, is_pressed ? 1.0f : 0.0f);
 	}
-	s_previous_pad_buttons = data.buttons;
+	previous_buttons = data.buttons;
 
-	if (PadBase* pad = Pad::GetPad(0))
+	if (PadBase* pad = Pad::GetPad(static_cast<u8>(port)))
 	{
 		const auto left = MapStick(data.leftStick.x, data.leftStick.y);
 		const auto right = MapStick(data.rightStick.x, data.rightStick.y);
 		pad->SetRawAnalogs({left.first, left.second}, {right.first, right.second});
-		Pad::SetControllerState(0, PadDualshock2::Inputs::PAD_L2, data.analogButtons.l2 / 255.0f);
-		Pad::SetControllerState(0, PadDualshock2::Inputs::PAD_R2, data.analogButtons.r2 / 255.0f);
+		Pad::SetControllerState(port, PadDualshock2::Inputs::PAD_L2, data.analogButtons.l2 / 255.0f);
+		Pad::SetControllerState(port, PadDualshock2::Inputs::PAD_R2, data.analogButtons.r2 / 255.0f);
+	}
+}
+
+// Forja SX2 (compilation 43): once a second, the signed-in users: the first one that isn't player 1's gets the second port.
+// A user who signs out (or whose controller goes) frees it for the next one.
+static void UpdateSecondPad(double elapsed)
+{
+	if (elapsed - s_pad2_last_check < 1.0)
+		return;
+	s_pad2_last_check = elapsed;
+	OrbisUserServiceLoginUserIdList list{};
+	if (sceUserServiceGetLoginUserIdList(&list) != 0)
+		return;
+	bool still_signed_in = false;
+	OrbisUserServiceUserId candidate = ORBIS_USER_SERVICE_USER_ID_INVALID;
+	for (int i = 0; i < ORBIS_USER_SERVICE_MAX_LOGIN_USERS; i++)
+	{
+		const OrbisUserServiceUserId user = list.userId[i];
+		if (user == ORBIS_USER_SERVICE_USER_ID_INVALID || user == s_pad1_user)
+			continue;
+		if (user == s_pad2_user)
+			still_signed_in = true;
+		else if (candidate == ORBIS_USER_SERVICE_USER_ID_INVALID)
+			candidate = user;
+	}
+	if (s_pad2 >= 0 && !still_signed_in)
+	{
+		scePadClose(s_pad2);
+		ProbeLog("Player 2: user %#x signed out, port 2 free\n", static_cast<unsigned>(s_pad2_user));
+		s_pad2 = -1;
+		s_pad2_user = ORBIS_USER_SERVICE_USER_ID_INVALID;
+	}
+	if (s_pad2 < 0 && candidate != ORBIS_USER_SERVICE_USER_ID_INVALID)
+	{
+		const int handle = scePadOpen(candidate, 0, 0, nullptr);
+		ProbeLog("Player 2: user %#x signed in, pad open=%d\n", static_cast<unsigned>(candidate), handle);
+		if (handle >= 0)
+		{
+			s_pad2 = handle;
+			s_pad2_user = candidate;
+		}
 	}
 }
 
@@ -1184,7 +1233,18 @@ void VMHostPoll()
 	}
 	else
 		buttons.buttons &= ~s_blocked_pad_buttons;
-	VMHostUpdateController(buttons);
+	VMHostUpdateController(0, buttons, s_previous_pad_buttons);
+	// Forja SX2 (compilation 43): the second player, on the PS2's second port (released while the menu is open).
+	UpdateSecondPad(elapsed);
+	OrbisPadData buttons2{};
+	const bool pad2_read = s_pad2 >= 0 && scePadReadState(s_pad2, &buttons2) == 0 && buttons2.connected;
+	if (!pad2_read || s_game_menu_open || vm_state == VMState::Paused)
+	{
+		buttons2 = {};
+		buttons2.leftStick.x = buttons2.leftStick.y = 128;
+		buttons2.rightStick.x = buttons2.rightStick.y = 128;
+	}
+	VMHostUpdateController(1, buttons2, s_previous_pad2_buttons);
 	if (!menu_was_open && s_game_menu_open)
 	{
 		// (AI-assisted) Verbose bracket to isolate which pause step hangs. Needs proper testing.
@@ -1462,6 +1522,8 @@ static void* RunVM(void*)
 	// and can show stale buffers as ghosting. Use 2 (upstream default) to reduce latency
 	// and present stalls; vsyncq was 0..1 in baseline. Needs proper testing.
 	settings->SetIntValue("EmuCore/GS", "VsyncQueueSize", 2);
+	// Forja SX2 (compilation 43): a DualShock 2 in the PS2's second port too, for the second player (UpdateSecondPad).
+	settings->SetStringValue("Pad2", "Type", "DualShock2");
 	// (AI-assisted) Skip the PS2 BIOS animation and fast-forward only the
 	// emulator's boot phase. The game's own logos and loading still run normally.
 	bool fast_boot = access("/data/ForjaSX2/vm-no-fast-boot", F_OK) != 0 && forja.fast_boot;
@@ -1738,6 +1800,8 @@ static void* RunVM(void*)
 		// (AI-assisted) A DS4 has no dedicated analog-mode switch; start the emulated DS2 in analog mode.
 		Pad::SetControllerState(0, PadDualshock2::Inputs::PAD_ANALOG, 1.0f);
 		Pad::SetControllerState(0, PadDualshock2::Inputs::PAD_ANALOG, 0.0f);
+		Pad::SetControllerState(1, PadDualshock2::Inputs::PAD_ANALOG, 1.0f); // the second player's too (compilation 43)
+		Pad::SetControllerState(1, PadDualshock2::Inputs::PAD_ANALOG, 0.0f);
 		ProbeLog("Controller: DualShock 2 analog mode enabled; both sticks and analog triggers forwarded.\n");
 		LoadStickSensitivity();
 		s_verbose_diag = access("/data/ForjaSX2/vm-verbose-log", F_OK) == 0;
@@ -1802,7 +1866,7 @@ static void* RunVM(void*)
 		s_last_pause_log = 0.0;
 		s_last_input = -1.0;
 		s_last_ee_cycle = cpuRegs.cycle;
-		s_previous_pad_buttons = s_previous_host_buttons = 0;
+		s_previous_pad_buttons = s_previous_host_buttons = s_previous_pad2_buttons = 0;
 		s_blocked_pad_buttons = ~u32{0}; // Consume any launcher button still held.
 		s_menu_chord_latched = s_game_menu_open = false;
 		s_game_menu_selection = 0;
@@ -2037,7 +2101,10 @@ int main()
 		{
 			const int pad_result = scePadInit();
 			if (user_result == 0)
+			{
 				s_pad = scePadOpen(user, 0, 0, nullptr);
+				s_pad1_user = user;
+			}
 			ProbeLog("Vulkan input: pad init=%#x user=%#x handle=%d\n", pad_result, user_result, s_pad);
 		}
 	}
@@ -2059,6 +2126,8 @@ int main()
 		ProbeLog("CPU thread failed: %d\n", rc);
 	if (s_pad >= 0)
 		scePadClose(s_pad);
+	if (s_pad2 >= 0)
+		scePadClose(s_pad2);
 	const bool relaunch_main_menu = rc == 0 && s_return_to_main_menu.load(std::memory_order_acquire);
 	Log::SetHostOutputLevel(LOGLEVEL_NONE, nullptr);
 	PS4Telemetry::Stage(relaunch_main_menu ? "exit-relaunch" : "exit");
