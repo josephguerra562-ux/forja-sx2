@@ -255,14 +255,31 @@ void tIPU_CMD_CSC::log_from_RGB32() const
 // EE's clock on by 64 cycles, as if the loop's turn were that long, so the same emulated wait takes far fewer turns (God of
 // War II's movies, compilation 23: these reads ~45 ms of the EE thread a second, with its loops around them).
 // /data/ForjaSX2/vm-ipu-exacto turns it off. The counters go to main.cpp's heartbeat either way.
-u64 g_forja_ipu_polls = 0, g_forja_ipu_busy_polls = 0;
-static __fi void ForjaIPUPoll(bool busy)
+u64 g_forja_ipu_polls = 0, g_forja_ipu_busy_polls = 0, g_forja_ipu_spin_polls = 0;
+static __fi void ForjaIPUPoll(bool busy, u32 value)
 {
 	g_forja_ipu_polls++;
-	if (!busy)
-		return;
-	g_forja_ipu_busy_polls++;
 	static const bool s_shortcut = access("/data/ForjaSX2/vm-ipu-exacto", F_OK) != 0;
+	if (!busy)
+	{
+		// Forja SX2 (compilation 50): the same loop also waits with the IPU idle, for its FIFO or a DMA (Tales of the
+		// Abyss's movies: ~216,000 reads a second, none of them busy, with the EE thread at 100 % even at a 36 % EE rate,
+		// 2026-10-18). A read at the same place that finds IPU_CTRL as it was a few cycles ago is that loop's next turn:
+		// it moves the clock on by 32 cycles, half the busy case's, so the emulated wait takes fewer turns of the host.
+		static u32 s_last_pc = 0, s_last_value = 0;
+		static u64 s_last_cycle = 0;
+		const u64 cycle = cpuRegs.cycle;
+		if (s_shortcut && cpuRegs.pc == s_last_pc && value == s_last_value && cycle - s_last_cycle < 512)
+		{
+			g_forja_ipu_spin_polls++;
+			cpuRegs.cycle += 32;
+		}
+		s_last_pc = cpuRegs.pc;
+		s_last_value = value;
+		s_last_cycle = cpuRegs.cycle;
+		return;
+	}
+	g_forja_ipu_busy_polls++;
 	if (s_shortcut)
 		cpuRegs.cycle += 64;
 }
@@ -296,7 +313,7 @@ __fi u32 ipuRead32(u32 mem)
 		{
 			ipuRegs.ctrl.IFC = g_BP.IFC;
 			ipuRegs.ctrl.CBP = coded_block_pattern;
-			ForjaIPUPoll(ipuRegs.ctrl.BUSY);
+			ForjaIPUPoll(ipuRegs.ctrl.BUSY, ipuRegs.ctrl._u32);
 
 			if (!ipuRegs.ctrl.BUSY)
 				IPU_LOG("read32: IPU_CTRL=0x%08X", ipuRegs.ctrl._u32);
@@ -348,7 +365,7 @@ __fi u64 ipuRead64(u32 mem)
 
 			if (ipuRegs.cmd.DATA & 0xffffff)
 				IPU_LOG("read64: IPU_CMD=BUSY=%x, DATA=%08X", ipuRegs.cmd.BUSY ? 1 : 0, ipuRegs.cmd.DATA);
-			ForjaIPUPoll(ipuRegs.cmd.BUSY);
+			ForjaIPUPoll(ipuRegs.cmd.BUSY, static_cast<u32>(ipuRegs.cmd._u64));
 			return ipuRegs.cmd._u64;
 		}
 

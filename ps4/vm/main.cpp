@@ -1054,7 +1054,11 @@ static void UpdateVideoMode(double elapsed)
 		int next = rate;
 		if (elapsed - s_video_auto_last_change >= 3.0)
 		{
-			if (s_video_auto_slow_checks >= 4 && rate > -5 && rate - 1 > s_video_saved_rate)
+			// Compilation 50: lower when the game's own rate is above the movie's (a game at 100 % like Tales of the Abyss
+			// goes down to 31 % if it must); one at 27 % never comes down to its own rate (that would be no video mode at
+			// all). Build 49 checked only the second case, and Tales stayed at 60 % and 80 % speed for a whole movie.
+			const bool can_lower = rate > -5 && (s_video_saved_rate > rate || rate - 1 > s_video_saved_rate);
+			if (s_video_auto_slow_checks >= 4 && can_lower)
 				next = rate - 1;
 			else if (s_video_auto_room_checks >= 8 && rate < -2)
 				next = rate + 1;
@@ -1600,10 +1604,11 @@ void VMHostPoll()
 					Common::Timer::ConvertValueToMilliseconds(g_forja_audio_wait_ticks) / interval);
 				g_forja_audio_wait_ticks = g_forja_audio_waits = g_forja_audio_chunks = 0;
 				// pcsx2/IPU/IPU.cpp: the EE polling the IPU (the shortcut moves the clock on while it is busy; vm-ipu-exacto turns it off).
-				extern u64 g_forja_ipu_polls, g_forja_ipu_busy_polls;
-				ProbeLog("IPU polls: per_second=%.0f busy_per_second=%.0f shortcut=%d\n", g_forja_ipu_polls / interval,
-					g_forja_ipu_busy_polls / interval, access("/data/ForjaSX2/vm-ipu-exacto", F_OK) != 0 ? 1 : 0);
-				g_forja_ipu_polls = g_forja_ipu_busy_polls = 0;
+				extern u64 g_forja_ipu_polls, g_forja_ipu_busy_polls, g_forja_ipu_spin_polls;
+				ProbeLog("IPU polls: per_second=%.0f busy_per_second=%.0f spin_per_second=%.0f shortcut=%d\n", g_forja_ipu_polls / interval,
+					g_forja_ipu_busy_polls / interval, g_forja_ipu_spin_polls / interval,
+					access("/data/ForjaSX2/vm-ipu-exacto", F_OK) != 0 ? 1 : 0);
+				g_forja_ipu_polls = g_forja_ipu_busy_polls = g_forja_ipu_spin_polls = 0;
 			}
 			g_forja_spu2_split_voices = g_forja_spu2_split_mix = g_forja_spu2_split_output = 0;
 			g_forja_spu2_split_samples = g_forja_spu2_split_active = g_forja_spu2_split_irq = 0;
