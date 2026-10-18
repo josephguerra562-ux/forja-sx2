@@ -57,6 +57,7 @@
 #include <string>
 #include <string_view>
 #include <cstdio>
+#include <ctime>
 #include <cstring>
 #include <cerrno>
 #include <fcntl.h>
@@ -166,6 +167,7 @@ static unsigned s_game_upscale = 1;
 static unsigned s_max_game_upscale = 1;
 static unsigned s_game_aspect = 1;
 static unsigned s_game_sharpness = 0; // Forja SX2 (compilation 44): the Nitidez row (SharpnessFromConfig)
+static unsigned s_game_textures = 0; // Forja SX2 (compilation 44): the Texturas HD row (0 off, 1 on, 2 preloaded)
 static bool s_game_show_performance_overlay = true;
 static int s_game_ee_rate = -1;
 // Forja SX2: console detection. The PS4's CPU runs at 1.6 GHz; a PS4 Pro runs it at ~2.13 GHz in Pro
@@ -379,6 +381,7 @@ static void ReadGameResolution()
 			static_cast<unsigned>(configured + 0.5f) : 1u;
 		s_game_upscale = std::min(s_game_upscale, s_max_game_upscale);
 		s_game_aspect = std::clamp(static_cast<unsigned>(GSConfig.AspectRatio), 0u, 4u);
+		s_game_textures = GSConfig.LoadTextureReplacements ? (GSConfig.PrecacheTextureReplacements ? 2u : 1u) : 0u;
 		s_game_sharpness = GSConfig.CASMode != GSCASMode::Disabled ? (GSConfig.CAS_Sharpness >= 75 ? 3u : 2u) :
 		                   GSConfig.LinearPresent == GSPostBilinearMode::BilinearSharp ? 1u :
 		                   GSConfig.LinearPresent == GSPostBilinearMode::Off ? 4u : 0u;
@@ -497,6 +500,279 @@ static void TogglePatch()
 	ReloadPatchMenu();
 }
 
+
+// Forja SX2 (compilation 44): the VU1 filter (MTVU.cpp), an effects lab for any game. The menu offers the VU1's costliest programs
+// of the last seconds (and those already left out); X leaves one out or brings it back, and the list goes in the player's profile
+// ([Forja] VU1Quitar, start addresses in hex). A program that draws an effect, a shadow or the far scenery can be left out to
+// save its VU1 time: what it drew isn't drawn. One the game needs (its main 3D) leaves the screen empty: X again brings it back.
+extern std::atomic<u32> g_forja_vu1_skip[64];
+extern std::atomic<u32> g_forja_vu1_top[8];
+extern std::atomic<u32> g_forja_vu1_top_count;
+static std::vector<u32> s_vu1_candidates; // programs (start address / 8)
+static std::vector<u32> s_vu1_shares;     // their share of the VU1's time, in permille (0 for one already left out)
+static unsigned s_vu1_index = 0;
+
+static bool Vu1Skipped(u32 program)
+{
+	return ((g_forja_vu1_skip[(program & 2047) >> 5].load(std::memory_order_relaxed) >> (program & 31)) & 1) != 0;
+}
+
+static void SetVu1Skipped(u32 program, bool skip)
+{
+	const u32 bit = 1u << (program & 31);
+	if (skip)
+		g_forja_vu1_skip[(program & 2047) >> 5].fetch_or(bit, std::memory_order_relaxed);
+	else
+		g_forja_vu1_skip[(program & 2047) >> 5].fetch_and(~bit, std::memory_order_relaxed);
+}
+
+static std::string Vu1SkipList()
+{
+	std::string list;
+	for (u32 program = 0; program < 2048; program++)
+	{
+		if (!Vu1Skipped(program))
+			continue;
+		char text[16];
+		std::snprintf(text, sizeof(text), "%s%04x", list.empty() ? "" : ",", program * 8);
+		list += text;
+	}
+	return list;
+}
+
+static void ApplyVu1SkipList(const std::string& list)
+{
+	for (auto& word : g_forja_vu1_skip)
+		word.store(0, std::memory_order_relaxed);
+	const char* p = list.c_str();
+	while (*p)
+	{
+		char* end = nullptr;
+		const unsigned long start = std::strtoul(p, &end, 16);
+		if (end == p)
+		{
+			++p;
+			continue;
+		}
+		if (start < 0x4000 && (start & 7) == 0)
+			SetVu1Skipped(static_cast<u32>(start / 8), true);
+		p = end;
+	}
+}
+
+static void PublishVu1FilterText()
+{
+	if (s_vu1_candidates.empty())
+	{
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_VU1_FILTER, "Filtro VU1:  sin datos todavía",
+			"Juega unos segundos: el medidor del VU1 lista sus programas más costosos y aquí los apagas uno por uno (experimental)");
+		return;
+	}
+	const u32 program = s_vu1_candidates[s_vu1_index];
+	const bool skipped = Vu1Skipped(program);
+	char label[160];
+	std::snprintf(label, sizeof(label), "Filtro VU1 %u de %zu:  < programa %04x · %.1f %% >  %s", s_vu1_index + 1, s_vu1_candidates.size(),
+		program * 8, s_vu1_shares[s_vu1_index] / 10.0, skipped ? "QUITADO" : "Activo");
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_VU1_FILTER, label,
+		skipped ? "No se dibuja lo que hace este programa. Si falta algo importante, X lo devuelve. Se guarda para este juego" :
+				  "X lo apaga: mira qué deja de verse y cuánto sube la velocidad (experimental). Se guarda para este juego");
+}
+
+static void ReloadVu1Filter()
+{
+	const u32 previous = s_vu1_candidates.empty() ? ~0u : s_vu1_candidates[s_vu1_index];
+	s_vu1_candidates.clear();
+	s_vu1_shares.clear();
+	const u32 count = std::min(g_forja_vu1_top_count.load(std::memory_order_acquire), 8u);
+	for (u32 k = 0; k < count; k++)
+	{
+		const u32 entry = g_forja_vu1_top[k].load(std::memory_order_relaxed);
+		s_vu1_candidates.push_back(entry >> 16);
+		s_vu1_shares.push_back(entry & 0xffff);
+	}
+	for (u32 program = 0; program < 2048; program++)
+	{
+		if (Vu1Skipped(program) && std::find(s_vu1_candidates.begin(), s_vu1_candidates.end(), program) == s_vu1_candidates.end())
+		{
+			s_vu1_candidates.push_back(program);
+			s_vu1_shares.push_back(0);
+		}
+	}
+	const auto again = std::find(s_vu1_candidates.begin(), s_vu1_candidates.end(), previous);
+	s_vu1_index = again != s_vu1_candidates.end() ? static_cast<unsigned>(again - s_vu1_candidates.begin()) : 0u;
+	PublishVu1FilterText();
+}
+
+static void ToggleVu1Program()
+{
+	if (s_vu1_candidates.empty())
+		return;
+	const u32 program = s_vu1_candidates[s_vu1_index];
+	const bool skip = !Vu1Skipped(program);
+	SetVu1Skipped(program, skip);
+	const std::string list = Vu1SkipList();
+	SavePlayerProfile("VU1 filter", [list](INISettingsInterface& ini) { ini.SetStringValue("Forja", "VU1Quitar", list.c_str()); }, false);
+	ProbeLog("VU1 filter: program %04x %s; left out now: [%s]\n", program * 8, skip ? "left out" : "back", list.c_str());
+	PublishVu1FilterText();
+}
+
+// Forja SX2 (compilation 44): HD texture packs, PCSX2's texture replacements: /data/ForjaSX2/textures/<SERIAL>/replacements.
+// 0 off, 1 on (loaded as they're needed), 2 on and preloaded at start (no stutter, more memory), as Dolphin for PS4 (v04.12).
+// (s_game_textures is declared with s_game_sharpness, which ReadGameResolution fills too.)
+
+static void PublishTexturesText()
+{
+	static constexpr const char* names[] = {"No", "Sí", "Sí, precargadas"};
+	const std::string serial = VMManager::GetDiscSerial();
+	const std::string folder = Path::Combine(EmuFolders::Textures, serial + "/replacements");
+	const bool pack = !serial.empty() && FileSystem::DirectoryExists(folder.c_str());
+	char label[96], description[256];
+	std::snprintf(label, sizeof(label), "Texturas HD:  < %s >", names[std::min(s_game_textures, 2u)]);
+	if (pack)
+		std::snprintf(description, sizeof(description), "Pack encontrado (textures/%s/replacements). Precargar evita tirones pero usa más memoria",
+			serial.c_str());
+	else
+		std::snprintf(description, sizeof(description), "No hay pack: cópialo por FTP a /data/ForjaSX2/textures/%s/replacements",
+			serial.empty() ? "<SERIAL>" : serial.c_str());
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_TEXTURES, label, description);
+}
+
+static void ApplyGameTextures(unsigned value)
+{
+	s_game_textures = std::min(value, 2u);
+	EmuConfig.GS.LoadTextureReplacements = s_game_textures != 0;
+	EmuConfig.GS.PrecacheTextureReplacements = s_game_textures == 2;
+	MTGS::ApplySettings();
+	MTGS::WaitGS(false, false, false);
+	const bool load = s_game_textures != 0, precache = s_game_textures == 2;
+	SavePlayerProfile("HD textures", [load, precache](INISettingsInterface& ini) {
+		ini.SetBoolValue("EmuCore/GS", "LoadTextureReplacements", load);
+		ini.SetBoolValue("EmuCore/GS", "PrecacheTextureReplacements", precache);
+	}, false);
+	ProbeLog("HD textures: %u\n", s_game_textures);
+	PublishTexturesText();
+}
+
+// Forja SX2 (compilation 44): where the game's recommended settings come from: the settings center (fetched from GitHub,
+// PatchDownload.cpp), the package, or none. X fetches them again now.
+static void PublishRecommendedText(bool fetching = false)
+{
+	const std::string serial = VMManager::GetDiscSerial();
+	const std::string center = Path::Combine(EmuFolders::DataRoot, "centro/perfiles/" + serial + ".ini");
+	const std::string package = Path::Combine(EmuFolders::Resources, "perfiles/" + serial + ".ini");
+	struct stat info{};
+	char label[160];
+	if (fetching)
+		std::snprintf(label, sizeof(label), "Ajustes recomendados:  buscando en GitHub...");
+	else if (!serial.empty() && stat(center.c_str(), &info) == 0)
+	{
+		char date[32] = "?";
+		const std::time_t when = info.st_mtime;
+		if (const std::tm* tm = std::localtime(&when))
+			std::strftime(date, sizeof(date), "%d/%m %H:%M", tm);
+		std::snprintf(label, sizeof(label), "Ajustes recomendados:  del centro (GitHub), %s", date);
+	}
+	else if (!serial.empty() && FileSystem::FileExists(package.c_str()))
+		std::snprintf(label, sizeof(label), "Ajustes recomendados:  del PKG");
+	else
+		std::snprintf(label, sizeof(label), "Ajustes recomendados:  ninguno para este juego");
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_RECOMMENDED, label,
+		"X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos");
+}
+
+// Forja SX2 (compilation 44): the other discs of a game of several, as Dolphin for PS4 changes them (v04.13). Its files sit
+// together in roms/ named "<game> (Disco 1).iso", "(Disc 2)", "CD 3"...: the same name before the word and another number.
+static std::vector<std::string> s_disc_paths;
+static unsigned s_disc_index = 0;
+
+static std::pair<std::string, int> DiscKey(std::string name)
+{
+	std::string lower = name;
+	std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+	for (const char* word : {"disco", "disc", "cd", "dvd"})
+	{
+		const size_t at = lower.rfind(word);
+		if (at == std::string::npos)
+			continue;
+		size_t digit = at + std::strlen(word);
+		while (digit < lower.size() && (lower[digit] == ' ' || lower[digit] == '_' || lower[digit] == '-' || lower[digit] == '.'))
+			digit++;
+		if (digit < lower.size() && lower[digit] >= '1' && lower[digit] <= '9')
+		{
+			std::string prefix = lower.substr(0, at);
+			while (!prefix.empty() && (prefix.back() == ' ' || prefix.back() == '(' || prefix.back() == '[' || prefix.back() == '-' ||
+										  prefix.back() == '_'))
+				prefix.pop_back();
+			return {prefix, lower[digit] - '0'};
+		}
+	}
+	return {std::string(), 0};
+}
+
+static void PublishDiscText()
+{
+	if (s_disc_paths.size() < 2)
+	{
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_CHANGE_DISC, "Cambiar disco:  este juego tiene un solo disco",
+			"Para juegos de varios discos: ponlos en roms/ como \"Juego (Disco 1).iso\", \"Juego (Disco 2).iso\"...");
+		return;
+	}
+	const int number = DiscKey(std::string(Path::GetFileName(s_disc_paths[s_disc_index]))).second;
+	const bool current = s_disc_paths[s_disc_index] == s_selected_game;
+	char label[128];
+	std::snprintf(label, sizeof(label), "Cambiar disco:  < Disco %d de %zu >%s", number, s_disc_paths.size(), current ? "  (puesto)" : "");
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CHANGE_DISC, label,
+		"X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida");
+}
+
+static void ReloadDiscList()
+{
+	s_disc_paths.clear();
+	s_disc_index = 0;
+	const auto key = DiscKey(std::string(Path::GetFileName(s_selected_game)));
+	if (key.second != 0)
+	{
+		FileSystem::FindResultsArray files;
+		FileSystem::FindFiles(std::string(Path::GetDirectory(s_selected_game)).c_str(), "*", FILESYSTEM_FIND_FILES, &files);
+		std::vector<std::pair<int, std::string>> discs;
+		for (const FILESYSTEM_FIND_DATA& file : files)
+		{
+			const auto other = DiscKey(std::string(Path::GetFileName(file.FileName)));
+			if (other.second != 0 && other.first == key.first)
+				discs.emplace_back(other.second, file.FileName);
+		}
+		std::sort(discs.begin(), discs.end());
+		for (const auto& disc : discs)
+		{
+			if (disc.second == s_selected_game)
+				s_disc_index = static_cast<unsigned>(s_disc_paths.size());
+			s_disc_paths.push_back(disc.second);
+		}
+	}
+	PublishDiscText();
+}
+
+static void ChangeToSelectedDisc()
+{
+	if (s_disc_paths.size() < 2 || s_disc_paths[s_disc_index] == s_selected_game)
+		return;
+	const std::string path = s_disc_paths[s_disc_index];
+	const bool changed = VMManager::ChangeDisc(CDVD_SourceType::Iso, path);
+	ProbeLog("Change disc: %s %s\n", path.c_str(), changed ? "in" : "FAILED");
+	if (changed)
+		s_selected_game = path;
+	PublishDiscText();
+}
+
+// Forja SX2 (compilation 44): the settings the game runs with now, for the session's analysis (the log said the EE rate only
+// when it changed, so where a session started was a guess).
+static void LogGameSettings(const char* why)
+{
+	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s]\n", why,
+		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
+		s_game_sharpness, s_game_textures, Vu1SkipList().c_str());
+}
+
 static void PublishGameMenu()
 {
 	PS4GameMenu::InGameMenuState state;
@@ -595,6 +871,7 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	g_orbis_fg_fluid = frame_gen == 2;
 	s_cpu_auto_floor = s_profile.cpu_auto;
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
+	ApplyVu1SkipList(s_profile.vu1_skip); // compilation 44: the VU1 filter
 	ProbeLog("Game profile: %s %08X factory=%d player=%d video_mode=%d (%s) video_ee_rate=%d (%s) frame_gen=%d (%s) "
 			 "cores=\"%s\" (%s) cpu_auto=%d (%s)\n",
 		s_profile.serial.empty() ? "(no serial)" : s_profile.serial.c_str(), s_profile.crc, s_profile.has_factory ? 1 : 0,
@@ -602,6 +879,7 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		ProfileOriginName(s_profile.video_ee_rate_origin), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0,
 		ProfileOriginName(s_profile.frame_gen_origin),
 		s_profile.cores.c_str(), ProfileOriginName(s_profile.cores_origin), s_cpu_auto_floor, ProfileOriginName(s_profile.cpu_auto_origin));
+	LogGameSettings("profile");
 }
 
 // The EE is the thread that calls this; the GS moves on its own thread (or pins itself with the plan when it starts). The VU1
@@ -887,6 +1165,25 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 {
 	switch (row)
 	{
+		case PS4GameMenu::ROW_VU1_FILTER:
+			if (!s_vu1_candidates.empty())
+			{
+				const int count = static_cast<int>(s_vu1_candidates.size());
+				s_vu1_index = static_cast<unsigned>((static_cast<int>(s_vu1_index) + delta % count + count) % count);
+				PublishVu1FilterText();
+			}
+			break;
+		case PS4GameMenu::ROW_TEXTURES:
+			ApplyGameTextures((s_game_textures + static_cast<unsigned>(delta + 3)) % 3);
+			break;
+		case PS4GameMenu::ROW_CHANGE_DISC:
+			if (s_disc_paths.size() >= 2)
+			{
+				const int count = static_cast<int>(s_disc_paths.size());
+				s_disc_index = static_cast<unsigned>((static_cast<int>(s_disc_index) + delta % count + count) % count);
+				PublishDiscText();
+			}
+			break;
 		case PS4GameMenu::ROW_PATCH:
 		{
 			if (!s_patch_infos.empty())
@@ -1256,6 +1553,11 @@ void VMHostPoll()
 		s_state_action = PS4GameMenu::STATE_NONE;
 		RefreshStateSlot();
 		ReloadPatchMenu(); // Forja SX2 (compilation 42): the Parches tab
+		// Compilation 44: the Extras tab's other rows and Partida's discs.
+		ReloadVu1Filter();
+		PublishTexturesText();
+		PublishRecommendedText();
+		ReloadDiscList();
 		// The game's own rate, not the one a movie (video mode) or the automatic speed lowered it to.
 		s_game_ee_rate = s_cpu_auto_steps > 0 ? s_cpu_auto_base : s_video_active ? s_video_saved_rate : EmuConfig.Speedhacks.EECycleRate;
 		s_game_menu_direction = 0;
@@ -1364,7 +1666,8 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_SHARPNESS ||
 						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_CPU_AUTO || row == PS4GameMenu::ROW_RESET_PROFILE ||
 						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART ||
-						   row == PS4GameMenu::ROW_PATCH))
+						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_TEXTURES ||
+						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC))
 		{
 			if (row == PS4GameMenu::ROW_SAVE_STATE)
 				SaveGameState();
@@ -1389,6 +1692,15 @@ void VMHostPoll()
 			}
 			else if (row == PS4GameMenu::ROW_PATCH)
 				TogglePatch();
+			else if (row == PS4GameMenu::ROW_VU1_FILTER)
+				ToggleVu1Program();
+			else if (row == PS4GameMenu::ROW_RECOMMENDED)
+			{
+				PublishRecommendedText(true);
+				ForjaPatches::FetchCommunity(VMManager::GetDiscSerial(), VMManager::GetDiscCRC(), true);
+			}
+			else if (row == PS4GameMenu::ROW_CHANGE_DISC)
+				ChangeToSelectedDisc();
 			else
 				ChangeGameMenuRow(row, 1);
 			PublishGameMenu();
@@ -1425,6 +1737,8 @@ void VMHostPoll()
 				s_game_menu_selection = first + (row - first + count - 1) % count;
 			else if (navigation == ORBIS_PAD_BUTTON_DOWN)
 				s_game_menu_selection = first + (row - first + 1) % count;
+			else if (row == PS4GameMenu::ROW_CHANGE_DISC) // compilation 44
+				ChangeGameMenuRow(row, navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1);
 			else if (row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE)
 			{
 				s_state_slot = (s_state_slot + (navigation == ORBIS_PAD_BUTTON_LEFT ? 4u : 1u)) % 5u;

@@ -51,13 +51,25 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
   El menú L3+R3 lo maneja solo el jugador 1. (Tres o cuatro jugadores, con el multitap, todavía no.)
 - **El menú L3+R3 va en 5 pestañas** (desde la 35, como el menú rápido de Dolphin). **L1 y R1** cambian de pestaña,
   Arriba/Abajo eligen dentro de ella e Izq./Der. cambian el valor:
-  - **Partida:** volver al juego, guardar estado, cargar estado y reiniciar el juego.
+  - **Partida:** volver al juego, guardar estado, cargar estado, reiniciar el juego y **cambiar disco** (desde la 44, para
+    juegos de varios discos: ponlos en roms/ como "Juego (Disco 1).iso", "Juego (Disco 2).iso"; ←/→ elige y X lo cambia
+    cuando el juego lo pida).
   - **Imagen:** resolución interna, relación de aspecto, **nitidez** (desde la 44), generación de cuadros y contador de FPS.
     **Nitidez:** Suave (como antes), Nítida (bilineal nítido, sin costo), CAS y CAS fuerte (el realce de AMD, de la familia
     del FSR que usa Dolphin para PS4; cuesta muy poco) y Píxeles (sin filtro, estilo retro). Se guarda por juego.
   - **Rendimiento:** velocidad del CPU de la PS2, **CPU automático**, modo video y núcleos.
-  - **Parches** (desde la 42): los parches de ese juego, uno por uno. ←/→ elige, **X** lo pone o lo quita y se guarda para
-    ese juego. Algunos piden reiniciar el juego para quitarse del todo.
+  - **Extras** (se llamaba Parches; desde la 44 trae más):
+    - **Parche:** los parches de ese juego, uno por uno. ←/→ elige, **X** lo pone o lo quita y se guarda para ese juego.
+      Algunos piden reiniciar el juego para quitarse del todo.
+    - **Filtro VU1 (experimental):** un laboratorio de efectos para cualquier juego. Muestra los programas del VU1 que más
+      tiempo gastaron en los últimos segundos; **X** apaga el elegido: lo que dibuja deja de verse y su tiempo se ahorra.
+      Si desaparece algo importante (o todo el 3D), X lo vuelve a poner. Lo apagado se guarda para ese juego. Sirve para
+      buscar qué efecto, sombra o fondo lejano cuesta más en cada juego.
+    - **Texturas HD:** No / Sí / Sí, precargadas. El pack va por FTP en `/data/ForjaSX2/textures/<SERIAL>/replacements`
+      (como en PCSX2). Precargar evita tirones pero usa más memoria: con packs enormes, mejor "Sí".
+    - **Ajustes recomendados:** de dónde vienen los ajustes de fábrica de ese juego: del centro de ajustes (GitHub, con
+      su fecha), del PKG, o ninguno. **X** los busca otra vez. Al empezar cada juego Forja baja de su GitHub el perfil y
+      los parches recomendados de ese juego (cada día), así las mejoras llegan sin un PKG nuevo. `vm-sin-centro` lo apaga.
   - **Sistema:** restablecer los ajustes del juego, volver a la biblioteca y salir.
 - **Todo lo que cambies en L3+R3 se guarda solo para ese juego** (como las propiedades por juego de Dolphin), menos el
   contador de FPS. Se aplica al instante:
@@ -169,7 +181,7 @@ Lo que diga este archivo **manda sobre** los interruptores generales, solo para 
 
 ## 5. Parches (`patches/`)
 Archivo `SERIAL_CRC.pnach` (mismo nombre que el .ini pero con `.pnach`), en formato de PCSX2.
-Sirve para pantalla ancha, 60 FPS o trucos. **Desde la 42 se ponen y se quitan en L3+R3 > Parches**, sin editar archivos.
+Sirve para pantalla ancha, 60 FPS o trucos. **Desde la 42 se ponen y se quitan en L3+R3 > Extras**, sin editar archivos.
 
 **Cómo sabe Forja que un parche es de tu juego:** por el serial del disco y el CRC del programa del juego, que van en el
 nombre del archivo (`SCES-54206_44A8A22A`). Otra región u otra versión tiene otro CRC, así que no carga parches ajenos.
@@ -177,14 +189,14 @@ nombre del archivo (`SCES-54206_44A8A22A`). Otra región u otra versión tiene o
 **Parches de la comunidad de PCSX2 (desde la 42):** al empezar un juego, Forja baja de
 [github.com/PCSX2/pcsx2_patches](https://github.com/PCSX2/pcsx2_patches) el archivo de ese juego exacto a
 `patches/<SERIAL>_<CRC>_comunidad.pnach` (pantalla ancha, sin entrelazado, saltar videos...). Necesita internet y lo vuelve
-a bajar a los 7 días. Ninguno se activa solo: los eliges en L3+R3 > Parches. No vienen dentro del PKG porque ese repositorio
+a bajar a los 7 días. Ninguno se activa solo: los eliges en L3+R3 > Extras. No vienen dentro del PKG porque ese repositorio
 no tiene licencia; los baja tu consola desde su fuente. `vm-sin-parches-comunidad` apaga la descarga.
 
-**Parches que vienen en el PKG** (desde la 35, en `resources/parches/`). Por ahora son para God of War II (PAL):
-- **Saltar cinemáticas** (de la comunidad): con cualquier botón de acción. Viene activo de fábrica.
+**Parches que vienen en el PKG** (desde la 35, en `resources/parches/`). Para God of War II (PAL):
 - **Menos efectos 1, 2 y 3 (Sony):** del emulador de Sony para God of War II USA, pasados a la PAL. Quitan algunos efectos
   a cambio de velocidad en las peleas. Con el 2 y el 3, el promedio pasó de ~66 % a ~87 %. El 1 todavía está en prueba.
-- **Pantalla ancha 16:9** (de la comunidad): muestra más escena, así que cuesta algo más.
+- Saltar cinemáticas y la pantalla ancha: desde la 44 ya no van repetidos aquí; llegan con el archivo de la comunidad
+  ("Skip Cutscenes", que viene activo de fábrica, y "Widescreen 16:9").
 - **Menos efectos 4 (de God of War 1, experimental)** (desde la 43): Sony apaga esa función en God of War 1 y en God of
   War II existe la misma. Sin probar: puede quitar otro efecto.
 
@@ -198,7 +210,7 @@ función no es idéntica, no hacen nada. Vienen para:
   27 % y vuFlagHack, igual que la PAL.
 - **God of War USA y PAL** (`SCUS-97399_D6385328`, `SCES-53133_FB0E6D72`): Menos efectos A y B (dos de las cuatro funciones
   de Sony; las otras dos no se pueden reconocer sin ese disco). Sin probar.
-Se ponen en L3+R3 > Parches. Los dinámicos valen desde el próximo arranque del juego (Partida > Reiniciar juego).
+Se ponen en L3+R3 > Extras. Los dinámicos valen desde el próximo arranque del juego (Partida > Reiniciar juego).
 
 **Arreglos de Sony (desde la 43):** de los demás scripts de Sony, los que cambian una instrucción en una dirección fija se
 escribieron como parches condicionales ("Arreglo de Sony"): solo cambian algo si en esa dirección está la instrucción que

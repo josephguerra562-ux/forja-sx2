@@ -55,6 +55,9 @@ namespace ForjaGameProfile
 		// (off). The emulator lowers the EE rate towards it while the game cannot keep full speed (main.cpp, UpdateCpuAuto).
 		int cpu_auto = 1;
 		Origin cpu_auto_origin = Origin::Global;
+		// [Forja] VU1Quitar (compilation 44): the VU1 programs the filter leaves out, their start addresses in hex ("0d30,0f48").
+		std::string vu1_skip;
+		Origin vu1_skip_origin = Origin::Global;
 	};
 
 	// Forja SX2 (compilation 44): the settings center's copy (/data/ForjaSX2/centro/perfiles, fetched from the project's GitHub by
@@ -144,6 +147,10 @@ namespace ForjaGameProfile
 			v.cores_origin = Origin::Player;
 		else if (v.has_factory && factory.GetStringValue("Forja", "Nucleos", &v.cores))
 			v.cores_origin = Origin::Factory;
+		if (v.has_player && player.GetStringValue("Forja", "VU1Quitar", &v.vu1_skip))
+			v.vu1_skip_origin = Origin::Player;
+		else if (v.has_factory && factory.GetStringValue("Forja", "VU1Quitar", &v.vu1_skip))
+			v.vu1_skip_origin = Origin::Factory;
 
 		if (v.video_mode >= 0)
 			v.video_mode = v.video_mode != 0 ? 1 : 0;

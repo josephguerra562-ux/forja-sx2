@@ -16,6 +16,7 @@ namespace PS4GameMenu
 		ROW_SAVE_STATE,
 		ROW_LOAD_STATE,
 		ROW_RESTART,
+		ROW_CHANGE_DISC, // compilation 44
 		// Imagen
 		ROW_RESOLUTION,
 		ROW_ASPECT,
@@ -27,8 +28,12 @@ namespace PS4GameMenu
 		ROW_CPU_AUTO,
 		ROW_VIDEO_MODE,
 		ROW_CORES,
-		// Parches (compilation 42): the game's patch groups, one at a time (main.cpp, PublishPatchMenuText)
+		// Extras (compilation 42 "Parches", 44 "Extras"): the game's patch groups one at a time (main.cpp, PublishPatchMenuText),
+		// the VU1 filter, HD textures and where the recommended settings come from
 		ROW_PATCH,
+		ROW_VU1_FILTER,
+		ROW_TEXTURES,
+		ROW_RECOMMENDED,
 		// Sistema
 		ROW_RESET_PROFILE,
 		ROW_LIBRARY,

@@ -139,7 +139,7 @@ namespace
 
 namespace ForjaPatches
 {
-	void FetchCommunity(const std::string& serial, uint32_t crc)
+	void FetchCommunity(const std::string& serial, uint32_t crc, bool force)
 	{
 		if (serial.empty() || crc == 0)
 			return;
@@ -147,7 +147,7 @@ namespace ForjaPatches
 		std::snprintf(name, sizeof(name), "%s_%08X", serial.c_str(), crc);
 		{
 			std::lock_guard lock(s_mutex);
-			if (s_asked == name)
+			if (s_asked == name && !force)
 				return;
 			s_asked = name;
 		}
@@ -156,7 +156,7 @@ namespace ForjaPatches
 		if (access(CommunityOff, F_OK) != 0)
 		{
 			const std::string path = root + "/patches/" + name + "_comunidad.pnach";
-			if (Fresh(path, 7 * 24 * 3600))
+			if (!force && Fresh(path, 7 * 24 * 3600))
 				ProbeLog("Community patches: %s fetched less than 7 days ago\n", name);
 			else
 				jobs->push_back({Kind::CommunityPatches, std::string(CommunitySource) + name + ".pnach", path});
@@ -165,9 +165,9 @@ namespace ForjaPatches
 		{
 			const std::string profile = root + "/centro/perfiles/" + serial + ".ini";
 			const std::string patches = root + "/centro/parches/" + name + "_forja.pnach";
-			if (!Fresh(profile, 24 * 3600))
+			if (force || !Fresh(profile, 24 * 3600))
 				jobs->push_back({Kind::CenterProfile, std::string(CenterSource) + "perfiles/" + serial + ".ini", profile});
-			if (!Fresh(patches, 24 * 3600))
+			if (force || !Fresh(patches, 24 * 3600))
 				jobs->push_back({Kind::CenterPatches, std::string(CenterSource) + "parches/" + name + "_forja.pnach", patches});
 		}
 		if (jobs->empty() || s_busy.exchange(true, std::memory_order_acq_rel))

@@ -1,13 +1,9 @@
 gametitle=God of War II (PAL) SCES-54206 44A8A22A
 
-// Forja SX2: parches que vienen en el PKG para God of War II (PAL). Se activan por juego con [Patches] Enable = <nombre> en
-// gamesettings/SCES-54206_44A8A22A.ini; el perfil de fábrica activa solo "Saltar cinemáticas". Un grupo con el mismo nombre en
-// /data/ForjaSX2/patches gana a este.
+// Forja SX2: parches que vienen en el PKG para God of War II (PAL): los "Menos efectos" de Sony. Se ponen y se quitan en
+// L3+R3 > Extras. Saltar cinemáticas y la pantalla ancha llegan con el archivo de la comunidad ("Skip Cutscenes",
+// "Widescreen 16:9"), que Forja baja solo (compilación 44: ya no van repetidos aquí).
 
-[Saltar cinemáticas]
-author=Ezedequias (PCSX2/pcsx2_patches)
-description=Permite saltar las cinemáticas con cualquier botón de acción.
-patch=1,EE,002D7B24,byte,01
 
 // El "speedhack by removing some effects" de la config de GoW2 USA (SCUS-97481) para el emulador de PS2 de Sony en PS4,
 // pasado a la PAL y partido en tres. Cada uno hace que una función regrese al instante (jr ra; nop). Quitan efectos visuales
@@ -40,12 +36,3 @@ description=Sony apaga esta función en God of War 1 (SCUS-97399); aquí está e
 patch=1,EE,001740e8,word,03e00008
 patch=1,EE,001740ec,word,00000000
 
-[Pantalla ancha 16:9]
-gsaspectratio=16:9
-author=CRASHARKI y ShaolinAssassin (PCSX2/pcsx2_patches)
-description=Activa el 16:9 propio del juego. Muestra más escena: cuesta algo más de VU1 y GS.
-patch=1,EE,002D8068,byte,01
-patch=1,EE,0032ED00,word,3FE38E39
-patch=1,EE,0032ED38,word,3FE38E39
-patch=1,EE,00363210,word,3FE38E39
-patch=1,EE,002348A0,word,46000406

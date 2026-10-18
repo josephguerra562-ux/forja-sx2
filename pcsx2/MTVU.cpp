@@ -44,6 +44,18 @@ namespace
 	};
 	ForjaVU1Program s_forja_vu1_programs[2048]; // by start address / 8
 	u64 s_forja_vu1_programs_since = 0;
+} // namespace
+
+// Forja SX2 (compilation 44): the VU1 filter, an effects lab for any game (L3+R3 > Extras, main.cpp). A program the player
+// leaves out (by its start address / 8, one bit each) doesn't run: what it would have drawn isn't drawn, and its VU1 time is
+// saved. The last ~5 s's eight costliest programs (start / 8 << 16 | share in permille) are what the menu offers.
+std::atomic<u32> g_forja_vu1_skip[64];
+std::atomic<u32> g_forja_vu1_top[8];
+std::atomic<u32> g_forja_vu1_top_count{0};
+std::atomic<u32> g_forja_vu1_skipped_runs{0};
+
+namespace
+{
 
 	void ForjaVU1ProgramsLog(u64 now)
 	{
@@ -90,6 +102,14 @@ namespace
 				static_cast<double>(program.cycles) / seconds / 1000.0);
 		}
 		ProbeLog("%s\n", line);
+		for (unsigned k = 0; k < found; k++)
+		{
+			const u32 permille = static_cast<u32>(s_forja_vu1_programs[top[k]].ticks * 1000 / total);
+			g_forja_vu1_top[k].store((top[k] << 16) | std::min(permille, 1000u), std::memory_order_relaxed);
+		}
+		g_forja_vu1_top_count.store(found, std::memory_order_release);
+		if (const u32 skipped = g_forja_vu1_skipped_runs.exchange(0, std::memory_order_relaxed))
+			ProbeLog("VU1 filter: %.0f runs a second left out\n", skipped / seconds);
 		for (ForjaVU1Program& program : s_forja_vu1_programs)
 			program = ForjaVU1Program();
 	}
@@ -404,6 +424,13 @@ void VU_Thread::ExecuteRingBuffer()
 					CpuVU1->SetStartPC(VU1.VI[REG_TPC].UL << 3);
 #if defined(PCSX2_PS4_VM_BOOT)
 					const u64 forja_t0 = __builtin_ia32_rdtsc();
+#endif
+#if defined(PCSX2_PS4_VM_BOOT)
+					// Forja SX2 (compilation 44): the VU1 filter: a program the player left out doesn't run.
+					const u32 forja_program = (orbis_start_tpc / 8) & 2047;
+					if ((g_forja_vu1_skip[forja_program >> 5].load(std::memory_order_relaxed) >> (forja_program & 31)) & 1)
+						g_forja_vu1_skipped_runs.fetch_add(1, std::memory_order_relaxed);
+					else
 #endif
 					{
 						PS4_WORKER_SCOPE(VUExecute);

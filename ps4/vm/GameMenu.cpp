@@ -54,19 +54,27 @@ extern std::atomic<bool> g_forja_menu_active;
 
 namespace PS4GameMenu
 {
-	// Forja SX2 (compilation 42): the Parches row's text, from the CPU thread (SetPatchMenuText) to the GS thread's render.
+	// Forja SX2 (compilation 42, 44 for every row): the text of the rows whose values are names (the patches, the VU1 filter,
+	// HD textures, the recommended settings, the discs), from the CPU thread (SetRowText) to the GS thread's render.
 	namespace
 	{
 		std::mutex s_patch_text_mutex;
-		std::string s_patch_label = "Parches";
-		std::string s_patch_description;
+		std::string s_row_labels[ROW_COUNT];
+		std::string s_row_descriptions[ROW_COUNT];
 	} // namespace
+
+	void SetRowText(unsigned row, const std::string& label, const std::string& description)
+	{
+		if (row >= ROW_COUNT)
+			return;
+		std::lock_guard lock(s_patch_text_mutex);
+		s_row_labels[row] = label;
+		s_row_descriptions[row] = description;
+	}
 
 	void SetPatchMenuText(const std::string& label, const std::string& description)
 	{
-		std::lock_guard lock(s_patch_text_mutex);
-		s_patch_label = label;
-		s_patch_description = description;
+		SetRowText(ROW_PATCH, label, description);
 	}
 
 	namespace
@@ -1573,16 +1581,20 @@ namespace PS4GameMenu
 				std::snprintf(load_description, sizeof(load_description), "%s",
 					menu_state.slot_used ? "X: vuelve a ese momento y sigue jugando" : "Ranura vacía");
 			// Each row's text by its name, not by its place: the rows moved into tabs in compilation 35.
-			std::string patch_label, patch_description;
+			std::string row_labels[ROW_COUNT], row_descriptions[ROW_COUNT];
 			{
 				std::lock_guard lock(s_patch_text_mutex);
-				patch_label = s_patch_label;
-				patch_description = s_patch_description;
+				for (unsigned r = 0; r < ROW_COUNT; r++)
+				{
+					row_labels[r] = s_row_labels[r];
+					row_descriptions[r] = s_row_descriptions[r];
+				}
 			}
 			const auto label_of = [&](unsigned row) -> const char* {
+				if (row < ROW_COUNT && !row_labels[row].empty())
+					return row_labels[row].c_str();
 				switch (row)
 				{
-					case ROW_PATCH: return patch_label.c_str();
 					case ROW_RESUME: return "Volver al juego";
 					case ROW_SAVE_STATE: return save_label;
 					case ROW_LOAD_STATE: return load_label;
@@ -1602,9 +1614,10 @@ namespace PS4GameMenu
 				}
 			};
 			const auto description_of = [&](unsigned row) -> const char* {
+				if (row < ROW_COUNT && !row_labels[row].empty())
+					return row_descriptions[row].c_str();
 				switch (row)
 				{
-					case ROW_PATCH: return patch_description.c_str();
 					case ROW_RESUME: return "Seguir jugando desde donde quedó";
 					case ROW_SAVE_STATE: return save_description;
 					case ROW_LOAD_STATE: return load_description;
@@ -1678,6 +1691,29 @@ namespace PS4GameMenu
 						draw->AddLine(ip(0, 15), ip(-14, 0), icon_line, lw);
 						draw->AddLine(ip(-14, 0), ip(0, -15), icon_line, lw);
 						break;
+					case ROW_VU1_FILTER: // a funnel
+						draw->AddLine(ip(-15, -12), ip(15, -12), icon_line, lw);
+						draw->AddLine(ip(-15, -12), ip(-3, 2), icon_line, lw);
+						draw->AddLine(ip(15, -12), ip(3, 2), icon_line, lw);
+						draw->AddLine(ip(-3, 2), ip(-3, 14), icon_line, lw);
+						draw->AddLine(ip(3, 2), ip(3, 14), icon_line, lw);
+						break;
+					case ROW_TEXTURES: // a picture
+						draw->AddRect(ip(-15, -12), ip(15, 12), icon_line, 3 * scale, lw, 0);
+						draw->AddLine(ip(-11, 8), ip(-3, -2), icon_line, lw);
+						draw->AddLine(ip(-3, -2), ip(4, 6), icon_line, lw);
+						draw->AddLine(ip(4, 6), ip(11, 0), icon_line, lw);
+						break;
+					case ROW_RECOMMENDED: // a cloud's arrow down
+						draw->AddLine(ip(0, -14), ip(0, 10), icon_line, lw);
+						draw->AddLine(ip(-8, 2), ip(0, 10), icon_line, lw);
+						draw->AddLine(ip(8, 2), ip(0, 10), icon_line, lw);
+						draw->AddLine(ip(-14, 15), ip(14, 15), icon_line, lw);
+						break;
+					case ROW_CHANGE_DISC: // a disc
+						draw->AddCircle(ip(0, 0), 14.0f * scale, icon_line, 28, lw);
+						draw->AddCircle(ip(0, 0), 4.0f * scale, icon_line, 12, lw);
+						break;
 					case ROW_PATCH: // a bandage
 						draw->AddRect(ip(-15, -7), ip(15, 7), icon_line, 7 * scale, lw, 0);
 						draw->AddLine(ip(-4, -7), ip(-4, 7), icon_line, lw);
@@ -1722,7 +1758,7 @@ namespace PS4GameMenu
 			};
 			// Forja SX2 (compilation 35): the rows in four tabs, as Dolphin's quick menu (Joseph, 2026-10-16: one list of fifteen
 			// rows was hard to follow). L1/R1 move between the tabs (main.cpp); each tab fits without scrolling.
-			static constexpr const char* tab_names[TAB_COUNT] = {"Partida", "Imagen", "Rendimiento", "Parches", "Sistema"};
+			static constexpr const char* tab_names[TAB_COUNT] = {"Partida", "Imagen", "Rendimiento", "Extras", "Sistema"};
 			const unsigned active_tab = TabOfRow(selected_row);
 			draw->AddText(font, 20.0f * scale, point(112, 198), muted, "L1");
 			float tab_x = 152.0f;
@@ -1757,8 +1793,12 @@ namespace PS4GameMenu
 				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
 				         row == ROW_SHARPNESS)
 					action = "ELEGIR";
-				else if (row == ROW_PATCH)
+				else if (row == ROW_PATCH || row == ROW_VU1_FILTER || row == ROW_CHANGE_DISC)
 					action = "ELEGIR  ·  X";
+				else if (row == ROW_TEXTURES)
+					action = "ELEGIR";
+				else if (row == ROW_RECOMMENDED)
+					action = "X";
 				else if (row == ROW_OVERLAY)
 					action = "CAMBIAR";
 				else if (row == ROW_SAVE_STATE || (row == ROW_LOAD_STATE && menu_state.slot_used))
