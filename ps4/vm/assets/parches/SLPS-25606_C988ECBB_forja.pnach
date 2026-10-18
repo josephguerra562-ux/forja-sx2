@@ -1,0 +1,16 @@
+gametitle=絶体絶命都市2 -凍てついた記憶たち- SLPS-25606 C988ECBB
+
+// Forja SX2: arreglo que Sony usa para este juego en su emulador de PS2 de PS4 (SLPS_256.06), escrito como parche nuestro. Cada
+// cambio es condicional: solo escribe si en esa dirección está la instrucción que Sony esperaba (si no, no hace nada).
+// Arregla un fallo del emulador de Sony; en PCSX2 puede no hacer falta. Ponlo solo si el juego tiene ese problema.
+// Nota de Sony: SLPS-25606
+
+[Arreglo de Sony (2 cambios)]
+author=Forja SX2, a partir de la config de Sony
+description=SLPS-25606
+patch=1,EE,D011E094,extended,02006804
+patch=1,EE,D011E096,extended,01000C06
+patch=1,EE,2011E094,extended,00000000
+patch=1,EE,D011E09C,extended,0200A654
+patch=1,EE,D011E09E,extended,01000C08
+patch=1,EE,2011E09C,extended,00000000

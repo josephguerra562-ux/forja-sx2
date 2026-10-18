@@ -1,0 +1,13 @@
+gametitle=Oni SLES-50176 F77639F1
+
+// Forja SX2: arreglo que Sony usa para este juego en su emulador de PS2 de PS4 (SLES_501.76), escrito como parche nuestro. Cada
+// cambio es condicional: solo escribe si en esa dirección está la instrucción que Sony esperaba (si no, no hace nada).
+// Arregla un fallo del emulador de Sony; en PCSX2 puede no hacer falta. Ponlo solo si el juego tiene ese problema.
+// Nota de Sony: Fix for hang at loading screen
+
+[Arreglo de Sony (1 cambio)]
+author=Forja SX2, a partir de la config de Sony
+description=Fix for hang at loading screen
+patch=1,EE,D01CEF7C,extended,0200FFFF
+patch=1,EE,D01CEF7E,extended,01004100
+patch=1,EE,201CEF7C,extended,00000000

@@ -1,0 +1,22 @@
+gametitle=Ace Combat - The Belkan War SCES-54041 194C9F38
+
+// Forja SX2: arreglo que Sony usa para este juego en su emulador de PS2 de PS4 (SCES_540.41), escrito como parche nuestro. Cada
+// cambio es condicional: solo escribe si en esa dirección está la instrucción que Sony esperaba (si no, no hace nada).
+// Arregla un fallo del emulador de Sony; en PCSX2 puede no hacer falta. Ponlo solo si el juego tiene ese problema.
+// Nota de Sony: Collision detection fix.
+
+[Arreglo de Sony (4 cambios)]
+author=Forja SX2, a partir de la config de Sony
+description=Collision detection fix.
+patch=1,EE,D0131EB4,extended,0200682C
+patch=1,EE,D0131EB6,extended,01004B00
+patch=1,EE,20131EB4,extended,48498800
+patch=1,EE,D0131EB8,extended,0200682C
+patch=1,EE,D0131EBA,extended,01004B0C
+patch=1,EE,20131EB8,extended,4B00682C
+patch=1,EE,D0131EC4,extended,02008800
+patch=1,EE,D0131EC6,extended,01004849
+patch=1,EE,20131EC4,extended,484A8800
+patch=1,EE,D0131EC8,extended,02008800
+patch=1,EE,D0131ECA,extended,0100484A
+patch=1,EE,20131EC8,extended,4B0C682C

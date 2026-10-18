@@ -1,0 +1,22 @@
+gametitle=Ace Combat 5 - The Unsung War SLUS-20851 39B574F0
+
+// Forja SX2: arreglo que Sony usa para este juego en su emulador de PS2 de PS4 (SLUS_208.51), escrito como parche nuestro. Cada
+// cambio es condicional: solo escribe si en esa dirección está la instrucción que Sony esperaba (si no, no hace nada).
+// Arregla un fallo del emulador de Sony; en PCSX2 puede no hacer falta. Ponlo solo si el juego tiene ese problema.
+// Nota de Sony: Collision detection fix for Stage 3 onwards // Rearranging COP2 instructions that use old results
+
+[Arreglo de Sony (4 cambios)]
+author=Forja SX2, a partir de la config de Sony
+description=Collision detection fix for Stage 3 onwards // Rearranging COP2 instructions that use old results
+patch=1,EE,D01A3B94,extended,0200682C
+patch=1,EE,D01A3B96,extended,01004B00
+patch=1,EE,201A3B94,extended,48498800
+patch=1,EE,D01A3B98,extended,0200682C
+patch=1,EE,D01A3B9A,extended,01004B0C
+patch=1,EE,201A3B98,extended,4B00682C
+patch=1,EE,D01A3BA4,extended,02008800
+patch=1,EE,D01A3BA6,extended,01004849
+patch=1,EE,201A3BA4,extended,484A8800
+patch=1,EE,D01A3BA8,extended,02008800
+patch=1,EE,D01A3BAA,extended,0100484A
+patch=1,EE,201A3BA8,extended,4B0C682C

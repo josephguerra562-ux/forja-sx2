@@ -1,0 +1,13 @@
+gametitle=Legacy of Kain - Defiance SLUS-20773 728AB07C
+
+// Forja SX2: arreglo que Sony usa para este juego en su emulador de PS2 de PS4 (SLUS_207.73), escrito como parche nuestro. Cada
+// cambio es condicional: solo escribe si en esa dirección está la instrucción que Sony esperaba (si no, no hace nada).
+// Arregla un fallo del emulador de Sony; en PCSX2 puede no hacer falta. Ponlo solo si el juego tiene ese problema.
+// Nota de Sony: Texture Flickering fix
+
+[Arreglo de Sony (1 cambio)]
+author=Forja SX2, a partir de la config de Sony
+description=Texture Flickering fix
+patch=1,EE,D0188F50,extended,02000020
+patch=1,EE,D0188F52,extended,01001060
+patch=1,EE,20188F50,extended,10000020

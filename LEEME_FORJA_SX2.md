@@ -194,6 +194,14 @@ función no es idéntica, no hacen nada. Vienen para:
   de Sony; las otras dos no se pueden reconocer sin ese disco). Sin probar.
 Se ponen en L3+R3 > Parches. Los dinámicos valen desde el próximo arranque del juego (Partida > Reiniciar juego).
 
+**Arreglos de Sony (desde la 43):** de los demás scripts de Sony, los que cambian una instrucción en una dirección fija se
+escribieron como parches condicionales ("Arreglo de Sony"): solo cambian algo si en esa dirección está la instrucción que
+Sony esperaba. Corrigen fallos del emulador de Sony (choques, parpadeos, cuelgues), que en Forja quizá no pasen: ponlos
+solo si el juego tiene ese problema. Vienen para 17 juegos (20 versiones): Ace Combat (Squadron Leader, The Belkan War,
+The Unsung War, Zero), Oni, Soul Reaver 2, Legacy of Kain: Defiance, Ghost in the Shell: Stand Alone Complex, Tomb Raider
+Legend y Anniversary, Raw Danger y otros. La lista completa, con todos los parches de la comunidad por juego, está en
+`Catalogo de parches.html`.
+
 Para activarlos, en `gamesettings/SCES-54206_44A8A22A.ini`:
 ```ini
 [Patches]

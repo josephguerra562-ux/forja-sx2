@@ -1,0 +1,16 @@
+gametitle=Raw Danger SLUS-21501 2905C5C6
+
+// Forja SX2: arreglo que Sony usa para este juego en su emulador de PS2 de PS4 (SLUS_215.01), escrito como parche nuestro. Cada
+// cambio es condicional: solo escribe si en esa dirección está la instrucción que Sony esperaba (si no, no hace nada).
+// Arregla un fallo del emulador de Sony; en PCSX2 puede no hacer falta. Ponlo solo si el juego tiene ese problema.
+// Nota de Sony: SLUS-21501
+
+[Arreglo de Sony (2 cambios)]
+author=Forja SX2, a partir de la config de Sony
+description=SLUS-21501
+patch=1,EE,D011E104,extended,02006A5C
+patch=1,EE,D011E106,extended,01000C06
+patch=1,EE,2011E104,extended,00000000
+patch=1,EE,D011E10C,extended,0200A8EC
+patch=1,EE,D011E10E,extended,01000C08
+patch=1,EE,2011E10C,extended,00000000

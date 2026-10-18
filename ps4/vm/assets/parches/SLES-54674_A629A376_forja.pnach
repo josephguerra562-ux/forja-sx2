@@ -1,0 +1,13 @@
+gametitle=Lara Croft Tomb Raider - Anniversary SLES-54674 A629A376
+
+// Forja SX2: arreglo que Sony usa para este juego en su emulador de PS2 de PS4 (SLES_546.74), escrito como parche nuestro. Cada
+// cambio es condicional: solo escribe si en esa dirección está la instrucción que Sony esperaba (si no, no hace nada).
+// Arregla un fallo del emulador de Sony; en PCSX2 puede no hacer falta. Ponlo solo si el juego tiene ese problema.
+// Nota de Sony: Problematic mipmaps
+
+[Arreglo de Sony (1 cambio)]
+author=Forja SX2, a partir de la config de Sony
+description=Problematic mipmaps
+patch=1,EE,D0129800,extended,02000022
+patch=1,EE,D0129802,extended,01001060
+patch=1,EE,20129800,extended,10000022

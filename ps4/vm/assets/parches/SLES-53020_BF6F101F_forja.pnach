@@ -1,0 +1,79 @@
+gametitle=Ghost in the Shell - Stand Alone Complex SLES-53020 BF6F101F
+
+// Forja SX2: arreglo que Sony usa para este juego en su emulador de PS2 de PS4 (SLES_530.20), escrito como parche nuestro. Cada
+// cambio es condicional: solo escribe si en esa dirección está la instrucción que Sony esperaba (si no, no hace nada).
+// Arregla un fallo del emulador de Sony; en PCSX2 puede no hacer falta. Ponlo solo si el juego tiene ese problema.
+// Nota de Sony: Fix for broken interactive door, by rearranging COP2 ops to avoid macflag issue.
+
+[Arreglo de Sony (23 cambios)]
+author=Forja SX2, a partir de la config de Sony
+description=Fix for broken interactive door, by rearranging COP2 ops to avoid macflag issue.
+patch=1,EE,D010BC88,extended,0200682C
+patch=1,EE,D010BC8A,extended,01004BEC
+patch=1,EE,2010BC88,extended,48468800
+patch=1,EE,D010BC8C,extended,0200617D
+patch=1,EE,D010BC8E,extended,01004B8D
+patch=1,EE,2010BC8C,extended,4BEC682C
+patch=1,EE,D010BC90,extended,0200617C
+patch=1,EE,D010BC92,extended,01004A6D
+patch=1,EE,2010BC90,extended,4B8D617D
+patch=1,EE,D010BC98,extended,02008800
+patch=1,EE,D010BC9A,extended,01004846
+patch=1,EE,2010BC98,extended,4A6D617C
+patch=1,EE,D012B2CC,extended,0200682C
+patch=1,EE,D012B2CE,extended,01004BEC
+patch=1,EE,2012B2CC,extended,48468800
+patch=1,EE,D012B2D0,extended,0200617D
+patch=1,EE,D012B2D2,extended,01004B8D
+patch=1,EE,2012B2D0,extended,4BEC682C
+patch=1,EE,D012B2D4,extended,0200617C
+patch=1,EE,D012B2D6,extended,01004A6D
+patch=1,EE,2012B2D4,extended,4B8D617D
+patch=1,EE,D012B2DC,extended,02008800
+patch=1,EE,D012B2DE,extended,01004846
+patch=1,EE,2012B2DC,extended,4A6D617C
+patch=1,EE,D012B5F4,extended,0200682C
+patch=1,EE,D012B5F6,extended,01004BEC
+patch=1,EE,2012B5F4,extended,48468800
+patch=1,EE,D012B5F8,extended,0200617D
+patch=1,EE,D012B5FA,extended,01004B8D
+patch=1,EE,2012B5F8,extended,4BEC682C
+patch=1,EE,D012B5FC,extended,0200617C
+patch=1,EE,D012B5FE,extended,01004A6D
+patch=1,EE,2012B5FC,extended,4B8D617D
+patch=1,EE,D012B604,extended,02008800
+patch=1,EE,D012B606,extended,01004846
+patch=1,EE,2012B604,extended,4A6D617C
+patch=1,EE,D01B0B58,extended,0200682C
+patch=1,EE,D01B0B5A,extended,01004BEC
+patch=1,EE,201B0B58,extended,48468800
+patch=1,EE,D01B0B5C,extended,0200617D
+patch=1,EE,D01B0B5E,extended,01004BED
+patch=1,EE,201B0B5C,extended,4BEC682C
+patch=1,EE,D01B0B68,extended,02008800
+patch=1,EE,D01B0B6A,extended,01004846
+patch=1,EE,201B0B68,extended,4B8D617D
+patch=1,EE,D01BF5FC,extended,020002FF
+patch=1,EE,D01BF5FE,extended,01004A00
+patch=1,EE,201BF5FC,extended,48588800
+patch=1,EE,D01BF60C,extended,02008800
+patch=1,EE,D01BF60E,extended,01004858
+patch=1,EE,201BF60C,extended,4A0002FF
+patch=1,EE,D01BFBB8,extended,020002FF
+patch=1,EE,D01BFBBA,extended,01004A00
+patch=1,EE,201BFBB8,extended,48588800
+patch=1,EE,D01BFBC8,extended,02008800
+patch=1,EE,D01BFBCA,extended,01004858
+patch=1,EE,201BFBC8,extended,4A0002FF
+patch=1,EE,D01BF818,extended,020002FF
+patch=1,EE,D01BF81A,extended,01004A00
+patch=1,EE,201BF818,extended,48588800
+patch=1,EE,D01BF828,extended,02008800
+patch=1,EE,D01BF82A,extended,01004858
+patch=1,EE,201BF828,extended,4A0002FF
+patch=1,EE,D01C017C,extended,020002FF
+patch=1,EE,D01C017E,extended,01004A00
+patch=1,EE,201C017C,extended,48588800
+patch=1,EE,D01C018C,extended,02008800
+patch=1,EE,D01C018E,extended,01004858
+patch=1,EE,201C018C,extended,4A0002FF

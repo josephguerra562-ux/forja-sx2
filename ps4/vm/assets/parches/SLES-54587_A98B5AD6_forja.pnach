@@ -1,0 +1,16 @@
+gametitle=Raw Danger SLES-54587 A98B5AD6
+
+// Forja SX2: arreglo que Sony usa para este juego en su emulador de PS2 de PS4 (SLES_545.87), escrito como parche nuestro. Cada
+// cambio es condicional: solo escribe si en esa dirección está la instrucción que Sony esperaba (si no, no hace nada).
+// Arregla un fallo del emulador de Sony; en PCSX2 puede no hacer falta. Ponlo solo si el juego tiene ese problema.
+// Nota de Sony: SLES-54587
+
+[Arreglo de Sony (2 cambios)]
+author=Forja SX2, a partir de la config de Sony
+description=SLES-54587
+patch=1,EE,D011E0F4,extended,02006A40
+patch=1,EE,D011E0F6,extended,01000C06
+patch=1,EE,2011E0F4,extended,00000000
+patch=1,EE,D011E0FC,extended,0200A8D0
+patch=1,EE,D011E0FE,extended,01000C08
+patch=1,EE,2011E0FC,extended,00000000
