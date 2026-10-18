@@ -768,6 +768,15 @@ bool VKSwapChain::PresentCurrentImage()
 #endif
 }
 
+u32 VKSwapChain::FreeVideoOutImages()
+{
+#if defined(PCSX2_PS4)
+	return m_is_video_out && m_video_out ? m_video_out->FreeImages() : 0;
+#else
+	return 0;
+#endif
+}
+
 bool VKSwapChain::PresentCurrentImageFromGpu()
 {
 #if defined(PCSX2_PS4)

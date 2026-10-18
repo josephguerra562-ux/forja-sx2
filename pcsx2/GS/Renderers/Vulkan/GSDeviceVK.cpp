@@ -4714,6 +4714,7 @@ namespace
 		std::chrono::steady_clock::time_point last_state_log{};
 		int logged_state = -1;   // the pacing's state the log last described
 		u64 stat_frames = 0, stat_engaged = 0, stat_made = 0, stat_presents = 0, stat_counted = 0;
+		u64 stat_held = 0; // Forja SX2 (compilation 41): generated presents left out, no display image free
 		double stat_vsyncs = 0.0;
 	};
 
@@ -4980,7 +4981,10 @@ u32 GSDeviceVK::OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv,
 			have_gpu ? fmt::format("; GPU {:.2f} ms a frame ({:.2f} the optical flow), most {:.2f}", gpu_ms, flow_ms, gpu_max).c_str() : "");
 		fflush(stdout);
 		s.stat_start = now;
-		s.stat_frames = s.stat_engaged = s.stat_made = s.stat_presents = s.stat_counted = 0;
+		if (s.stat_held > 0)
+			printf("[fg] %.1f generated presents a second left out: no display image was free (the game's frame would have waited)\n",
+				s.stat_held / secs);
+		s.stat_frames = s.stat_engaged = s.stat_made = s.stat_presents = s.stat_counted = s.stat_held = 0;
 		s.stat_vsyncs = 0.0;
 	}
 
@@ -5124,10 +5128,23 @@ u32 GSDeviceVK::OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv,
 
 	fg.advance();
 
-	s.stat_made += s.have_output ? 1 : 0;
-	s.stat_presents += s.have_output ? decision.presents : 0;
+	// Forja SX2 (compilation 41): in the fluid mode a generated frame is presented only into a display image free now, with one
+	// left for the game's own: a wait there held the GS thread, and through it the EE (VsyncQueueSize 2), up to a refresh.
+	u32 presents = s.have_output ? decision.presents : 0;
+	if (presents > 0 && g_orbis_fg_fluid)
+	{
+		const u32 free_images = m_swap_chain->FreeVideoOutImages();
+		const u32 room = free_images > 1 ? free_images - 1 : 0;
+		if (presents > room)
+		{
+			s.stat_held += presents - room;
+			presents = room;
+		}
+	}
+	s.stat_made += presents > 0 ? 1 : 0;
+	s.stat_presents += presents;
 	g_orbis_fg_active.store(true, std::memory_order_relaxed); // the box's "FG": generating, even on a frame too short for one
-	return s.have_output ? decision.presents : 0;
+	return presents;
 }
 
 void GSDeviceVK::OrbisFrameGenDraw()

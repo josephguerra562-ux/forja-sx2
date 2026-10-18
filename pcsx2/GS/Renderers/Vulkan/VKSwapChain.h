@@ -87,6 +87,8 @@ public:
 	bool PresentCurrentImage();
 	// Forja SX2: PS4 VideoOut, GPU-side flip queued behind the submitted frame (VulkanVideoOut::PresentFromGpu).
 	bool PresentCurrentImageFromGpu();
+	// Forja SX2 (compilation 41): VideoOut images free now, without a wait (VulkanVideoOut::FreeImages); 0 off the PS4.
+	u32 FreeVideoOutImages();
 	void ReleaseCurrentImage();
 	void ResetImageAcquireResult();
 

@@ -390,6 +390,29 @@ void PS4Port::VulkanVideoOut::ReadOutputRate(bool log)
 	}
 }
 
+// Forja SX2 (compilation 41): Acquire waits while ImageCount - 1 flips are still to show (with GPU flips, by flipArg: the frame
+// on screen); one fewer is a free image. The fluid frame generation asks before presenting its frame (GSDeviceVK.cpp).
+std::uint32_t PS4Port::VulkanVideoOut::FreeImages()
+{
+	if (m_buffer_set < 0)
+		return 0;
+	std::uint64_t in_flight = 0;
+	if (m_gpu_flips)
+	{
+		OrbisVideoOutFlipStatus status{};
+		if (sceVideoOutGetFlipStatus(m_handle, &status) != 0)
+			return 0;
+		const std::uint64_t shown = status.flipArg > 0 ? static_cast<std::uint64_t>(status.flipArg) : 0;
+		in_flight = m_frame_count > shown ? m_frame_count - shown : 0;
+	}
+	else
+	{
+		SyncPendingFlips();
+		in_flight = m_pending_flips;
+	}
+	return in_flight + 1 >= ImageCount ? 0u : static_cast<std::uint32_t>(ImageCount - 1 - in_flight);
+}
+
 bool PS4Port::VulkanVideoOut::Acquire()
 {
 	if (m_buffer_set < 0)

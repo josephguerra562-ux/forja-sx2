@@ -28,7 +28,10 @@ namespace PS4Port
 		static constexpr std::uint32_t Width = 1920;
 		static constexpr std::uint32_t Height = 1080;
 		// (AI-assisted) Triple buffering decouples CPU/GPU execution from display VSync; needs proper testing on console.
-		static constexpr std::uint32_t ImageCount = 3;
+		// Forja SX2 (compilation 41): four. With three, the fluid frame generation's generated frame and the game's, presented
+		// back to back, left the second waiting for an image to leave the screen (up to a refresh, ~10 times a second): God of
+		// War II ran at 71-87 % with it and 95-100 % without (2026-10-18). The fourth is the generated frame's room.
+		static constexpr std::uint32_t ImageCount = 4;
 		static constexpr VkFormat Format = VK_FORMAT_R8G8B8A8_UNORM;
 		using Logger = void (*)(const char* message);
 
@@ -62,6 +65,8 @@ namespace PS4Port
 		bool PresentFromGpu();
 		void Release() { m_acquired = false; }
 		bool WaitForFlip(OrbisKernelUseconds timeout = 5000000);
+		// Forja SX2 (compilation 41): the images Acquire would hand out now without waiting (0 when it would wait).
+		std::uint32_t FreeImages();
 		// (AI-assisted) Destroy image views first; GPU completion and console teardown still need proper testing.
 		bool Destroy();
 
