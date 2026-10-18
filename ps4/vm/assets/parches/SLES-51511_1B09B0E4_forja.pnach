@@ -1,0 +1,26 @@
+gametitle=Crash Nitro Kart (PAL) SLES-51511 1B09B0E4
+
+// Forja SX2 (compilación 46): parches propios para Crash Nitro Kart (PAL). Se ponen y se quitan en L3+R3 > Extras.
+// La pantalla ancha llega con el archivo de la comunidad ("Widescreen 16:9"), que Forja baja solo.
+
+// El juego usa el motor Alchemy (antes "Insight", de Intrinsic Graphics), que trae su configuración escrita dentro del
+// ejecutable (0x606bc0): "[INSIGHT]", "allocateVisualContextInScratchPad = true", "colorBits = 24"... El motor lee de
+// ahí, por nombre, sus opciones de imagen, entre ellas swapInterval (cuántos refrescos de la tele por cuadro) y
+// maxFrameRate (el tope de cuadros), que esa configuración no fija. En carrera el juego va a 25 cuadros por segundo.
+// Este parche cambia la primera línea, del mismo largo (41 bytes), por "swapInterval = 1" y "maxFrameRate = 50.00000"
+// antes de que el juego arranque (patch=0: una vez, al cargar). Se pierde allocateVisualContextInScratchPad (el contexto
+// de imagen va a la memoria normal en vez de la scratchpad), que en el emulador no cambia nada visible.
+[50 FPS (experimental)]
+author=Forja SX2
+description=Pide al motor un cuadro por refresco (hasta 50 por segundo). Sin probar en la consola. Vale desde el próximo arranque: Partida > Reiniciar juego.
+patch=0,EE,00606BC8,word,77730A5D
+patch=0,EE,00606BCC,word,6E497061
+patch=0,EE,00606BD0,word,76726574
+patch=0,EE,00606BD4,word,3D206C61
+patch=0,EE,00606BD8,word,6D0A3120
+patch=0,EE,00606BDC,word,72467861
+patch=0,EE,00606BE0,word,52656D61
+patch=0,EE,00606BE4,word,20657461
+patch=0,EE,00606BE8,word,3035203D
+patch=0,EE,00606BEC,word,3030302E
+patch=0,EE,00606BF0,word,630A3030

@@ -197,6 +197,15 @@ nombre del archivo (`SCES-54206_44A8A22A`). Otra región u otra versión tiene o
 a bajar a los 7 días. Ninguno se activa solo: los eliges en L3+R3 > Extras. No vienen dentro del PKG porque ese repositorio
 no tiene licencia; los baja tu consola desde su fuente. `vm-sin-parches-comunidad` apaga la descarga.
 
+**Crash Nitro Kart (PAL), desde la 46: "50 FPS (experimental)".** El juego va a 25 cuadros por segundo en carrera. Su
+motor (Alchemy) trae su configuración escrita dentro del juego; el parche le agrega "un cuadro por refresco" y "hasta 50
+cuadros" antes de que arranque. Sin probar en la consola: se activa en L3+R3 > Extras y vale desde Partida > Reiniciar juego.
+
+**Dragon Ball Z Budokai Tenkaichi 4 (mod de fans, SLUS-21978), desde la 46:** la base de datos de juegos lo reconoce y le
+aplica los arreglos del Tenkaichi 3 (usa su mismo ejecutable). Sin ellos el GS leía de vuelta de la gráfica los dibujos
+de paleta de los personajes en cada cuadro (33-45 ms por cuadro en las peleas) y los personajes salían con fallas. Las
+notas del mod piden no activar parches de pantalla ancha: ya viene en 16:9.
+
 **Parches que vienen en el PKG** (desde la 35, en `resources/parches/`). Para God of War II (PAL):
 - **Menos efectos 1, 2 y 3 (Sony):** del emulador de Sony para God of War II USA, pasados a la PAL. Quitan algunos efectos
   a cambio de velocidad en las peleas. Con el 2 y el 3, el promedio pasó de ~66 % a ~87 %. Probados uno por uno en el
