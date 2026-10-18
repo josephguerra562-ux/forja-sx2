@@ -12,7 +12,7 @@ gametitle=Crash Nitro Kart (PAL) SLES-51511 1B09B0E4
 // de imagen va a la memoria normal en vez de la scratchpad), que en el emulador no cambia nada visible.
 [50 FPS (experimental)]
 author=Forja SX2
-description=Pide al motor un cuadro por refresco (hasta 50 por segundo). Sin probar en la consola. Vale desde el próximo arranque: Partida > Reiniciar juego.
+description=Pide al motor un cuadro por refresco: 50 por segundo en carrera con el CPU al 36 %, a velocidad normal (probado en PS4 Pro). Vale desde Partida > Reiniciar juego.
 patch=0,EE,00606BC8,word,77730A5D
 patch=0,EE,00606BCC,word,6E497061
 patch=0,EE,00606BD0,word,76726574

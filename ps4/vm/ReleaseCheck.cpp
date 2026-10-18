@@ -76,6 +76,30 @@ namespace
 		return {};
 	}
 
+	// Forja SX2 (compilation 48): the same asset through GitHub's API (/releases/assets/<id>, asked for with Accept:
+	// application/octet-stream), the "url" that comes first in its entry. github.com's /releases/download/ answers with a
+	// redirect carrying ~5 KB of headers (a 3.7 KB Content-Security-Policy), more than the PS4's HTTP library takes:
+	// sceHttpSendRequest gave 0x80431073 (too large a response header) for build 47's SHA256SUMS.txt (2026-10-18). The
+	// API's redirect has ~2 KB.
+	std::string AssetApiUrl(const std::string& json, std::string_view suffix)
+	{
+		size_t from = 0;
+		std::string url;
+		while (JsonString(json, "browser_download_url", from, url, &from))
+		{
+			if (url.size() < suffix.size() || url.compare(url.size() - suffix.size(), suffix.size(), suffix) != 0)
+				continue;
+			const size_t key = json.rfind("/releases/assets/", from);
+			const size_t start = key == std::string::npos ? std::string::npos : json.rfind('"', key);
+			const size_t end = key == std::string::npos ? std::string::npos : json.find('"', key);
+			if (start == std::string::npos || end == std::string::npos)
+				return {};
+			std::string api = json.substr(start + 1, end - start - 1);
+			return api.rfind("https://api.github.com/", 0) == 0 ? api : std::string();
+		}
+		return {};
+	}
+
 	// "compilacion-31" -> 31; 0 if the tag is not one of ours.
 	int BuildFromTag(const std::string& tag)
 	{
@@ -132,10 +156,13 @@ namespace
 		const int current = s_current_build.load(std::memory_order_relaxed);
 		std::string package_url = AssetUrl(json, ".pkg");
 		std::string sums_url = AssetUrl(json, "SHA256SUMS.txt");
+		// Compilation 48: downloaded through the API; the package's name still comes from its github.com address.
+		const std::string package_api = AssetApiUrl(json, ".pkg");
+		const std::string sums_api = AssetApiUrl(json, "SHA256SUMS.txt");
 		{
 			std::lock_guard lock(s_mutex);
-			s_package_url = package_url;
-			s_sums_url = sums_url;
+			s_package_url = package_api.empty() ? package_url : package_api;
+			s_sums_url = sums_api.empty() ? sums_url : sums_api;
 			const size_t slash = package_url.rfind('/');
 			s_package_name = slash == std::string::npos ? std::string() : package_url.substr(slash + 1);
 			s_latest_version = VersionFromTitle(title);

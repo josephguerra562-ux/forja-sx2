@@ -18,6 +18,8 @@ extern void ProbeLog(const char* format, ...);
 // OpenOrbis leaves these declarations untyped. PS4 ABI: (id, microseconds/enabled).
 extern "C" int CoverHttpRecvTimeout(int, unsigned int) __asm__("sceHttpSetRecvTimeOut");
 extern "C" int CoverHttpAutoRedirect(int, int) __asm__("sceHttpSetAutoRedirect");
+// Forja SX2 (compilation 48): GitHub's redirects can carry more header than sceHttp's default allows (0x80431073).
+extern "C" int CoverHttpHeaderMaxSize(int, size_t) __asm__("sceHttpSetResponseHeaderMaxSize");
 
 namespace
 {
@@ -165,6 +167,9 @@ bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
 			return false;
 		}
 	}
+	// Compilation 48: room for large response headers (GitHub's redirects); a console that refuses it keeps the default.
+	if (const int rc = CoverHttpHeaderMaxSize(request.tmpl, 64 * 1024); rc < 0)
+		ProbeLog("Native HTTPS stream: header size limit not raised=%#x\n", rc);
 	request.connection = sceHttpCreateConnectionWithURL(request.tmpl, url.c_str(), false);
 	if (request.connection >= 0)
 		request.request = sceHttpCreateRequestWithURL(request.connection, ORBIS_METHOD_GET, url.c_str(), 0);
