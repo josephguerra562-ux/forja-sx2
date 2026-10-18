@@ -75255,6 +75255,18 @@ SLUS-21954:
 SLUS-21955:
   name: "Pro Evolution Soccer 2013"
   region: "NTSC-U"
+SLUS-21978:
+  name: "Dragon Ball Z - Budokai Tenkaichi 4 (fan mod)"
+  region: "NTSC-U"
+  compat: 5
+  # Forja SX2 (compilation 46): a fan mod of Budokai Tenkaichi 3 with its own serial and BT3's executable (CRC 428113C2),
+  # so it gets BT3's fixes (SLUS-21678) and the CPU CLUT render its own GameIndex asks for. Without OI_DBZBTGames its
+  # 16x16/64x64 palette draws were read back from the GPU: the GS took 33-45 ms a frame in fights (2026-10-18).
+  gsHWFixes:
+    halfPixelOffset: 5 # Aligns post effects.
+    nativeScaling: 4 # Fixes post-processing and lighting smoothness and position.
+    cpuCLUTRender: 1 # Reduces the bloomy blur of characters.
+    beforeDraw: "OI_DBZBTGames"
 SLUS-27014:
   name: "WWE SmackDown! vs Raw - Superstar Series [Bundle]"
   region: "NTSC-U"
