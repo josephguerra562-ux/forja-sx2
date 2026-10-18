@@ -7,6 +7,8 @@
 #include <orbis/Ssl.h>
 #include <orbis/Sysmodule.h>
 #include <array>
+#include <cctype>
+#include <string_view>
 #include <chrono>
 #include <cstdio>
 #include <cerrno>
@@ -20,6 +22,8 @@ extern "C" int CoverHttpRecvTimeout(int, unsigned int) __asm__("sceHttpSetRecvTi
 extern "C" int CoverHttpAutoRedirect(int, int) __asm__("sceHttpSetAutoRedirect");
 // Forja SX2 (compilation 48): GitHub's redirects can carry more header than sceHttp's default allows (0x80431073).
 extern "C" int CoverHttpHeaderMaxSize(int, size_t) __asm__("sceHttpSetResponseHeaderMaxSize");
+// Forja SX2 (compilation 50): a response's headers, for the Location of a redirect followed by hand.
+extern "C" int CoverHttpAllResponseHeaders(int, char**, size_t*) __asm__("sceHttpGetAllResponseHeaders");
 
 namespace
 {
@@ -54,6 +58,37 @@ namespace
 		}();
 		return context;
 	}
+	// A header's value in a response's headers ("name: value" lines), the name in any case; empty if it is not there.
+	std::string HeaderValue(std::string_view headers, std::string_view name)
+	{
+		size_t line = 0;
+		while (line < headers.size())
+		{
+			size_t end = headers.find('\n', line);
+			if (end == std::string_view::npos)
+				end = headers.size();
+			std::string_view text = headers.substr(line, end - line);
+			if (!text.empty() && text.back() == '\r')
+				text.remove_suffix(1);
+			const size_t colon = text.find(':');
+			if (colon == name.size())
+			{
+				bool same = true;
+				for (size_t i = 0; i < colon && same; i++)
+					same = std::tolower(static_cast<unsigned char>(text[i])) == std::tolower(static_cast<unsigned char>(name[i]));
+				if (same)
+				{
+					std::string_view value = text.substr(colon + 1);
+					while (!value.empty() && value.front() == ' ')
+						value.remove_prefix(1);
+					return std::string(value);
+				}
+			}
+			line = end + 1;
+		}
+		return {};
+	}
+
 	struct Request
 	{
 		int tmpl = -1, connection = -1, request = -1;
@@ -152,13 +187,15 @@ bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
 		error = "sin conexión";
 		return false;
 	}
-	// GitHub's release downloads answer with a redirect to their storage host: this one follows it.
+	// GitHub's release downloads answer with a redirect to their storage host. Compilation 50: followed by hand below; with
+	// sceHttp's own (auto redirect on), build 48's first download through GitHub's API never came back from
+	// sceHttpSendRequest, neither data nor an error: "0 %" for good (2026-10-18).
 	for (int rc : {sceHttpsEnableOption(request.tmpl, 0xbd),
 		sceHttpSetResolveTimeOut(request.tmpl, 8000000),
 		sceHttpSetConnectTimeOut(request.tmpl, 8000000),
 		sceHttpSetSendTimeOut(request.tmpl, 8000000),
 		CoverHttpRecvTimeout(request.tmpl, 30000000),
-		CoverHttpAutoRedirect(request.tmpl, 1)})
+		CoverHttpAutoRedirect(request.tmpl, 0)})
 	{
 		if (rc < 0)
 		{
@@ -170,19 +207,56 @@ bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
 	// Compilation 48: room for large response headers (GitHub's redirects); a console that refuses it keeps the default.
 	if (const int rc = CoverHttpHeaderMaxSize(request.tmpl, 64 * 1024); rc < 0)
 		ProbeLog("Native HTTPS stream: header size limit not raised=%#x\n", rc);
-	request.connection = sceHttpCreateConnectionWithURL(request.tmpl, url.c_str(), false);
-	if (request.connection >= 0)
-		request.request = sceHttpCreateRequestWithURL(request.connection, ORBIS_METHOD_GET, url.c_str(), 0);
-	if (request.request < 0 || sceHttpAddRequestHeader(request.request, "User-Agent", user_agent, 0) < 0 ||
-		sceHttpAddRequestHeader(request.request, "Accept", "application/octet-stream", 0) < 0)
-	{
-		error = "no se pudo crear la petición";
-		return false;
-	}
-	const int result = sceHttpSendRequest(request.request, nullptr, 0);
+	// Each hop is a request of its own (a new connection when the host changes), with the timeouts on the request too.
+	std::string current = url;
 	int http = 0;
-	const int status = result < 0 ? result : sceHttpGetStatusCode(request.request, &http);
-	ProbeLog("Native HTTPS stream: send=%#x status=%#x http=%d\n", result, status, http);
+	int status = 0;
+	for (int hop = 0;; hop++)
+	{
+		if (request.request >= 0)
+			sceHttpDeleteRequest(request.request);
+		if (request.connection >= 0)
+			sceHttpDeleteConnection(request.connection);
+		request.request = request.connection = -1;
+		request.connection = sceHttpCreateConnectionWithURL(request.tmpl, current.c_str(), false);
+		if (request.connection >= 0)
+			request.request = sceHttpCreateRequestWithURL(request.connection, ORBIS_METHOD_GET, current.c_str(), 0);
+		if (request.request < 0 || sceHttpAddRequestHeader(request.request, "User-Agent", user_agent, 0) < 0 ||
+			sceHttpAddRequestHeader(request.request, "Accept", "application/octet-stream", 0) < 0)
+		{
+			error = "no se pudo crear la petición";
+			return false;
+		}
+		sceHttpSetConnectTimeOut(request.request, 8000000);
+		sceHttpSetSendTimeOut(request.request, 8000000);
+		CoverHttpRecvTimeout(request.request, 30000000);
+		const int result = sceHttpSendRequest(request.request, nullptr, 0);
+		http = 0;
+		status = result < 0 ? result : sceHttpGetStatusCode(request.request, &http);
+		ProbeLog("Native HTTPS stream: hop=%d send=%#x status=%#x http=%d\n", hop, result, status, http);
+		const bool redirect = http == 301 || http == 302 || http == 303 || http == 307 || http == 308;
+		if (status < 0 || !redirect)
+			break;
+		if (hop >= 5)
+		{
+			error = "demasiadas redirecciones";
+			return false;
+		}
+		char* headers = nullptr;
+		size_t headers_size = 0;
+		std::string location;
+		if (CoverHttpAllResponseHeaders(request.request, &headers, &headers_size) >= 0 && headers)
+			location = HeaderValue(std::string_view(headers, headers_size), "location");
+		if (location.rfind("https://", 0) != 0)
+		{
+			ProbeLog("Native HTTPS stream: redirect %d without an https Location (%zu bytes of headers)\n", http, headers_size);
+			error = "redirección sin destino";
+			return false;
+		}
+		const size_t host_end = location.find('/', 8);
+		ProbeLog("Native HTTPS stream: redirect %d to %s\n", http, location.substr(0, host_end).c_str());
+		current = location;
+	}
 	if (status < 0 || http != 200)
 	{
 		char text[64];
