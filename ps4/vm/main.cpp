@@ -203,16 +203,36 @@ static double s_video_since = 0.0;
 static unsigned s_video_busy_checks = 0;
 static constexpr int VIDEO_EE_RATE = -3;
 // Compilation 49: Modo video "Auto" ([Forja] VideoMode = 2, and the global "Sí" for a game whose profile does not set it).
-// While a movie plays it looks for the EE rate the movie needs: down a step (to 31 % at most) when the PS4 cannot keep up
-// (speed under 95 % for ~2 s), up a step (to 60 % at most) when there is room (full speed with the EE thread under 80 %
-// for ~4 s). God of War II (2026-10-18): at 27 % its movies showed 17-21 frames a second at full speed (the decoder short
-// of EE cycles); at 60 %, 23 at 92 % speed with the EE thread at 100 %; 36 % is about right. The rate found is where the
-// game's next movie starts.
+// Compilation 51: it looks for the EE rate that shows the most movie pictures a second, from 31 to 100 %. The pictures come
+// from the game's decoder, which needs EE cycles (too low a rate: fewer pictures, at full speed), while the PS4 runs the EE
+// more slowly the higher the rate (too high: the whole movie slows down). Tales of the Abyss (2026-10-18): 17-20 pictures a
+// second at 36 % (99 % speed), 21 at 50 % (94 %), 23 at 60 % (85 %) and 14 at 100 % (38 %); God of War II: 17-21 at 27 %,
+// 23 at 60 % (92 %). The best rate differs by game and by movie, so it measures: the rate in place for 3 s (after 1.5 s to
+// settle), then a step up, kept while it shows over 4 % more pictures; when the first step up does not, a step down. Then
+// it stays, and measures again every 40 s. The best rate found is where the game's next movie starts. Builds 49-50 stepped
+// on the speed alone, between 31 and 60 %: never above 60 %, and down for movies whose decoder was short of EE cycles.
+enum class VideoProbe
+{
+	Measure, // the rate in place, before trying its neighbours
+	Up,
+	Down,
+	Hold,
+};
 static bool s_video_auto = false;
 static int s_video_auto_rate = VIDEO_EE_RATE;
-static double s_video_auto_last_change = -100.0;
-static unsigned s_video_auto_slow_checks = 0;
-static unsigned s_video_auto_room_checks = 0;
+static VideoProbe s_video_probe = VideoProbe::Hold;
+static int s_video_probe_best = VIDEO_EE_RATE;
+static double s_video_probe_best_fps = 0.0;
+static double s_video_probe_since = 0.0; // when the rate being measured was put in place (or the hold began)
+static double s_video_probe_fps_sum = 0.0;
+static unsigned s_video_probe_samples = 0;
+static bool s_video_probe_went_up = false;
+static constexpr int VIDEO_AUTO_LOWEST = -5; // 31 %
+static constexpr int VIDEO_AUTO_HIGHEST = 0; // 100 %
+static constexpr double VIDEO_PROBE_SETTLE = 1.5;
+static constexpr double VIDEO_PROBE_WINDOW = 3.0;
+static constexpr double VIDEO_PROBE_GAIN = 1.04;
+static constexpr double VIDEO_PROBE_HOLD = 40.0;
 static constexpr double VIDEO_DECODES_PER_SECOND = 2000.0; // a movie: tens of thousands; gameplay: ~0
 // Forja SX2: the running game's profile (pcsx2/ForjaGameProfile.h): its factory profile under the player's own. Read before
 // the VM boots, from the library's scan of the image, and again if PCSX2 identifies another disc.
@@ -640,6 +660,149 @@ static void ToggleVu1Program()
 	PublishVu1FilterText();
 }
 
+// Forja SX2 (compilation 51): the GS filter (GSRendererHW.cpp), the VU1 filter's twin for the games the GS holds back. The menu
+// offers the GS's eight costliest groups of draws of the last seconds (and those already left out); X leaves one out or brings
+// it back, and the list goes in the player's profile ([Forja] GSQuitar, the groups' keys in hex). A group that draws an effect
+// (a glow, an aura, a shadow) can be left out to save its GS time; one with the main picture leaves the screen wrong, and X
+// brings it back. Dragon Ball Z Budokai Tenkaichi 4 is held back by its ~2,150 draws a frame, not by its VU1.
+extern std::atomic<u32> g_forja_gs_filter[16];
+extern std::atomic<u32> g_forja_gs_filter_count;
+extern std::atomic<u32> g_forja_gs_top[8];
+extern std::atomic<u32> g_forja_gs_top_info[8];
+extern std::atomic<u32> g_forja_gs_top_count;
+static std::vector<u32> s_gs_filter_keys; // the groups left out (16 at most)
+static std::vector<u32> s_gs_candidates;  // the menu's groups
+static std::vector<u32> s_gs_infos;       // their share in permille << 16 | draws a second (0 for one already left out)
+static unsigned s_gs_index = 0;
+
+static bool GsFiltered(u32 key)
+{
+	return std::find(s_gs_filter_keys.begin(), s_gs_filter_keys.end(), key) != s_gs_filter_keys.end();
+}
+
+// The GS thread reads the count and then the keys, so the count is 0 while they change.
+static void PublishGsFilter()
+{
+	g_forja_gs_filter_count.store(0, std::memory_order_release);
+	const u32 count = static_cast<u32>(std::min<size_t>(s_gs_filter_keys.size(), 16));
+	for (u32 i = 0; i < count; i++)
+		g_forja_gs_filter[i].store(s_gs_filter_keys[i], std::memory_order_relaxed);
+	g_forja_gs_filter_count.store(count, std::memory_order_release);
+}
+
+static std::string GsFilterList()
+{
+	std::string list;
+	for (const u32 key : s_gs_filter_keys)
+	{
+		char text[16];
+		std::snprintf(text, sizeof(text), "%s%07x", list.empty() ? "" : ",", key);
+		list += text;
+	}
+	return list;
+}
+
+static void ApplyGsFilterList(const std::string& list)
+{
+	s_gs_filter_keys.clear();
+	const char* p = list.c_str();
+	while (*p)
+	{
+		char* end = nullptr;
+		const unsigned long key = std::strtoul(p, &end, 16);
+		if (end == p)
+		{
+			++p;
+			continue;
+		}
+		if (key < (1ul << 26) && s_gs_filter_keys.size() < 16 && !GsFiltered(static_cast<u32>(key)))
+			s_gs_filter_keys.push_back(static_cast<u32>(key));
+		p = end;
+	}
+	PublishGsFilter();
+}
+
+// "En 00e00 con la textura 02a40, triángulos transparentes" (the framebuffer and texture as GS block addresses).
+static std::string GsGroupText(u32 key)
+{
+	static constexpr const char* prims[] = {"puntos", "líneas", "triángulos", "sprites"};
+	const u32 fbp = ((key >> 17) & 0x1ffu) << 5;
+	const u32 tbp = (key >> 3) & 0x3fffu;
+	char text[128];
+	if (tbp == 0x3fffu)
+		std::snprintf(text, sizeof(text), "En %05x sin textura, %s%s", fbp, prims[(key >> 1) & 3u], (key & 1u) ? " transparentes" : "");
+	else
+		std::snprintf(text, sizeof(text), "En %05x con la textura %05x, %s%s", fbp, tbp, prims[(key >> 1) & 3u],
+			(key & 1u) ? " transparentes" : "");
+	return text;
+}
+
+static void PublishGsFilterText()
+{
+	if (s_gs_candidates.empty())
+	{
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_GS_FILTER, "Filtro GS:  sin datos todavía",
+			"Juega unos segundos: el GS lista sus grupos de dibujos más costosos y aquí los apagas uno por uno (experimental)");
+		return;
+	}
+	const u32 key = s_gs_candidates[s_gs_index];
+	const bool skipped = GsFiltered(key);
+	const u32 info = s_gs_infos[s_gs_index];
+	char label[160];
+	if (skipped)
+		std::snprintf(label, sizeof(label), "Filtro GS %u de %zu:  < grupo quitado >  QUITADO", s_gs_index + 1, s_gs_candidates.size());
+	else
+		std::snprintf(label, sizeof(label), "Filtro GS %u de %zu:  < %.1f %% del GS · %u dibujos/s >  Activo", s_gs_index + 1,
+			s_gs_candidates.size(), (info >> 16) / 10.0, info & 0xffffu);
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_GS_FILTER, label,
+		GsGroupText(key) + (skipped ? ": no se dibuja. Si falta algo importante, X lo devuelve" :
+									  ". X lo apaga: mira qué deja de verse y cuánto sube la velocidad"));
+}
+
+static void ReloadGsFilter()
+{
+	const u32 previous = s_gs_candidates.empty() ? ~0u : s_gs_candidates[s_gs_index];
+	s_gs_candidates.clear();
+	s_gs_infos.clear();
+	const u32 count = std::min(g_forja_gs_top_count.load(std::memory_order_acquire), 8u);
+	for (u32 k = 0; k < count; k++)
+	{
+		const u32 key = g_forja_gs_top[k].load(std::memory_order_relaxed);
+		if (GsFiltered(key))
+			continue; // listed below, with the others left out
+		s_gs_candidates.push_back(key);
+		s_gs_infos.push_back(g_forja_gs_top_info[k].load(std::memory_order_relaxed));
+	}
+	for (const u32 key : s_gs_filter_keys)
+	{
+		s_gs_candidates.push_back(key);
+		s_gs_infos.push_back(0);
+	}
+	const auto again = std::find(s_gs_candidates.begin(), s_gs_candidates.end(), previous);
+	s_gs_index = again != s_gs_candidates.end() ? static_cast<unsigned>(again - s_gs_candidates.begin()) : 0u;
+	PublishGsFilterText();
+}
+
+static void ToggleGsGroup()
+{
+	if (s_gs_candidates.empty())
+		return;
+	const u32 key = s_gs_candidates[s_gs_index];
+	const bool skip = !GsFiltered(key);
+	if (skip && s_gs_filter_keys.size() >= 16)
+		return;
+	if (skip)
+		s_gs_filter_keys.push_back(key);
+	else
+		s_gs_filter_keys.erase(std::remove(s_gs_filter_keys.begin(), s_gs_filter_keys.end(), key), s_gs_filter_keys.end());
+	PublishGsFilter();
+	const std::string list = GsFilterList();
+	SavePlayerProfile("GS filter", [list](INISettingsInterface& ini) { ini.SetStringValue("Forja", "GSQuitar", list.c_str()); }, false);
+	ProbeLog("GS filter: group %07x (%s) %s; left out now: [%s]\n", key, GsGroupText(key).c_str(), skip ? "left out" : "back",
+		list.c_str());
+	PublishGsFilterText();
+}
+
 // Forja SX2 (compilation 44): HD texture packs, PCSX2's texture replacements: /data/ForjaSX2/textures/<SERIAL>/replacements.
 // 0 off, 1 on (loaded as they're needed), 2 on and preloaded at start (no stutter, more memory), as Dolphin for PS4 (v04.12).
 // (s_game_textures is declared with s_game_sharpness, which ReadGameResolution fills too.)
@@ -792,9 +955,10 @@ static void ChangeToSelectedDisc()
 // when it changed, so where a session started was a guess).
 static void LogGameSettings(const char* why)
 {
-	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d\n", why,
+	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d "
+			 "gs_left_out=[%s]\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
-		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode);
+		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str());
 }
 
 static void PublishGameMenu()
@@ -896,8 +1060,9 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	// Compilation 49: auto when the profile says 2, or when it leaves the video mode to the Settings page's "Sí".
 	{
 		const bool video_auto = s_video_mode_enabled && (s_profile.video_mode == 2 || s_profile.video_mode < 0);
+		// Compilation 51: it starts from the fixed rate last chosen for the game (its VideoEECycleRate), 31 to 100 %.
 		if (video_auto && !s_video_auto)
-			s_video_auto_rate = std::clamp(s_video_ee_rate, -5, -2);
+			s_video_auto_rate = std::clamp(s_video_ee_rate, VIDEO_AUTO_LOWEST, VIDEO_AUTO_HIGHEST);
 		s_video_auto = video_auto;
 	}
 	const int frame_gen = s_profile.frame_gen >= 0 ? s_profile.frame_gen : (s_global_frame_gen ? 1 : 0);
@@ -917,6 +1082,7 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	}
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
 	ApplyVu1SkipList(s_profile.vu1_skip); // compilation 44: the VU1 filter
+	ApplyGsFilterList(s_profile.gs_filter); // compilation 51: the GS filter
 	ProbeLog("Game profile: %s %08X factory=%d player=%d video_mode=%d (%s) video_ee_rate=%d (%s) frame_gen=%d (%s) "
 			 "cores=\"%s\" (%s) cpu_auto=%d (%s)\n",
 		s_profile.serial.empty() ? "(no serial)" : s_profile.serial.c_str(), s_profile.crc, s_profile.has_factory ? 1 : 0,
@@ -1043,34 +1209,107 @@ static void UpdateVideoMode(double elapsed)
 		s_video_busy_checks = 0;
 	}
 
-	// Compilation 49: the auto mode's step, while a movie plays and its rate is in place.
-	if (s_video_active && s_video_auto && EmuConfig.Speedhacks.EECycleRate != s_video_saved_rate)
+	// Compilation 51: the auto mode's measuring (VideoProbe), while a movie plays. The pictures a second are the game's own
+	// (PerformanceMetrics, over the last half second of real time), the same "Game" FPS the overlay shows.
+	if (s_video_active && s_video_auto)
 	{
-		const double speed = PerformanceMetrics::GetSpeed();
-		const double ee = PerformanceMetrics::GetCPUThreadUsage();
-		const int rate = EmuConfig.Speedhacks.EECycleRate;
-		s_video_auto_slow_checks = speed < 95.0 ? s_video_auto_slow_checks + 1 : 0;
-		s_video_auto_room_checks = (speed >= 99.0 && ee < 80.0) ? s_video_auto_room_checks + 1 : 0;
-		int next = rate;
-		if (elapsed - s_video_auto_last_change >= 3.0)
+		if (s_video_probe == VideoProbe::Hold)
 		{
-			// Compilation 50: lower when the game's own rate is above the movie's (a game at 100 % like Tales of the Abyss
-			// goes down to 31 % if it must); one at 27 % never comes down to its own rate (that would be no video mode at
-			// all). Build 49 checked only the second case, and Tales stayed at 60 % and 80 % speed for a whole movie.
-			const bool can_lower = rate > -5 && (s_video_saved_rate > rate || rate - 1 > s_video_saved_rate);
-			if (s_video_auto_slow_checks >= 4 && can_lower)
-				next = rate - 1;
-			else if (s_video_auto_room_checks >= 8 && rate < -2)
-				next = rate + 1;
+			if (elapsed - s_video_probe_since >= VIDEO_PROBE_HOLD)
+			{
+				s_video_probe = VideoProbe::Measure;
+				s_video_probe_since = elapsed - VIDEO_PROBE_SETTLE; // same rate: nothing to settle
+				s_video_probe_fps_sum = 0.0;
+				s_video_probe_samples = 0;
+			}
 		}
-		if (next != rate)
+		else if (elapsed - s_video_probe_since >= VIDEO_PROBE_SETTLE)
 		{
-			EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(next);
-			Cpu->Reset();
-			s_video_auto_rate = next;
-			s_video_auto_last_change = elapsed;
-			s_video_auto_slow_checks = s_video_auto_room_checks = 0;
-			ProbeLog("Video mode: auto %d -> %d (speed %.0f %%, EE thread %.0f %%)\n", rate, next, speed, ee);
+			s_video_probe_fps_sum += PerformanceMetrics::GetInternalFPS();
+			s_video_probe_samples++;
+			if (elapsed - s_video_probe_since >= VIDEO_PROBE_SETTLE + VIDEO_PROBE_WINDOW)
+			{
+				const int rate = EmuConfig.Speedhacks.EECycleRate;
+				const double fps = s_video_probe_fps_sum / s_video_probe_samples;
+				const bool better = fps > s_video_probe_best_fps * VIDEO_PROBE_GAIN;
+				const VideoProbe phase = s_video_probe;
+				int next = rate;
+				switch (phase)
+				{
+					case VideoProbe::Measure:
+						s_video_probe_best = rate;
+						s_video_probe_best_fps = fps;
+						s_video_probe_went_up = false;
+						if (rate < VIDEO_AUTO_HIGHEST)
+						{
+							next = rate + 1;
+							s_video_probe = VideoProbe::Up;
+						}
+						else if (rate > VIDEO_AUTO_LOWEST)
+						{
+							next = rate - 1;
+							s_video_probe = VideoProbe::Down;
+						}
+						else
+						{
+							s_video_probe = VideoProbe::Hold;
+						}
+						break;
+					case VideoProbe::Up:
+						if (better)
+						{
+							s_video_probe_best = rate;
+							s_video_probe_best_fps = fps;
+							s_video_probe_went_up = true;
+							if (rate < VIDEO_AUTO_HIGHEST)
+								next = rate + 1;
+							else
+								s_video_probe = VideoProbe::Hold;
+						}
+						else if (!s_video_probe_went_up && s_video_probe_best > VIDEO_AUTO_LOWEST)
+						{
+							next = s_video_probe_best - 1;
+							s_video_probe = VideoProbe::Down;
+						}
+						else
+						{
+							next = s_video_probe_best;
+							s_video_probe = VideoProbe::Hold;
+						}
+						break;
+					case VideoProbe::Down:
+						if (better)
+						{
+							s_video_probe_best = rate;
+							s_video_probe_best_fps = fps;
+							if (rate > VIDEO_AUTO_LOWEST)
+								next = rate - 1;
+							else
+								s_video_probe = VideoProbe::Hold;
+						}
+						else
+						{
+							next = s_video_probe_best;
+							s_video_probe = VideoProbe::Hold;
+						}
+						break;
+					case VideoProbe::Hold:
+						break;
+				}
+				static constexpr const char* phase_names[] = {"measure", "up", "down", "hold"};
+				ProbeLog("Video mode: auto %s at %d: %.1f pictures/s (speed %.0f %%), best %d (%.1f) -> %d\n",
+					phase_names[static_cast<int>(phase)], rate, fps, PerformanceMetrics::GetSpeed(), s_video_probe_best,
+					s_video_probe_best_fps, next);
+				s_video_auto_rate = s_video_probe_best;
+				s_video_probe_since = elapsed;
+				s_video_probe_fps_sum = 0.0;
+				s_video_probe_samples = 0;
+				if (next != rate)
+				{
+					EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(next);
+					Cpu->Reset();
+				}
+			}
 		}
 	}
 
@@ -1089,8 +1328,12 @@ static void UpdateVideoMode(double elapsed)
 		const int video_rate = s_video_auto ? s_video_auto_rate : s_video_ee_rate;
 		s_video_saved_rate = EmuConfig.Speedhacks.EECycleRate;
 		s_video_since = elapsed;
-		s_video_auto_last_change = elapsed;
-		s_video_auto_slow_checks = s_video_auto_room_checks = 0;
+		s_video_probe = VideoProbe::Measure;
+		s_video_probe_since = elapsed;
+		s_video_probe_fps_sum = 0.0;
+		s_video_probe_samples = 0;
+		s_video_probe_best = video_rate;
+		s_video_probe_best_fps = 0.0;
 		s_video_active = true;
 		// Compilation 48: up as well as down. It was made to lower a game at 100 % to 50-60 % during its movies; since the
 		// games start at 27 % (compilation 45) the movie's rate is above theirs, and "already lower" left God of War II's
@@ -1299,6 +1542,14 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 				PublishVu1FilterText();
 			}
 			break;
+		case PS4GameMenu::ROW_GS_FILTER:
+			if (!s_gs_candidates.empty())
+			{
+				const int count = static_cast<int>(s_gs_candidates.size());
+				s_gs_index = static_cast<unsigned>((static_cast<int>(s_gs_index) + delta % count + count) % count);
+				PublishGsFilterText();
+			}
+			break;
 		case PS4GameMenu::ROW_TEXTURES:
 			ApplyGameTextures((s_game_textures + static_cast<unsigned>(delta + 3)) % 3);
 			break;
@@ -1361,9 +1612,9 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		}
 		case PS4GameMenu::ROW_VIDEO_MODE:
 		{
-			// Off, auto, 60 %, 50 % and 36 % (VideoMenuValue's 0, 6, 3, 4 and 5; compilation 49); 100 % and 75 % can still be
-			// written in the ini by hand.
-			static constexpr unsigned steps[] = {0, 6, 3, 4, 5};
+			// Off, auto, 100, 75, 60, 50 and 36 % (VideoMenuValue's 0, 6, 1, 2, 3, 4 and 5; 100 and 75 % since compilation 51).
+			// A fixed rate is also where Auto starts.
+			static constexpr unsigned steps[] = {0, 6, 1, 2, 3, 4, 5};
 			constexpr int count = static_cast<int>(std::size(steps));
 			const unsigned current = VideoMenuValue();
 			int position = 0;
@@ -1691,6 +1942,7 @@ void VMHostPoll()
 		ReloadPatchMenu(); // Forja SX2 (compilation 42): the Parches tab
 		// Compilation 44: the Extras tab's other rows and Partida's discs.
 		ReloadVu1Filter();
+		ReloadGsFilter(); // compilation 51
 		PublishTexturesText();
 		PublishRecommendedText();
 		ReloadDiscList();
@@ -1803,7 +2055,8 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_CPU_AUTO || row == PS4GameMenu::ROW_RESET_PROFILE ||
 						   row == PS4GameMenu::ROW_GS_SKIP ||
 						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART ||
-						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_TEXTURES ||
+						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
+						   row == PS4GameMenu::ROW_TEXTURES ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC))
 		{
 			if (row == PS4GameMenu::ROW_SAVE_STATE)
@@ -1831,6 +2084,8 @@ void VMHostPoll()
 				TogglePatch();
 			else if (row == PS4GameMenu::ROW_VU1_FILTER)
 				ToggleVu1Program();
+			else if (row == PS4GameMenu::ROW_GS_FILTER)
+				ToggleGsGroup();
 			else if (row == PS4GameMenu::ROW_RECOMMENDED)
 			{
 				PublishRecommendedText(true);

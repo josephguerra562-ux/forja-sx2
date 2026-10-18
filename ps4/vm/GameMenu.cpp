@@ -194,7 +194,7 @@ namespace PS4GameMenu
 				"Acorta las cargas. Algunos juegos se cuelgan con esto: si pasa, apágalo",
 				"Arranca directo el juego, sin la animación de la PS2",
 				"Si el juego se traba sin que el CPU esté al 100 %: prueba Sin esperar. Desactivadas puede romper efectos",
-				"Durante los videos del juego pone el CPU de la PS2 al 50 % (lo sube o lo baja) y lo devuelve al terminar",
+				"En los videos del juego busca el CPU de la PS2 que da más cuadros (31 a 100 %) y lo devuelve al terminar",
 				"EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso"};
 			return help[std::min(row, SettingsRows - 1)];
 		}
@@ -1525,7 +1525,7 @@ namespace PS4GameMenu
 			char video_description[160];
 			std::snprintf(video_description, sizeof(video_description),
 				"%s Para este juego  ·  ahora: %s",
-				menu_state.video == 6 ? "Busca solo el CPU de la PS2 que pide cada video (entre 31 y 60 %)." :
+				menu_state.video == 6 ? "Busca el CPU de la PS2 que da más cuadros en cada video (31 a 100 %)." :
 										"CPU de la PS2 durante las cinemáticas.",
 				origin_names[menu_state.video_origin]);
 			// Forja SX2 (compilation 44): the picture's sharpness (main.cpp, ApplyGameSharpness).
@@ -1717,6 +1717,10 @@ namespace PS4GameMenu
 						draw->AddLine(ip(-3, 2), ip(-3, 14), icon_line, lw);
 						draw->AddLine(ip(3, 2), ip(3, 14), icon_line, lw);
 						break;
+					case ROW_GS_FILTER: // a picture crossed out (compilation 51)
+						draw->AddRect(ip(-15, -11), ip(15, 11), icon_line, 3 * scale, lw, 0);
+						draw->AddLine(ip(-11, 8), ip(11, -8), icon_line, lw);
+						break;
 					case ROW_TEXTURES: // a picture
 						draw->AddRect(ip(-15, -12), ip(15, 12), icon_line, 3 * scale, lw, 0);
 						draw->AddLine(ip(-11, 8), ip(-3, -2), icon_line, lw);
@@ -1817,7 +1821,7 @@ namespace PS4GameMenu
 				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
 				         row == ROW_SHARPNESS || row == ROW_GS_SKIP)
 					action = "ELEGIR";
-				else if (row == ROW_PATCH || row == ROW_VU1_FILTER || row == ROW_CHANGE_DISC)
+				else if (row == ROW_PATCH || row == ROW_VU1_FILTER || row == ROW_GS_FILTER || row == ROW_CHANGE_DISC)
 					action = "ELEGIR  ·  X";
 				else if (row == ROW_TEXTURES)
 					action = "ELEGIR";

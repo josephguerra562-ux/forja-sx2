@@ -65,6 +65,12 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
       tiempo gastaron en los últimos segundos; **X** apaga el elegido: lo que dibuja deja de verse y su tiempo se ahorra.
       Si desaparece algo importante (o todo el 3D), X lo vuelve a poner. Lo apagado se guarda para ese juego. Sirve para
       buscar qué efecto, sombra o fondo lejano cuesta más en cada juego.
+    - **Filtro GS (experimental, desde la 51):** lo mismo, pero para los juegos que frena el **GS** (el dibujo), como Dragon
+      Ball Z Budokai Tenkaichi. Junta los dibujos del juego en grupos (dónde dibujan, con qué textura, si son
+      transparentes) y muestra los 8 que más tiempo del GS gastaron en los últimos segundos, con su % y cuántos dibujos por
+      segundo son. **X** apaga el elegido: no se dibuja y su tiempo se ahorra. Si la imagen se rompe o falta algo importante,
+      X lo devuelve. Se guarda para ese juego (`GSQuitar` en su perfil). Ojo: un grupo es "ese tipo de dibujo en ese lugar de
+      la memoria", así que en otro escenario puede tocar otra cosa; si algo falta en otra pelea, vuelve aquí y devuélvelo.
     - **Texturas HD:** No / Sí / Sí, precargadas. El pack va por FTP en `/data/ForjaSX2/textures/<SERIAL>/replacements`
       (como en PCSX2). Precargar evita tirones pero usa más memoria: con packs enormes, mejor "Sí".
     - **Ajustes recomendados:** de dónde vienen los ajustes de fábrica de ese juego: del centro de ajustes (GitHub, con
@@ -87,9 +93,13 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     va **ahora**. En God of War II viene apagado desde la 36: medido, las peleas pesadas iban igual al 50, 60, 75 y 100 %.
     Desde la 45, un juego sin ajuste propio usa el de la pestaña Ajustes (de fábrica, "Hasta 27 %"): si le subes el CPU y se
     pone lento en una escena pesada, baja solo, como mucho hasta el 27 %.
-  - **Modo video:** No / **Auto** / 60 % / 50 % / 36 %. Es el CPU de la PS2 durante las cinemáticas. **Auto** (desde la
-    49) busca solo el punto justo de cada video: baja un paso si la PS4 no da abasto y sube uno si sobra (entre 31 y 60 %),
-    y recuerda dónde quedó para el siguiente video del juego. God of War II lo trae de fábrica. Desde la 48 también lo **sube**: con el
+  - **Modo video:** No / **Auto** / 100 % / 75 % / 60 % / 50 % / 36 %. Es el CPU de la PS2 durante las cinemáticas.
+    **Auto** busca solo el punto justo de cada video: desde la 51 mide cuántos cuadros salen, prueba un paso más arriba
+    (y si no mejora, uno más abajo) y se queda con el que da más cuadros, entre 31 y 100 %. Vuelve a medir cada 40 s y
+    recuerda dónde quedó para el siguiente video del juego. Arranca desde el último valor fijo que elegiste para el juego:
+    si sabes que tu juego va mejor al 75 %, ponlo en 75 % y luego en Auto. Cada prueba da un tironcito en el video
+    (el CPU de la PS2 se recompila). Con 100 % o 75 % fijos todo el video puede ir más lento si la PS4 no da
+    abasto: en Tales of the Abyss, al 100 % salían 14 cuadros por segundo y al 60 %, 23. God of War II lo trae de fábrica. Desde la 48 también lo **sube**: con el
     juego al 27 %, los videos de God of War II se decodificaban con muy poco CPU y salían a 17-21 cuadros en vez de 25.
   - **Saltar cuadros (GS)** (desde la 47, experimental): No / Auto / 1 de 2. Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja

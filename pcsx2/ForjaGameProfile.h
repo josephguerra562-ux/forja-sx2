@@ -59,6 +59,10 @@ namespace ForjaGameProfile
 		// [Forja] VU1Quitar (compilation 44): the VU1 programs the filter leaves out, their start addresses in hex ("0d30,0f48").
 		std::string vu1_skip;
 		Origin vu1_skip_origin = Origin::Global;
+		// [Forja] GSQuitar (compilation 51): the groups of draws the GS filter leaves out, their keys in hex ("1c07ff5,0e00a44";
+		// GSRendererHW.cpp has what a key holds).
+		std::string gs_filter;
+		Origin gs_filter_origin = Origin::Global;
 		// [Forja] SaltarCuadros (compilation 47): the GS frame skip, -1 not set (off), 0 off, 1 auto, 2 always (one frame in
 		// two). main.cpp, UpdateGsSkip; GSRendererPS4.cpp, VSync.
 		int gs_skip = -1;
@@ -167,6 +171,10 @@ namespace ForjaGameProfile
 			v.vu1_skip_origin = Origin::Player;
 		else if (v.has_factory && factory.GetStringValue("Forja", "VU1Quitar", &v.vu1_skip))
 			v.vu1_skip_origin = Origin::Factory;
+		if (v.has_player && player.GetStringValue("Forja", "GSQuitar", &v.gs_filter))
+			v.gs_filter_origin = Origin::Player;
+		else if (v.has_factory && factory.GetStringValue("Forja", "GSQuitar", &v.gs_filter))
+			v.gs_filter_origin = Origin::Factory;
 
 		// Compilation 49: VideoMode 2 = auto (main.cpp, UpdateVideoMode), and movie rates down to -6 (27 %).
 		if (v.video_mode >= 0)

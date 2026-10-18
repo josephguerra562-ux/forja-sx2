@@ -30,9 +30,10 @@ namespace PS4GameMenu
 		ROW_CORES,
 		ROW_GS_SKIP, // compilation 47
 		// Extras (compilation 42 "Parches", 44 "Extras"): the game's patch groups one at a time (main.cpp, PublishPatchMenuText),
-		// the VU1 filter, HD textures and where the recommended settings come from
+		// the VU1 filter, the GS filter (compilation 51), HD textures and where the recommended settings come from
 		ROW_PATCH,
 		ROW_VU1_FILTER,
+		ROW_GS_FILTER,
 		ROW_TEXTURES,
 		ROW_RECOMMENDED,
 		// Sistema

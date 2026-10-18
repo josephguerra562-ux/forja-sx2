@@ -13,6 +13,8 @@
 #include "common/StringUtil.h"
 #include <bit>
 #include <unistd.h>
+#include <atomic>
+#include <cstring>
 // PS5 port (vk-285-107): this file's printf/fflush(stdout) go to the deferred log (OrbisDeferredLog.h), which the
 // ticker thread writes out: the [gsout] line's printf+fflush every 200 frames left the GS thread asleep ~33 ms in a
 // write now and then (vk-285-106's [vsslow], the "output" phase).
@@ -2921,6 +2923,138 @@ struct OrbisHwDrawTimer
 // Forja SX2 (compilation 47): set while "Saltar cuadros" leaves a frame of the game out (ps4/core/GSRendererPS4.cpp, VSync).
 extern bool g_forja_gs_skip_drawing;
 
+// Forja SX2 (compilation 51): the GS filter, the VU1 filter's twin for the games the GS holds back (L3+R3 > Extras, main.cpp).
+// Draws are grouped by what they draw into and with: the framebuffer, the texture (or none), points, lines, triangles or
+// sprites, and whether they blend. A group the player leaves out isn't drawn, and its GS time is saved. Dragon Ball Z Budokai
+// Tenkaichi 4 (2026-10-18) sends ~2,150 draws a frame in its fights at ~25 us each on the PS4 (45 % speed), and leaving out
+// its VU1 program 0318 did not take a single draw away. The menu offers the last ~5 s's eight costliest groups.
+// A group's key: FRAME.FBP << 17 | TEX0.TBP0 (0x3fff without a texture) << 3 | primitive class << 1 | ABE.
+extern void ProbeLog(const char* format, ...);
+std::atomic<u32> g_forja_gs_filter[16];
+std::atomic<u32> g_forja_gs_filter_count{0};
+std::atomic<u32> g_forja_gs_top[8];
+std::atomic<u32> g_forja_gs_top_info[8]; // share of the draw time in permille << 16 | draws a second (65535 at most)
+std::atomic<u32> g_forja_gs_top_count{0};
+
+namespace
+{
+	struct ForjaGsGroup
+	{
+		u32 key;
+		u32 draws;
+		u64 ticks;
+	};
+	constexpr u32 FORJA_GS_GROUPS = 1024; // open addressing; a scene has tens of groups
+	constexpr u32 FORJA_GS_SAMPLE = 8; // one draw in 8 is timed (two rdtsc) and counts for 8
+	ForjaGsGroup s_forja_gs_groups[FORJA_GS_GROUPS];
+	u32 s_forja_gs_draw_number = 0;
+	u64 s_forja_gs_since = 0;
+	u32 s_forja_gs_draws = 0;
+	u32 s_forja_gs_left_out = 0;
+
+	ForjaGsGroup* ForjaGsGroupOf(u32 key)
+	{
+		u32 slot = (key * 2654435761u) >> 22;
+		for (u32 probe = 0; probe < 32; probe++, slot = (slot + 1) & (FORJA_GS_GROUPS - 1))
+		{
+			ForjaGsGroup& group = s_forja_gs_groups[slot];
+			if (group.draws == 0)
+			{
+				group.key = key;
+				return &group;
+			}
+			if (group.key == key)
+				return &group;
+		}
+		return nullptr;
+	}
+
+	void ForjaGsGroupsLog(u64 now)
+	{
+		const double seconds = static_cast<double>(now - s_forja_gs_since) / 1600000000.0; // the PS4's TSC runs at ~1.6 GHz
+		s_forja_gs_since = now;
+		u64 total = 0;
+		for (const ForjaGsGroup& group : s_forja_gs_groups)
+			total += group.ticks;
+		if (total > 0 && seconds > 0.0)
+		{
+			// The 8 costliest, highest first (insertion into a short sorted list), as the VU1's programs (MTVU.cpp).
+			unsigned top[8] = {};
+			unsigned found = 0;
+			for (unsigned i = 0; i < FORJA_GS_GROUPS; i++)
+			{
+				const u64 ticks = s_forja_gs_groups[i].ticks;
+				if (ticks == 0 || (found == 8 && ticks <= s_forja_gs_groups[top[7]].ticks))
+					continue;
+				unsigned at = found < 8 ? found : 7;
+				while (at > 0 && s_forja_gs_groups[top[at - 1]].ticks < ticks)
+				{
+					top[at] = top[at - 1];
+					at--;
+				}
+				top[at] = i;
+				if (found < 8)
+					found++;
+			}
+			static constexpr char prim_names[] = {'P', 'L', 'T', 'S'};
+			char line[900];
+			int len = std::snprintf(line, sizeof(line),
+				"GS groups: draws_per_s=%.0f left_out_per_s=%.0f top8(fb/tex/prim=share/draws_per_s):", s_forja_gs_draws / seconds,
+				s_forja_gs_left_out / seconds);
+			for (unsigned k = 0; k < found && len > 0 && len < static_cast<int>(sizeof(line)); k++)
+			{
+				const ForjaGsGroup& group = s_forja_gs_groups[top[k]];
+				const u32 tbp = (group.key >> 3) & 0x3fffu;
+				char tex[8] = "-";
+				if (tbp != 0x3fffu)
+					std::snprintf(tex, sizeof(tex), "%05x", tbp);
+				len += std::snprintf(line + len, sizeof(line) - len, " %05x/%s/%c%s=%.1f%%/%.0f", ((group.key >> 17) & 0x1ffu) << 5, tex,
+					prim_names[(group.key >> 1) & 3u], (group.key & 1u) ? "+" : "",
+					static_cast<double>(group.ticks) * 100.0 / static_cast<double>(total), group.draws / seconds);
+			}
+			ProbeLog("%s\n", line);
+			for (unsigned k = 0; k < found; k++)
+			{
+				const ForjaGsGroup& group = s_forja_gs_groups[top[k]];
+				const u32 permille = static_cast<u32>(group.ticks * 1000 / total);
+				const u32 per_second = static_cast<u32>(std::min(group.draws / seconds, 65535.0));
+				g_forja_gs_top[k].store(group.key, std::memory_order_relaxed);
+				g_forja_gs_top_info[k].store((std::min(permille, 1000u) << 16) | per_second, std::memory_order_relaxed);
+			}
+			g_forja_gs_top_count.store(found, std::memory_order_release);
+		}
+		std::memset(s_forja_gs_groups, 0, sizeof(s_forja_gs_groups));
+		s_forja_gs_draws = s_forja_gs_left_out = 0;
+	}
+
+	// One draw's count, and its time for one draw in FORJA_GS_SAMPLE (every return of Draw ends it).
+	struct ForjaGsDrawTimer
+	{
+		ForjaGsGroup* group = nullptr;
+		u64 t0 = 0;
+		explicit ForjaGsDrawTimer(u32 key)
+		{
+			if ((++s_forja_gs_draw_number % FORJA_GS_SAMPLE) == 0)
+			{
+				t0 = __builtin_ia32_rdtsc();
+				if (s_forja_gs_since == 0)
+					s_forja_gs_since = t0;
+				else if (t0 - s_forja_gs_since >= 5ull * 1600000000ull)
+					ForjaGsGroupsLog(t0);
+			}
+			s_forja_gs_draws++;
+			group = ForjaGsGroupOf(key);
+			if (group)
+				group->draws++;
+		}
+		~ForjaGsDrawTimer()
+		{
+			if (t0 && group)
+				group->ticks += (__builtin_ia32_rdtsc() - t0) * FORJA_GS_SAMPLE;
+		}
+	};
+} // namespace
+
 void GSRendererHW::Draw()
 {
 	if (g_forja_gs_skip_drawing) [[unlikely]]
@@ -2933,6 +3067,22 @@ void GSRendererHW::Draw()
 		if (!((m_regs->DISP[0].DISPFB.FBP == fbp && m_regs->PMODE.EN1) || (m_regs->DISP[1].DISPFB.FBP == fbp && m_regs->PMODE.EN2)))
 			return;
 	}
+	// Forja SX2 (compilation 51): the GS filter: a group the player left out isn't drawn.
+	const u32 forja_gs_key = ((static_cast<u32>(m_context->FRAME.FBP) & 0x1ffu) << 17) |
+		((PRIM->TME ? (static_cast<u32>(m_context->TEX0.TBP0) & 0x3fffu) : 0x3fffu) << 3) |
+		((static_cast<u32>(m_vt.m_primclass) & 3u) << 1) | (PRIM->ABE ? 1u : 0u);
+	if (const u32 forja_filters = g_forja_gs_filter_count.load(std::memory_order_acquire)) [[unlikely]]
+	{
+		for (u32 i = 0; i < forja_filters && i < 16; i++)
+		{
+			if (g_forja_gs_filter[i].load(std::memory_order_relaxed) == forja_gs_key)
+			{
+				s_forja_gs_left_out++;
+				return;
+			}
+		}
+	}
+	ForjaGsDrawTimer forja_gs_timer(forja_gs_key);
 	PS4_GS_SCOPE(HWDraw);
 	OrbisHwDrawTimer orbis_hwdraw_timer;
 	g_orbis_ctx = m_context; g_orbis_tme = PRIM->TME; g_orbis_prim = (unsigned)m_vt.m_primclass; g_orbis_verts = (unsigned)m_index->tail;
