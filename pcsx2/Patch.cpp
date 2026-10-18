@@ -356,6 +356,13 @@ std::vector<std::string> Patch::FindPatchFilesOnDisk(const std::string_view seri
 	// in a player's file is the one used. The Orbis build has no zip, so PCSX2's patches.zip cannot carry them.
 	if (!cheats)
 	{
+		// Forja SX2 (compilation 44): the settings center's copy (centro/parches, from the project's GitHub) before the
+		// package's, so its groups are the ones used when both have the same name.
+		const std::string center = Path::Combine(EmuFolders::DataRoot, "centro/parches");
+		FileSystem::FindFiles(center.c_str(), GetPnachTemplate(serial, crc, true, true, all_crcs).c_str(),
+			FILESYSTEM_FIND_FILES | FILESYSTEM_FIND_HIDDEN_FILES, &files);
+		for (FILESYSTEM_FIND_DATA& fd : files)
+			ret.push_back(std::move(fd.FileName));
 		const std::string factory = Path::Combine(EmuFolders::Resources, "parches");
 		FileSystem::FindFiles(factory.c_str(), GetPnachTemplate(serial, crc, true, true, all_crcs).c_str(),
 			FILESYSTEM_FIND_FILES | FILESYSTEM_FIND_HIDDEN_FILES, &files);

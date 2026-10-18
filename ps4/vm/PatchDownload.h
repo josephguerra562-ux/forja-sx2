@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0+
-// (AI-assisted) Forja SX2 (compilation 42): the PCSX2 community's patches for the game that starts. See PatchDownload.cpp.
+// (AI-assisted) Forja SX2: the PCSX2 community's patches (compilation 42) and the settings center's profile and patches
+// (compilation 44) for the game that starts. See PatchDownload.cpp.
 #pragma once
 
 #include <cstdint>

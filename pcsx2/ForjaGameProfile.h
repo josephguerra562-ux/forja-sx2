@@ -57,9 +57,15 @@ namespace ForjaGameProfile
 		Origin cpu_auto_origin = Origin::Global;
 	};
 
+	// Forja SX2 (compilation 44): the settings center's copy (/data/ForjaSX2/centro/perfiles, fetched from the project's GitHub by
+	// ps4/vm/PatchDownload.cpp) wins over the package's, so a game's tested settings reach every player without a new package.
 	inline std::string FactoryPath(std::string_view serial)
 	{
-		return Path::Combine(EmuFolders::Resources, fmt::format("perfiles/{}.ini", Path::SanitizeFileName(serial)));
+		const std::string name = fmt::format("{}.ini", Path::SanitizeFileName(serial));
+		const std::string center = Path::Combine(EmuFolders::DataRoot, "centro/perfiles/" + name);
+		if (FileSystem::FileExists(center.c_str()))
+			return center;
+		return Path::Combine(EmuFolders::Resources, "perfiles/" + name);
 	}
 
 	inline std::string PlayerPath(std::string_view serial, u32 crc)
