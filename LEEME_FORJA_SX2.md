@@ -52,7 +52,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
 - **El menú L3+R3 va en 5 pestañas** (desde la 35, como el menú rápido de Dolphin). **L1 y R1** cambian de pestaña,
   Arriba/Abajo eligen dentro de ella e Izq./Der. cambian el valor:
   - **Partida:** volver al juego, guardar estado, cargar estado y reiniciar el juego.
-  - **Imagen:** resolución interna, relación de aspecto, generación de cuadros y contador de FPS.
+  - **Imagen:** resolución interna, relación de aspecto, **nitidez** (desde la 44), generación de cuadros y contador de FPS.
+    **Nitidez:** Suave (como antes), Nítida (bilineal nítido, sin costo), CAS y CAS fuerte (el realce de AMD, de la familia
+    del FSR que usa Dolphin para PS4; cuesta muy poco) y Píxeles (sin filtro, estilo retro). Se guarda por juego.
   - **Rendimiento:** velocidad del CPU de la PS2, **CPU automático**, modo video y núcleos.
   - **Parches** (desde la 42): los parches de ese juego, uno por uno. ←/→ elige, **X** lo pone o lo quita y se guarda para
     ese juego. Algunos piden reiniciar el juego para quitarse del todo.

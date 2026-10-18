@@ -165,6 +165,7 @@ static unsigned s_state_action = 0;
 static unsigned s_game_upscale = 1;
 static unsigned s_max_game_upscale = 1;
 static unsigned s_game_aspect = 1;
+static unsigned s_game_sharpness = 0; // Forja SX2 (compilation 44): the Nitidez row (SharpnessFromConfig)
 static bool s_game_show_performance_overlay = true;
 static int s_game_ee_rate = -1;
 // Forja SX2: console detection. The PS4's CPU runs at 1.6 GHz; a PS4 Pro runs it at ~2.13 GHz in Pro
@@ -378,6 +379,9 @@ static void ReadGameResolution()
 			static_cast<unsigned>(configured + 0.5f) : 1u;
 		s_game_upscale = std::min(s_game_upscale, s_max_game_upscale);
 		s_game_aspect = std::clamp(static_cast<unsigned>(GSConfig.AspectRatio), 0u, 4u);
+		s_game_sharpness = GSConfig.CASMode != GSCASMode::Disabled ? (GSConfig.CAS_Sharpness >= 75 ? 3u : 2u) :
+		                   GSConfig.LinearPresent == GSPostBilinearMode::BilinearSharp ? 1u :
+		                   GSConfig.LinearPresent == GSPostBilinearMode::Off ? 4u : 0u;
 	});
 	if (s_verbose_diag)
 	{
@@ -501,6 +505,7 @@ static void PublishGameMenu()
 	state.upscale = s_game_upscale;
 	state.max_upscale = s_max_game_upscale;
 	state.aspect = s_game_aspect;
+	state.sharpness = s_game_sharpness;
 	state.show_overlay = s_game_show_performance_overlay;
 	state.ee_rate = s_game_ee_rate;
 	state.video = VideoMenuValue();
@@ -531,6 +536,33 @@ static void ApplyPerformanceOverlay()
 	MTGS::RunOnGSThread([visible]() { ImGuiManager::SetPerformanceHUDVisible(visible); });
 	MTGS::WaitGS(false, false, false);
 	ProbeLog("Performance overlay: %s (session only)\n", visible ? "shown" : "hidden");
+}
+
+// Forja SX2 (compilation 44): the picture's sharpness, PCSX2's own presentation options. 0 smooth: the scaled picture blended
+// (PCSX2's default); 1 sharp bilinear; 2 and 3 AMD's FidelityFX CAS, sharpening while it scales to the TV (Dolphin for PS4
+// got sharper pictures from AMD's FSR 1 in v04.14; CAS is the same family and PCSX2 has it), at 50 and 90; 4 no filter.
+// Joseph, 2026-10-18: the picture looked "blurry, like old TVs".
+static void ApplyGameSharpness(unsigned sharpness, bool save)
+{
+	const unsigned value = std::min(sharpness, 4u);
+	const GSPostBilinearMode present = value == 1 ? GSPostBilinearMode::BilinearSharp :
+	                                   value == 4 ? GSPostBilinearMode::Off : GSPostBilinearMode::BilinearSmooth;
+	const GSCASMode cas = (value == 2 || value == 3) ? GSCASMode::SharpenAndResize : GSCASMode::Disabled;
+	const u8 amount = value == 3 ? 90 : 50;
+	EmuConfig.GS.LinearPresent = present;
+	EmuConfig.GS.CASMode = cas;
+	EmuConfig.GS.CAS_Sharpness = amount;
+	MTGS::ApplySettings();
+	MTGS::WaitGS(false, false, false);
+	ProbeLog("Sharpness applied: %u (present=%d cas=%d amount=%u)\n", value, static_cast<int>(present), static_cast<int>(cas), amount);
+	if (save)
+	{
+		SavePlayerProfile("Sharpness", [present, cas, amount](INISettingsInterface& ini) {
+			ini.SetIntValue("EmuCore/GS", "linear_present_mode", static_cast<int>(present));
+			ini.SetIntValue("EmuCore/GS", "CASMode", static_cast<int>(cas));
+			ini.SetIntValue("EmuCore/GS", "CASSharpness", amount);
+		}, false);
+	}
 }
 
 static void ApplyGameAspect(unsigned aspect)
@@ -888,6 +920,10 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			SavePlayerProfile("Aspect ratio", [](INISettingsInterface& ini) {
 				ini.SetStringValue("EmuCore/GS", "AspectRatio", Pcsx2Config::GSOptions::AspectRatioNames[std::min(s_game_aspect, 4u)]);
 			}, false);
+			break;
+		case PS4GameMenu::ROW_SHARPNESS:
+			s_game_sharpness = static_cast<unsigned>((static_cast<int>(s_game_sharpness) + delta + 5) % 5);
+			ApplyGameSharpness(s_game_sharpness, true);
 			break;
 		case PS4GameMenu::ROW_OVERLAY:
 			s_game_show_performance_overlay = !s_game_show_performance_overlay;
@@ -1325,6 +1361,7 @@ void VMHostPoll()
 		// X changes the switch-like rows one step, saves, loads or restarts on the save state rows, and resets the game's
 		// profile on its row.
 		if (confirm && (row == PS4GameMenu::ROW_OVERLAY || row == PS4GameMenu::ROW_VIDEO_MODE || row == PS4GameMenu::ROW_FRAME_GEN ||
+						   row == PS4GameMenu::ROW_SHARPNESS ||
 						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_CPU_AUTO || row == PS4GameMenu::ROW_RESET_PROFILE ||
 						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART ||
 						   row == PS4GameMenu::ROW_PATCH))

@@ -1511,6 +1511,16 @@ namespace PS4GameMenu
 			char video_description[160];
 			std::snprintf(video_description, sizeof(video_description),
 				"CPU de la PS2 durante las cinemáticas. Para este juego  ·  ahora: %s", origin_names[menu_state.video_origin]);
+			// Forja SX2 (compilation 44): the picture's sharpness (main.cpp, ApplyGameSharpness).
+			static constexpr const char* sharpness_names[] = {"Suave", "Nítida", "CAS", "CAS fuerte", "Píxeles"};
+			static constexpr const char* sharpness_descriptions[] = {
+				"Como hasta ahora: la imagen escalada y suavizada. Se guarda para este juego",
+				"Bilineal nítido: bordes más definidos, sin costo. Se guarda para este juego",
+				"AMD CAS (de la familia del FSR): realza el detalle al agrandar la imagen. Cuesta muy poco",
+				"AMD CAS al máximo: aún más detalle; puede verse algo granulado",
+				"Sin filtro: cada píxel tal cual, estilo retro. Se guarda para este juego"};
+			char sharpness_label[96];
+			std::snprintf(sharpness_label, sizeof(sharpness_label), "Nitidez:  < %s >", sharpness_names[std::min(menu_state.sharpness, 4u)]);
 			// Forja SX2 (compilation 40): No, Sí (PS5SX2's, for a steady 30) and Fluida (every refresh the game leaves empty).
 			static constexpr const char* frame_gen_names[] = {"No", "Sí", "Fluida"};
 			char frame_gen_label[96];
@@ -1580,6 +1590,7 @@ namespace PS4GameMenu
 					case ROW_RESOLUTION: return resolution;
 					case ROW_ASPECT: return aspect_label;
 					case ROW_FRAME_GEN: return frame_gen_label;
+					case ROW_SHARPNESS: return sharpness_label;
 					case ROW_OVERLAY: return performance_label;
 					case ROW_EE_RATE: return ee_label;
 					case ROW_CPU_AUTO: return cpu_auto_label;
@@ -1601,6 +1612,7 @@ namespace PS4GameMenu
 					case ROW_RESOLUTION: return "Más calidad de imagen (consume más). Se guarda para este juego";
 					case ROW_ASPECT: return "Forma de la imagen en pantalla. Se guarda para este juego";
 					case ROW_FRAME_GEN: return frame_gen_description;
+					case ROW_SHARPNESS: return sharpness_descriptions[std::min(menu_state.sharpness, 4u)];
 					case ROW_OVERLAY: return "Mostrar u ocultar FPS, velocidad y tiempos";
 					case ROW_EE_RATE: return "Menos % = más FPS en la PS4 (el juego puede perder cuadros). Se guarda para este juego";
 					case ROW_CPU_AUTO: return cpu_auto_description;
@@ -1659,6 +1671,12 @@ namespace PS4GameMenu
 					case ROW_EE_RATE:
 						draw->AddCircle(ip(0, 4), 14.0f * scale, icon_line, 28, lw);
 						draw->AddLine(ip(0, 4), ip(8, -6), icon_line, lw);
+						break;
+					case ROW_SHARPNESS: // a diamond
+						draw->AddLine(ip(0, -15), ip(14, 0), icon_line, lw);
+						draw->AddLine(ip(14, 0), ip(0, 15), icon_line, lw);
+						draw->AddLine(ip(0, 15), ip(-14, 0), icon_line, lw);
+						draw->AddLine(ip(-14, 0), ip(0, -15), icon_line, lw);
 						break;
 					case ROW_PATCH: // a bandage
 						draw->AddRect(ip(-15, -7), ip(15, 7), icon_line, 7 * scale, lw, 0);
@@ -1736,7 +1754,8 @@ namespace PS4GameMenu
 				const char* action = nullptr;
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
 					action = "AJUSTAR";
-				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN)
+				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
+				         row == ROW_SHARPNESS)
 					action = "ELEGIR";
 				else if (row == ROW_PATCH)
 					action = "ELEGIR  ·  X";

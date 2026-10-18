@@ -19,6 +19,7 @@ namespace PS4GameMenu
 		// Imagen
 		ROW_RESOLUTION,
 		ROW_ASPECT,
+		ROW_SHARPNESS, // compilation 44
 		ROW_FRAME_GEN,
 		ROW_OVERLAY,
 		// Rendimiento
@@ -55,6 +56,8 @@ namespace PS4GameMenu
 		unsigned upscale = 1;
 		unsigned max_upscale = 1;
 		unsigned aspect = 1;
+		// Forja SX2 (compilation 44): 0 smooth (bilinear), 1 sharp bilinear, 2 AMD CAS, 3 strong CAS, 4 pixels (no filter).
+		unsigned sharpness = 0;
 		bool show_overlay = true;
 		int ee_rate = -1; // Forja SX2: EECycleRate, -6..3 (-4..-6 since compilation 36)
 		// Forja SX2: the game's profile. video: 0 off, 1 100 %, 2 75 %, 3 60 %, 4 50 % (EE rate during movies).
@@ -115,7 +118,8 @@ namespace PS4GameMenu
 			(static_cast<std::uint64_t>(std::min(value.cpu_auto_steps, 15u)) << 48) |
 			(static_cast<std::uint64_t>(std::min(value.cpu_auto_origin, 2u)) << 52) |
 			// Compilation 36: the EE rate in four bits of its own, -6..3 (it had three at bit 21, -3..3).
-			(static_cast<std::uint64_t>(std::clamp(value.ee_rate, -6, 3) + 6) << 54);
+			(static_cast<std::uint64_t>(std::clamp(value.ee_rate, -6, 3) + 6) << 54) |
+			(static_cast<std::uint64_t>(std::min(value.sharpness, 4u)) << 58); // compilation 44
 	}
 
 	constexpr InGameMenuState UnpackInGameMenuState(std::uint64_t value)
@@ -147,6 +151,7 @@ namespace PS4GameMenu
 		state.cpu_auto = std::min(static_cast<unsigned>((value >> 45) & 0x07u), 6u);
 		state.cpu_auto_steps = static_cast<unsigned>((value >> 48) & 0x0fu);
 		state.cpu_auto_origin = std::min(static_cast<unsigned>((value >> 52) & 0x03u), 2u);
+		state.sharpness = std::min(static_cast<unsigned>((value >> 58) & 0x07u), 4u);
 		return state;
 	}
 } // namespace PS4GameMenu
