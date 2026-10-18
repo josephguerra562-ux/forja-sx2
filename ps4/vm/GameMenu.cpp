@@ -171,12 +171,12 @@ namespace PS4GameMenu
 		// Forja SX2: the Settings page. The CPU thread owns the values; the GS thread draws this copy.
 		ForjaSettings::Values s_settings_gs;
 		unsigned s_settings_row_gs = 0;
-		constexpr unsigned SettingsRows = 10;
+		constexpr unsigned SettingsRows = 11;
 
 		const char* SettingLabel(unsigned row)
 		{
 			static constexpr const char* labels[SettingsRows] = {
-				"Velocidad del CPU de la PS2", "Resolución interna", "Relación de aspecto", "Contador de FPS al jugar",
+				"Velocidad del CPU de la PS2", "CPU automático", "Resolución interna", "Relación de aspecto", "Contador de FPS al jugar",
 				"Sensibilidad de la palanca", "Cargas rápidas del disco", "Saltar el logo de la PS2",
 				"Lecturas de la gráfica (readbacks)", "Modo video automático", "Generación de cuadros (30 a 60 FPS)"};
 			return labels[std::min(row, SettingsRows - 1)];
@@ -185,7 +185,8 @@ namespace PS4GameMenu
 		const char* SettingHelp(unsigned row)
 		{
 			static constexpr const char* help[SettingsRows] = {
-				"Menos % = más FPS en la PS4. Cada juego puede tener la suya desde L3+R3 (esa manda)",
+				"Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)",
+				"Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso",
 				"1x es la de la PS2. En PS4 Pro aguanta 2x-4x en juegos ligeros",
 				"Auto respeta lo que pide el juego",
 				"Muestra FPS y velocidad arriba a la derecha (se cambia también en L3+R3)",
@@ -200,24 +201,28 @@ namespace PS4GameMenu
 
 		void SettingValue(const ForjaSettings::Values& v, unsigned row, char* out, size_t size)
 		{
-			static constexpr const char* ee_names[] = {"50 %", "60 %", "75 %", "100 % (PS2 real)", "130 %", "180 %", "300 %"};
+			static constexpr const char* ee_names[] = {"27 %", "31 %", "36 %", "50 %", "60 %", "75 %", "100 % (PS2 real)", "130 %",
+				"180 %", "300 %"};
+			static constexpr const char* cpu_auto_names[] = {"No", "Hasta 75 %", "Hasta 60 %", "Hasta 50 %", "Hasta 36 %", "Hasta 31 %",
+				"Hasta 27 %"};
 			static constexpr const char* aspect_names[] = {"Estirar", "Auto", "4:3", "16:9", "10:7"};
 			switch (row)
 			{
-				case 0: std::snprintf(out, size, "%s", ee_names[std::clamp(v.ee_rate, -3, 3) + 3]); break;
-				case 1: std::snprintf(out, size, "%dx%s", v.upscale, v.upscale == 1 ? " (nativa)" : ""); break;
-				case 2: std::snprintf(out, size, "%s", aspect_names[std::clamp(v.aspect, 0, 4)]); break;
-				case 3: std::snprintf(out, size, "%s", v.overlay ? "Sí" : "No"); break;
-				case 4: std::snprintf(out, size, "%d %%", v.stick); break;
-				case 5: std::snprintf(out, size, "%s", v.fast_cdvd ? "Sí" : "No"); break;
-				case 6: std::snprintf(out, size, "%s", v.fast_boot ? "Sí" : "No"); break;
-				case 7:
+				case 0: std::snprintf(out, size, "%s", ee_names[std::clamp(v.ee_rate, -6, 3) + 6]); break;
+				case 1: std::snprintf(out, size, "%s", cpu_auto_names[-std::clamp(v.cpu_auto, -6, 0)]); break;
+				case 2: std::snprintf(out, size, "%dx%s", v.upscale, v.upscale == 1 ? " (nativa)" : ""); break;
+				case 3: std::snprintf(out, size, "%s", aspect_names[std::clamp(v.aspect, 0, 4)]); break;
+				case 4: std::snprintf(out, size, "%s", v.overlay ? "Sí" : "No"); break;
+				case 5: std::snprintf(out, size, "%d %%", v.stick); break;
+				case 6: std::snprintf(out, size, "%s", v.fast_cdvd ? "Sí" : "No"); break;
+				case 7: std::snprintf(out, size, "%s", v.fast_boot ? "Sí" : "No"); break;
+				case 8:
 				{
 					static constexpr const char* readback_names[] = {"Precisas", "Sin esperar (más rápido)", "Desactivadas"};
 					std::snprintf(out, size, "%s", readback_names[std::clamp(v.readback, 0, 2)]);
 					break;
 				}
-				case 8: std::snprintf(out, size, "%s", v.video_mode ? "Sí" : "No"); break;
+				case 9: std::snprintf(out, size, "%s", v.video_mode ? "Sí" : "No"); break;
 				default: std::snprintf(out, size, "%s", v.frame_gen ? "Sí" : "No"); break;
 			}
 		}
@@ -233,11 +238,12 @@ namespace PS4GameMenu
 			};
 			switch (row)
 			{
-				case 0: v.ee_rate = step(v.ee_rate, -3, 3); break;
-				case 1: v.upscale = step(v.upscale, 1, 4); break;
-				case 2: v.aspect = step(v.aspect, 0, 4); break;
-				case 3: v.overlay = !v.overlay; break;
-				case 4:
+				case 0: v.ee_rate = step(v.ee_rate, -6, 3); break;
+				case 1: v.cpu_auto = -step(-v.cpu_auto, 0, 6); break; // right: a lower floor
+				case 2: v.upscale = step(v.upscale, 1, 4); break;
+				case 3: v.aspect = step(v.aspect, 0, 4); break;
+				case 4: v.overlay = !v.overlay; break;
+				case 5:
 				{
 					int index = 0;
 					while (index + 1 < ForjaSettings::StickStepCount && ForjaSettings::StickSteps[index] < v.stick)
@@ -245,10 +251,10 @@ namespace PS4GameMenu
 					v.stick = ForjaSettings::StickSteps[step(index, 0, ForjaSettings::StickStepCount - 1)];
 					break;
 				}
-				case 5: v.fast_cdvd = !v.fast_cdvd; break;
-				case 6: v.fast_boot = !v.fast_boot; break;
-				case 7: v.readback = step(v.readback, 0, 2); break;
-				case 8: v.video_mode = !v.video_mode; break;
+				case 6: v.fast_cdvd = !v.fast_cdvd; break;
+				case 7: v.fast_boot = !v.fast_boot; break;
+				case 8: v.readback = step(v.readback, 0, 2); break;
+				case 9: v.video_mode = !v.video_mode; break;
 				default: v.frame_gen = !v.frame_gen; break;
 			}
 		}
@@ -1968,11 +1974,11 @@ namespace PS4GameMenu
 			const unsigned focused_row = std::min(s_settings_row_gs, SettingsRows - 1);
 			for (unsigned row = 0; row < SettingsRows; ++row)
 			{
-				const float y = 108.0f + static_cast<float>(row) * 80.0f;
+				const float y = 108.0f + static_cast<float>(row) * 74.0f;
 				const bool focused = !s_sidebar_focused && row == focused_row;
-				fill(346, y, 1470, 72, focused ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 235), 10);
+				fill(346, y, 1470, 68, focused ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 235), 10);
 				if (focused)
-					draw->AddRect(point(346, y), point(1816, y + 72), accent, 10 * scale, 2.0f * scale, 0);
+					draw->AddRect(point(346, y), point(1816, y + 68), accent, 10 * scale, 2.0f * scale, 0);
 				text(380, y + 31, 22, white, SettingLabel(row));
 				text(380, y + 57, 15, muted, SettingHelp(row));
 				char value[64];
@@ -1980,7 +1986,7 @@ namespace PS4GameMenu
 				char shown[96];
 				std::snprintf(shown, sizeof(shown), focused ? "<  %s  >" : "%s", value);
 				const float width = font->CalcTextSizeA(25.0f * scale, FLT_MAX, 0, shown).x / scale;
-				text(1786 - width, y + 44, 25, focused ? white : accent, shown);
+				text(1786 - width, y + 42, 25, focused ? white : accent, shown);
 			}
 		}
 		for (size_t slot = 0; !disc_view && !settings_view && slot < VisibleItems && first + slot < s_items.size(); ++slot)

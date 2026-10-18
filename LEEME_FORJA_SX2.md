@@ -74,7 +74,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
 - **Todo lo que cambies en L3+R3 se guarda solo para ese juego** (como las propiedades por juego de Dolphin), menos el
   contador de FPS. Se aplica al instante:
   - **Resolución interna** y **relación de aspecto**.
-  - **Velocidad del CPU de la PS2:** de 27 % a 300 %; por defecto, 75 %. Menos % = más FPS en la PS4, pero el juego puede perder cuadros.
+  - **Velocidad del CPU de la PS2:** de 27 % a 300 %. **Desde la 45 todo juego empieza al 27 %** (antes, 75 %). Menos % = más
+    FPS en la PS4, pero el juego puede perder cuadros. Si uno va en cámara lenta, súbelo aquí: queda guardado para ese juego.
     **Desde la 36, EXPERIMENTAL: 36 %, 31 % y 27 %** (marcados "exp."). Sirven para juegos que con 50 % siguen dibujando
     todos sus cuadros: con menos CPU el juego dibuja menos cuadros y el VU1 hace menos trabajo por segundo. Si el juego
     calcula su movimiento por tiempo, va a velocidad normal. Si se ve en cámara lenta, ese juego no sirve con esto: vuelve
@@ -84,6 +85,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     experimental). Si el juego va por debajo del 92 % unos 3 segundos, baja un paso el CPU de la PS2. Cuando hay margen
     otra vez, vuelve a subir. Cada cambio da un tironcito, así que hay como mucho uno cada 6 s. La fila dice a qué velocidad
     va **ahora**. En God of War II viene apagado desde la 36: medido, las peleas pesadas iban igual al 50, 60, 75 y 100 %.
+    Desde la 45, un juego sin ajuste propio usa el de la pestaña Ajustes (de fábrica, "Hasta 27 %"): si le subes el CPU y se
+    pone lento en una escena pesada, baja solo, como mucho hasta el 27 %.
   - **Modo video:** No / 60 % / 50 %. Es el CPU de la PS2 durante las cinemáticas.
   - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
     cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
@@ -109,7 +112,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
 ## 3b. Pestaña Ajustes (para todos los juegos)
 En la biblioteca, menú lateral > **Ajustes**. Arriba/Abajo eligen, Izq./Der. cambian, X pasa al siguiente valor y Círculo vuelve al menú.
 Se guarda al momento en `/data/ForjaSX2/ajustes.ini` y se aplica al iniciar el siguiente juego:
-velocidad del CPU de la PS2, resolución, relación de aspecto, contador de FPS, **sensibilidad de la palanca** (133 % por defecto,
+velocidad del CPU de la PS2 (desde la 45, de 27 % a 300 %; de fábrica 27 %), **CPU automático** (desde la 45; de fábrica
+"Hasta 27 %"), resolución (de fábrica la nativa 1x en todas las PS4; antes una Pro con Boost empezaba en 2x), relación de aspecto, contador de FPS, **sensibilidad de la palanca** (133 % por defecto,
 como el PCSX2 de PC; arregla que X caminara con la palanca a tope), cargas rápidas, saltar el logo,
 lecturas de la GPU (readbacks), **Modo video automático** (sube la velocidad mientras se reproduce un video del juego) y
 **Generación de cuadros (30 a 60 FPS)**, que es EXPERIMENTAL, viene apagada e inventa el cuadro intermedio en juegos que van estables a 30.
@@ -167,7 +171,8 @@ Ejemplo de contenido (son los nombres de ajustes del PCSX2 de PC; solo pon lo qu
 Los comentarios van **en su propia línea** empezando con `;`, nunca al final de un valor:
 ```ini
 [EmuCore/Speedhacks]
-; Ciclos del EE: -3 a 3. Por defecto -1 (75 %). 0 = 100 %, como una PS2 real.
+; Ciclos del EE: -6 a 3 (-6 27 %, -5 31 %, -4 36 %, -3 50 %, -2 60 %, -1 75 %). Por defecto, el de la pestaña Ajustes
+; (desde la 45, -6). 0 = 100 %, como una PS2 real.
 ; Negativo = menos trabajo para la PS4 (más FPS, pero el juego puede perder cuadros).
 ; Positivo = más trabajo (solo para juegos que van lentos "por dentro", p. ej. con parche de 60 FPS).
 EECycleRate = 0

@@ -210,6 +210,7 @@ extern bool g_orbis_fg_fluid;  // ...and its fluid mode (compilation 40: [Forja]
 static ForjaGameProfile::Values s_profile;
 static bool s_global_video_mode = true; // ajustes.ini
 static bool s_global_frame_gen = false; // ajustes.ini
+static int s_global_cpu_auto = ForjaSettings::Values{}.cpu_auto; // ajustes.ini (compilation 45)
 static bool s_frame_gen_blocked = false; // the last try hung the GPU (fg-en-prueba): off for this launch
 static int s_video_ee_rate = VIDEO_EE_RATE;
 // Forja SX2 (compilation 35): the automatic PS2 CPU speed (UpdateCpuAuto). floor: 0 off, -1..-6 the lowest EE rate it may use;
@@ -869,7 +870,8 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	const int frame_gen = s_profile.frame_gen >= 0 ? s_profile.frame_gen : (s_global_frame_gen ? 1 : 0);
 	g_orbis_fg_wanted = !s_frame_gen_blocked && frame_gen != 0;
 	g_orbis_fg_fluid = frame_gen == 2;
-	s_cpu_auto_floor = s_profile.cpu_auto;
+	// Compilation 45: a game without its own CpuAuto (player or factory) takes the Settings page's.
+	s_cpu_auto_floor = s_profile.cpu_auto_origin == ForjaGameProfile::Origin::Global ? s_global_cpu_auto : s_profile.cpu_auto;
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
 	ApplyVu1SkipList(s_profile.vu1_skip); // compilation 44: the VU1 filter
 	ProbeLog("Game profile: %s %08X factory=%d player=%d video_mode=%d (%s) video_ee_rate=%d (%s) frame_gen=%d (%s) "
@@ -1806,9 +1808,9 @@ static void* RunVM(void*)
 	Host::Internal::SetSecretsSettingsLayer(&secrets_storage);
 	VMManager::SetDefaultSettings(*settings, true, true, false, false, false);
 	// (AI-assisted) Fase 1: EE is 30-38ms bottleneck on Jaguar (Speed 48-55% in GTA/GoW FMV, GPU 1-2ms).
-	// Default to mild underclock (-1 = 75% cycles) for headroom; exact cycle accuracy costs ~25%
-	// EE time on this CPU. Original 100% stays via marker for sensitive titles. Needs proper testing.
-	int ee_cycle_rate = -1;
+	// Exact cycle accuracy costs ~25% EE time on this CPU. Compilation 45: with no ajustes.ini yet, every game starts at
+	// ForjaSettings' default (27 %), the lowest; the markers below and L3+R3 raise it.
+	int ee_cycle_rate = ForjaSettings::Values{}.ee_rate;
 	if (access("/data/ForjaSX2/vm-ee-cycle-normal", F_OK) == 0)
 		ee_cycle_rate = 0;
 	else if (access("/data/ForjaSX2/vm-ee-cycle-underclock", F_OK) == 0)
@@ -2040,9 +2042,9 @@ static void* RunVM(void*)
 		}
 		if (chosen.from_file)
 			settings->SetIntValue("EmuCore/Speedhacks", "EECycleRate", chosen.ee_rate);
-		// Console profile: until the player saves the Settings page, a PS4 Pro with Boost Mode (CPU ~2.1 GHz)
-		// starts at 2x, which it holds in light games; a base PS4/Slim (1.6 GHz) keeps the native 1x.
-		const int upscale = (!chosen.from_file && s_console_fast_cpu) ? 2 : chosen.upscale;
+		// Compilation 45: every console starts at the native 1x (before, a PS4 Pro with Boost Mode started at 2x until the
+		// Settings page was saved); the player raises it per game in L3+R3, or for all games on the Settings page.
+		const int upscale = chosen.upscale;
 		settings->SetFloatValue("EmuCore/GS", "upscale_multiplier", static_cast<float>(upscale));
 		settings->SetStringValue("EmuCore/GS", "AspectRatio", Pcsx2Config::GSOptions::AspectRatioNames[chosen.aspect]);
 		settings->SetIntValue("EmuCore/GS", "HWDownloadMode", ForjaSettings::ReadbackModes[chosen.readback]);
@@ -2058,6 +2060,7 @@ static void* RunVM(void*)
 		// new frame): ajustes.ini gives the default, the game's profile can change it.
 		s_global_video_mode = chosen.video_mode;
 		s_global_frame_gen = chosen.frame_gen;
+		s_global_cpu_auto = chosen.cpu_auto;
 		// Forja SX2: the game's profile, before the VM boots, so its cores and video settings are in place from the first frame.
 		// The library already scanned the image for its serial; GameList reads its boot ELF's CRC too (the ini's name).
 		{

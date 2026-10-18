@@ -19,7 +19,12 @@ namespace ForjaSettings
 
 	struct Values
 	{
-		int ee_rate = -1;     // EECycleRate, -3..3 (-1 = 75 %, the port's default)
+		// EECycleRate, -6..3. Compilation 45: -6 (27 %) is the default, as God of War II measured best (98 %, 2026-10-17)
+		// and Crash Nitro Kart kept its own speed at it (2026-10-18); a game that needs more gets it in L3+R3, for that game.
+		int ee_rate = -6;
+		// [Forja] CpuAuto for every game without its own (compilation 45): 0 off, -1..-6 the lowest EE rate it may step down
+		// to (main.cpp, UpdateCpuAuto). -6: a game raised above 27 % in L3+R3 comes back down in its heavy scenes.
+		int cpu_auto = -6;
 		int upscale = 1;      // internal resolution, 1..4
 		int aspect = 1;       // AspectRatioType: 0 Stretch, 1 Auto, 2 4:3, 3 16:9, 4 10:7
 		bool overlay = true;  // FPS counter when a game starts
@@ -37,7 +42,8 @@ namespace ForjaSettings
 
 	inline Values Clamp(Values v)
 	{
-		v.ee_rate = std::clamp(v.ee_rate, -3, 3);
+		v.ee_rate = std::clamp(v.ee_rate, -6, 3);
+		v.cpu_auto = std::clamp(v.cpu_auto, -6, 0);
 		v.upscale = std::clamp(v.upscale, 1, 4);
 		v.aspect = std::clamp(v.aspect, 0, 4);
 		v.stick = std::clamp(v.stick, 100, 200);
@@ -61,6 +67,8 @@ namespace ForjaSettings
 				continue;
 			if (!std::strcmp(key, "ee_rate"))
 				v.ee_rate = value;
+			else if (!std::strcmp(key, "cpu_auto"))
+				v.cpu_auto = value;
 			else if (!std::strcmp(key, "upscale"))
 				v.upscale = value;
 			else if (!std::strcmp(key, "aspect"))
@@ -95,9 +103,9 @@ namespace ForjaSettings
 		std::fprintf(file,
 			"; Forja SX2: ajustes para todos los juegos (pestaña Ajustes de la biblioteca)\n"
 			"ee_rate=%d\nupscale=%d\naspect=%d\noverlay=%d\nstick=%d\nfast_cdvd=%d\nfast_boot=%d\nreadback=%d\nvideo_mode=%d\n"
-			"frame_gen=%d\n",
+			"frame_gen=%d\ncpu_auto=%d\n",
 			v.ee_rate, v.upscale, v.aspect, v.overlay ? 1 : 0, v.stick, v.fast_cdvd ? 1 : 0, v.fast_boot ? 1 : 0,
-			v.readback, v.video_mode ? 1 : 0, v.frame_gen ? 1 : 0);
+			v.readback, v.video_mode ? 1 : 0, v.frame_gen ? 1 : 0, v.cpu_auto);
 		const bool written = std::fclose(file) == 0;
 		return written && std::rename(temporary, Path) == 0;
 	}
