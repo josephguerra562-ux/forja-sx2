@@ -680,21 +680,22 @@ static void BringBackVu1Programs()
 // it back, and the list goes in the player's profile ([Forja] GSQuitar, the groups' keys in hex). A group that draws an effect
 // (a glow, an aura, a shadow) can be left out to save its GS time; one with the main picture leaves the screen wrong, and X
 // brings it back. Dragon Ball Z Budokai Tenkaichi 4 is held back by its ~2,150 draws a frame, not by its VU1.
-extern std::atomic<u32> g_forja_gs_filter[16];
+// Compilation 54: 64-bit keys with the texture's format and size (GSRendererHW.cpp has the layout); keys of builds 51-53 have
+// no bit 63 and are dropped when a profile is read.
+extern std::atomic<u64> g_forja_gs_filter[16];
 extern std::atomic<u32> g_forja_gs_filter_count;
-extern std::atomic<u32> g_forja_gs_top[8];
+extern std::atomic<u64> g_forja_gs_top[8];
 extern std::atomic<u32> g_forja_gs_top_info[8];
 extern std::atomic<u32> g_forja_gs_top_count;
-static std::vector<u32> s_gs_filter_keys; // the groups left out (16 at most)
-static std::vector<u32> s_gs_candidates;  // the menu's groups
+static constexpr u64 GS_KEY_MARK = u64{1} << 63;
+static std::vector<u64> s_gs_filter_keys; // the groups left out (16 at most)
+static std::vector<u64> s_gs_candidates;  // the menu's groups, in their places
 static std::vector<u32> s_gs_infos;       // their share in permille << 16 | draws a second
 static unsigned s_gs_index = 0;
-// Compilation 52: each group's last measure, kept for the ones left out (the GS doesn't time what it doesn't draw). In build
-// 51 a group left out fell to the end of the list and the next costliest came in: "1 de 9", "1 de 10"... and the one at the
-// cursor was no longer the one just left out.
-static std::vector<std::pair<u32, u32>> s_gs_known;
+// Compilation 52: each group's last measure, kept for the ones left out (the GS doesn't time what it doesn't draw).
+static std::vector<std::pair<u64, u32>> s_gs_known;
 
-static u32 GsKnownInfo(u32 key)
+static u32 GsKnownInfo(u64 key)
 {
 	for (const auto& [known, info] : s_gs_known)
 	{
@@ -704,7 +705,7 @@ static u32 GsKnownInfo(u32 key)
 	return 0;
 }
 
-static void GsRemember(u32 key, u32 info)
+static void GsRemember(u64 key, u32 info)
 {
 	for (auto& [known, known_info] : s_gs_known)
 	{
@@ -717,7 +718,7 @@ static void GsRemember(u32 key, u32 info)
 	s_gs_known.emplace_back(key, info);
 }
 
-static bool GsFiltered(u32 key)
+static bool GsFiltered(u64 key)
 {
 	return std::find(s_gs_filter_keys.begin(), s_gs_filter_keys.end(), key) != s_gs_filter_keys.end();
 }
@@ -735,10 +736,10 @@ static void PublishGsFilter()
 static std::string GsFilterList()
 {
 	std::string list;
-	for (const u32 key : s_gs_filter_keys)
+	for (const u64 key : s_gs_filter_keys)
 	{
-		char text[16];
-		std::snprintf(text, sizeof(text), "%s%07x", list.empty() ? "" : ",", key);
+		char text[24];
+		std::snprintf(text, sizeof(text), "%s%llx", list.empty() ? "" : ",", static_cast<unsigned long long>(key));
 		list += text;
 	}
 	return list;
@@ -751,33 +752,42 @@ static void ApplyGsFilterList(const std::string& list)
 	while (*p)
 	{
 		char* end = nullptr;
-		const unsigned long key = std::strtoul(p, &end, 16);
+		const unsigned long long key = std::strtoull(p, &end, 16);
 		if (end == p)
 		{
 			++p;
 			continue;
 		}
-		if (key < (1ul << 26) && s_gs_filter_keys.size() < 16 && !GsFiltered(static_cast<u32>(key)))
-			s_gs_filter_keys.push_back(static_cast<u32>(key));
+		if ((key & GS_KEY_MARK) != 0 && s_gs_filter_keys.size() < 16 && !GsFiltered(key))
+			s_gs_filter_keys.push_back(key);
 		p = end;
 	}
 	PublishGsFilter();
 }
 
-// "En 00e00 con la textura 02a40, triángulos transparentes" (the framebuffer and texture as GS block addresses).
-static std::string GsGroupText(u32 key)
+// "En la pantalla con la textura 03d40 (256x256, 256 colores), triángulos transparentes" (GS block addresses).
+static std::string GsGroupText(u64 key)
 {
 	static constexpr const char* prims[] = {"puntos", "líneas", "triángulos", "sprites"};
-	const u32 tbp = (key >> 3) & 0x3fffu;
+	const u32 fbp = static_cast<u32>(key >> 31) & 0x1ffu;
+	const u32 tbp = static_cast<u32>(key >> 17) & 0x3fffu;
+	const u32 psm = static_cast<u32>(key >> 11) & 0x3fu;
+	const u32 tw = static_cast<u32>(key >> 7) & 0xfu, th = static_cast<u32>(key >> 3) & 0xfu;
+	const char* prim = prims[(key >> 1) & 3u];
+	const char* blend = (key & 1u) ? " transparentes" : "";
 	char where[24] = "En la pantalla"; // compilation 52: the framebuffers the TV shows
-	if (((key >> 17) & 0x1ffu) != 0x1ffu)
-		std::snprintf(where, sizeof(where), "En %05x", ((key >> 17) & 0x1ffu) << 5);
-	char text[128];
+	if (fbp != 0x1ffu)
+		std::snprintf(where, sizeof(where), "En %05x", fbp << 5);
+	char text[160];
 	if (tbp == 0x3fffu)
-		std::snprintf(text, sizeof(text), "%s sin textura, %s%s", where, prims[(key >> 1) & 3u], (key & 1u) ? " transparentes" : "");
-	else
-		std::snprintf(text, sizeof(text), "%s con la textura %05x, %s%s", where, tbp, prims[(key >> 1) & 3u],
-			(key & 1u) ? " transparentes" : "");
+	{
+		std::snprintf(text, sizeof(text), "%s sin textura, %s%s", where, prim, blend);
+		return text;
+	}
+	// The texture's colours: 4- and 8-bit ones are palettes, the others full colour or a depth buffer read as a texture.
+	const char* colours = (psm == 0x14 || psm == 0x24 || psm == 0x2c) ? "16 colores" : (psm == 0x13 || psm == 0x1b) ? "256 colores" :
+		(psm >= 0x30) ? "profundidad" : "color";
+	std::snprintf(text, sizeof(text), "%s con la textura %05x (%ux%u, %s), %s%s", where, tbp, 1u << tw, 1u << th, colours, prim, blend);
 	return text;
 }
 
@@ -789,7 +799,7 @@ static void PublishGsFilterText()
 			"Juega unos segundos: el GS lista sus grupos de dibujos más costosos y aquí los apagas uno por uno (experimental)");
 		return;
 	}
-	const u32 key = s_gs_candidates[s_gs_index];
+	const u64 key = s_gs_candidates[s_gs_index];
 	const bool skipped = GsFiltered(key);
 	const u32 info = s_gs_infos[s_gs_index];
 	char label[160];
@@ -803,44 +813,94 @@ static void PublishGsFilterText()
 			s_gs_candidates.size(), (info >> 16) / 10.0, info & 0xffffu);
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_GS_FILTER, label,
 		GsGroupText(key) + (skipped ? ": no se dibuja. X lo devuelve; Cuadrado devuelve todos" :
-									  ". X lo apaga: mira qué deja de verse y cuánto sube la velocidad"));
+									  ". X lo apaga: mira qué deja de verse"));
+}
+
+// Compilation 54: the list keeps its places while a game runs. Builds 52-53 sorted it again by the last measure each time the
+// menu opened, and two groups that cost about the same swapped places: in God of War II (2026-10-18) "the 2" left out what
+// had been "the 1". Now a group stays where it first showed; one that no longer costs much gives its place to the next
+// costliest; a group left out keeps its place; new ones go at the end while fewer than 8 are on.
+static void ResetGsFilterList()
+{
+	s_gs_candidates.clear();
+	s_gs_infos.clear();
+	s_gs_known.clear();
+	s_gs_index = 0;
 }
 
 static void ReloadGsFilter()
 {
-	const u32 previous = s_gs_candidates.empty() ? ~0u : s_gs_candidates[s_gs_index];
-	s_gs_candidates.clear();
-	s_gs_infos.clear();
-	// Compilation 52: the measured groups and the ones left out (with their last measure), costliest first; every one left
-	// out stays, and the measured ones fill the list up to 8.
-	struct Entry
-	{
-		u32 key, info;
-		bool left_out;
-	};
-	std::vector<Entry> entries;
+	const u64 previous = s_gs_candidates.empty() ? 0 : s_gs_candidates[s_gs_index];
+	std::vector<std::pair<u64, u32>> measured; // costliest first, the ones still on
 	const u32 count = std::min(g_forja_gs_top_count.load(std::memory_order_acquire), 8u);
 	for (u32 k = 0; k < count; k++)
 	{
-		const u32 key = g_forja_gs_top[k].load(std::memory_order_relaxed);
+		const u64 key = g_forja_gs_top[k].load(std::memory_order_relaxed);
 		const u32 info = g_forja_gs_top_info[k].load(std::memory_order_relaxed);
 		if (GsFiltered(key))
-			continue; // still measured from before it was left out: its entry is below
+			continue; // still measured from before it was left out: its last measure is kept
 		GsRemember(key, info);
-		entries.push_back({key, info, false});
+		measured.emplace_back(key, info);
 	}
-	for (const u32 key : s_gs_filter_keys)
-		entries.push_back({key, GsKnownInfo(key), true});
-	std::stable_sort(entries.begin(), entries.end(), [](const Entry& a, const Entry& b) { return (a.info >> 16) > (b.info >> 16); });
-	const size_t room = s_gs_filter_keys.size() >= 8 ? 0 : 8 - s_gs_filter_keys.size();
-	size_t measured = 0;
-	for (const Entry& entry : entries)
+	const auto take_measured = [&](u64 key) {
+		for (auto it = measured.begin(); it != measured.end(); ++it)
+		{
+			if (it->first == key)
+			{
+				const u32 info = it->second;
+				measured.erase(it);
+				return info;
+			}
+		}
+		return u32{0};
+	};
+	// Places already in the list: a group left out stays, one measured again gets its new measure, the others free their place.
+	std::vector<bool> free_place(s_gs_candidates.size(), false);
+	for (size_t i = 0; i < s_gs_candidates.size(); i++)
 	{
-		if (!entry.left_out && measured >= room)
+		const u64 key = s_gs_candidates[i];
+		if (GsFiltered(key))
+			s_gs_infos[i] = GsKnownInfo(key);
+		else if (const u32 info = take_measured(key))
+			s_gs_infos[i] = info;
+		else
+			free_place[i] = true;
+	}
+	for (size_t i = 0; i < s_gs_candidates.size(); i++)
+	{
+		if (!free_place[i] || measured.empty())
 			continue;
-		measured += entry.left_out ? 0 : 1;
-		s_gs_candidates.push_back(entry.key);
-		s_gs_infos.push_back(entry.info);
+		s_gs_candidates[i] = measured.front().first;
+		s_gs_infos[i] = measured.front().second;
+		measured.erase(measured.begin());
+		free_place[i] = false;
+	}
+	for (size_t i = s_gs_candidates.size(); i-- > 0;)
+	{
+		if (!free_place[i])
+			continue;
+		s_gs_candidates.erase(s_gs_candidates.begin() + static_cast<std::ptrdiff_t>(i));
+		s_gs_infos.erase(s_gs_infos.begin() + static_cast<std::ptrdiff_t>(i));
+	}
+	size_t on = 0;
+	for (const u64 key : s_gs_candidates)
+		on += GsFiltered(key) ? 0 : 1;
+	for (const auto& [key, info] : measured)
+	{
+		if (on >= 8)
+			break;
+		s_gs_candidates.push_back(key);
+		s_gs_infos.push_back(info);
+		on++;
+	}
+	// Groups left out that aren't listed yet (from the player's profile, at the game's start).
+	for (const u64 key : s_gs_filter_keys)
+	{
+		if (std::find(s_gs_candidates.begin(), s_gs_candidates.end(), key) == s_gs_candidates.end())
+		{
+			s_gs_candidates.push_back(key);
+			s_gs_infos.push_back(GsKnownInfo(key));
+		}
 	}
 	const auto again = std::find(s_gs_candidates.begin(), s_gs_candidates.end(), previous);
 	s_gs_index = again != s_gs_candidates.end() ? static_cast<unsigned>(again - s_gs_candidates.begin()) : 0u;
@@ -863,7 +923,7 @@ static void ToggleGsGroup()
 {
 	if (s_gs_candidates.empty())
 		return;
-	const u32 key = s_gs_candidates[s_gs_index];
+	const u64 key = s_gs_candidates[s_gs_index];
 	const bool skip = !GsFiltered(key);
 	if (skip && s_gs_filter_keys.size() >= 16)
 		return;
@@ -874,8 +934,8 @@ static void ToggleGsGroup()
 	PublishGsFilter();
 	const std::string list = GsFilterList();
 	SavePlayerProfile("GS filter", [list](INISettingsInterface& ini) { ini.SetStringValue("Forja", "GSQuitar", list.c_str()); }, false);
-	ProbeLog("GS filter: group %07x (%s) %s; left out now: [%s]\n", key, GsGroupText(key).c_str(), skip ? "left out" : "back",
-		list.c_str());
+	ProbeLog("GS filter: group %u %llx (%s) %s; left out now: [%s]\n", s_gs_index + 1, static_cast<unsigned long long>(key),
+		GsGroupText(key).c_str(), skip ? "left out" : "back", list.c_str());
 	PublishGsFilterText();
 }
 
@@ -2566,6 +2626,7 @@ static void* RunVM(void*)
 				crc, Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - scan_start));
 			s_cpu_auto_steps = 0;
 			s_gs_skip_mode = -1; // compilation 47: a new game starts drawing every frame (ApplyGameProfile sets it again)
+			ResetGsFilterList(); // compilation 54: a new game's list starts empty
 			ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
 			RepinWorkersForProfile();
 		}

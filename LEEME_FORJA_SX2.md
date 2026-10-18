@@ -67,7 +67,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
       (como en PCSX2). Precargar evita tirones pero usa más memoria: con packs enormes, mejor "Sí".
     - **Ajustes recomendados:** de dónde vienen los ajustes de fábrica de ese juego: del centro de ajustes (GitHub, con
       su fecha), del PKG, o ninguno. **X** los busca otra vez. Al empezar cada juego Forja baja de su GitHub el perfil y
-      los parches recomendados de ese juego (cada día), así las mejoras llegan sin un PKG nuevo. `vm-sin-centro` lo apaga.
+      los parches recomendados de ese juego (desde la 54, cada vez que empieza el juego; antes, una vez al día), así las mejoras
+      llegan sin un PKG nuevo. Lo que llega se usa desde la siguiente vez que abras ese juego. `vm-sin-centro` lo apaga.
   - **No tocar** (desde la 53): los experimentos con los que medimos y mejoramos los juegos, aparte de los ajustes para que
     nadie los confunda con mejoras. Si no sabes qué hace algo, déjalo como está.
     - **Filtro VU1 (experimental):** un laboratorio de efectos para cualquier juego. Muestra los programas del VU1 que más
@@ -83,6 +84,11 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
       Desde la 52: lo que se dibuja en las dos imágenes que la tele muestra por turnos es un solo grupo ("En la pantalla";
       en la 51 salía dos veces, una por imagen, y quitar una sola lo quitaba un cuadro sí y otro no); un grupo quitado se
       queda en su lugar de la lista con el % que tenía; y **Cuadrado** devuelve todos de una vez (también en el Filtro VU1).
+      Desde la 54: cada grupo también dice el formato y el tamaño de su textura ("textura 03300 (256x256, 256 colores)"),
+      porque un juego puede poner texturas distintas en el mismo lugar de la memoria (en God of War II un grupo quitaba el
+      cuerpo de Kratos y cambiaba el color del Coloso); y **la lista no se reordena**: cada grupo se queda en su número
+      mientras juegas (antes el 1 y el 2 podían cambiarse de lugar al volver a abrir el menú). Lo quitado con la 51-53 se
+      devuelve solo al pasar a la 54.
   - **Sistema:** restablecer los ajustes del juego, volver a la biblioteca y salir.
 - **Todo lo que cambies en L3+R3 se guarda solo para ese juego** (como las propiedades por juego de Dolphin), menos el
   contador de FPS. Se aplica al instante:

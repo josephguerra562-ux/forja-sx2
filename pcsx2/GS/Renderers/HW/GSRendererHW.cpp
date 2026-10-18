@@ -2933,10 +2933,15 @@ extern bool g_forja_gs_skip_drawing;
 // 00000 and the next into 00e00 (its double buffer), so in build 51 every group showed twice, and leaving one out took it
 // away from every other frame only. Its texture 03d40 was ~60 % of the draws: ~8,600 a second into each of the two, and
 // leaving out just the half in 00000 took the GS from ~31 to ~20 ms a refresh and the speed from ~47 to ~79 % (2026-10-18).
+// Compilation 54: 64-bit keys that also hold the texture's format and size: bit 63 (the mark: builds 51-53 keys in a player's
+// GSQuitar have none and are dropped) | FBP << 31 | TBP0 << 17 | PSM << 11 | TW << 7 | TH << 3 | class << 1 | ABE, with TBP0
+// 0x3fff, PSM 0x3f and TW = TH = 15 without a texture. God of War II (2026-10-18) puts different textures at one address in
+// turn (03300 held a 256x256 8-bit one and a 512x256 4-bit one): one group took away Kratos's body and turned the Colossus
+// from yellow to blue.
 extern void ProbeLog(const char* format, ...);
-std::atomic<u32> g_forja_gs_filter[16];
+std::atomic<u64> g_forja_gs_filter[16];
 std::atomic<u32> g_forja_gs_filter_count{0};
-std::atomic<u32> g_forja_gs_top[8];
+std::atomic<u64> g_forja_gs_top[8];
 std::atomic<u32> g_forja_gs_top_info[8]; // share of the draw time in permille << 16 | draws a second (65535 at most)
 std::atomic<u32> g_forja_gs_top_count{0};
 
@@ -2944,7 +2949,7 @@ namespace
 {
 	struct ForjaGsGroup
 	{
-		u32 key;
+		u64 key;
 		u32 draws;
 		u64 ticks;
 		// Compilation 52: what its draws look like (from the timed ones), for the session's analysis.
@@ -2964,9 +2969,9 @@ namespace
 	u32 s_forja_gs_left_out = 0;
 	u32 s_forja_gs_lost = 0; // draws without a slot (compilation 53)
 
-	ForjaGsGroup* ForjaGsGroupOf(u32 key)
+	ForjaGsGroup* ForjaGsGroupOf(u64 key)
 	{
-		u32 slot = (key * 2654435761u) >> 21;
+		u32 slot = static_cast<u32>((key * 0x9E3779B97F4A7C15ull) >> 53);
 		for (u32 probe = 0; probe < 64; probe++, slot = (slot + 1) & (FORJA_GS_GROUPS - 1))
 		{
 			ForjaGsGroup& group = s_forja_gs_groups[slot];
@@ -3009,23 +3014,40 @@ namespace
 					found++;
 			}
 			static constexpr char prim_names[] = {'P', 'L', 'T', 'S'};
+			const auto psm_name = [](u32 psm) -> const char* {
+				switch (psm)
+				{
+					case 0x00: return "C32";
+					case 0x01: return "C24";
+					case 0x02: return "C16";
+					case 0x0a: return "C16S";
+					case 0x13: return "T8";
+					case 0x14: return "T4";
+					case 0x1b: return "T8H";
+					case 0x24: return "T4HL";
+					case 0x2c: return "T4HH";
+					default: return psm >= 0x30 ? "Z" : "?";
+				}
+			};
 			char line[900];
 			u32 groups = 0;
 			for (const ForjaGsGroup& group : s_forja_gs_groups)
 				groups += group.draws != 0 ? 1u : 0u;
 			int len = std::snprintf(line, sizeof(line),
-				"GS groups: draws_per_s=%.0f left_out_per_s=%.0f groups=%u lost_per_s=%.0f top8(fb/tex/prim=share/draws_per_s):",
+				"GS groups: draws_per_s=%.0f left_out_per_s=%.0f groups=%u lost_per_s=%.0f top8(fb/tex:psm:size/prim=share/draws_per_s):",
 				s_forja_gs_draws / seconds, s_forja_gs_left_out / seconds, groups, s_forja_gs_lost / seconds);
 			for (unsigned k = 0; k < found && len > 0 && len < static_cast<int>(sizeof(line)); k++)
 			{
 				const ForjaGsGroup& group = s_forja_gs_groups[top[k]];
-				const u32 tbp = (group.key >> 3) & 0x3fffu;
-				char tex[8] = "-";
+				const u32 fbp = static_cast<u32>(group.key >> 31) & 0x1ffu;
+				const u32 tbp = static_cast<u32>(group.key >> 17) & 0x3fffu;
+				char tex[32] = "-";
 				if (tbp != 0x3fffu)
-					std::snprintf(tex, sizeof(tex), "%05x", tbp);
+					std::snprintf(tex, sizeof(tex), "%05x:%s:%ux%u", tbp, psm_name(static_cast<u32>(group.key >> 11) & 0x3fu),
+						1u << (static_cast<u32>(group.key >> 7) & 0xfu), 1u << (static_cast<u32>(group.key >> 3) & 0xfu));
 				char fb[8] = "pant";
-				if (((group.key >> 17) & 0x1ffu) != 0x1ffu)
-					std::snprintf(fb, sizeof(fb), "%05x", ((group.key >> 17) & 0x1ffu) << 5);
+				if (fbp != 0x1ffu)
+					std::snprintf(fb, sizeof(fb), "%05x", fbp << 5);
 				len += std::snprintf(line + len, sizeof(line) - len, " %s/%s/%c%s=%.1f%%/%.0f", fb, tex,
 					prim_names[(group.key >> 1) & 3u], (group.key & 1u) ? "+" : "",
 					static_cast<double>(group.ticks) * 100.0 / static_cast<double>(total), group.draws / seconds);
@@ -3036,8 +3058,9 @@ namespace
 			for (unsigned k = 0; k < found && k < 4 && len > 0 && len < static_cast<int>(sizeof(line)); k++)
 			{
 				const ForjaGsGroup& group = s_forja_gs_groups[top[k]];
-				len += std::snprintf(line + len, sizeof(line) - len, " %07x psm=%02x %ux%u tfx=%u tcc=%u alpha=%02x palettes=%u%s;",
-					group.key, group.psm, group.tw, group.th, group.tfx, group.tcc, group.alpha, std::min(group.palettes, 4u),
+				len += std::snprintf(line + len, sizeof(line) - len, " %llx psm=%02x %ux%u tfx=%u tcc=%u alpha=%02x palettes=%u%s;",
+					static_cast<unsigned long long>(group.key), group.psm, group.tw, group.th, group.tfx, group.tcc, group.alpha,
+					std::min(group.palettes, 4u),
 					group.palettes > 4 ? "+" : "");
 			}
 			ProbeLog("%s\n", line);
@@ -3086,7 +3109,7 @@ namespace
 	{
 		ForjaGsGroup* group = nullptr;
 		u64 t0 = 0;
-		explicit ForjaGsDrawTimer(u32 key)
+		explicit ForjaGsDrawTimer(u64 key)
 		{
 			if ((++s_forja_gs_draw_number % FORJA_GS_SAMPLE) == 0)
 			{
@@ -3135,9 +3158,14 @@ void GSRendererHW::Draw()
 		}
 	}
 	const u32 forja_fbp = static_cast<u32>(m_context->FRAME.FBP);
-	const u32 forja_gs_key = ((forja_fbp == s_forja_shown[0] || forja_fbp == s_forja_shown[1] ? 0x1ffu : (forja_fbp & 0x1ffu)) << 17) |
-		((PRIM->TME ? (static_cast<u32>(m_context->TEX0.TBP0) & 0x3fffu) : 0x3fffu) << 3) |
-		((static_cast<u32>(m_vt.m_primclass) & 3u) << 1) | (PRIM->ABE ? 1u : 0u);
+	const bool forja_tex = PRIM->TME != 0;
+	const u64 forja_gs_key = (u64{1} << 63) |
+		(static_cast<u64>(forja_fbp == s_forja_shown[0] || forja_fbp == s_forja_shown[1] ? 0x1ffu : (forja_fbp & 0x1ffu)) << 31) |
+		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.TBP0) & 0x3fffu) : 0x3fffu) << 17) |
+		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.PSM) & 0x3fu) : 0x3fu) << 11) |
+		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.TW) & 0xfu) : 0xfu) << 7) |
+		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.TH) & 0xfu) : 0xfu) << 3) |
+		(static_cast<u64>(static_cast<u32>(m_vt.m_primclass) & 3u) << 1) | (PRIM->ABE ? u64{1} : u64{0});
 	if (const u32 forja_filters = g_forja_gs_filter_count.load(std::memory_order_acquire)) [[unlikely]]
 	{
 		for (u32 i = 0; i < forja_filters && i < 16; i++)

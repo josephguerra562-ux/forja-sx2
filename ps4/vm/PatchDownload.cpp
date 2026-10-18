@@ -14,6 +14,10 @@
 // copies (ForjaGameProfile::FactoryPath, Patch.cpp). A game's tested settings then reach every player without a new
 // package. Fetched again after a day; /data/ForjaSX2/vm-sin-centro turns it off. A profile that arrives is used from the
 // game's next start; patches are read again at once.
+// Compilation 54: fetched again at every game start (after 10 minutes). With a day, a profile fetched in the morning held
+// all day: Dragon Ball's from build 47 (SaltarCuadros = 1) kept coming back after GitHub's said 0 since build 49, and once
+// the player's own profile was reset the frame skip went on by itself in the fights (the picture white and pixelated,
+// 2026-10-18).
 #include "PatchDownload.h"
 #include "CoverDownload.h"
 
@@ -165,9 +169,10 @@ namespace ForjaPatches
 		{
 			const std::string profile = root + "/centro/perfiles/" + serial + ".ini";
 			const std::string patches = root + "/centro/parches/" + name + "_forja.pnach";
-			if (force || !Fresh(profile, 24 * 3600))
+			constexpr time_t center_age = 10 * 60;
+			if (force || !Fresh(profile, center_age))
 				jobs->push_back({Kind::CenterProfile, std::string(CenterSource) + "perfiles/" + serial + ".ini", profile});
-			if (force || !Fresh(patches, 24 * 3600))
+			if (force || !Fresh(patches, center_age))
 				jobs->push_back({Kind::CenterPatches, std::string(CenterSource) + "parches/" + name + "_forja.pnach", patches});
 		}
 		if (jobs->empty() || s_busy.exchange(true, std::memory_order_acq_rel))
