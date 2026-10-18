@@ -8,10 +8,12 @@ gametitle=God of War II (PAL) SCES-54206 44A8A22A
 // El "speedhack by removing some effects" de la config de GoW2 USA (SCUS-97481) para el emulador de PS2 de Sony en PS4,
 // pasado a la PAL y partido en tres. Cada uno hace que una función regrese al instante (jr ra; nop). Quitan efectos visuales
 // a cambio de velocidad en las peleas (de ~66 % a ~87 % en promedio con el 2 y el 3, PS4 Pro, 2026-10-16).
+// Probados uno por uno en el Coloso, primera fase (PS4 Pro, CPU de la PS2 al 27 %, 2026-10-18): el 1 o el 3 llegan a
+// 98-100 %; el 1 con el 2, 97 % aun a 3x; los cuatro, 96 %. El 4 no sumó velocidad en ninguna combinación.
 
 [Menos efectos 1 (Sony)]
 author=Forja SX2
-description=Apaga la actualización de los efectos de una lista (0x170730). En prueba: con los tres juntos hubo una caída.
+description=Apaga la actualización de los efectos de una lista (0x170730). Con el 2, lo más rápido que se probó en el Coloso.
 // USA 0xfe6ec -> PAL 0xfef30 (el mismo código, 0x844 bytes más adelante)
 patch=1,EE,00170730,word,03e00008
 patch=1,EE,00170734,word,00000000
@@ -32,7 +34,7 @@ patch=1,EE,00126eb4,word,00000000
 
 [Menos efectos 4 (de God of War 1, experimental)]
 author=Forja SX2, a partir de la config de Sony para God of War 1
-description=Sony apaga esta función en God of War 1 (SCUS-97399); aquí está en 0x1740e8. Sin probar: puede quitar otro efecto.
+description=Sony apaga esta función en God of War 1 (SCUS-97399); aquí está en 0x1740e8. En el Coloso no sumó velocidad; mejor apagado.
 patch=1,EE,001740e8,word,03e00008
 patch=1,EE,001740ec,word,00000000
 
