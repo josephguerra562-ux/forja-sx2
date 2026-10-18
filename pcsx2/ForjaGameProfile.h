@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <set>
 #include <string>
 #include <string_view>
 
@@ -88,6 +89,7 @@ namespace ForjaGameProfile
 	// Copies every key of the game's factory profile that `si` does not set yet; returns false when there is none. It has a
 	// reader of its own (sections, "key = value", whole-line ';' or '#' comments), and nothing ever writes the file back.
 	// An INISettingsInterface saves itself when destroyed dirty: callers merging into one call ClearDirty() afterwards.
+	// A key the file repeats is a list, as PCSX2's own "Enable = A" / "Enable = B" (compilation 44: only the first was kept).
 	inline bool MergeFactory(SettingsInterface& si, std::string_view serial)
 	{
 		if (serial.empty())
@@ -97,6 +99,7 @@ namespace ForjaGameProfile
 			return false;
 		char line[512];
 		std::string section;
+		std::set<std::string> own; // "section\nkey" this file set, so its repeats add to the list
 		while (std::fgets(line, sizeof(line), file))
 		{
 			const std::string_view text = Trim(line);
@@ -114,8 +117,16 @@ namespace ForjaGameProfile
 				continue;
 			const std::string key(Trim(text.substr(0, equals)));
 			const std::string value(Trim(text.substr(equals + 1)));
-			if (!key.empty() && !si.ContainsValue(section.c_str(), key.c_str()))
+			if (key.empty())
+				continue;
+			const std::string id = section + '\n' + key;
+			if (own.count(id))
+				si.AddToStringList(section.c_str(), key.c_str(), value.c_str());
+			else if (!si.ContainsValue(section.c_str(), key.c_str()))
+			{
 				si.SetStringValue(section.c_str(), key.c_str(), value.c_str());
+				own.insert(id);
+			}
 		}
 		std::fclose(file);
 		return true;

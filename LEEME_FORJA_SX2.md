@@ -194,11 +194,13 @@ no tiene licencia; los baja tu consola desde su fuente. `vm-sin-parches-comunida
 
 **Parches que vienen en el PKG** (desde la 35, en `resources/parches/`). Para God of War II (PAL):
 - **Menos efectos 1, 2 y 3 (Sony):** del emulador de Sony para God of War II USA, pasados a la PAL. Quitan algunos efectos
-  a cambio de velocidad en las peleas. Con el 2 y el 3, el promedio pasó de ~66 % a ~87 %. El 1 todavía está en prueba.
+  a cambio de velocidad en las peleas. Con el 2 y el 3, el promedio pasó de ~66 % a ~87 %. Probados uno por uno en el
+  Coloso (2026-10-18, CPU de la PS2 al 27 %): el 1 con el 2 dio 97 % aun a 3x, lo más rápido; desde la 44 esos dos vienen
+  encendidos de fábrica (se apagan en L3+R3 > Extras).
 - Saltar cinemáticas y la pantalla ancha: desde la 44 ya no van repetidos aquí; llegan con el archivo de la comunidad
   ("Skip Cutscenes", que viene activo de fábrica, y "Widescreen 16:9").
 - **Menos efectos 4 (de God of War 1, experimental)** (desde la 43): Sony apaga esa función en God of War 1 y en God of
-  War II existe la misma. Sin probar: puede quitar otro efecto.
+  War II existe la misma. En el Coloso no sumó velocidad en ninguna combinación: mejor apagado.
 
 **Los parches de rendimiento de Sony, traducidos (desde la 43).** De los 39 scripts que Sony usa en su emulador de PS2 para
 PS4, solo dos ganan velocidad: los de God of War y God of War II (EE. UU.), que apagan funciones de efectos. Los demás
@@ -206,8 +208,8 @@ arreglan fallos de su propio emulador (una puerta que no abre, música que se co
 como parches propios, "dinámicos": en vez de una dirección fija, buscan el principio exacto de cada función (8 instrucciones
 sacadas de God of War II PAL) y la apagan donde la encuentren. Así sirven en otra región sin el disco a mano, y si la
 función no es idéntica, no hacen nada. Vienen para:
-- **God of War II USA** (`SCUS-97481_2F123FD8`): Menos efectos 1, 2, 3 y 4. Sin probar. Su perfil de fábrica trae el CPU al
-  27 % y vuFlagHack, igual que la PAL.
+- **God of War II USA** (`SCUS-97481_2F123FD8`): Menos efectos 1, 2, 3 y 4. Sin probar en esta versión. Su perfil de fábrica
+  trae el CPU al 27 %, vuFlagHack y los Menos efectos 1 y 2, igual que la PAL.
 - **God of War USA y PAL** (`SCUS-97399_D6385328`, `SCES-53133_FB0E6D72`): Menos efectos A y B (dos de las cuatro funciones
   de Sony; las otras dos no se pueden reconocer sin ese disco). Sin probar.
 Se ponen en L3+R3 > Extras. Los dinámicos valen desde el próximo arranque del juego (Partida > Reiniciar juego).
@@ -220,15 +222,15 @@ The Unsung War, Zero), Oni, Soul Reaver 2, Legacy of Kain: Defiance, Ghost in th
 Legend y Anniversary, Raw Danger y otros. La lista completa, con todos los parches de la comunidad por juego, está en
 `Catalogo de parches.html`.
 
-Para activarlos, en `gamesettings/SCES-54206_44A8A22A.ini`:
+Para activarlos a mano, en `gamesettings/SCES-54206_44A8A22A.ini`:
 ```ini
 [Patches]
-Enable = Saltar cinemáticas
+Enable = Skip Cutscenes
+Enable = Menos efectos 1 (Sony)
 Enable = Menos efectos 2 (Sony)
-Enable = Menos efectos 3 (Sony)
 ```
-Si tu archivo tiene su propia sección `[Patches]`, esa lista manda sobre la de fábrica, así que agrega ahí también
-"Saltar cinemáticas". Un parche con el mismo nombre en `/data/ForjaSX2/patches` gana al que viene en el PKG.
+Si tu archivo tiene su propia lista `Enable`, esa lista manda sobre la de fábrica, así que agrega ahí también
+"Skip Cutscenes". El menú L3+R3 > Extras escribe esa lista por ti. Un parche con el mismo nombre en `/data/ForjaSX2/patches` gana al que viene en el PKG.
 
 ## 6. Interruptores generales (archivos vacíos en `/data/ForjaSX2/`)
 Afectan a TODOS los juegos. Si el archivo existe, la opción se activa. Reinicia la app después de ponerlo o quitarlo.

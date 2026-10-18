@@ -23,7 +23,7 @@ in each game's factory profile (`resources/perfiles/`); whatever you change in t
 
 | Status | Game | Region | How it runs | Factory settings |
 |---|---|---|---|---|
-| Playable | God of War II | PAL (SCES-54206) | With the PS2 CPU at 27 %: 98 % average speed, full speed 83 % of the time. At 100 % CPU the heaviest fights (Colossus of Rhodes, many enemies) run at 60-85 %, limited by the VU1. | vuFlagHack, cores "Plan B", skip cutscenes, PS2 CPU at 27 %, "Fluid" frame generation. Optional: "Menos efectos 2 y 3 (Sony)" (fewer effects). |
+| Playable | God of War II | PAL (SCES-54206) | With the PS2 CPU at 27 %: 98 % average speed, full speed 83 % of the time. At 100 % CPU the heaviest fights (Colossus of Rhodes, many enemies) run at 60-85 %, limited by the VU1. | vuFlagHack, cores "Plan B", skip cutscenes, PS2 CPU at 27 %, "Fluid" frame generation. "Menos efectos 1 y 2 (Sony)" (fewer effects: 97 % at the Colossus, even at 3x), on by default since build 44. |
 | Playable | Tales of the Abyss | USA (SLUS-21386) | Gameplay 93-100 %. Cutscenes ~78 % (23 FPS) without video mode. | PS2 CPU at 100 %, normal cores. |
 | Playable | Mega Man X Command Mission | USA (SLUS-20903) | 30 FPS version: locked 30 FPS, even at 4x. The intro runs at 80-90 % with video mode. | Normal VU1 clamping. |
 
