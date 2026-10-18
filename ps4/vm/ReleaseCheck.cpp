@@ -3,7 +3,8 @@
 // blocking the launcher or requiring a second networking implementation.
 // Forja SX2: every build of main is published as a pre-release "compilacion-N"; the ones Joseph approves are promoted to
 // normal releases (.github/workflows/aprobar.yml). Two channels: the stable one (the default) reads /releases/latest,
-// which only shows those, and the testing one (/data/ForjaSX2/canal-pruebas exists) reads the newest release of any kind.
+// which only shows those, and the testing one (/data/ForjaSX2/canal-pruebas exists) reads the newest releases of any kind
+// and takes the highest build among them.
 // The tag's number is compared with this build's. The updater downloads its package into /data/pkg (as DolphinPS4 does
 // since v03.36) and checks it against the release's SHA256SUMS.txt.
 #include "ReleaseCheck.h"
@@ -28,7 +29,8 @@ extern void ProbeLog(const char* format, ...);
 namespace
 {
 	constexpr const char* StableUrl = "https://api.github.com/repos/josephguerra562-ux/forja-sx2/releases/latest";
-	constexpr const char* TestingUrl = "https://api.github.com/repos/josephguerra562-ux/forja-sx2/releases?per_page=1";
+	// Compilation 52: the newest few, not one (Check takes the highest build among them).
+	constexpr const char* TestingUrl = "https://api.github.com/repos/josephguerra562-ux/forja-sx2/releases?per_page=5";
 	constexpr const char* TestingMarker = "/data/ForjaSX2/canal-pruebas";
 	constexpr const char* PackageDirectory = "/data/pkg";
 	constexpr const char* PackagePrefix = "ForjaSX2-compilacion-";
@@ -141,7 +143,28 @@ namespace
 			ProbeLog("Release check: channel=%s GitHub request failed\n", channel);
 			return nullptr;
 		}
-		const std::string json(bytes.begin(), bytes.end());
+		std::string json(bytes.begin(), bytes.end());
+		// Compilation 52: of the releases in the answer, the one with the highest build, from its "tag_name" to the next one's
+		// (its assets and notes come after its tag). GitHub lists the release marked Latest first, whatever its date: once
+		// build 50 became v1.02 (2026-10-18), "per_page=1" answered 50 and build 50's updater never offered 51.
+		{
+			size_t best_start = std::string::npos, best_end = std::string::npos;
+			int best = -1;
+			for (size_t pos = json.find("\"tag_name\""); pos != std::string::npos;)
+			{
+				const size_t next = json.find("\"tag_name\"", pos + 10);
+				std::string value;
+				if (JsonString(json, "tag_name", pos, value) && BuildFromTag(value) > best)
+				{
+					best = BuildFromTag(value);
+					best_start = pos;
+					best_end = next;
+				}
+				pos = next;
+			}
+			if (best_start != std::string::npos)
+				json = json.substr(best_start, best_end == std::string::npos ? std::string::npos : best_end - best_start);
+		}
 		std::string tag;
 		size_t tag_end = 0;
 		if (!JsonString(json, "tag_name", 0, tag, &tag_end))
