@@ -618,7 +618,7 @@ static void PublishVu1FilterText()
 	std::snprintf(label, sizeof(label), "Filtro VU1 %u de %zu:  < programa %04x · %.1f %% >  %s", s_vu1_index + 1, s_vu1_candidates.size(),
 		program * 8, s_vu1_shares[s_vu1_index] / 10.0, skipped ? "QUITADO" : "Activo");
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_VU1_FILTER, label,
-		skipped ? "No se dibuja lo que hace este programa. Si falta algo importante, X lo devuelve. Se guarda para este juego" :
+		skipped ? "No se dibuja lo que hace este programa. X lo devuelve; Cuadrado devuelve todos. Se guarda para este juego" :
 				  "X lo apaga: mira qué deja de verse y cuánto sube la velocidad (experimental). Se guarda para este juego");
 }
 
@@ -660,6 +660,16 @@ static void ToggleVu1Program()
 	PublishVu1FilterText();
 }
 
+// Compilation 52: Cuadrado on the row: every program back at once.
+static void BringBackVu1Programs()
+{
+	for (auto& word : g_forja_vu1_skip)
+		word.store(0, std::memory_order_relaxed);
+	SavePlayerProfile("VU1 filter", [](INISettingsInterface& ini) { ini.SetStringValue("Forja", "VU1Quitar", ""); }, false);
+	ProbeLog("VU1 filter: every program back\n");
+	ReloadVu1Filter();
+}
+
 // Forja SX2 (compilation 51): the GS filter (GSRendererHW.cpp), the VU1 filter's twin for the games the GS holds back. The menu
 // offers the GS's eight costliest groups of draws of the last seconds (and those already left out); X leaves one out or brings
 // it back, and the list goes in the player's profile ([Forja] GSQuitar, the groups' keys in hex). A group that draws an effect
@@ -672,8 +682,35 @@ extern std::atomic<u32> g_forja_gs_top_info[8];
 extern std::atomic<u32> g_forja_gs_top_count;
 static std::vector<u32> s_gs_filter_keys; // the groups left out (16 at most)
 static std::vector<u32> s_gs_candidates;  // the menu's groups
-static std::vector<u32> s_gs_infos;       // their share in permille << 16 | draws a second (0 for one already left out)
+static std::vector<u32> s_gs_infos;       // their share in permille << 16 | draws a second
 static unsigned s_gs_index = 0;
+// Compilation 52: each group's last measure, kept for the ones left out (the GS doesn't time what it doesn't draw). In build
+// 51 a group left out fell to the end of the list and the next costliest came in: "1 de 9", "1 de 10"... and the one at the
+// cursor was no longer the one just left out.
+static std::vector<std::pair<u32, u32>> s_gs_known;
+
+static u32 GsKnownInfo(u32 key)
+{
+	for (const auto& [known, info] : s_gs_known)
+	{
+		if (known == key)
+			return info;
+	}
+	return 0;
+}
+
+static void GsRemember(u32 key, u32 info)
+{
+	for (auto& [known, known_info] : s_gs_known)
+	{
+		if (known == key)
+		{
+			known_info = info;
+			return;
+		}
+	}
+	s_gs_known.emplace_back(key, info);
+}
 
 static bool GsFiltered(u32 key)
 {
@@ -726,13 +763,15 @@ static void ApplyGsFilterList(const std::string& list)
 static std::string GsGroupText(u32 key)
 {
 	static constexpr const char* prims[] = {"puntos", "líneas", "triángulos", "sprites"};
-	const u32 fbp = ((key >> 17) & 0x1ffu) << 5;
 	const u32 tbp = (key >> 3) & 0x3fffu;
+	char where[24] = "En la pantalla"; // compilation 52: the framebuffers the TV shows
+	if (((key >> 17) & 0x1ffu) != 0x1ffu)
+		std::snprintf(where, sizeof(where), "En %05x", ((key >> 17) & 0x1ffu) << 5);
 	char text[128];
 	if (tbp == 0x3fffu)
-		std::snprintf(text, sizeof(text), "En %05x sin textura, %s%s", fbp, prims[(key >> 1) & 3u], (key & 1u) ? " transparentes" : "");
+		std::snprintf(text, sizeof(text), "%s sin textura, %s%s", where, prims[(key >> 1) & 3u], (key & 1u) ? " transparentes" : "");
 	else
-		std::snprintf(text, sizeof(text), "En %05x con la textura %05x, %s%s", fbp, tbp, prims[(key >> 1) & 3u],
+		std::snprintf(text, sizeof(text), "%s con la textura %05x, %s%s", where, tbp, prims[(key >> 1) & 3u],
 			(key & 1u) ? " transparentes" : "");
 	return text;
 }
@@ -749,13 +788,16 @@ static void PublishGsFilterText()
 	const bool skipped = GsFiltered(key);
 	const u32 info = s_gs_infos[s_gs_index];
 	char label[160];
-	if (skipped)
+	if (skipped && info == 0)
 		std::snprintf(label, sizeof(label), "Filtro GS %u de %zu:  < grupo quitado >  QUITADO", s_gs_index + 1, s_gs_candidates.size());
+	else if (skipped)
+		std::snprintf(label, sizeof(label), "Filtro GS %u de %zu:  < era el %.1f %% del GS · %u dibujos/s >  QUITADO", s_gs_index + 1,
+			s_gs_candidates.size(), (info >> 16) / 10.0, info & 0xffffu);
 	else
 		std::snprintf(label, sizeof(label), "Filtro GS %u de %zu:  < %.1f %% del GS · %u dibujos/s >  Activo", s_gs_index + 1,
 			s_gs_candidates.size(), (info >> 16) / 10.0, info & 0xffffu);
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_GS_FILTER, label,
-		GsGroupText(key) + (skipped ? ": no se dibuja. Si falta algo importante, X lo devuelve" :
+		GsGroupText(key) + (skipped ? ": no se dibuja. X lo devuelve; Cuadrado devuelve todos" :
 									  ". X lo apaga: mira qué deja de verse y cuánto sube la velocidad"));
 }
 
@@ -764,23 +806,52 @@ static void ReloadGsFilter()
 	const u32 previous = s_gs_candidates.empty() ? ~0u : s_gs_candidates[s_gs_index];
 	s_gs_candidates.clear();
 	s_gs_infos.clear();
+	// Compilation 52: the measured groups and the ones left out (with their last measure), costliest first; every one left
+	// out stays, and the measured ones fill the list up to 8.
+	struct Entry
+	{
+		u32 key, info;
+		bool left_out;
+	};
+	std::vector<Entry> entries;
 	const u32 count = std::min(g_forja_gs_top_count.load(std::memory_order_acquire), 8u);
 	for (u32 k = 0; k < count; k++)
 	{
 		const u32 key = g_forja_gs_top[k].load(std::memory_order_relaxed);
+		const u32 info = g_forja_gs_top_info[k].load(std::memory_order_relaxed);
 		if (GsFiltered(key))
-			continue; // listed below, with the others left out
-		s_gs_candidates.push_back(key);
-		s_gs_infos.push_back(g_forja_gs_top_info[k].load(std::memory_order_relaxed));
+			continue; // still measured from before it was left out: its entry is below
+		GsRemember(key, info);
+		entries.push_back({key, info, false});
 	}
 	for (const u32 key : s_gs_filter_keys)
+		entries.push_back({key, GsKnownInfo(key), true});
+	std::stable_sort(entries.begin(), entries.end(), [](const Entry& a, const Entry& b) { return (a.info >> 16) > (b.info >> 16); });
+	const size_t room = s_gs_filter_keys.size() >= 8 ? 0 : 8 - s_gs_filter_keys.size();
+	size_t measured = 0;
+	for (const Entry& entry : entries)
 	{
-		s_gs_candidates.push_back(key);
-		s_gs_infos.push_back(0);
+		if (!entry.left_out && measured >= room)
+			continue;
+		measured += entry.left_out ? 0 : 1;
+		s_gs_candidates.push_back(entry.key);
+		s_gs_infos.push_back(entry.info);
 	}
 	const auto again = std::find(s_gs_candidates.begin(), s_gs_candidates.end(), previous);
 	s_gs_index = again != s_gs_candidates.end() ? static_cast<unsigned>(again - s_gs_candidates.begin()) : 0u;
 	PublishGsFilterText();
+}
+
+// Compilation 52: Cuadrado on the row: every group back at once.
+static void BringBackGsGroups()
+{
+	if (s_gs_filter_keys.empty())
+		return;
+	s_gs_filter_keys.clear();
+	PublishGsFilter();
+	SavePlayerProfile("GS filter", [](INISettingsInterface& ini) { ini.SetStringValue("Forja", "GSQuitar", ""); }, false);
+	ProbeLog("GS filter: every group back\n");
+	ReloadGsFilter();
 }
 
 static void ToggleGsGroup()
@@ -2095,6 +2166,17 @@ void VMHostPoll()
 				ChangeToSelectedDisc();
 			else
 				ChangeGameMenuRow(row, 1);
+			PublishGameMenu();
+			s_game_menu_direction = 0;
+			return;
+		}
+		// Forja SX2 (compilation 52): Cuadrado on a filter's row brings everything it left out back.
+		if ((pressed & ORBIS_PAD_BUTTON_SQUARE) != 0 && (row == PS4GameMenu::ROW_GS_FILTER || row == PS4GameMenu::ROW_VU1_FILTER))
+		{
+			if (row == PS4GameMenu::ROW_GS_FILTER)
+				BringBackGsGroups();
+			else
+				BringBackVu1Programs();
 			PublishGameMenu();
 			s_game_menu_direction = 0;
 			return;

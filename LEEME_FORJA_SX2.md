@@ -71,6 +71,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
       segundo son. **X** apaga el elegido: no se dibuja y su tiempo se ahorra. Si la imagen se rompe o falta algo importante,
       X lo devuelve. Se guarda para ese juego (`GSQuitar` en su perfil). Ojo: un grupo es "ese tipo de dibujo en ese lugar de
       la memoria", así que en otro escenario puede tocar otra cosa; si algo falta en otra pelea, vuelve aquí y devuélvelo.
+      Desde la 52: lo que se dibuja en las dos imágenes que la tele muestra por turnos es un solo grupo ("En la pantalla";
+      en la 51 salía dos veces, una por imagen, y quitar una sola lo quitaba un cuadro sí y otro no); un grupo quitado se
+      queda en su lugar de la lista con el % que tenía; y **Cuadrado** devuelve todos de una vez (también en el Filtro VU1).
     - **Texturas HD:** No / Sí / Sí, precargadas. El pack va por FTP en `/data/ForjaSX2/textures/<SERIAL>/replacements`
       (como en PCSX2). Precargar evita tirones pero usa más memoria: con packs enormes, mejor "Sí".
     - **Ajustes recomendados:** de dónde vienen los ajustes de fábrica de ese juego: del centro de ajustes (GitHub, con

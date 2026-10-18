@@ -2929,6 +2929,10 @@ extern bool g_forja_gs_skip_drawing;
 // Tenkaichi 4 (2026-10-18) sends ~2,150 draws a frame in its fights at ~25 us each on the PS4 (45 % speed), and leaving out
 // its VU1 program 0318 did not take a single draw away. The menu offers the last ~5 s's eight costliest groups.
 // A group's key: FRAME.FBP << 17 | TEX0.TBP0 (0x3fff without a texture) << 3 | primitive class << 1 | ABE.
+// Compilation 52: the framebuffers the TV shows (DISPFB) are one, FBP 0x1ff ("la pantalla"). Dragon Ball draws a frame into
+// 00000 and the next into 00e00 (its double buffer), so in build 51 every group showed twice, and leaving one out took it
+// away from every other frame only. Its texture 03d40 was ~60 % of the draws: ~8,600 a second into each of the two, and
+// leaving out just the half in 00000 took the GS from ~31 to ~20 ms a refresh and the speed from ~47 to ~79 % (2026-10-18).
 extern void ProbeLog(const char* format, ...);
 std::atomic<u32> g_forja_gs_filter[16];
 std::atomic<u32> g_forja_gs_filter_count{0};
@@ -2943,6 +2947,10 @@ namespace
 		u32 key;
 		u32 draws;
 		u64 ticks;
+		// Compilation 52: what its draws look like (from the timed ones), for the session's analysis.
+		u32 psm, tw, th, tfx, tcc, alpha;
+		u32 cbp[4]; // the CLUT addresses seen, + 1 (0 = empty)
+		u32 palettes; // how many different ones (5 = more than 4): an 8- or 4-bit texture with other colours
 	};
 	constexpr u32 FORJA_GS_GROUPS = 1024; // open addressing; a scene has tens of groups
 	constexpr u32 FORJA_GS_SAMPLE = 8; // one draw in 8 is timed (two rdtsc) and counts for 8
@@ -3008,9 +3016,22 @@ namespace
 				char tex[8] = "-";
 				if (tbp != 0x3fffu)
 					std::snprintf(tex, sizeof(tex), "%05x", tbp);
-				len += std::snprintf(line + len, sizeof(line) - len, " %05x/%s/%c%s=%.1f%%/%.0f", ((group.key >> 17) & 0x1ffu) << 5, tex,
+				char fb[8] = "pant";
+				if (((group.key >> 17) & 0x1ffu) != 0x1ffu)
+					std::snprintf(fb, sizeof(fb), "%05x", ((group.key >> 17) & 0x1ffu) << 5);
+				len += std::snprintf(line + len, sizeof(line) - len, " %s/%s/%c%s=%.1f%%/%.0f", fb, tex,
 					prim_names[(group.key >> 1) & 3u], (group.key & 1u) ? "+" : "",
 					static_cast<double>(group.ticks) * 100.0 / static_cast<double>(total), group.draws / seconds);
+			}
+			ProbeLog("%s\n", line);
+			// Compilation 52: the four costliest groups' textures, blending and palettes.
+			len = std::snprintf(line, sizeof(line), "GS group details:");
+			for (unsigned k = 0; k < found && k < 4 && len > 0 && len < static_cast<int>(sizeof(line)); k++)
+			{
+				const ForjaGsGroup& group = s_forja_gs_groups[top[k]];
+				len += std::snprintf(line + len, sizeof(line) - len, " %07x psm=%02x %ux%u tfx=%u tcc=%u alpha=%02x palettes=%u%s;",
+					group.key, group.psm, group.tw, group.th, group.tfx, group.tcc, group.alpha, std::min(group.palettes, 4u),
+					group.palettes > 4 ? "+" : "");
 			}
 			ProbeLog("%s\n", line);
 			for (unsigned k = 0; k < found; k++)
@@ -3025,6 +3046,32 @@ namespace
 		}
 		std::memset(s_forja_gs_groups, 0, sizeof(s_forja_gs_groups));
 		s_forja_gs_draws = s_forja_gs_left_out = 0;
+	}
+
+	void ForjaGsNote(ForjaGsGroup& group, const GIFRegTEX0& tex0, const GIFRegALPHA& alpha, bool textured)
+	{
+		group.alpha = static_cast<u32>(alpha.A) | (static_cast<u32>(alpha.B) << 2) | (static_cast<u32>(alpha.C) << 4) |
+			(static_cast<u32>(alpha.D) << 6);
+		if (!textured)
+			return;
+		group.psm = static_cast<u32>(tex0.PSM);
+		group.tw = 1u << static_cast<u32>(tex0.TW);
+		group.th = 1u << static_cast<u32>(tex0.TH);
+		group.tfx = static_cast<u32>(tex0.TFX);
+		group.tcc = static_cast<u32>(tex0.TCC);
+		const u32 cbp = static_cast<u32>(tex0.CBP) + 1;
+		for (u32& seen : group.cbp)
+		{
+			if (seen == cbp)
+				return;
+			if (seen == 0)
+			{
+				seen = cbp;
+				group.palettes++;
+				return;
+			}
+		}
+		group.palettes = 5;
 	}
 
 	// One draw's count, and its time for one draw in FORJA_GS_SAMPLE (every return of Draw ends it).
@@ -3067,8 +3114,19 @@ void GSRendererHW::Draw()
 		if (!((m_regs->DISP[0].DISPFB.FBP == fbp && m_regs->PMODE.EN1) || (m_regs->DISP[1].DISPFB.FBP == fbp && m_regs->PMODE.EN2)))
 			return;
 	}
-	// Forja SX2 (compilation 51): the GS filter: a group the player left out isn't drawn.
-	const u32 forja_gs_key = ((static_cast<u32>(m_context->FRAME.FBP) & 0x1ffu) << 17) |
+	// Forja SX2 (compilation 51): the GS filter: a group the player left out isn't drawn. Compilation 52: the last two
+	// framebuffers the TV showed (a double buffer) count as one, "la pantalla".
+	static u32 s_forja_shown[2] = {0xffffu, 0xffffu};
+	{
+		const u32 shown = static_cast<u32>(m_regs->PMODE.EN2 ? m_regs->DISP[1].DISPFB.FBP : m_regs->DISP[0].DISPFB.FBP);
+		if (shown != s_forja_shown[0])
+		{
+			s_forja_shown[1] = s_forja_shown[0];
+			s_forja_shown[0] = shown;
+		}
+	}
+	const u32 forja_fbp = static_cast<u32>(m_context->FRAME.FBP);
+	const u32 forja_gs_key = ((forja_fbp == s_forja_shown[0] || forja_fbp == s_forja_shown[1] ? 0x1ffu : (forja_fbp & 0x1ffu)) << 17) |
 		((PRIM->TME ? (static_cast<u32>(m_context->TEX0.TBP0) & 0x3fffu) : 0x3fffu) << 3) |
 		((static_cast<u32>(m_vt.m_primclass) & 3u) << 1) | (PRIM->ABE ? 1u : 0u);
 	if (const u32 forja_filters = g_forja_gs_filter_count.load(std::memory_order_acquire)) [[unlikely]]
@@ -3083,6 +3141,8 @@ void GSRendererHW::Draw()
 		}
 	}
 	ForjaGsDrawTimer forja_gs_timer(forja_gs_key);
+	if (forja_gs_timer.t0 && forja_gs_timer.group)
+		ForjaGsNote(*forja_gs_timer.group, m_context->TEX0, m_context->ALPHA, PRIM->TME);
 	PS4_GS_SCOPE(HWDraw);
 	OrbisHwDrawTimer orbis_hwdraw_timer;
 	g_orbis_ctx = m_context; g_orbis_tme = PRIM->TME; g_orbis_prim = (unsigned)m_vt.m_primclass; g_orbis_verts = (unsigned)m_index->tail;

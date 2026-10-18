@@ -1821,7 +1821,9 @@ namespace PS4GameMenu
 				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
 				         row == ROW_SHARPNESS || row == ROW_GS_SKIP)
 					action = "ELEGIR";
-				else if (row == ROW_PATCH || row == ROW_VU1_FILTER || row == ROW_GS_FILTER || row == ROW_CHANGE_DISC)
+				else if (row == ROW_VU1_FILTER || row == ROW_GS_FILTER)
+					action = "ELEGIR  ·  X  ·  CUADRADO"; // compilation 52: Cuadrado brings everything back
+				else if (row == ROW_PATCH || row == ROW_CHANGE_DISC)
 					action = "ELEGIR  ·  X";
 				else if (row == ROW_TEXTURES)
 					action = "ELEGIR";
