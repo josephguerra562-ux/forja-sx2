@@ -202,6 +202,17 @@ static double s_video_last_busy = -100.0;
 static double s_video_since = 0.0;
 static unsigned s_video_busy_checks = 0;
 static constexpr int VIDEO_EE_RATE = -3;
+// Compilation 49: Modo video "Auto" ([Forja] VideoMode = 2, and the global "Sí" for a game whose profile does not set it).
+// While a movie plays it looks for the EE rate the movie needs: down a step (to 31 % at most) when the PS4 cannot keep up
+// (speed under 95 % for ~2 s), up a step (to 60 % at most) when there is room (full speed with the EE thread under 80 %
+// for ~4 s). God of War II (2026-10-18): at 27 % its movies showed 17-21 frames a second at full speed (the decoder short
+// of EE cycles); at 60 %, 23 at 92 % speed with the EE thread at 100 %; 36 % is about right. The rate found is where the
+// game's next movie starts.
+static bool s_video_auto = false;
+static int s_video_auto_rate = VIDEO_EE_RATE;
+static double s_video_auto_last_change = -100.0;
+static unsigned s_video_auto_slow_checks = 0;
+static unsigned s_video_auto_room_checks = 0;
 static constexpr double VIDEO_DECODES_PER_SECOND = 2000.0; // a movie: tens of thousands; gameplay: ~0
 // Forja SX2: the running game's profile (pcsx2/ForjaGameProfile.h): its factory profile under the player's own. Read before
 // the VM boots, from the library's scan of the image, and again if PCSX2 identifies another disc.
@@ -409,7 +420,10 @@ static void ReadGameResolution()
 // rate while a movie plays (1 = 100 % ... 4 = 50 %).
 static unsigned VideoMenuValue()
 {
-	return s_video_mode_enabled ? static_cast<unsigned>(1 - std::clamp(s_video_ee_rate, -3, 0)) : 0u;
+	// 0 off, 1-5 a fixed rate (100, 75, 60, 50 and 36 %), 6 auto (compilation 49).
+	if (!s_video_mode_enabled)
+		return 0u;
+	return s_video_auto ? 6u : static_cast<unsigned>(1 - std::clamp(s_video_ee_rate, -4, 0));
 }
 
 // The Núcleos row's choices: global (nucleos.txt), the built-in cores, and plan B (the best one in God of War II).
@@ -879,6 +893,13 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	s_profile = std::move(profile);
 	s_video_mode_enabled = s_profile.video_mode >= 0 ? s_profile.video_mode != 0 : s_global_video_mode;
 	s_video_ee_rate = s_profile.video_ee_rate <= 0 ? s_profile.video_ee_rate : VIDEO_EE_RATE;
+	// Compilation 49: auto when the profile says 2, or when it leaves the video mode to the Settings page's "Sí".
+	{
+		const bool video_auto = s_video_mode_enabled && (s_profile.video_mode == 2 || s_profile.video_mode < 0);
+		if (video_auto && !s_video_auto)
+			s_video_auto_rate = std::clamp(s_video_ee_rate, -5, -2);
+		s_video_auto = video_auto;
+	}
 	const int frame_gen = s_profile.frame_gen >= 0 ? s_profile.frame_gen : (s_global_frame_gen ? 1 : 0);
 	g_orbis_fg_wanted = !s_frame_gen_blocked && frame_gen != 0;
 	g_orbis_fg_fluid = frame_gen == 2;
@@ -1022,6 +1043,33 @@ static void UpdateVideoMode(double elapsed)
 		s_video_busy_checks = 0;
 	}
 
+	// Compilation 49: the auto mode's step, while a movie plays and its rate is in place.
+	if (s_video_active && s_video_auto && EmuConfig.Speedhacks.EECycleRate != s_video_saved_rate)
+	{
+		const double speed = PerformanceMetrics::GetSpeed();
+		const double ee = PerformanceMetrics::GetCPUThreadUsage();
+		const int rate = EmuConfig.Speedhacks.EECycleRate;
+		s_video_auto_slow_checks = speed < 95.0 ? s_video_auto_slow_checks + 1 : 0;
+		s_video_auto_room_checks = (speed >= 99.0 && ee < 80.0) ? s_video_auto_room_checks + 1 : 0;
+		int next = rate;
+		if (elapsed - s_video_auto_last_change >= 3.0)
+		{
+			if (s_video_auto_slow_checks >= 4 && rate > -5 && rate - 1 > s_video_saved_rate)
+				next = rate - 1;
+			else if (s_video_auto_room_checks >= 8 && rate < -2)
+				next = rate + 1;
+		}
+		if (next != rate)
+		{
+			EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(next);
+			Cpu->Reset();
+			s_video_auto_rate = next;
+			s_video_auto_last_change = elapsed;
+			s_video_auto_slow_checks = s_video_auto_room_checks = 0;
+			ProbeLog("Video mode: auto %d -> %d (speed %.0f %%, EE thread %.0f %%)\n", rate, next, speed, ee);
+		}
+	}
+
 	// On after two busy checks in a row (~1 s of movie); off 2 s after the last busy check, and never
 	// sooner than 3 s after switching on, so short decode bursts (loading screens) don't flip it back and forth.
 	bool want = s_video_active;
@@ -1034,9 +1082,11 @@ static void UpdateVideoMode(double elapsed)
 
 	if (want)
 	{
-		const int video_rate = s_video_ee_rate;
+		const int video_rate = s_video_auto ? s_video_auto_rate : s_video_ee_rate;
 		s_video_saved_rate = EmuConfig.Speedhacks.EECycleRate;
 		s_video_since = elapsed;
+		s_video_auto_last_change = elapsed;
+		s_video_auto_slow_checks = s_video_auto_room_checks = 0;
 		s_video_active = true;
 		// Compilation 48: up as well as down. It was made to lower a game at 100 % to 50-60 % during its movies; since the
 		// games start at 27 % (compilation 45) the movie's rate is above theirs, and "already lower" left God of War II's
@@ -1307,8 +1357,9 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		}
 		case PS4GameMenu::ROW_VIDEO_MODE:
 		{
-			// Off, 60 % and 50 % (VideoMenuValue's 0, 3 and 4); 100 % and 75 % can still be written in the ini by hand.
-			static constexpr unsigned steps[] = {0, 3, 4};
+			// Off, auto, 60 %, 50 % and 36 % (VideoMenuValue's 0, 6, 3, 4 and 5; compilation 49); 100 % and 75 % can still be
+			// written in the ini by hand.
+			static constexpr unsigned steps[] = {0, 6, 3, 4, 5};
 			constexpr int count = static_cast<int>(std::size(steps));
 			const unsigned current = VideoMenuValue();
 			int position = 0;
@@ -1320,8 +1371,8 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			const unsigned next = steps[(position + delta + count) % count];
 			// A movie playing now keeps its rate until it ends; turned off, UpdateVideoMode gives the game's rate back.
 			SavePlayerProfile("Video mode", [next](INISettingsInterface& ini) {
-				ini.SetIntValue("Forja", "VideoMode", next != 0 ? 1 : 0);
-				if (next != 0)
+				ini.SetIntValue("Forja", "VideoMode", next == 0 ? 0 : next == 6 ? 2 : 1);
+				if (next != 0 && next != 6)
 					ini.SetIntValue("Forja", "VideoEECycleRate", 1 - static_cast<int>(next));
 			}, false);
 			break;

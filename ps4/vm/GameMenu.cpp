@@ -1519,12 +1519,15 @@ namespace PS4GameMenu
 			char ee_label[96];
 			std::snprintf(ee_label, sizeof(ee_label), "Velocidad del CPU de la PS2:  < %s >", ee_names[std::clamp(ee_rate, -6, 3) + 6]);
 			// Forja SX2: the game's profile rows. Video mode: the EE rate while a movie plays (0 = off).
-			static constexpr const char* video_names[] = {"No", "100 %", "75 %", "60 %", "50 %"};
+			static constexpr const char* video_names[] = {"No", "100 %", "75 %", "60 %", "50 %", "36 %", "Auto"};
 			char video_label[96];
-			std::snprintf(video_label, sizeof(video_label), "Modo video:  < %s >", video_names[std::min(menu_state.video, 4u)]);
+			std::snprintf(video_label, sizeof(video_label), "Modo video:  < %s >", video_names[std::min(menu_state.video, 6u)]);
 			char video_description[160];
 			std::snprintf(video_description, sizeof(video_description),
-				"CPU de la PS2 durante las cinemáticas. Para este juego  ·  ahora: %s", origin_names[menu_state.video_origin]);
+				"%s Para este juego  ·  ahora: %s",
+				menu_state.video == 6 ? "Busca solo el CPU de la PS2 que pide cada video (entre 31 y 60 %)." :
+										"CPU de la PS2 durante las cinemáticas.",
+				origin_names[menu_state.video_origin]);
 			// Forja SX2 (compilation 44): the picture's sharpness (main.cpp, ApplyGameSharpness).
 			static constexpr const char* sharpness_names[] = {"Suave", "Nítida", "CAS", "CAS fuerte", "Píxeles"};
 			static constexpr const char* sharpness_descriptions[] = {

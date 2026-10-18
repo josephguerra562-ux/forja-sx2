@@ -168,10 +168,11 @@ namespace ForjaGameProfile
 		else if (v.has_factory && factory.GetStringValue("Forja", "VU1Quitar", &v.vu1_skip))
 			v.vu1_skip_origin = Origin::Factory;
 
+		// Compilation 49: VideoMode 2 = auto (main.cpp, UpdateVideoMode), and movie rates down to -6 (27 %).
 		if (v.video_mode >= 0)
-			v.video_mode = v.video_mode != 0 ? 1 : 0;
+			v.video_mode = std::min(v.video_mode, 2);
 		if (v.video_ee_rate <= 0)
-			v.video_ee_rate = std::clamp(v.video_ee_rate, -3, 0);
+			v.video_ee_rate = std::clamp(v.video_ee_rate, -6, 0);
 		if (v.frame_gen >= 0)
 			v.frame_gen = std::min(v.frame_gen, 2);
 		if (v.cpu_auto <= 0)

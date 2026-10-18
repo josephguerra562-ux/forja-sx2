@@ -87,7 +87,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     va **ahora**. En God of War II viene apagado desde la 36: medido, las peleas pesadas iban igual al 50, 60, 75 y 100 %.
     Desde la 45, un juego sin ajuste propio usa el de la pestaña Ajustes (de fábrica, "Hasta 27 %"): si le subes el CPU y se
     pone lento en una escena pesada, baja solo, como mucho hasta el 27 %.
-  - **Modo video:** No / 60 % / 50 %. Es el CPU de la PS2 durante las cinemáticas. Desde la 48 también lo **sube**: con el
+  - **Modo video:** No / **Auto** / 60 % / 50 % / 36 %. Es el CPU de la PS2 durante las cinemáticas. **Auto** (desde la
+    49) busca solo el punto justo de cada video: baja un paso si la PS4 no da abasto y sube uno si sobra (entre 31 y 60 %),
+    y recuerda dónde quedó para el siguiente video del juego. God of War II lo trae de fábrica. Desde la 48 también lo **sube**: con el
     juego al 27 %, los videos de God of War II se decodificaban con muy poco CPU y salían a 17-21 cuadros en vez de 25.
   - **Saltar cuadros (GS)** (desde la 47, experimental): No / Auto / 1 de 2. Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
@@ -95,7 +97,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     a su velocidad, con la mitad de cuadros en pantalla. **Auto** lo prende solo cuando el GS es el que frena (velocidad
     bajo 92 % unos 3 s con el GS al 90 % o más) y lo apaga cuando sobra. Solo funciona en juegos que anuncian cada cuadro
     con los registros de pantalla (God of War II, Dragon Ball); en los demás dibuja todo. Puede dejar algún efecto a medias
-    en juegos que dibujan algo una sola vez y lo reusan: si pasa, ponlo en No.
+    en juegos que dibujan algo una sola vez y lo reusan: si pasa, ponlo en No. **En Dragon Ball no sirve** (la imagen sale
+    blanca y pixelada): ese juego dibuja casi todo directo en la imagen que se ve.
   - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
     cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
     60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %,
