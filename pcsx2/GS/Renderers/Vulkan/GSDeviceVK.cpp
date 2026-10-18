@@ -7674,6 +7674,7 @@ VkPipeline GSDeviceVK::GetTFXPipeline(const PipelineSelector& p)
 
 bool GSDeviceVK::BindDrawPipeline(const PipelineSelector& p)
 {
+	PS4_GS_SCOPE(VKBind); // Forja SX2 (compilation 48)
 	VkPipeline pipeline = GetTFXPipeline(p);
 	if (pipeline == VK_NULL_HANDLE)
 		return false;
@@ -8213,6 +8214,7 @@ __ri void GSDeviceVK::ApplyBaseState(u32 flags, VkCommandBuffer cmdbuf)
 
 bool GSDeviceVK::ApplyTFXState(bool already_execed)
 {
+	PS4_GS_SCOPE(VKState); // Forja SX2 (compilation 48)
 	if (m_current_pipeline_layout == PipelineLayout::TFX && m_dirty_flags == 0)
 		return true;
 
@@ -9065,6 +9067,7 @@ void GSDeviceVK::UpdateHWPipelineSelector(GSHWDrawConfig& config, PipelineSelect
 
 void GSDeviceVK::UploadHWDrawVerticesAndIndices(GSHWDrawConfig& config)
 {
+	PS4_GS_SCOPE(VKUpload); // Forja SX2 (compilation 48)
 	IASetVertexBuffer(config.verts, sizeof(GSVertex), config.nverts, GetVertexAlignment(config.vs.expand));
 
 	if (config.vs.UseFixedExpandIndexBuffer())
@@ -9116,6 +9119,7 @@ VkDependencyFlags GSDeviceVK::GetFeedbackBarrierDependencyFlags() const
 void GSDeviceVK::SendHWDraw(const GSHWDrawConfig& config, GSTextureVK* draw_rt, GSTextureVK* draw_ds,
 	bool one_barrier, bool full_barrier)
 {
+	PS4_GS_SCOPE(VKSend); // Forja SX2 (compilation 48)
 	if (!m_features.texture_barrier) [[unlikely]]
 	{
 		Draw(config);

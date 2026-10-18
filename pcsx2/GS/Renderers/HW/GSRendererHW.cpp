@@ -2924,7 +2924,15 @@ extern bool g_forja_gs_skip_drawing;
 void GSRendererHW::Draw()
 {
 	if (g_forja_gs_skip_drawing) [[unlikely]]
-		return;
+	{
+		// Forja SX2 (compilation 48): the draws into the framebuffer the TV shows still run. Dragon Ball Z Budokai Tenkaichi
+		// 4 builds its picture elsewhere and copies it there during the next frame, so with every other frame skipped those
+		// copies all fell in skipped frames and the screen stayed on its last picture while the game went on (2026-10-18).
+		// The same check as the sprite-blit frame counter in GSState::FlushPrim.
+		const u32 fbp = m_context->FRAME.FBP;
+		if (!((m_regs->DISP[0].DISPFB.FBP == fbp && m_regs->PMODE.EN1) || (m_regs->DISP[1].DISPFB.FBP == fbp && m_regs->PMODE.EN2)))
+			return;
+	}
 	PS4_GS_SCOPE(HWDraw);
 	OrbisHwDrawTimer orbis_hwdraw_timer;
 	g_orbis_ctx = m_context; g_orbis_tme = PRIM->TME; g_orbis_prim = (unsigned)m_vt.m_primclass; g_orbis_verts = (unsigned)m_index->tail;

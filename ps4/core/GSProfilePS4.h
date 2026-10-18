@@ -25,6 +25,12 @@ namespace PS4GSProfile
 		TextureUpdate,
 		Readback,
 		SWSprite,
+		// Forja SX2 (compilation 48): the steps of GSDeviceVK::RenderHW, where half of a draw's time went in Dragon Ball Z
+		// Budokai Tenkaichi 4's fights (drawprims 13 of 25 us, 2026-10-18).
+		VKBind,
+		VKState,
+		VKUpload,
+		VKSend,
 		Count
 	};
 	struct Counter
@@ -47,7 +53,7 @@ namespace PS4GSProfile
 				return;
 			auto& c = counters[kind];
 			++c.calls;
-			if (kind == HWDraw || kind == VKRender || kind == TextureUpdate || kind == SWSprite)
+			if (kind == HWDraw || kind == VKRender || kind == TextureUpdate || kind == SWSprite || kind >= VKBind)
 			{
 				c.random = c.random * 1664525U + 1013904223U;
 				if ((c.random >> 26) != 0) // Time roughly 1/64 hot calls.

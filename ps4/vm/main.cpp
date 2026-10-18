@@ -1038,7 +1038,10 @@ static void UpdateVideoMode(double elapsed)
 		s_video_saved_rate = EmuConfig.Speedhacks.EECycleRate;
 		s_video_since = elapsed;
 		s_video_active = true;
-		if (s_video_saved_rate <= video_rate)
+		// Compilation 48: up as well as down. It was made to lower a game at 100 % to 50-60 % during its movies; since the
+		// games start at 27 % (compilation 45) the movie's rate is above theirs, and "already lower" left God of War II's
+		// movies at 27 %: 17-21 frames a second instead of 25, at full speed, the decoder short of EE cycles (2026-10-18).
+		if (s_video_saved_rate == video_rate)
 		{
 			ProbeLog("Video mode: movie detected (%.0f decodes/s), EE rate already %d\n", per_second, s_video_saved_rate);
 			return;

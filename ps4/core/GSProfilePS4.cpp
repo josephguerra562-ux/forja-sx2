@@ -17,7 +17,7 @@ void PS4GSProfile::LogInterval(double seconds)
 		g_perfmon.Get(GSPerfMon::Barriers), g_perfmon.Get(GSPerfMon::RenderPasses));
 	constexpr const char* names[] = {"reuse_fence", "explicit_wait", "fence_counter", "acquire",
 		"submit", "present", "idle", "pipeline", "shader", "hw_draw", "vk_render",
-		"texture_update", "readback", "sw_sprite"};
+		"texture_update", "readback", "sw_sprite", "vk_bind", "vk_state", "vk_upload", "vk_send"};
 	static_assert(std::size(names) == Count);
 	for (unsigned i = 0; i < Count; i++)
 	{

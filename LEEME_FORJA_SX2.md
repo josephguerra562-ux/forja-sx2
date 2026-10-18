@@ -87,7 +87,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     va **ahora**. En God of War II viene apagado desde la 36: medido, las peleas pesadas iban igual al 50, 60, 75 y 100 %.
     Desde la 45, un juego sin ajuste propio usa el de la pestaña Ajustes (de fábrica, "Hasta 27 %"): si le subes el CPU y se
     pone lento en una escena pesada, baja solo, como mucho hasta el 27 %.
-  - **Modo video:** No / 60 % / 50 %. Es el CPU de la PS2 durante las cinemáticas.
+  - **Modo video:** No / 60 % / 50 %. Es el CPU de la PS2 durante las cinemáticas. Desde la 48 también lo **sube**: con el
+    juego al 27 %, los videos de God of War II se decodificaban con muy poco CPU y salían a 17-21 cuadros en vez de 25.
   - **Saltar cuadros (GS)** (desde la 47, experimental): No / Auto / 1 de 2. Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
     1 de cada 2 cuadros del juego y la tele sigue mostrando el último dibujado: el juego, su música y sus movimientos van

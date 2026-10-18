@@ -194,7 +194,7 @@ namespace PS4GameMenu
 				"Acorta las cargas. Algunos juegos se cuelgan con esto: si pasa, apágalo",
 				"Arranca directo el juego, sin la animación de la PS2",
 				"Si el juego se traba sin que el CPU esté al 100 %: prueba Sin esperar. Desactivadas puede romper efectos",
-				"Durante los videos del juego baja el CPU de la PS2 al 50 % y lo devuelve al terminar (videos más fluidos)",
+				"Durante los videos del juego pone el CPU de la PS2 al 50 % (lo sube o lo baja) y lo devuelve al terminar",
 				"EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso"};
 			return help[std::min(row, SettingsRows - 1)];
 		}
