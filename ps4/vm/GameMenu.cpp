@@ -171,14 +171,15 @@ namespace PS4GameMenu
 		// Forja SX2: the Settings page. The CPU thread owns the values; the GS thread draws this copy.
 		ForjaSettings::Values s_settings_gs;
 		unsigned s_settings_row_gs = 0;
-		constexpr unsigned SettingsRows = 11;
+		constexpr unsigned SettingsRows = 12; // compilation 53: the menu's button
 
 		const char* SettingLabel(unsigned row)
 		{
 			static constexpr const char* labels[SettingsRows] = {
 				"Velocidad del CPU de la PS2", "CPU automático", "Resolución interna", "Relación de aspecto", "Contador de FPS al jugar",
 				"Sensibilidad de la palanca", "Cargas rápidas del disco", "Saltar el logo de la PS2",
-				"Lecturas de la gráfica (readbacks)", "Modo video automático", "Generación de cuadros (30 a 60 FPS)"};
+				"Lecturas de la gráfica (readbacks)", "Modo video automático", "Generación de cuadros (30 a 60 FPS)",
+				"Botón del menú del emulador"};
 			return labels[std::min(row, SettingsRows - 1)];
 		}
 
@@ -195,7 +196,8 @@ namespace PS4GameMenu
 				"Arranca directo el juego, sin la animación de la PS2",
 				"Si el juego se traba sin que el CPU esté al 100 %: prueba Sin esperar. Desactivadas puede romper efectos",
 				"En los videos del juego busca el CPU de la PS2 que da más cuadros (31 a 100 %) y lo devuelve al terminar",
-				"EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso"};
+				"EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso",
+				"Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2"};
 			return help[std::min(row, SettingsRows - 1)];
 		}
 
@@ -223,7 +225,13 @@ namespace PS4GameMenu
 					break;
 				}
 				case 9: std::snprintf(out, size, "%s", v.video_mode ? "Sí" : "No"); break;
-				default: std::snprintf(out, size, "%s", v.frame_gen ? "Sí" : "No"); break;
+				case 10: std::snprintf(out, size, "%s", v.frame_gen ? "Sí" : "No"); break;
+				default:
+				{
+					static constexpr const char* menu_names[] = {"L3+R3", "Panel táctil (derecha)", "Los dos"};
+					std::snprintf(out, size, "%s", menu_names[std::clamp(v.menu_button, 0, 2)]);
+					break;
+				}
 			}
 		}
 
@@ -255,7 +263,8 @@ namespace PS4GameMenu
 				case 7: v.fast_boot = !v.fast_boot; break;
 				case 8: v.readback = step(v.readback, 0, 2); break;
 				case 9: v.video_mode = !v.video_mode; break;
-				default: v.frame_gen = !v.frame_gen; break;
+				case 10: v.frame_gen = !v.frame_gen; break;
+				default: v.menu_button = step(v.menu_button, 0, 2); break;
 			}
 		}
 
@@ -1786,7 +1795,7 @@ namespace PS4GameMenu
 			};
 			// Forja SX2 (compilation 35): the rows in four tabs, as Dolphin's quick menu (Joseph, 2026-10-16: one list of fifteen
 			// rows was hard to follow). L1/R1 move between the tabs (main.cpp); each tab fits without scrolling.
-			static constexpr const char* tab_names[TAB_COUNT] = {"Partida", "Imagen", "Rendimiento", "Extras", "Sistema"};
+			static constexpr const char* tab_names[TAB_COUNT] = {"Partida", "Imagen", "Rendimiento", "Extras", "No tocar", "Sistema"};
 			const unsigned active_tab = TabOfRow(selected_row);
 			draw->AddText(font, 20.0f * scale, point(112, 198), muted, "L1");
 			float tab_x = 152.0f;
@@ -1803,6 +1812,10 @@ namespace PS4GameMenu
 				tab_x += w + 16.0f;
 			}
 			draw->AddText(font, 20.0f * scale, point(tab_x + 8, 198), muted, "R1");
+			// Compilation 53: the labs' tab says what it is.
+			if (active_tab == TAB_LAB)
+				draw->AddText(font, 18.0f * scale, point(112, 244), muted,
+					"Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.");
 			constexpr float ROW_TOP = 270.0f, ROW_PITCH = 112.0f, ROW_HEIGHT = 100.0f;
 			for (unsigned row = TAB_FIRST_ROW[active_tab]; row < TAB_FIRST_ROW[active_tab + 1]; row++)
 			{
@@ -1998,11 +2011,11 @@ namespace PS4GameMenu
 			const unsigned focused_row = std::min(s_settings_row_gs, SettingsRows - 1);
 			for (unsigned row = 0; row < SettingsRows; ++row)
 			{
-				const float y = 108.0f + static_cast<float>(row) * 74.0f;
+				const float y = 108.0f + static_cast<float>(row) * 72.0f;
 				const bool focused = !s_sidebar_focused && row == focused_row;
-				fill(346, y, 1470, 68, focused ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 235), 10);
+				fill(346, y, 1470, 66, focused ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 235), 10);
 				if (focused)
-					draw->AddRect(point(346, y), point(1816, y + 68), accent, 10 * scale, 2.0f * scale, 0);
+					draw->AddRect(point(346, y), point(1816, y + 66), accent, 10 * scale, 2.0f * scale, 0);
 				text(380, y + 31, 22, white, SettingLabel(row));
 				text(380, y + 57, 15, muted, SettingHelp(row));
 				char value[64];

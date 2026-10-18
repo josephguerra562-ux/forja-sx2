@@ -2952,18 +2952,22 @@ namespace
 		u32 cbp[4]; // the CLUT addresses seen, + 1 (0 = empty)
 		u32 palettes; // how many different ones (5 = more than 4): an 8- or 4-bit texture with other colours
 	};
-	constexpr u32 FORJA_GS_GROUPS = 1024; // open addressing; a scene has tens of groups
+	// Open addressing; a scene has tens of groups. Compilation 53: 2048 slots and 64 probes, and the draws that found no slot
+	// are counted: late in a build 52 session the ~14,000 draws a second of Dragon Ball's 03d40 left the list while the speed
+	// stayed the same, as if they belonged to no group.
+	constexpr u32 FORJA_GS_GROUPS = 2048;
 	constexpr u32 FORJA_GS_SAMPLE = 8; // one draw in 8 is timed (two rdtsc) and counts for 8
 	ForjaGsGroup s_forja_gs_groups[FORJA_GS_GROUPS];
 	u32 s_forja_gs_draw_number = 0;
 	u64 s_forja_gs_since = 0;
 	u32 s_forja_gs_draws = 0;
 	u32 s_forja_gs_left_out = 0;
+	u32 s_forja_gs_lost = 0; // draws without a slot (compilation 53)
 
 	ForjaGsGroup* ForjaGsGroupOf(u32 key)
 	{
-		u32 slot = (key * 2654435761u) >> 22;
-		for (u32 probe = 0; probe < 32; probe++, slot = (slot + 1) & (FORJA_GS_GROUPS - 1))
+		u32 slot = (key * 2654435761u) >> 21;
+		for (u32 probe = 0; probe < 64; probe++, slot = (slot + 1) & (FORJA_GS_GROUPS - 1))
 		{
 			ForjaGsGroup& group = s_forja_gs_groups[slot];
 			if (group.draws == 0)
@@ -3006,9 +3010,12 @@ namespace
 			}
 			static constexpr char prim_names[] = {'P', 'L', 'T', 'S'};
 			char line[900];
+			u32 groups = 0;
+			for (const ForjaGsGroup& group : s_forja_gs_groups)
+				groups += group.draws != 0 ? 1u : 0u;
 			int len = std::snprintf(line, sizeof(line),
-				"GS groups: draws_per_s=%.0f left_out_per_s=%.0f top8(fb/tex/prim=share/draws_per_s):", s_forja_gs_draws / seconds,
-				s_forja_gs_left_out / seconds);
+				"GS groups: draws_per_s=%.0f left_out_per_s=%.0f groups=%u lost_per_s=%.0f top8(fb/tex/prim=share/draws_per_s):",
+				s_forja_gs_draws / seconds, s_forja_gs_left_out / seconds, groups, s_forja_gs_lost / seconds);
 			for (unsigned k = 0; k < found && len > 0 && len < static_cast<int>(sizeof(line)); k++)
 			{
 				const ForjaGsGroup& group = s_forja_gs_groups[top[k]];
@@ -3045,7 +3052,7 @@ namespace
 			g_forja_gs_top_count.store(found, std::memory_order_release);
 		}
 		std::memset(s_forja_gs_groups, 0, sizeof(s_forja_gs_groups));
-		s_forja_gs_draws = s_forja_gs_left_out = 0;
+		s_forja_gs_draws = s_forja_gs_left_out = s_forja_gs_lost = 0;
 	}
 
 	void ForjaGsNote(ForjaGsGroup& group, const GIFRegTEX0& tex0, const GIFRegALPHA& alpha, bool textured)
@@ -3093,6 +3100,8 @@ namespace
 			group = ForjaGsGroupOf(key);
 			if (group)
 				group->draws++;
+			else
+				s_forja_gs_lost++;
 		}
 		~ForjaGsDrawTimer()
 		{

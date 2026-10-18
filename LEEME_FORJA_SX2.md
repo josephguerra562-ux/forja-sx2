@@ -44,12 +44,14 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
 
 ## 3. Controles
 - **Biblioteca:** X = jugar, Cuadrado = favorito, Triángulo = actualizar, Círculo = salir.
-- **En el juego:** OPTIONS = Start, clic en el touchpad = Select, **L3+R3 = menú del emulador**.
+- **En el juego:** OPTIONS = Start, clic en el touchpad = Select, **L3+R3 = menú del emulador**. Desde la 53, en
+  Ajustes > **Botón del menú del emulador** eliges L3+R3, la **mitad derecha del panel táctil** (la mitad izquierda sigue
+  siendo el Select de la PS2, que algunos juegos usan) o los dos.
 - **Dos jugadores (desde la 43):** prende el segundo control. La PS4 pregunta "¿Quién usa este control?": elige otro
   usuario o **Usuario nuevo > Jugar**, que es el usuario temporal de la PS4 y no queda guardado. En un segundo Forja lo
   conecta al puerto 2 de la PS2, sin tocar nada más. Si ese usuario cierra sesión, el puerto 2 queda libre para el siguiente.
   El menú L3+R3 lo maneja solo el jugador 1. (Tres o cuatro jugadores, con el multitap, todavía no.)
-- **El menú L3+R3 va en 5 pestañas** (desde la 35, como el menú rápido de Dolphin). **L1 y R1** cambian de pestaña,
+- **El menú L3+R3 va en 6 pestañas** (desde la 35, como el menú rápido de Dolphin; la 6.ª, No tocar, desde la 53). **L1 y R1** cambian de pestaña,
   Arriba/Abajo eligen dentro de ella e Izq./Der. cambian el valor:
   - **Partida:** volver al juego, guardar estado, cargar estado, reiniciar el juego y **cambiar disco** (desde la 44, para
     juegos de varios discos: ponlos en roms/ como "Juego (Disco 1).iso", "Juego (Disco 2).iso"; ←/→ elige y X lo cambia
@@ -58,9 +60,16 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     **Nitidez:** Suave (como antes), Nítida (bilineal nítido, sin costo), CAS y CAS fuerte (el realce de AMD, de la familia
     del FSR que usa Dolphin para PS4; cuesta muy poco) y Píxeles (sin filtro, estilo retro). Se guarda por juego.
   - **Rendimiento:** velocidad del CPU de la PS2, **CPU automático**, modo video y núcleos.
-  - **Extras** (se llamaba Parches; desde la 44 trae más):
+  - **Extras** (se llamaba Parches; desde la 44 trae más; desde la 53 los filtros están en **No tocar**):
     - **Parche:** los parches de ese juego, uno por uno. ←/→ elige, **X** lo pone o lo quita y se guarda para ese juego.
       Algunos piden reiniciar el juego para quitarse del todo.
+    - **Texturas HD:** No / Sí / Sí, precargadas. El pack va por FTP en `/data/ForjaSX2/textures/<SERIAL>/replacements`
+      (como en PCSX2). Precargar evita tirones pero usa más memoria: con packs enormes, mejor "Sí".
+    - **Ajustes recomendados:** de dónde vienen los ajustes de fábrica de ese juego: del centro de ajustes (GitHub, con
+      su fecha), del PKG, o ninguno. **X** los busca otra vez. Al empezar cada juego Forja baja de su GitHub el perfil y
+      los parches recomendados de ese juego (cada día), así las mejoras llegan sin un PKG nuevo. `vm-sin-centro` lo apaga.
+  - **No tocar** (desde la 53): los experimentos con los que medimos y mejoramos los juegos, aparte de los ajustes para que
+    nadie los confunda con mejoras. Si no sabes qué hace algo, déjalo como está.
     - **Filtro VU1 (experimental):** un laboratorio de efectos para cualquier juego. Muestra los programas del VU1 que más
       tiempo gastaron en los últimos segundos; **X** apaga el elegido: lo que dibuja deja de verse y su tiempo se ahorra.
       Si desaparece algo importante (o todo el 3D), X lo vuelve a poner. Lo apagado se guarda para ese juego. Sirve para
@@ -74,11 +83,6 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
       Desde la 52: lo que se dibuja en las dos imágenes que la tele muestra por turnos es un solo grupo ("En la pantalla";
       en la 51 salía dos veces, una por imagen, y quitar una sola lo quitaba un cuadro sí y otro no); un grupo quitado se
       queda en su lugar de la lista con el % que tenía; y **Cuadrado** devuelve todos de una vez (también en el Filtro VU1).
-    - **Texturas HD:** No / Sí / Sí, precargadas. El pack va por FTP en `/data/ForjaSX2/textures/<SERIAL>/replacements`
-      (como en PCSX2). Precargar evita tirones pero usa más memoria: con packs enormes, mejor "Sí".
-    - **Ajustes recomendados:** de dónde vienen los ajustes de fábrica de ese juego: del centro de ajustes (GitHub, con
-      su fecha), del PKG, o ninguno. **X** los busca otra vez. Al empezar cada juego Forja baja de su GitHub el perfil y
-      los parches recomendados de ese juego (cada día), así las mejoras llegan sin un PKG nuevo. `vm-sin-centro` lo apaga.
   - **Sistema:** restablecer los ajustes del juego, volver a la biblioteca y salir.
 - **Todo lo que cambies en L3+R3 se guarda solo para ese juego** (como las propiedades por juego de Dolphin), menos el
   contador de FPS. Se aplica al instante:
@@ -140,7 +144,8 @@ velocidad del CPU de la PS2 (desde la 45, de 27 % a 300 %; de fábrica 27 %), **
 "Hasta 27 %"), resolución (de fábrica la nativa 1x en todas las PS4; antes una Pro con Boost empezaba en 2x), relación de aspecto, contador de FPS, **sensibilidad de la palanca** (133 % por defecto,
 como el PCSX2 de PC; arregla que X caminara con la palanca a tope), cargas rápidas, saltar el logo,
 lecturas de la GPU (readbacks), **Modo video automático** (sube la velocidad mientras se reproduce un video del juego) y
-**Generación de cuadros (30 a 60 FPS)**, que es EXPERIMENTAL, viene apagada e inventa el cuadro intermedio en juegos que van estables a 30.
+**Generación de cuadros (30 a 60 FPS)**, que es EXPERIMENTAL, viene apagada e inventa el cuadro intermedio en juegos que van estables a 30,
+y desde la 53 **Botón del menú del emulador** (L3+R3, panel táctil derecho o los dos).
 Lo que se guarde para un juego en L3+R3 manda sobre esto.
 
 ## 3c. Tus discos de PS2: jugar y copiarlos a la PS4 (desde la 41)

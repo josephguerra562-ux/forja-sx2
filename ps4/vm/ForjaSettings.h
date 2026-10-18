@@ -37,6 +37,9 @@ namespace ForjaSettings
 		bool video_mode = true;
 		// Frame generation (AMD FSR3 interpolation): a game steady at 30 fps is shown at 60. Off until tested on the console.
 		bool frame_gen = false;
+		// Compilation 53: what opens the emulator's menu while playing: 0 L3+R3, 1 a click on the touchpad's right half (its left
+		// half stays the PS2's Select), 2 both.
+		int menu_button = 0;
 		bool from_file = false;
 	};
 
@@ -48,6 +51,7 @@ namespace ForjaSettings
 		v.aspect = std::clamp(v.aspect, 0, 4);
 		v.stick = std::clamp(v.stick, 100, 200);
 		v.readback = std::clamp(v.readback, 0, 2);
+		v.menu_button = std::clamp(v.menu_button, 0, 2);
 		return v;
 	}
 
@@ -87,6 +91,8 @@ namespace ForjaSettings
 				v.video_mode = value != 0;
 			else if (!std::strcmp(key, "frame_gen"))
 				v.frame_gen = value != 0;
+			else if (!std::strcmp(key, "menu_boton"))
+				v.menu_button = value;
 		}
 		std::fclose(file);
 		return Clamp(v);
@@ -103,9 +109,9 @@ namespace ForjaSettings
 		std::fprintf(file,
 			"; Forja SX2: ajustes para todos los juegos (pestaña Ajustes de la biblioteca)\n"
 			"ee_rate=%d\nupscale=%d\naspect=%d\noverlay=%d\nstick=%d\nfast_cdvd=%d\nfast_boot=%d\nreadback=%d\nvideo_mode=%d\n"
-			"frame_gen=%d\ncpu_auto=%d\n",
+			"frame_gen=%d\ncpu_auto=%d\nmenu_boton=%d\n",
 			v.ee_rate, v.upscale, v.aspect, v.overlay ? 1 : 0, v.stick, v.fast_cdvd ? 1 : 0, v.fast_boot ? 1 : 0,
-			v.readback, v.video_mode ? 1 : 0, v.frame_gen ? 1 : 0, v.cpu_auto);
+			v.readback, v.video_mode ? 1 : 0, v.frame_gen ? 1 : 0, v.cpu_auto, v.menu_button);
 		const bool written = std::fclose(file) == 0;
 		return written && std::rename(temporary, Path) == 0;
 	}

@@ -30,12 +30,13 @@ namespace PS4GameMenu
 		ROW_CORES,
 		ROW_GS_SKIP, // compilation 47
 		// Extras (compilation 42 "Parches", 44 "Extras"): the game's patch groups one at a time (main.cpp, PublishPatchMenuText),
-		// the VU1 filter, the GS filter (compilation 51), HD textures and where the recommended settings come from
+		// HD textures and where the recommended settings come from
 		ROW_PATCH,
-		ROW_VU1_FILTER,
-		ROW_GS_FILTER,
 		ROW_TEXTURES,
 		ROW_RECOMMENDED,
+		// No tocar (compilation 53, Joseph's name): the labs the games are measured with, apart so nobody takes them for settings
+		ROW_VU1_FILTER,
+		ROW_GS_FILTER, // compilation 51
 		// Sistema
 		ROW_RESET_PROFILE,
 		ROW_LIBRARY,
@@ -43,10 +44,12 @@ namespace PS4GameMenu
 		ROW_COUNT
 	};
 
-	constexpr unsigned TAB_COUNT = 5;
+	constexpr unsigned TAB_COUNT = 6;
 	constexpr unsigned TAB_PATCHES = 3;
+	constexpr unsigned TAB_LAB = 4; // compilation 53: "No tocar"
 	// The first row of each tab, and ROW_COUNT after the last.
-	constexpr unsigned TAB_FIRST_ROW[TAB_COUNT + 1] = {ROW_RESUME, ROW_RESOLUTION, ROW_EE_RATE, ROW_PATCH, ROW_RESET_PROFILE, ROW_COUNT};
+	constexpr unsigned TAB_FIRST_ROW[TAB_COUNT + 1] = {ROW_RESUME, ROW_RESOLUTION, ROW_EE_RATE, ROW_PATCH, ROW_VU1_FILTER,
+		ROW_RESET_PROFILE, ROW_COUNT};
 
 	constexpr unsigned TabOfRow(unsigned row)
 	{

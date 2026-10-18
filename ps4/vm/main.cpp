@@ -156,6 +156,11 @@ static u32 s_previous_pad2_buttons = 0;
 static double s_pad2_last_check = -10.0;
 static u32 s_blocked_pad_buttons = 0;
 static bool s_menu_chord_latched = false;
+// Forja SX2 (compilation 53): what opens this menu (ajustes.ini menu_boton): 0 L3+R3, 1 the touchpad's right half, 2 both. The
+// touchpad is the PS2's Select (VMHostUpdateController), so only a click on its right half is the menu's and its left half
+// stays Select; a press that opened the menu never reaches the game.
+static int s_menu_button = 0;
+static bool s_menu_touch_held = false;
 static bool s_game_menu_open = false;
 static unsigned s_game_menu_selection = 0;
 // Forja SX2: the L3+R3 menu's save state slot (0-4, shown as 1-5), whether it holds a state, and the last action's result
@@ -1991,7 +1996,16 @@ void VMHostPoll()
 	s_previous_host_buttons = raw;
 	s_blocked_pad_buttons &= raw;
 	constexpr u32 menu_chord = ORBIS_PAD_BUTTON_L3 | ORBIS_PAD_BUTTON_R3;
-	const bool chord_edge = (raw & menu_chord) == menu_chord && !s_menu_chord_latched;
+	// Compilation 53: the touchpad's right half (x from 960 of its 1920) as the menu's button.
+	bool touch_edge = false;
+	if (s_menu_button != 0 && (pressed & ORBIS_PAD_BUTTON_TOUCH_PAD) != 0)
+	{
+		s_menu_touch_held = buttons.touch.fingers > 0 && buttons.touch.touch[0].x >= 960;
+		touch_edge = s_menu_touch_held;
+	}
+	else if ((raw & ORBIS_PAD_BUTTON_TOUCH_PAD) == 0)
+		s_menu_touch_held = false;
+	const bool chord_edge = (s_menu_button != 1 && (raw & menu_chord) == menu_chord && !s_menu_chord_latched) || touch_edge;
 	const bool analog_left = pad_read && buttons.leftStick.x < 72;
 	const bool analog_right = pad_read && buttons.leftStick.x > 184;
 	const bool analog_up = pad_read && buttons.leftStick.y < 72;
@@ -2029,7 +2043,7 @@ void VMHostPoll()
 		buttons.rightStick.x = buttons.rightStick.y = 128;
 	}
 	else
-		buttons.buttons &= ~s_blocked_pad_buttons;
+		buttons.buttons &= ~(s_blocked_pad_buttons | (s_menu_touch_held ? static_cast<u32>(ORBIS_PAD_BUTTON_TOUCH_PAD) : 0u));
 	VMHostUpdateController(0, buttons, s_previous_pad_buttons);
 	// Forja SX2 (compilation 43): the second player, on the PS2's second port (released while the menu is open).
 	UpdateSecondPad(elapsed);
@@ -2220,7 +2234,8 @@ void VMHostPoll()
 				RefreshStateSlot();
 			}
 			else if (PS4GameMenu::TabOfRow(row) == 1 || PS4GameMenu::TabOfRow(row) == 2 ||
-					 PS4GameMenu::TabOfRow(row) == PS4GameMenu::TAB_PATCHES) // Imagen, Rendimiento and Parches
+					 PS4GameMenu::TabOfRow(row) == PS4GameMenu::TAB_PATCHES ||
+					 PS4GameMenu::TabOfRow(row) == PS4GameMenu::TAB_LAB) // Imagen, Rendimiento, Extras and No tocar
 				ChangeGameMenuRow(row, navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1);
 			PublishGameMenu();
 		}
@@ -2533,6 +2548,7 @@ static void* RunVM(void*)
 		s_global_video_mode = chosen.video_mode;
 		s_global_frame_gen = chosen.frame_gen;
 		s_global_cpu_auto = chosen.cpu_auto;
+		s_menu_button = chosen.menu_button; // compilation 53
 		// Forja SX2: the game's profile, before the VM boots, so its cores and video settings are in place from the first frame.
 		// The library already scanned the image for its serial; GameList reads its boot ELF's CRC too (the ini's name).
 		{
@@ -2697,7 +2713,10 @@ static void* RunVM(void*)
 		s_blocked_pad_buttons = ~u32{0}; // Consume any launcher button still held.
 		s_menu_chord_latched = s_game_menu_open = false;
 		s_game_menu_selection = 0;
-		ProbeLog("Controller: OPTIONS=PS2 Start, touchpad=PS2 Select, L3+R3=emulator menu\n");
+		s_menu_touch_held = false;
+		ProbeLog("Controller: OPTIONS=PS2 Start, touchpad=PS2 Select%s, emulator menu=%s\n",
+			s_menu_button != 0 ? " (left half)" : "", s_menu_button == 0 ? "L3+R3" : s_menu_button == 1 ? "touchpad right half" :
+			"L3+R3 or touchpad right half");
 		if (s_use_vulkan_selector)
 		{
 			PS4GameMenu::ShowLoading(100, "Listo");
