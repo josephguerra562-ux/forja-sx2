@@ -84,11 +84,8 @@ namespace ForjaAlchemy
 		else
 		{
 			// Build 47's way: "swapInterval = 1" and "maxFrameRate = 50 or 60" over a line of the same length.
-			constexpr std::string_view line = "allocateVisualContextInScratchPad = true
-";
-			const std::string replacement = fmt::format("swapInterval = 1
-maxFrameRate = {}.00000
-", rate);
+			constexpr std::string_view line = "allocateVisualContextInScratchPad = true\n";
+			const std::string replacement = fmt::format("swapInterval = 1\nmaxFrameRate = {}.00000\n", rate);
 			const size_t line_at = block.find(line);
 			if (line_at == std::string_view::npos || replacement.size() != line.size())
 			{
@@ -105,19 +102,12 @@ maxFrameRate = {}.00000
 		std::string words(ram.substr(first, last - first));
 		words.replace(static_cast<u32>(at) - first, edited.size(), edited);
 		std::string text = fmt::format(
-			"gametitle={} {:08X}
-
-"
-			"// Written by Forja SX2 when the game started: it runs on the Alchemy engine (settings text at 0x{:08X}). The change:
-"
-			"// {}, before the game reads it (as the \"50 FPS\" patch of Crash Nitro Kart, compilation 46).
-"
-			"[{} FPS (motor Alchemy, experimental)]
-"
-			"author=Forja SX2 (automático)
-"
-			"description=Pide al motor un cuadro por refresco (hasta {} por segundo). Si el juego va acelerado, apágalo. Vale desde Partida > Reiniciar juego.
-",
+			"gametitle={} {:08X}\n\n"
+			"// Written by Forja SX2 when the game started: it runs on the Alchemy engine (settings text at 0x{:08X}). The change:\n"
+			"// {}, before the game reads it (as the \"50 FPS\" patch of Crash Nitro Kart, compilation 46).\n"
+			"[{} FPS (motor Alchemy, experimental)]\n"
+			"author=Forja SX2 (automático)\n"
+			"description=Pide al motor un cuadro por refresco (hasta {} por segundo). Si el juego va acelerado, apágalo. Vale desde Partida > Reiniciar juego.\n",
 			serial, crc, static_cast<unsigned>(at), how, rate, rate);
 		for (u32 address = first; address < last; address += 4)
 		{
@@ -125,8 +115,7 @@ maxFrameRate = {}.00000
 			std::memcpy(&value, words.data() + (address - first), 4);
 			std::memcpy(&original, ram.data() + address, 4);
 			if (value != original)
-				text += fmt::format("patch=0,EE,{:08X},word,{:08X}
-", address, value);
+				text += fmt::format("patch=0,EE,{:08X},word,{:08X}\n", address, value);
 		}
 
 		const std::string path = Path::Combine(EmuFolders::Patches, fmt::format("{}_{:08X}_alchemy.pnach", serial, crc));
