@@ -71,6 +71,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
       que se pueden agregar nuevas sin otro PKG. La primera es **"Menos efectos: sombreado de personajes"**: en los Dragon
       Ball Z Budokai Tenkaichi 2, 3 y el 4 (mod) quita la capa de sombras y brillos de la ropa y los personajes; se ve con
       menos detalle, pero en las peleas del Tenkaichi 4 la velocidad pasó de ~45 % a ~85 % (de 13 a 25-30 cuadros por segundo).
+      Desde la 56 hay otra, **"Menos efectos: pasadas de pantalla (experimental)"**: brillos y desenfoques que un juego
+      dibuja en imágenes aparte; solo aparece donde pesa mucho. Y el parche automático del **motor Alchemy** (el de Crash
+      Nitro Kart) sirve también con los juegos de ese motor que ya fijan su propio límite: 30 a 60 FPS (25 a 50 en PAL).
     - **Texturas HD:** No / Sí / Sí, precargadas. El pack va por FTP en `/data/ForjaSX2/textures/<SERIAL>/replacements`
       (como en PCSX2). Precargar evita tirones pero usa más memoria: con packs enormes, mejor "Sí".
     - **Ajustes recomendados:** de dónde vienen los ajustes de fábrica de ese juego: del centro de ajustes (GitHub, con

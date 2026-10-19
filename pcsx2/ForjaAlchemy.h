@@ -6,6 +6,7 @@
 // among them. Writing "swapInterval = 1" and "maxFrameRate = 50.00000" over the first line, which has the same length,
 // took its races from 25 to 50 frames a second (with the PS2 CPU at 36 %).
 // When a game starts, OnGameStart looks for that text in the EE's memory and, if the game has no frame rate patch yet,
+// (compilation 56: also when the game sets swapInterval itself: 2 becomes 1, and maxFrameRate 30 or 25 becomes 60 or 50)
 // writes patches/<SERIAL>_<CRC>_alchemy.pnach with the same change: off until the player turns it on in L3+R3 > Extras,
 // and it applies from the game's next start (patch=0, once at load), like Crash's.
 #pragma once
@@ -42,18 +43,6 @@ namespace ForjaAlchemy
 		const std::string_view block = ram.substr(at, end - at);
 		const bool pal = block.find("palVideoMode = true") != std::string_view::npos;
 		Console.WriteLn("Forja SX2: Alchemy engine settings at 0x%08X (%s)", static_cast<unsigned>(at), pal ? "PAL" : "NTSC");
-		if (block.find("swapInterval") != std::string_view::npos)
-		{
-			Console.WriteLn("Forja SX2: Alchemy: this game sets its own swapInterval; nothing to do");
-			return;
-		}
-		constexpr std::string_view line = "allocateVisualContextInScratchPad = true\n";
-		const size_t line_at = block.find(line);
-		if (line_at == std::string_view::npos)
-		{
-			Console.WriteLn("Forja SX2: Alchemy: no line of the same length to write over; nothing to do");
-			return;
-		}
 		for (const Patch::PatchInfo& info : Patch::GetPatchInfo(serial, crc, false, false, nullptr))
 		{
 			if (info.name.find("FPS") != std::string::npos)
@@ -63,32 +52,81 @@ namespace ForjaAlchemy
 			}
 		}
 		const int rate = pal ? 50 : 60;
-		const std::string replacement = fmt::format("swapInterval = 1\nmaxFrameRate = {}.00000\n", rate);
-		if (replacement.size() != line.size())
-			return;
+		// The settings text with the change, always of the same length (the bytes after it belong to the game).
+		std::string edited(block);
+		std::string how;
+		if (block.find("swapInterval") != std::string_view::npos)
+		{
+			// Compilation 56: a game that sets its own swapInterval gets it at 1, and a maxFrameRate of 30 or 25 at 60 or 50,
+			// each value written over where it is. Build 47 left these games alone ("sets its own swapInterval").
+			const auto set_value = [&edited](std::string_view key, std::string_view from, std::string_view to) {
+				const size_t key_at = edited.find(key);
+				if (key_at == std::string::npos)
+					return false;
+				size_t value_at = key_at + key.size();
+				while (value_at < edited.size() && (edited[value_at] == ' ' || edited[value_at] == '='))
+					value_at++;
+				if (edited.compare(value_at, from.size(), from) != 0)
+					return false;
+				edited.replace(value_at, from.size(), to);
+				return true;
+			};
+			if (set_value("swapInterval", "2", "1"))
+				how += "swapInterval 2 -> 1";
+			if (set_value("maxFrameRate", "30.", pal ? "50." : "60.") || set_value("maxFrameRate", "25.", pal ? "50." : "60."))
+				how += how.empty() ? "maxFrameRate -> " + std::to_string(rate) : ", maxFrameRate -> " + std::to_string(rate);
+			if (how.empty())
+			{
+				Console.WriteLn("Forja SX2: Alchemy: this game already asks for a frame each refresh; nothing to do");
+				return;
+			}
+		}
+		else
+		{
+			// Build 47's way: "swapInterval = 1" and "maxFrameRate = 50 or 60" over a line of the same length.
+			constexpr std::string_view line = "allocateVisualContextInScratchPad = true
+";
+			const std::string replacement = fmt::format("swapInterval = 1
+maxFrameRate = {}.00000
+", rate);
+			const size_t line_at = block.find(line);
+			if (line_at == std::string_view::npos || replacement.size() != line.size())
+			{
+				Console.WriteLn("Forja SX2: Alchemy: no line of the same length to write over; nothing to do");
+				return;
+			}
+			edited.replace(line_at, line.size(), replacement);
+			how = "swapInterval = 1, maxFrameRate = " + std::to_string(rate) + " over allocateVisualContextInScratchPad";
+		}
 
-		// Whole words, as the pnach writes them: the bytes around the line keep their value.
-		const u32 start = static_cast<u32>(at + line_at);
-		const u32 first = start & ~3u;
-		const u32 last = (start + static_cast<u32>(line.size()) + 3u) & ~3u;
+		// Whole words, as the pnach writes them: the bytes around the block keep their value.
+		const u32 first = static_cast<u32>(at) & ~3u;
+		const u32 last = (static_cast<u32>(end) + 3u) & ~3u;
 		std::string words(ram.substr(first, last - first));
-		words.replace(start - first, line.size(), replacement);
+		words.replace(static_cast<u32>(at) - first, edited.size(), edited);
 		std::string text = fmt::format(
-			"gametitle={} {:08X}\n\n"
-			"// Written by Forja SX2 when the game started: it runs on the Alchemy engine, whose settings text (0x{:08X}) does\n"
-			"// not set swapInterval. This writes \"swapInterval = 1\" and \"maxFrameRate = {}\" over its first line, of the same\n"
-			"// length, before the game reads it (as the \"50 FPS\" patch of Crash Nitro Kart, compilation 46).\n"
-			"[{} FPS (motor Alchemy, experimental)]\n"
-			"author=Forja SX2 (automático)\n"
-			"description=Pide al motor un cuadro por refresco (hasta {} por segundo). Si el juego va acelerado, apágalo. Vale desde Partida > Reiniciar juego.\n",
-			serial, crc, static_cast<unsigned>(at), rate, rate, rate);
+			"gametitle={} {:08X}
+
+"
+			"// Written by Forja SX2 when the game started: it runs on the Alchemy engine (settings text at 0x{:08X}). The change:
+"
+			"// {}, before the game reads it (as the \"50 FPS\" patch of Crash Nitro Kart, compilation 46).
+"
+			"[{} FPS (motor Alchemy, experimental)]
+"
+			"author=Forja SX2 (automático)
+"
+			"description=Pide al motor un cuadro por refresco (hasta {} por segundo). Si el juego va acelerado, apágalo. Vale desde Partida > Reiniciar juego.
+",
+			serial, crc, static_cast<unsigned>(at), how, rate, rate);
 		for (u32 address = first; address < last; address += 4)
 		{
 			u32 value, original;
 			std::memcpy(&value, words.data() + (address - first), 4);
 			std::memcpy(&original, ram.data() + address, 4);
 			if (value != original)
-				text += fmt::format("patch=0,EE,{:08X},word,{:08X}\n", address, value);
+				text += fmt::format("patch=0,EE,{:08X},word,{:08X}
+", address, value);
 		}
 
 		const std::string path = Path::Combine(EmuFolders::Patches, fmt::format("{}_{:08X}_alchemy.pnach", serial, crc));
