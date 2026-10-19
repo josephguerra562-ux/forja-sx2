@@ -698,6 +698,19 @@ void VMManager::LoadCoreSettings(SettingsInterface& si)
 	// Force MTVU off when playing back GS dumps, it doesn't get used.
 	if (GSDumpReplayer::IsReplayingDump())
 		EmuConfig.Speedhacks.vuThread = false;
+
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2 (compilation 59): HD textures only when this game has a pack (textures/<serial>/replacements). Turned on, PCSX2
+	// starts its loader thread and its lookups even with nothing to load: God of War II's profile had it on with an empty
+	// textures folder when it closed four times on 2026-10-19.
+	if (EmuConfig.GS.LoadTextureReplacements &&
+		(s_disc_serial.empty() ||
+			!FileSystem::DirectoryExists(Path::Combine(EmuFolders::Textures, s_disc_serial + "/replacements").c_str())))
+	{
+		EmuConfig.GS.LoadTextureReplacements = false;
+		EmuConfig.GS.PrecacheTextureReplacements = false;
+	}
+#endif
 }
 
 void VMManager::LoadInputBindings(SettingsInterface& si, std::unique_lock<std::mutex>& lock)

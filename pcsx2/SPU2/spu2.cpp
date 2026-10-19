@@ -244,6 +244,23 @@ static bool ForjaSPU2ReadNeedsMix(u32 rmem, u32 mem)
 	return false;
 }
 
+// Forja SX2 (compilation 59): a thread the system can't give throws std::system_error, which nothing caught: the app closed
+// ("uncaught exception std::__1::system_error", God of War II, 2026-10-18 and 19). Caught, the work stays on the EE thread.
+template <typename Function>
+static bool ForjaTryThread(Function function, const char* what)
+{
+	try
+	{
+		std::thread(function).detach();
+		return true;
+	}
+	catch (const std::exception& e)
+	{
+		ProbeLog("%s: the thread could not start (%s); the work stays on the EE thread\n", what, e.what());
+		return false;
+	}
+}
+
 void ForjaSPU2Submit(StereoOut32 in0, StereoOut32 in1, u16 outpos, u32 cycles)
 {
 	if (s_forja_spu2_threaded < 0)
@@ -265,7 +282,13 @@ void ForjaSPU2Submit(StereoOut32 in0, StereoOut32 in1, u16 outpos, u32 cycles)
 	if (!s_forja_spu2_thread_started)
 	{
 		s_forja_spu2_thread_started = true;
-		std::thread(ForjaSPU2Thread).detach();
+		if (!ForjaTryThread(ForjaSPU2Thread, "Audio SPU2 thread"))
+		{
+			s_forja_spu2_threaded = 0; // the mix stays on the EE thread
+			ForjaSPU2MixBack(in0, in1, outpos, cycles);
+			s_forja_spu2_direct++;
+			return;
+		}
 	}
 	const u32 head = s_forja_spu2_head.load(std::memory_order_relaxed);
 	if (head - s_forja_spu2_tail.load(std::memory_order_acquire) >= FORJA_SPU2_RING)
@@ -339,7 +362,13 @@ namespace
 		if (!s_forja_audio_thread_started)
 		{
 			s_forja_audio_thread_started = true;
-			std::thread(ForjaAudioThread).detach();
+			if (!ForjaTryThread(ForjaAudioThread, "Audio write thread"))
+			{
+				s_forja_audio_async = 0; // the chunks are written here, as before compilation 23
+				std::lock_guard stream_lock(s_stream_mutex);
+				s_output_stream->WriteChunk(chunk);
+				return;
+			}
 		}
 		const u32 head = s_forja_audio_head.load(std::memory_order_relaxed);
 		// A full ring (the thread 85 ms behind) waits for a slot: dropping or reordering audio would be heard.

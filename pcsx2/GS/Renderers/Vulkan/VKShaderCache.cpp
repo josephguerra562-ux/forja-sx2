@@ -667,17 +667,30 @@ bool VKShaderCache::FlushPipelineCacheInBackground()
 	m_pipeline_cache_dirty = false;
 
 	s_writing.store(true, std::memory_order_release);
-	std::thread([data = std::move(data), filename = m_pipeline_cache_filename]() {
+	// Forja SX2 (compilation 59): a thread the system can't give (no memory for its stack) throws std::system_error, which nothing
+	// caught on the GS thread: the app closed with "uncaught exception std::__1::system_error" (crash.log, 2026-10-18). Then the
+	// cache is just written by the next flush.
+	try
+	{
+		std::thread([data = std::move(data), filename = m_pipeline_cache_filename]() {
 #if defined(PCSX2_PS4_VM_BOOT)
-		PS4ThreadAffinity::PinCurrentThreadToHelpers("pipeline cache writer");
+			PS4ThreadAffinity::PinCurrentThreadToHelpers("pipeline cache writer");
 #endif
-		const std::string temporary = filename + ".tmp";
-		const bool ok = FileSystem::WriteBinaryFile(temporary.c_str(), data.data(), data.size()) &&
-						FileSystem::RenamePath(temporary.c_str(), filename.c_str());
-		Console.WriteLn("Forja SX2: pipeline cache %s in the background (%zu bytes)", ok ? "saved" : "NOT saved",
-			data.size());
+			const std::string temporary = filename + ".tmp";
+			const bool ok = FileSystem::WriteBinaryFile(temporary.c_str(), data.data(), data.size()) &&
+							FileSystem::RenamePath(temporary.c_str(), filename.c_str());
+			Console.WriteLn("Forja SX2: pipeline cache %s in the background (%zu bytes)", ok ? "saved" : "NOT saved",
+				data.size());
+			s_writing.store(false, std::memory_order_release);
+		}).detach();
+	}
+	catch (const std::exception& e)
+	{
 		s_writing.store(false, std::memory_order_release);
-	}).detach();
+		m_pipeline_cache_dirty = true;
+		Console.Error("Forja SX2: the pipeline cache writer could not start (%s); kept for the next flush", e.what());
+		return false;
+	}
 	return true;
 }
 

@@ -989,8 +989,9 @@ static void* HangWatch(void*)
 		reported = true;
 		char when[32] = "?";
 		const std::time_t now = std::time(nullptr);
-		if (const std::tm* tm = std::localtime(&now))
-			std::strftime(when, sizeof(when), "%Y-%m-%d %H:%M:%S", tm);
+		std::tm local{};
+		if (localtime_r(&now, &local)) // the reentrant one: the CPU thread uses localtime too
+			std::strftime(when, sizeof(when), "%Y-%m-%d %H:%M:%S", &local);
 		char line[400];
 		std::snprintf(line, sizeof(line),
 			"%s: %u s sin cuadros nuevos en %s %08X: cuadro %u, EE_PC=%08x IOP_PC=%08x EE_cycle=%llu vsyncq=%d\n",
@@ -1010,11 +1011,22 @@ static void StartHangWatch()
 {
 	if (s_hang_watch_started.exchange(true))
 		return;
+	// Compilation 59: a stack of its own (it only reads a few numbers), so it does not take the default one's memory.
 	pthread_t thread{};
-	if (pthread_create(&thread, nullptr, HangWatch, nullptr) == 0)
-		pthread_detach(thread);
-	else
-		ProbeLog("Hang watch: the thread could not start\n");
+	pthread_attr_t attr;
+	int result = pthread_attr_init(&attr);
+	if (result == 0)
+	{
+		pthread_attr_setstacksize(&attr, 128 * 1024);
+		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+		result = pthread_create(&thread, &attr, HangWatch, nullptr);
+		pthread_attr_destroy(&attr);
+	}
+	if (result != 0)
+	{
+		s_hang_watch_started.store(false);
+		ProbeLog("Hang watch: the thread could not start (error %d)\n", result);
+	}
 }
 
 
@@ -1438,8 +1450,11 @@ static void PublishTexturesText()
 static void ApplyGameTextures(unsigned value)
 {
 	s_game_textures = std::min(value, 2u);
-	EmuConfig.GS.LoadTextureReplacements = s_game_textures != 0;
-	EmuConfig.GS.PrecacheTextureReplacements = s_game_textures == 2;
+	// Compilation 59: the choice is saved, but it only turns on with a pack for this game (VMManager.cpp, LoadCoreSettings).
+	const std::string serial = VMManager::GetDiscSerial();
+	const bool pack = !serial.empty() && FileSystem::DirectoryExists(Path::Combine(EmuFolders::Textures, serial + "/replacements").c_str());
+	EmuConfig.GS.LoadTextureReplacements = pack && s_game_textures != 0;
+	EmuConfig.GS.PrecacheTextureReplacements = pack && s_game_textures == 2;
 	MTGS::ApplySettings();
 	MTGS::WaitGS(false, false, false);
 	const bool load = s_game_textures != 0, precache = s_game_textures == 2;
@@ -2440,12 +2455,16 @@ void VMHostPoll()
 		s_last_host_poll_calls = s_host_poll_calls;
 		s_last_log = elapsed;
 		s_last_ee_cycle = cpuRegs.cycle;
+			// Compilation 59: the flexible memory left (threads' stacks and malloc come from it): threads that could not start on
+			// 2026-10-19 point to it running out.
 			ProbeLog("VM heartbeat: seconds=%.1f EE_PC=%08x IOP_PC=%08x EE_cycles=%u EE_Mcycles_per_second=%.2f "
-				 "Host_polls_per_second=%.0f Host_clock_checks_per_second=%.0f CPU_queue_drain_locks=%llu verbose=%d paused=%d menu=%d vsyncq=%d\n",
+				 "Host_polls_per_second=%.0f Host_clock_checks_per_second=%.0f CPU_queue_drain_locks=%llu verbose=%d paused=%d menu=%d vsyncq=%d "
+				 "flexible_free_mb=%llu\n",
 			elapsed, cpuRegs.pc, psxRegs.pc,
 			cpuRegs.cycle, ee_mcycles, host_polls_per_second, host_clock_checks_per_second,
 			static_cast<unsigned long long>(VMHostGetCPUQueueLockCount()), s_verbose_diag ? 1 : 0,
-			vm_state == VMState::Paused ? 1 : 0, s_game_menu_open ? 1 : 0, MTGS::GetCurrentVsyncQueueSize());
+			vm_state == VMState::Paused ? 1 : 0, s_game_menu_open ? 1 : 0, MTGS::GetCurrentVsyncQueueSize(),
+			static_cast<unsigned long long>(GetAvailablePhysicalMemory() / (1024 * 1024)));
 		// Live telemetry heartbeat (PC debug server). Needs proper testing.
 		{
 			const double boot_s = PS4Telemetry::GetBootSeconds();

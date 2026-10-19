@@ -22,23 +22,25 @@ namespace PS4GameMenu
 		ROW_RESOLUTION,
 		ROW_ASPECT,
 		ROW_SHARPNESS, // compilation 44
-		ROW_FRAME_GEN,
 		ROW_OVERLAY,
 		// Rendimiento
 		ROW_EE_RATE,
 		ROW_CPU_AUTO,
 		ROW_VIDEO_MODE,
 		ROW_CORES,
-		ROW_GS_SKIP, // compilation 47
-		// Extras (compilation 42 "Parches", 44 "Extras"): the game's patch groups one at a time (main.cpp, PublishPatchMenuText),
-		// HD textures and where the recommended settings come from
+		// Extras (compilation 42 "Parches", 44 "Extras"): the game's patch groups one at a time (main.cpp, PublishPatchMenuText)
+		// and where the recommended settings come from
 		ROW_PATCH,
-		ROW_CHEATS, // compilation 58
-		ROW_TEXTURES,
 		ROW_RECOMMENDED,
-		// No tocar (compilation 53, Joseph's name): the labs the games are measured with, apart so nobody takes them for settings
+		// No tocar (compilation 53, Joseph's name): the labs the games are measured with, apart so nobody takes them for settings.
+		// Compilation 59 (Joseph, 2026-10-19: "eso es por no tocar hasta no haber pulido"): frame skip, frame generation, HD
+		// textures and cheats too, until they are tested and polished; God of War II closed four times that day with them on.
 		ROW_VU1_FILTER,
 		ROW_GS_FILTER, // compilation 51
+		ROW_GS_SKIP, // compilation 47
+		ROW_FRAME_GEN,
+		ROW_TEXTURES,
+		ROW_CHEATS, // compilation 58
 		// Sistema
 		ROW_RESET_PROFILE,
 		ROW_LIBRARY,

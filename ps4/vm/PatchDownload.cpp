@@ -190,15 +190,25 @@ namespace ForjaPatches
 		mkdir((root + "/centro/perfiles").c_str(), 0777);
 		mkdir((root + "/centro/parches").c_str(), 0777);
 		std::vector<Job>* argument = jobs.release();
+		// Compilation 59: a stack of its own size, as the app's other threads. With the default one it could not start once a game
+		// had started (every God of War II session of 2026-10-19 said "the thread could not start").
 		pthread_t thread{};
-		if (pthread_create(&thread, nullptr, Fetch, argument) != 0)
+		pthread_attr_t attr;
+		int result = pthread_attr_init(&attr);
+		if (result == 0)
+		{
+			pthread_attr_setstacksize(&attr, 256 * 1024);
+			pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+			result = pthread_create(&thread, &attr, Fetch, argument);
+			pthread_attr_destroy(&attr);
+		}
+		if (result != 0)
 		{
 			delete argument;
 			s_busy.store(false, std::memory_order_release);
-			ProbeLog("Downloads: the thread could not start\n");
+			ProbeLog("Downloads: the thread could not start (error %d)\n", result);
 			return;
 		}
-		pthread_detach(thread);
 	}
 
 	bool TakeArrived()

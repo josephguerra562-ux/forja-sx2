@@ -136,9 +136,37 @@ void crashHandler(int sig, siginfo_t* info, void* context) {
         char* name = abi::__cxa_demangle(type->name(), nullptr, nullptr, &status);
         snprintf(message, sizeof(message), "uncaught exception %s", name ? name : type->name());
     }
+#if defined(__cpp_exceptions)
+    // Forja SX2 (compilation 59): what() too, which says which call failed and why ("thread constructor failed: Resource
+    // temporarily unavailable"); the type alone, std::system_error, was all the crashes of 2026-10-18 and 19 said.
+    if (std::exception_ptr current = std::current_exception()) {
+        try {
+            std::rethrow_exception(current);
+        } catch (const std::exception& e) {
+            const size_t used = strlen(message);
+            snprintf(message + used, sizeof(message) - used, ": %s", e.what());
+        } catch (...) {
+        }
+    }
+#endif
     const int fd = open("/data/ForjaSX2/crash.log", O_WRONLY | O_CREAT | O_APPEND, 0666);
     if (fd >= 0) {
-        writeFormat(fd, "\n=== %s\n", message);
+        const time_t now = time(nullptr);
+        writeFormat(fd, "\n=== %s (time %lld)\n", message, static_cast<long long>(now));
+        // Who threw it: the return addresses in the eboot along the frame pointers (ELF addresses, as the signal's rip), so
+        // vm_boot_cNN.sym names the function. Each step must go up the stack by less than 1 MiB, or the walk stops.
+        uintptr_t frame = reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
+        writeAll(fd, "callers:");
+        for (int depth = 0; depth < 24 && frame && (frame & 7) == 0; depth++) {
+            const uintptr_t next = reinterpret_cast<const uintptr_t*>(frame)[0];
+            const uintptr_t ret = reinterpret_cast<const uintptr_t*>(frame)[1];
+            if (isCode(ret))
+                writeFormat(fd, " 0x%llx", static_cast<unsigned long long>(toElf(ret)));
+            if (next <= frame || next - frame > 1024 * 1024)
+                break;
+            frame = next;
+        }
+        writeAll(fd, "\n");
         close(fd);
     }
     if (traceFd() >= 0)

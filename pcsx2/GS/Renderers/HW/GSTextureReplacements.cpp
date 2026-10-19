@@ -1117,7 +1117,18 @@ void GSTextureReplacements::StartWorkerThread()
 		return;
 
 	s_worker_thread_running = true;
-	s_worker_thread = std::thread(WorkerThreadEntryPoint);
+	// Forja SX2 (compilation 59): a thread the system can't give throws std::system_error, which closed the app. Then the HD
+	// textures are just not loaded.
+	try
+	{
+		s_worker_thread = std::thread(WorkerThreadEntryPoint);
+	}
+	catch (const std::exception& e)
+	{
+		s_worker_thread_running = false;
+		Console.Error("Forja SX2: the HD texture thread could not start (%s)", e.what());
+		return;
+	}
 #ifdef ORBIS_VULKAN
 	OrbisHelperThreadAdd(s_worker_thread.native_handle()); // vk-285-112
 #endif
