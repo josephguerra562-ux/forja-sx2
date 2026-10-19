@@ -9,6 +9,7 @@
 // transport (PhysicalDisc.cpp, after Al-Azif's ps-disc-detect), not PS5SX2's device nodes. The CRC-32 of the whole image
 // is logged, to compare with redump.org. The PS4's drive reads DVDs only: PS2 CD games can't be copied.
 #include "DiscCopy.h"
+#include "ForjaLang.h"
 
 #include <zlib.h>
 
@@ -117,7 +118,8 @@ namespace
 		const int fd = open(part.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
 		if (fd < 0)
 		{
-			Finish(PS4DiscCopy::State::Failed, "No se pudo crear la copia en /data/ForjaSX2/roms (error " + std::to_string(errno) + ").");
+			const int error = errno;
+			Finish(PS4DiscCopy::State::Failed, ForjaLang::F(ForjaLang::TF("No se pudo crear la copia en /data/ForjaSX2/roms (error %d)."), error));
 			return nullptr;
 		}
 
@@ -194,16 +196,19 @@ namespace
 			switch (stop)
 			{
 				case Stop::Cancelled:
-					Finish(PS4DiscCopy::State::Cancelled, "Copia cancelada. No quedó nada a medias.");
+					Finish(PS4DiscCopy::State::Cancelled, ForjaLang::T("Copia cancelada. No quedó nada a medias."));
 					break;
 				case Stop::Media:
-					Finish(PS4DiscCopy::State::Failed, "Se sacó el disco o la unidad dejó de leerlo: la copia a medias se borró.");
+					Finish(PS4DiscCopy::State::Failed, ForjaLang::T("Se sacó el disco o la unidad dejó de leerlo: la copia a medias se borró."));
 					break;
 				default:
-					Finish(PS4DiscCopy::State::Failed, write_error == ENOSPC ?
-						"No hay espacio en la PS4: hacen falta " + std::to_string((static_cast<uint64_t>(total) * SectorBytes) >> 30) +
-							" GB libres. La copia a medias se borró." :
-						"No se pudo escribir la copia (error " + std::to_string(write_error) + "). La copia a medias se borró.");
+					if (write_error == ENOSPC)
+						Finish(PS4DiscCopy::State::Failed,
+							ForjaLang::F(ForjaLang::TF("No hay espacio en la PS4: hacen falta %llu GB libres. La copia a medias se borró."),
+								static_cast<unsigned long long>((static_cast<uint64_t>(total) * SectorBytes) >> 30)));
+					else
+						Finish(PS4DiscCopy::State::Failed,
+							ForjaLang::F(ForjaLang::TF("No se pudo escribir la copia (error %d). La copia a medias se borró."), write_error));
 					break;
 			}
 			return nullptr;
@@ -212,7 +217,7 @@ namespace
 		{
 			const int error = errno;
 			unlink(part.c_str());
-			Finish(PS4DiscCopy::State::Failed, "No se pudo terminar la copia (error " + std::to_string(error) + ").");
+			Finish(PS4DiscCopy::State::Failed, ForjaLang::F(ForjaLang::TF("No se pudo terminar la copia (error %d)."), error));
 			return nullptr;
 		}
 		const double seconds = std::chrono::duration<double>(Clock::now() - start).count();
@@ -220,8 +225,8 @@ namespace
 		ProbeLog("Disc copy: done %s: %u sectors, %u unreadable, crc32 %08lx, %.0f s\n", path.c_str(), total, bad,
 			static_cast<unsigned long>(crc), seconds);
 		Finish(PS4DiscCopy::State::Done, bad > 0 ?
-			"Copia lista: " + title + ". " + std::to_string(bad) + " sectores no se pudieron leer (van en ceros). X para jugar." :
-			"Copia lista: " + title + ". Desde ahora, con el disco puesto, X juega la copia.");
+			ForjaLang::F(ForjaLang::TF("Copia lista: %s. %u sectores no se pudieron leer (van en ceros). X para jugar."), title.c_str(), bad) :
+			ForjaLang::F(ForjaLang::TF("Copia lista: %s. Desde ahora, con el disco puesto, X juega la copia."), title.c_str()));
 		return nullptr;
 	}
 } // namespace
@@ -232,12 +237,12 @@ namespace PS4DiscCopy
 	{
 		if (Busy())
 		{
-			error = "Ya hay una copia en curso.";
+			error = ForjaLang::T("Ya hay una copia en curso.");
 			return false;
 		}
 		if (!reader)
 		{
-			error = "Pulsa Triángulo para leer el disco primero.";
+			error = ForjaLang::T("Pulsa Triángulo para leer el disco primero.");
 			return false;
 		}
 		if (s_thread_live)
@@ -260,7 +265,7 @@ namespace PS4DiscCopy
 		struct stat existing{};
 		if (stat(path.c_str(), &existing) == 0 && static_cast<uint64_t>(existing.st_size) == static_cast<uint64_t>(info.sectors) * SectorBytes)
 		{
-			Finish(State::Done, "Ya estaba copiado: " + title + ".");
+			Finish(State::Done, ForjaLang::F(ForjaLang::TF("Ya estaba copiado: %s."), title.c_str()));
 			return true;
 		}
 		mkdir(RomsDirectory, 0777);
@@ -277,7 +282,7 @@ namespace PS4DiscCopy
 				s_reader.reset();
 			}
 			s_state.store(State::Failed, std::memory_order_release);
-			error = "No se pudo iniciar la copia.";
+			error = ForjaLang::T("No se pudo iniciar la copia.");
 			return false;
 		}
 		s_thread_live = true;
@@ -329,15 +334,15 @@ namespace PS4DiscCopy
 			seconds = std::chrono::duration<double>(Clock::now() - s_started).count();
 		}
 		const double mbs = seconds > 1.0 ? done * double(SectorBytes) / 1e6 / seconds : 0.0;
-		char text[256];
+		char text[512];
 		if (mbs > 0.05)
 		{
 			const double left_min = (total - done) * double(SectorBytes) / 1e6 / mbs / 60.0;
-			std::snprintf(text, sizeof(text), "Copiando %s: %u %% · %.1f MB/s · faltan %.0f min · □ para cancelar", title.c_str(),
+			std::snprintf(text, sizeof(text), ForjaLang::TF("Copiando %s: %u %% · %.1f MB/s · faltan %.0f min · □ para cancelar"), title.c_str(),
 				static_cast<unsigned>(static_cast<uint64_t>(done) * 100 / total), mbs, std::max(left_min, 1.0));
 		}
 		else
-			std::snprintf(text, sizeof(text), "Copiando %s: empezando... · □ para cancelar", title.c_str());
+			std::snprintf(text, sizeof(text), ForjaLang::TF("Copiando %s: empezando... · □ para cancelar"), title.c_str());
 		return text;
 	}
 } // namespace PS4DiscCopy

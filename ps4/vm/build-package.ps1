@@ -106,11 +106,29 @@ $rulesFile = Join-Path $PSScriptRoot 'assets/huellas.ini'
 if (-not (Test-Path -LiteralPath $rulesFile)) { throw 'Forja SX2 draw fingerprints (assets/huellas.ini) are missing.' }
 Copy-Item -LiteralPath $rulesFile -Destination (Join-Path $packageDir 'resources/huellas.ini')
 $packageFiles += 'resources/huellas.ini'
+# Forja SX2 (2026-10-19): the 12 languages besides Spanish (resources/lang/<code>.lng, ps4/vm/ForjaLang.h) and the fonts with
+# their letters (Cyrillic, Arabic, Chinese, Japanese, Korean; UIVM.cpp merges them into Gontserrat), from assets/fonts/fuentes.py.
+$langRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'assets/lang'))
+$langFiles = @(Get-ChildItem -LiteralPath $langRoot -Filter '*.lng' -File)
+if ($langFiles.Count -lt 12) { throw 'Forja SX2 language files (assets/lang/*.lng) are missing.' }
+New-Item -ItemType Directory -Force -Path (Join-Path $packageDir 'resources/lang') | Out-Null
+foreach ($langFile in $langFiles) {
+  $relative = 'resources/lang/' + $langFile.Name
+  Copy-Item -LiteralPath $langFile.FullName -Destination (Join-Path $packageDir $relative)
+  $packageFiles += $relative
+}
+$languageFonts = @('Forja-Cirilico.ttf', 'NotoSansArabic-Forja.ttf', 'NotoSansSC-Forja.ttf', 'NotoSansJP-Forja.ttf', 'NotoSansKR-Forja.ttf')
+foreach ($fontName in $languageFonts) {
+  $fontFile = Join-Path $PSScriptRoot "assets/fonts/$fontName"
+  if (-not (Test-Path -LiteralPath $fontFile)) { throw "Forja SX2 language font assets/fonts/$fontName is missing." }
+  Copy-Item -LiteralPath $fontFile -Destination (Join-Path $packageDir "resources/fonts/$fontName")
+  $packageFiles += "resources/fonts/$fontName"
+}
 # (AI-assisted) License notices for the bundled output resampler.
 New-Item -ItemType Directory -Force -Path (Join-Path $packageDir 'resources/licenses') | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'assets/licenses/speex-resampler.txt') -Destination (Join-Path $packageDir 'resources/licenses/speex-resampler.txt')
 $packageFiles += 'resources/licenses/speex-resampler.txt'
-foreach ($license in @('libchdr.txt', 'lzma.txt')) {
+foreach ($license in @('libchdr.txt', 'lzma.txt', 'fuentes-montserrat-OFL.txt', 'fuentes-noto-OFL.txt')) {
   Copy-Item -LiteralPath (Join-Path $PSScriptRoot "assets/licenses/$license") -Destination (Join-Path $packageDir "resources/licenses/$license")
   $packageFiles += "resources/licenses/$license"
 }

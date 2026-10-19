@@ -10,6 +10,7 @@
 #include "ReleaseCheck.h"
 #include "CoverDownload.h"
 #include "Sha256.h"
+#include "ForjaLang.h"
 #include <atomic>
 #include <cerrno>
 #include <cstdio>
@@ -269,7 +270,7 @@ namespace
 		const int latest = s_latest_build.load(std::memory_order_relaxed);
 		const auto fail = [&](const std::string& why) {
 			ProbeLog("Updater: build %d failed: %s\n", latest, why.c_str());
-			SetMessage("No se pudo bajar la " + std::to_string(latest) + ": " + why + " · OPTIONS reintenta");
+			SetMessage(ForjaLang::F(ForjaLang::TF("No se pudo bajar la %d: %s · OPTIONS reintenta"), latest, why.c_str()));
 			s_state.store(PS4Release::DownloadState::Failed, std::memory_order_release);
 			return nullptr;
 		};
@@ -283,12 +284,12 @@ namespace
 					return sums.size() < 64 * 1024;
 				},
 				total, 60, error))
-			return fail(sums_url.empty() ? "la versión no trae SHA256SUMS.txt" : "SHA256SUMS.txt, " + error);
+			return fail(sums_url.empty() ? std::string(ForjaLang::T("la versión no trae SHA256SUMS.txt")) : "SHA256SUMS.txt, " + error);
 		if (sums.compare(0, 3, "\xEF\xBB\xBF") == 0)
 			sums.erase(0, 3); // a UTF-8 BOM, if the file was written with one
 		const std::string expected = ExpectedHash(sums, package_name);
 		if (expected.empty())
-			return fail("SHA256SUMS.txt no nombra el paquete");
+			return fail(ForjaLang::T("SHA256SUMS.txt no nombra el paquete"));
 
 		mkdir(PackageDirectory, 0777);
 		const std::string file_name = PackageFileName(latest, version);
@@ -296,7 +297,10 @@ namespace
 		const std::string part_path = final_path + ".part";
 		std::FILE* file = std::fopen(part_path.c_str(), "wb");
 		if (!file)
-			return fail("no se pudo escribir en /data/pkg (" + std::to_string(errno) + ")");
+		{
+			const int error_number = errno;
+			return fail(ForjaLang::F(ForjaLang::TF("no se pudo escribir en /data/pkg (%d)"), error_number));
+		}
 		Sha256 sha;
 		size_t received = 0;
 		bool write_failed = false;
@@ -318,19 +322,19 @@ namespace
 		if (!ok || !closed)
 		{
 			unlink(part_path.c_str());
-			return fail(write_failed || !closed ? "no hay espacio o falló la escritura" : error);
+			return fail(write_failed || !closed ? std::string(ForjaLang::T("no hay espacio o falló la escritura")) : error);
 		}
 		const std::string actual = sha.FinishHex();
 		if (actual != expected)
 		{
 			unlink(part_path.c_str());
 			ProbeLog("Updater: sha256 %s, expected %s\n", actual.c_str(), expected.c_str());
-			return fail("la verificación no coincide (se borró)");
+			return fail(ForjaLang::T("la verificación no coincide (se borró)"));
 		}
 		if (std::rename(part_path.c_str(), final_path.c_str()) != 0)
 		{
 			unlink(part_path.c_str());
-			return fail("no se pudo guardar el paquete");
+			return fail(ForjaLang::T("no se pudo guardar el paquete"));
 		}
 		// Older packages the updater left behind go, so /data/pkg does not fill up with them.
 		if (DIR* dir = opendir(PackageDirectory))
@@ -348,7 +352,7 @@ namespace
 		}
 		ProbeLog("Updater: build %d ready at %s (%zu bytes, sha256 %s)\n", latest, final_path.c_str(), received, actual.c_str());
 		s_progress.store(100, std::memory_order_relaxed);
-		SetMessage(PS4Release::LatestName() + " lista en /data/pkg · instálala con GoldHEN");
+		SetMessage(ForjaLang::F(ForjaLang::TF("%s lista en /data/pkg · instálala con GoldHEN"), PS4Release::LatestName().c_str()));
 		s_state.store(PS4Release::DownloadState::Ready, std::memory_order_release);
 		return nullptr;
 	}
@@ -385,8 +389,8 @@ namespace PS4Release
 		const int build = LatestBuild();
 		std::lock_guard lock(s_mutex);
 		if (s_latest_version.empty())
-			return "Compilación " + std::to_string(build);
-		return "Versión " + s_latest_version + " (" + std::to_string(build) + ")";
+			return ForjaLang::F(ForjaLang::TF("Compilación %d"), build);
+		return ForjaLang::F(ForjaLang::TF("Versión %s (%d)"), s_latest_version.c_str(), build);
 	}
 
 	void StartDownload()
@@ -402,7 +406,7 @@ namespace PS4Release
 		const int result = pthread_create(&thread, nullptr, Download, nullptr);
 		if (result != 0)
 		{
-			SetMessage("No se pudo iniciar la descarga.");
+			SetMessage(ForjaLang::T("No se pudo iniciar la descarga."));
 			s_state.store(DownloadState::Failed, std::memory_order_release);
 			return;
 		}
@@ -420,7 +424,7 @@ namespace PS4Release
 		switch (State())
 		{
 			case DownloadState::Downloading:
-				return "Bajando " + LatestName() + ": " + std::to_string(s_progress.load(std::memory_order_relaxed)) + " %";
+				return ForjaLang::F(ForjaLang::TF("Bajando %s: %u %%"), LatestName().c_str(), s_progress.load(std::memory_order_relaxed));
 			case DownloadState::Ready:
 			case DownloadState::Failed:
 			{
@@ -428,7 +432,7 @@ namespace PS4Release
 				return s_message;
 			}
 			default:
-				return HasUpdate() ? LatestName() + " disponible · OPTIONS para bajarla" : std::string();
+				return HasUpdate() ? ForjaLang::F(ForjaLang::TF("%s disponible · OPTIONS para bajarla"), LatestName().c_str()) : std::string();
 		}
 	}
 } // namespace PS4Release

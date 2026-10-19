@@ -1,0 +1,1037 @@
+# Forja SX2 — Русский (ru). Cada texto: "es:" el español del código, "tr:" su traducción. \n es otra línea.
+# Each text: "es:" the Spanish in the code, "tr:" its translation. \n is a new line. Check: python idiomas.py
+
+es: No se pudo iniciar la detección del disco.
+tr: Не удалось запустить поиск диска.
+
+es: Idioma
+tr: Язык
+
+es: Preguntar el idioma al iniciar
+tr: Спрашивать язык при запуске
+
+es: Velocidad del CPU de la PS2
+tr: Скорость ЦП PS2
+
+es: CPU automático
+tr: Автоматический ЦП
+
+es: Resolución interna
+tr: Внутреннее разрешение
+
+es: Relación de aspecto
+tr: Соотношение сторон
+
+es: Contador de FPS al jugar
+tr: Счётчик FPS в игре
+
+es: Sensibilidad de la palanca
+tr: Чувствительность стика
+
+es: Cargas rápidas del disco
+tr: Быстрая загрузка с диска
+
+es: Saltar el logo de la PS2
+tr: Пропускать логотип PS2
+
+es: Lecturas de la gráfica (readbacks)
+tr: Чтение из видеокарты (readbacks)
+
+es: Modo video automático
+tr: Автоматический режим видео
+
+es: Generación de cuadros (30 a 60 FPS)
+tr: Генерация кадров (с 30 до 60 FPS)
+
+es: Botón del menú del emulador
+tr: Кнопка меню эмулятора
+
+es: El idioma de todo el emulador. X abre la lista de idiomas
+tr: Язык всего эмулятора. X открывает список языков
+
+es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
+tr: Да: список языков появляется при каждом запуске Forja SX2
+
+es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
+tr: Каждая игра начинает с этого. Если игра замедлена, увеличьте в L3+R3 (сохранится для этой игры)
+
+es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
+tr: Если вы подняли ЦП игры и она тормозит, он сам снижается в тяжёлых сценах, до этого предела
+
+es: 1x es la de la PS2. En PS4 Pro aguanta 2x-4x en juegos ligeros
+tr: 1x — как у PS2. PS4 Pro тянет 2x-4x в лёгких играх
+
+es: Auto respeta lo que pide el juego
+tr: «Авто» следует тому, что просит игра
+
+es: Muestra FPS y velocidad arriba a la derecha (se cambia también en L3+R3)
+tr: Показывает FPS и скорость справа вверху (меняется и в L3+R3)
+
+es: Qué tanto hay que empujar la palanca para llegar al tope. 133 % es como el PCSX2 de PC
+tr: Насколько нужно отклонить стик до упора. 133 % — как в PCSX2 на ПК
+
+es: Acorta las cargas. Algunos juegos se cuelgan con esto: si pasa, apágalo
+tr: Сокращает загрузки. Некоторые игры с этим зависают: тогда выключите
+
+es: Arranca directo el juego, sin la animación de la PS2
+tr: Сразу запускает игру, без заставки PS2
+
+es: Si el juego se traba sin que el CPU esté al 100 %: prueba Sin esperar. Desactivadas puede romper efectos
+tr: Если игра дёргается, а ЦП не на 100 %: попробуйте «Без ожидания». «Выкл.» может ломать эффекты
+
+es: En los videos del juego busca el CPU de la PS2 que da más cuadros (31 a 100 %) y lo devuelve al terminar
+tr: Во время роликов ищет скорость ЦП PS2 с наибольшим числом кадров (31–100 %) и потом возвращает её
+
+es: EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso
+tr: ЭКСПЕРИМЕНТ: игра со стабильными 30 FPS показывается в 60 (видеокарта дорисовывает кадр). +1 кадр задержки
+
+es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
+tr: Сенсорная панель: нажмите её ПРАВУЮ половину. Левая остаётся SELECT PS2
+
+es: 100 % (PS2 real)
+tr: 100 % (как PS2)
+
+es: No
+tr: Нет
+
+es: Hasta 75 %
+tr: До 75 %
+
+es: Hasta 60 %
+tr: До 60 %
+
+es: Hasta 50 %
+tr: До 50 %
+
+es: Hasta 36 %
+tr: До 36 %
+
+es: Hasta 31 %
+tr: До 31 %
+
+es: Hasta 27 %
+tr: До 27 %
+
+es: Estirar
+tr: Растянуть
+
+es: Auto
+tr: Авто
+
+es: Sí
+tr: Да
+
+es: %dx (nativa)
+tr: %dx (родное)
+
+es: Precisas
+tr: Точные
+
+es: Sin esperar (más rápido)
+tr: Без ожидания (быстрее)
+
+es: Desactivadas
+tr: Выкл.
+
+es: Panel táctil (derecha)
+tr: Сенсорная панель (справа)
+
+es: Los dos
+tr: Оба
+
+es: Elige el idioma
+tr: Выберите язык
+
+es: También se cambia en Ajustes, donde puedes apagar esta pregunta.
+tr: Его можно сменить и в Настройках, там же можно отключить этот вопрос.
+
+es: Aceptar
+tr: Принять
+
+es: Atrás
+tr: Назад
+
+es: No se detectó ningún disco
+tr: Диск не обнаружен
+
+es: No hay juegos recientes
+tr: Нет недавних игр
+
+es: No hay juegos favoritos
+tr: Нет избранных игр
+
+es: Ajustes de Forja SX2 (para todos los juegos)
+tr: Настройки Forja SX2 (для всех игр)
+
+es: No se encontraron juegos
+tr: Игры не найдены
+
+es: Cargando...
+tr: Загрузка...
+
+es: No se pudieron guardar los ajustes.
+tr: Не удалось сохранить настройки.
+
+es: Guardado. Se aplica al iniciar el próximo juego.
+tr: Сохранено. Применится при запуске следующей игры.
+
+es: Copiando el disco
+tr: Копирование диска
+
+es: Revisando el DVD...
+tr: Проверка DVD...
+
+es: Falló la detección del disco
+tr: Не удалось обнаружить диск
+
+es: Leyendo la unidad. Puedes seguir navegando.
+tr: Чтение привода. Можно продолжать просмотр.
+
+es: Idioma guardado.
+tr: Язык сохранён.
+
+es: No se encontró el archivo de ese idioma: queda el español.
+tr: Файл этого языка не найден: остаётся испанский.
+
+es:  Portada no disponible. Triángulo para reintentar.
+tr:  Обложка недоступна. Треугольник — повторить.
+
+es: DVD de PS2 - 
+tr: DVD PS2 - 
+
+es:  | DVD doble capa
+tr:  | Двухслойный DVD
+
+es:  | X: jugar desde el disco · □: copiarlo a la PS4
+tr:  | X: играть с диска · □: скопировать на PS4
+
+es:  | Ya está copiado en la PS4 · X: jugar la copia
+tr:  | Уже скопирован на PS4 · X: играть копию
+
+es: DVD no disponible
+tr: DVD недоступен
+
+es:  Descargando portada...
+tr:  Загрузка обложки...
+
+es: Cancelando la copia...
+tr: Отмена копирования...
+
+es: Este disco ya está copiado en la PS4. X para jugar la copia.
+tr: Этот диск уже скопирован на PS4. X — играть копию.
+
+es: Pulsa Triángulo para leer el disco y después □ para copiarlo.
+tr: Нажмите Треугольник, чтобы прочитать диск, затем □, чтобы скопировать.
+
+es: Quitado de favoritos.
+tr: Удалено из избранного.
+
+es: Agregado a favoritos.
+tr: Добавлено в избранное.
+
+es: No se pudieron guardar los favoritos.
+tr: Не удалось сохранить избранное.
+
+es: Hay una copia del disco en curso: espera a que termine o cancélala con □ en Disco.
+tr: Идёт копирование диска: дождитесь конца или отмените его кнопкой □ в разделе «Диск».
+
+es: El soporte de disco físico está en preparación.
+tr: Поддержка физических дисков готовится.
+
+es: Aquí irán las opciones de ajustes.
+tr: Здесь будут параметры настроек.
+
+es: No hay juegos en esta vista.
+tr: В этом разделе нет игр.
+
+es: Archivo no disponible. Pulsa Triángulo para actualizar.
+tr: Файл недоступен. Нажмите Треугольник, чтобы обновить.
+
+es: No se puede abrir el juego: 
+tr: Не удаётся открыть игру: 
+
+es: Iniciando...
+tr: Запуск...
+
+es: Conecta un control para elegir un juego.
+tr: Подключите геймпад, чтобы выбрать игру.
+
+es: Terminando de bajar la portada...
+tr: Завершается загрузка обложки...
+
+es: Terminando de detectar el disco...
+tr: Завершается поиск диска...
+
+es: Preparando el emulador...
+tr: Подготовка эмулятора...
+
+es: Menú del emulador
+tr: Меню эмулятора
+
+es: JUEGO EN PAUSA
+tr: ИГРА НА ПАУЗЕ
+
+es: Perfil de este juego:  de fábrica %s  ·  tuyo %s
+tr: Профиль этой игры:  заводской %s  ·  ваш %s
+
+es: sí
+tr: да
+
+es: no
+tr: нет
+
+es: global
+tr: общий
+
+es: perfil de fábrica
+tr: заводской профиль
+
+es: tu perfil
+tr: ваш профиль
+
+es: Resolución interna:  < %ux >  (nativa)
+tr: Внутреннее разрешение:  < %ux >  (родное)
+
+es: Resolución interna:  < %ux >
+tr: Внутреннее разрешение:  < %ux >
+
+es: Relación de aspecto:  < %s >
+tr: Соотношение сторон:  < %s >
+
+es: Contador de rendimiento:  < %s >
+tr: Счётчик производительности:  < %s >
+
+es: 27 % (exp.)
+tr: 27 % (эксп.)
+
+es: 31 % (exp.)
+tr: 31 % (эксп.)
+
+es: 36 % (exp.)
+tr: 36 % (эксп.)
+
+es: Velocidad del CPU de la PS2:  < %s >
+tr: Скорость ЦП PS2:  < %s >
+
+es: Modo video:  < %s >
+tr: Режим видео:  < %s >
+
+es: %s Para este juego  ·  ahora: %s
+tr: %s Для этой игры  ·  сейчас: %s
+
+es: Busca el CPU de la PS2 que da más cuadros en cada video (31 a 100 %).
+tr: Ищет скорость ЦП PS2 с наибольшим числом кадров в каждом ролике (31–100 %).
+
+es: CPU de la PS2 durante las cinemáticas.
+tr: Скорость ЦП PS2 во время роликов.
+
+es: Suave
+tr: Мягкая
+
+es: Nítida
+tr: Чёткая
+
+es: CAS fuerte
+tr: Сильный CAS
+
+es: Píxeles
+tr: Пиксели
+
+es: Como hasta ahora: la imagen escalada y suavizada. Se guarda para este juego
+tr: Как раньше: изображение масштабировано и сглажено. Сохраняется для этой игры
+
+es: Bilineal nítido: bordes más definidos, sin costo. Se guarda para este juego
+tr: Чёткий билинейный: более резкие края, без затрат. Сохраняется для этой игры
+
+es: AMD CAS (de la familia del FSR): realza el detalle al agrandar la imagen. Cuesta muy poco
+tr: AMD CAS (из семейства FSR): подчёркивает детали при увеличении. Почти ничего не стоит
+
+es: AMD CAS al máximo: aún más detalle; puede verse algo granulado
+tr: AMD CAS на максимуме: ещё больше деталей; может выглядеть зернисто
+
+es: Sin filtro: cada píxel tal cual, estilo retro. Se guarda para este juego
+tr: Без фильтра: каждый пиксель как есть, в стиле ретро. Сохраняется для этой игры
+
+es: Nitidez:  < %s >
+tr: Резкость:  < %s >
+
+es: Fluida
+tr: Плавная
+
+es: Generación de cuadros:  < %s >
+tr: Генерация кадров:  < %s >
+
+es: Rellena cada refresco que la tele repetiría (juegos PAL, cuadros desparejos).
+tr: Заполняет каждое обновление, которое ТВ повторил бы (игры PAL, неровные кадры).
+
+es: Muestra a 60 un juego estable a 30 (experimental).
+tr: Показывает игру со стабильными 30 в 60 (эксперимент).
+
+es: 1 de 2
+tr: 1 из 2
+
+es: Saltar cuadros (GS):  < %s >
+tr: Пропуск кадров (GS):  < %s >
+
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
+tr: Если GS не успевает, рисует 1 кадр из 2: игра идёт со своей скоростью (эксперимент)  ·  сейчас: %s  ·  %s
+
+es: saltando
+tr: пропускает
+
+es: dibuja todos
+tr: рисует все
+
+es: Global
+tr: Общий
+
+es: Normal
+tr: Обычный
+
+es: Plan B
+tr: План Б
+
+es: Propio
+tr: Свой
+
+es: Núcleos de la CPU:  < %s >
+tr: Ядра процессора:  < %s >
+
+es: Reparto de EE, VU1 y GS (Plan B: EE 1, VU1 2, GS 3). Para este juego  ·  ahora: %s
+tr: Распределение EE, VU1 и GS (План Б: EE 1, VU1 2, GS 3). Для этой игры  ·  сейчас: %s
+
+es: Hasta 36 % (exp.)
+tr: До 36 % (эксп.)
+
+es: Hasta 31 % (exp.)
+tr: До 31 % (эксп.)
+
+es: Hasta 27 % (exp.)
+tr: До 27 % (эксп.)
+
+es: CPU automático:  < %s >
+tr: Автоматический ЦП:  < %s >
+
+es: Baja el CPU de la PS2 solo en escenas pesadas: el juego va a su velocidad, con menos cuadros
+tr: Снижает ЦП PS2 только в тяжёлых сценах: игра идёт со своей скоростью, но с меньшим числом кадров
+
+es: Solo en escenas pesadas, para este juego  ·  ahora: %s  ·  %s
+tr: Только в тяжёлых сценах, для этой игры  ·  сейчас: %s  ·  %s
+
+es: sin bajar
+tr: не снижен
+
+es: Guardar estado:  < Ranura %u >
+tr: Сохранить состояние:  < Слот %u >
+
+es: Cargar estado:  < Ranura %u >
+tr: Загрузить состояние:  < Слот %u >
+
+es: Guardado en la ranura %u.
+tr: Сохранено в слот %u.
+
+es: No se pudo guardar en la ranura %u.
+tr: Не удалось сохранить в слот %u.
+
+es: X: guarda aquí (reemplaza el del %s)
+tr: X: сохранить сюда (заменит сохранение от %s)
+
+es: X: guarda aquí (reemplaza lo que hay en esta ranura)
+tr: X: сохранить сюда (заменит то, что в слоте)
+
+es: X: guarda la partida en esta ranura (vacía)
+tr: X: сохранить игру в этот слот (пустой)
+
+es: La ranura %u está vacía.
+tr: Слот %u пуст.
+
+es: No se pudo cargar la ranura %u.
+tr: Не удалось загрузить слот %u.
+
+es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
+tr: Сохранено %s  ·  X: вернуться в тот момент и играть дальше
+
+es: X: vuelve a ese momento y sigue jugando
+tr: X: вернуться в тот момент и играть дальше
+
+es: Ranura vacía
+tr: Пустой слот
+
+es: Volver al juego
+tr: Вернуться в игру
+
+es: Reiniciar juego
+tr: Перезапустить игру
+
+es: Restablecer ajustes de este juego
+tr: Сбросить настройки этой игры
+
+es: Volver a la biblioteca
+tr: Вернуться в библиотеку
+
+es: Salir de la aplicación
+tr: Выйти из приложения
+
+es: Seguir jugando desde donde quedó
+tr: Продолжить игру с того же места
+
+es: X: empieza el juego de nuevo sin cerrarlo (lo no guardado se pierde)
+tr: X: начать игру заново, не закрывая (несохранённое пропадёт)
+
+es: Más calidad de imagen (consume más). Se guarda para este juego
+tr: Лучше качество изображения (больше нагрузка). Сохраняется для этой игры
+
+es: Forma de la imagen en pantalla. Se guarda para este juego
+tr: Форма изображения на экране. Сохраняется для этой игры
+
+es: Mostrar u ocultar FPS, velocidad y tiempos
+tr: Показать или скрыть FPS, скорость и время
+
+es: Menos % = más FPS en la PS4 (el juego puede perder cuadros). Se guarda para este juego
+tr: Меньше % = больше FPS на PS4 (игра может терять кадры). Сохраняется для этой игры
+
+es: X: borra tus cambios de este juego (queda copia .bak). Siguen el perfil de fábrica y los globales
+tr: X: удаляет ваши изменения для этой игры (остаётся копия .bak). Заводской профиль и общие остаются
+
+es: Este juego no tiene cambios tuyos
+tr: В этой игре нет ваших изменений
+
+es: Cerrar el juego y volver a la biblioteca
+tr: Закрыть игру и вернуться в библиотеку
+
+es: Cerrar el juego y salir de Forja SX2
+tr: Закрыть игру и выйти из Forja SX2
+
+es: Partida
+tr: Игра
+
+es: Imagen
+tr: Изображение
+
+es: Rendimiento
+tr: Производительность
+
+es: Extras
+tr: Дополнительно
+
+es: No tocar
+tr: Не трогать
+
+es: Sistema
+tr: Система
+
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: Эксперименты для замеров и улучшения игр (в тесте). Если не знаете, что делает пункт, не меняйте его.
+
+es: AJUSTAR
+tr: НАСТРОИТЬ
+
+es: ELEGIR
+tr: ВЫБРАТЬ
+
+es: ELEGIR  ·  X  ·  CUADRADO
+tr: ВЫБРАТЬ  ·  X  ·  КВАДРАТ
+
+es: ELEGIR  ·  X
+tr: ВЫБРАТЬ  ·  X
+
+es: CAMBIAR
+tr: СМЕНИТЬ
+
+es: X  ·  RANURA
+tr: X  ·  СЛОТ
+
+es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
+tr: Разрешение: 1x-%ux (3x и выше — эксперимент, только для PS4 Pro).   Изменения в «Изображении» и «Производительности» сохраняются только для этой игры.
+
+es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1: сменить вкладку     Вверх/Вниз: выбрать     Влево/Вправо: изменить значение или слот
+
+es: Volver
+tr: Назад
+
+es: EMULADOR DE PLAYSTATION 2
+tr: ЭМУЛЯТОР PLAYSTATION 2
+
+es: Biblioteca
+tr: Библиотека
+
+es: Disco
+tr: Диск
+
+es: Recientes
+tr: Недавние
+
+es: Favoritos
+tr: Избранное
+
+es: Ajustes
+tr: Настройки
+
+es: Versión %d.%02d (%d)
+tr: Версия %d.%02d (%d)
+
+es: Versión %d.%02d (local)
+tr: Версия %d.%02d (локальная)
+
+es: DVD de PS2
+tr: DVD PS2
+
+es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
+tr: Диск копируется на PS4. Можно оставаться в библиотеке.
+
+es: □ cancela la copia. No saques el disco hasta que termine.
+tr: □ отменяет копирование. Не вынимайте диск до конца.
+
+es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
+tr: Диск обнаружен. X — играть · □ — скопировать на PS4.
+
+es: Mete un DVD y pulsa Triángulo para actualizar.
+tr: Вставьте DVD и нажмите Треугольник, чтобы обновить.
+
+es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
+tr: После копирования диск открывает свою копию: быстрее и без шума привода.
+
+es: Cambiar
+tr: Изменить
+
+es: Izq./Der.: ajustar   Arriba/Abajo: elegir
+tr: Влево/Вправо: настроить   Вверх/Вниз: выбрать
+
+es: Menú lateral
+tr: Боковое меню
+
+es: Jugar
+tr: Играть
+
+es: Quitar favorito
+tr: Убрать из избранного
+
+es: Agregar favorito
+tr: В избранное
+
+es: Revisar disco
+tr: Проверить диск
+
+es: Actualizar biblioteca
+tr: Обновить библиотеку
+
+es: Salir
+tr: Выход
+
+es: ¿Cerrar Forja SX2?
+tr: Закрыть Forja SX2?
+
+es: ¿Seguro que quieres salir de la aplicación?
+tr: Вы уверены, что хотите выйти из приложения?
+
+es: Salir de Forja SX2
+tr: Выйти из Forja SX2
+
+es: Cancelar
+tr: Отмена
+
+es: %s disponible
+tr: Доступна %s
+
+es: Se baja a /data/pkg y se verifica. Después cierra Forja e instálala con GoldHEN.
+tr: Загружается в /data/pkg и проверяется. Затем закройте Forja и установите через GoldHEN.
+
+es: Tus juegos, ajustes y perfiles se quedan como están.
+tr: Ваши игры, настройки и профили останутся как есть.
+
+es: Descargar
+tr: Скачать
+
+es: Ahora no
+tr: Не сейчас
+
+es: Parches:  ninguno para este juego
+tr: Патчи:  для этой игры нет
+
+es: Al empezar un juego se bajan los de la comunidad de PCSX2 (con internet). Los tuyos van en /data/ForjaSX2/patches
+tr: При запуске игры скачиваются патчи сообщества PCSX2 (нужен интернет). Свои кладите в /data/ForjaSX2/patches
+
+es: Parche %u de %zu:  < %s >  %s
+tr: Патч %u из %zu:  < %s >  %s
+
+es: Sin descripción
+tr: Без описания
+
+es:   ·  X: quitar (algunos piden reiniciar el juego)
+tr:   ·  X: убрать (некоторым нужен перезапуск игры)
+
+es:   ·  X: poner
+tr:   ·  X: включить
+
+es:   ·  aquí: %.0f %% del GS
+tr:   ·  здесь: %.0f %% GS
+
+es: Pon tus trucos en /data/ForjaSX2/cheats/%s_%08X.pnach (escritos como un parche) y vuelve a abrir este menú
+tr: Положите читы в /data/ForjaSX2/cheats/%s_%08X.pnach (в формате патча) и снова откройте это меню
+
+es: Trucos:  ninguno para este juego
+tr: Читы:  для этой игры нет
+
+es: Truco %u de %zu:  < %s >  %s
+tr: Чит %u из %zu:  < %s >  %s
+
+es:   ·  X: quitar
+tr:   ·  X: убрать
+
+es: Avance rápido:  < Sí >
+tr: Ускорение:  < Да >
+
+es: Avance rápido:  < No >
+tr: Ускорение:  < Нет >
+
+es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
+tr: X: игра идёт так быстро, как тянет PS4 (загрузки, диалоги). Не сохраняется
+
+es: Filtro VU1:  sin datos todavía
+tr: Фильтр VU1:  данных пока нет
+
+es: Juega unos segundos: el medidor del VU1 lista sus programas más costosos y aquí los apagas uno por uno (experimental)
+tr: Поиграйте несколько секунд: счётчик VU1 покажет самые затратные программы, а здесь их можно отключать по одной (эксперимент)
+
+es: Filtro VU1 %u de %zu:  < programa %04x · %.1f %% >  %s
+tr: Фильтр VU1 %u из %zu:  < программа %04x · %.1f %% >  %s
+
+es: QUITADO
+tr: УБРАН
+
+es: Activo
+tr: Активен
+
+es: No se dibuja lo que hace este programa. X lo devuelve; Cuadrado devuelve todos. Se guarda para este juego
+tr: То, что делает эта программа, не рисуется. X возвращает её; Квадрат — все. Сохраняется для этой игры
+
+es: X lo apaga: mira qué deja de verse y cuánto sube la velocidad (experimental). Se guarda para este juego
+tr: X отключает её: смотрите, что пропадёт и насколько вырастет скорость (эксперимент). Сохраняется для этой игры
+
+es: puntos
+tr: точки
+
+es: líneas
+tr: линии
+
+es: triángulos
+tr: треугольники
+
+es: sprites
+tr: спрайты
+
+es:  transparentes
+tr:  (прозрачные)
+
+es: En la pantalla
+tr: На экране
+
+es: En %05x
+tr: В %05x
+
+es: %s sin textura, %s%s
+tr: %s без текстуры, %s%s
+
+es: 16 colores
+tr: 16 цветов
+
+es: 256 colores
+tr: 256 цветов
+
+es: profundidad
+tr: глубина
+
+es: color
+tr: цвет
+
+es: %s con la textura %05x (%ux%u, %s), %s%s
+tr: %s с текстурой %05x (%ux%u, %s), %s%s
+
+es: Filtro GS:  sin datos todavía
+tr: Фильтр GS:  данных пока нет
+
+es: Juega unos segundos: el GS lista sus grupos de dibujos más costosos y aquí los apagas uno por uno (experimental)
+tr: Поиграйте несколько секунд: GS покажет самые затратные группы отрисовки, а здесь их можно отключать по одной (эксперимент)
+
+es: Filtro GS %u de %zu:  < grupo quitado >  QUITADO
+tr: Фильтр GS %u из %zu:  < группа убрана >  УБРАН
+
+es: Filtro GS %u de %zu:  < era el %.1f %% del GS · %u dibujos/s >  QUITADO
+tr: Фильтр GS %u из %zu:  < было %.1f %% GS · %u отрисовок/с >  УБРАН
+
+es: Filtro GS %u de %zu:  < %.1f %% del GS · %u dibujos/s >  Activo
+tr: Фильтр GS %u из %zu:  < %.1f %% GS · %u отрисовок/с >  Активен
+
+es: : no se dibuja. X lo devuelve; Cuadrado devuelve todos
+tr: : не рисуется. X возвращает; Квадрат — все
+
+es: . X lo apaga: mira qué deja de verse
+tr: . X отключает: смотрите, что пропадёт
+
+es: Sí, precargadas
+tr: Да, с предзагрузкой
+
+es: Texturas HD:  < %s >
+tr: HD-текстуры:  < %s >
+
+es: Pack encontrado (textures/%s/replacements). Precargar evita tirones pero usa más memoria
+tr: Пак найден (textures/%s/replacements). Предзагрузка убирает подтормаживания, но тратит больше памяти
+
+es: No hay pack: cópialo por FTP a /data/ForjaSX2/textures/%s/replacements
+tr: Пака нет: скопируйте его по FTP в /data/ForjaSX2/textures/%s/replacements
+
+es: Ajustes recomendados:  buscando en GitHub...
+tr: Рекомендуемые настройки:  поиск на GitHub...
+
+es: Ajustes recomendados:  del centro (GitHub), %s
+tr: Рекомендуемые настройки:  из центра (GitHub), %s
+
+es: Ajustes recomendados:  del PKG
+tr: Рекомендуемые настройки:  из PKG
+
+es: Ajustes recomendados:  ninguno para este juego
+tr: Рекомендуемые настройки:  для этой игры нет
+
+es: X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos
+tr: X: снова загрузить с GitHub (нужен интернет). Действуют со следующего запуска. Система > Сбросить возвращает к ним
+
+es: Cambiar disco:  este juego tiene un solo disco
+tr: Сменить диск:  у этой игры один диск
+
+es: Para juegos de varios discos: ponlos en roms/ como "Juego (Disco 1).iso", "Juego (Disco 2).iso"...
+tr: Для игр на нескольких дисках: положите их в roms/ как "Игра (Disc 1).iso", "Игра (Disc 2).iso"...
+
+es: Cambiar disco:  < Disco %d de %zu >%s
+tr: Сменить диск:  < Диск %d из %zu >%s
+
+es:   (puesto)
+tr:   (вставлен)
+
+es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
+tr: X: переключает на выбранный диск, как открыть лоток PS2 и вставить другой. Делайте это, когда игра просит
+
+es: %d/%m a las %H:%M
+tr: %d.%m в %H:%M
+
+es: Preparando la BIOS de la PS2...
+tr: Подготовка BIOS PS2...
+
+es: Abriendo el DVD...
+tr: Открытие DVD...
+
+es: Abriendo la imagen del juego...
+tr: Открытие образа игры...
+
+es: Iniciando la máquina virtual...
+tr: Запуск виртуальной машины...
+
+es: Encendiendo la PlayStation 2...
+tr: Включение PlayStation 2...
+
+es: Listo
+tr: Готово
+
+es: Juego %.0f / Pantalla %.0f FPS (FG)
+tr: Игра %.0f / Экран %.0f FPS (FG)
+
+es: Juego ~%.1f FPS
+tr: Игра ~%.1f FPS
+
+es: FPS del juego: sin datos
+tr: FPS игры: нет данных
+
+es: Velocidad %.0f%%
+tr: Скорость %.0f%%
+
+es: No se pudo bajar la %d: %s · OPTIONS reintenta
+tr: Не удалось скачать %d: %s · OPTIONS — повторить
+
+es: la versión no trae SHA256SUMS.txt
+tr: в версии нет SHA256SUMS.txt
+
+es: SHA256SUMS.txt no nombra el paquete
+tr: в SHA256SUMS.txt нет этого пакета
+
+es: no se pudo escribir en /data/pkg (%d)
+tr: не удалось записать в /data/pkg (%d)
+
+es: no hay espacio o falló la escritura
+tr: нет места или ошибка записи
+
+es: la verificación no coincide (se borró)
+tr: проверка не совпала (файл удалён)
+
+es: no se pudo guardar el paquete
+tr: не удалось сохранить пакет
+
+es: %s lista en /data/pkg · instálala con GoldHEN
+tr: %s готова в /data/pkg · установите через GoldHEN
+
+es: Compilación %d
+tr: Сборка %d
+
+es: Versión %s (%d)
+tr: Версия %s (%d)
+
+es: No se pudo iniciar la descarga.
+tr: Не удалось начать загрузку.
+
+es: Bajando %s: %u %%
+tr: Загрузка %s: %u %%
+
+es: %s disponible · OPTIONS para bajarla
+tr: Доступна %s · OPTIONS — скачать
+
+es: No se pudo crear la copia en /data/ForjaSX2/roms (error %d).
+tr: Не удалось создать копию в /data/ForjaSX2/roms (ошибка %d).
+
+es: Copia cancelada. No quedó nada a medias.
+tr: Копирование отменено. Ничего недоделанного не осталось.
+
+es: Se sacó el disco o la unidad dejó de leerlo: la copia a medias se borró.
+tr: Диск вынули или привод перестал его читать: неполная копия удалена.
+
+es: No hay espacio en la PS4: hacen falta %llu GB libres. La copia a medias se borró.
+tr: На PS4 нет места: нужно %llu ГБ свободно. Неполная копия удалена.
+
+es: No se pudo escribir la copia (error %d). La copia a medias se borró.
+tr: Не удалось записать копию (ошибка %d). Неполная копия удалена.
+
+es: No se pudo terminar la copia (error %d).
+tr: Не удалось завершить копирование (ошибка %d).
+
+es: Copia lista: %s. %u sectores no se pudieron leer (van en ceros). X para jugar.
+tr: Копия готова: %s. %u секторов не прочитано (заполнены нулями). X — играть.
+
+es: Copia lista: %s. Desde ahora, con el disco puesto, X juega la copia.
+tr: Копия готова: %s. Теперь, когда диск вставлен, X запускает копию.
+
+es: Ya hay una copia en curso.
+tr: Копирование уже идёт.
+
+es: Pulsa Triángulo para leer el disco primero.
+tr: Сначала нажмите Треугольник, чтобы прочитать диск.
+
+es: Ya estaba copiado: %s.
+tr: Уже скопирован: %s.
+
+es: No se pudo iniciar la copia.
+tr: Не удалось начать копирование.
+
+es: Copiando %s: %u %% · %.1f MB/s · faltan %.0f min · □ para cancelar
+tr: Копирование %s: %u %% · %.1f МБ/с · осталось %.0f мин · □ — отмена
+
+es: Copiando %s: empezando... · □ para cancelar
+tr: Копирование %s: начало... · □ — отмена
+
+es: sin red
+tr: нет сети
+
+es: sin conexión
+tr: нет соединения
+
+es: no se pudo preparar la conexión
+tr: не удалось подготовить соединение
+
+es: no se pudo crear la petición
+tr: не удалось создать запрос
+
+es: demasiadas redirecciones
+tr: слишком много перенаправлений
+
+es: redirección sin destino
+tr: перенаправление без адреса
+
+es: error de red %#x
+tr: ошибка сети %#x
+
+es: respuesta HTTP %d
+tr: ответ HTTP %d
+
+es: tardó demasiado
+tr: слишком долго
+
+es: se cortó la descarga (%#x)
+tr: загрузка оборвалась (%#x)
+
+es: cancelada
+tr: отменено
+
+es: llegó incompleta
+tr: пришло не полностью
+
+es: El sistema no deja usar la unidad de disco.
+tr: Система не даёт доступ к приводу.
+
+es: La unidad de disco no está disponible.
+tr: Привод недоступен.
+
+es: Falló la lectura de la unidad. Mira el registro.
+tr: Ошибка чтения привода. Смотрите журнал.
+
+es: La unidad de disco no tiene dispositivo CAM pass.
+tr: У привода нет устройства CAM pass.
+
+es: No se encontró la dirección de la unidad de disco.
+tr: Адрес привода не найден.
+
+es: La unidad tardó demasiado. Espera y actualiza Disco.
+tr: Привод отвечал слишком долго. Подождите и обновите «Диск».
+
+es: No hay disco. Mete un DVD de PS2 y actualiza.
+tr: Диска нет. Вставьте DVD PS2 и обновите.
+
+es: Cambió el disco. Actualiza el panel Disco.
+tr: Диск сменился. Обновите раздел «Диск».
+
+es: La unidad se está preparando. Actualiza en unos segundos.
+tr: Привод готовится. Обновите через несколько секунд.
+
+es: La unidad no puede leer este tipo de disco.
+tr: Привод не может читать такой диск.
+
+es: Falló una orden al disco. Mira el registro y actualiza.
+tr: Команда диску не выполнилась. Смотрите журнал и обновите.
+
+es: No hay disco.
+tr: Диска нет.
+
+es: Disco no compatible. Esta versión solo lee DVD de PS2.
+tr: Диск не поддерживается. Эта версия читает только DVD PS2.
+
+es: Tamaño de sector o capacidad del DVD no compatible.
+tr: Размер сектора или объём DVD не поддерживается.
+
+es: El DVD no dio su descripción completa.
+tr: DVD не передал полное описание.
+
+es: Capas del DVD no compatibles.
+tr: Слои DVD не поддерживаются.
+
+es: El cambio de capa del DVD no es válido.
+tr: Неверная граница слоёв DVD.
+
+es: Este DVD no tiene un sistema de archivos ISO9660 compatible.
+tr: На этом DVD нет поддерживаемой файловой системы ISO9660.
+
+es: La carpeta raíz del DVD no es compatible.
+tr: Корневая папка DVD не поддерживается.
+
+es: SYSTEM.CNF no tiene la línea BOOT2 de la PS2.
+tr: В SYSTEM.CNF нет строки BOOT2 для PS2.
+
+es: Los datos del disco no son válidos.
+tr: Данные диска недействительны.
+
+es: Menos efectos: sombreado de personajes
+tr: Меньше эффектов: затенение персонажей
+
+es: Quita las sombras y brillos de ropa y personajes: menos detalle, mucha más velocidad (Dragon Ball: ~45 a ~85 %)
+tr: Убирает тени и блики на одежде и персонажах: меньше деталей, гораздо выше скорость (Dragon Ball: ~45 → ~85 %)
+
+es: Menos efectos: pasadas de pantalla (experimental)
+tr: Меньше эффектов: экранные проходы (эксперимент)
+
+es: Quita efectos que el juego dibuja en imágenes aparte (brillos, desenfoques, reflejos). Si falta algo importante, apágalo
+tr: Убирает эффекты, которые игра рисует в отдельных изображениях (свечение, размытие, отражения). Если пропало важное — выключите

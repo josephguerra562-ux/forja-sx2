@@ -13,3 +13,7 @@ CMakeLists.txt text eol=lf
 *.props text eol=crlf
 *.vcxproj text eol=crlf
 *.vcxproj.filters text eol=crlf
+
+# Forja SX2 (2026-10-19): the language files (read on the PS4, any line end works) and their fonts.
+*.lng text eol=lf
+*.ttf binary

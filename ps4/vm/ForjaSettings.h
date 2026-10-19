@@ -44,6 +44,10 @@ namespace ForjaSettings
 		// Compilation 53: what opens the emulator's menu while playing: 0 L3+R3, 1 a click on the touchpad's right half (its left
 		// half stays the PS2's Select), 2 both.
 		int menu_button = 0;
+		// 2026-10-19: the emulator's language (ForjaLang.h code, "" until one is picked) and whether the library asks for it
+		// at every start (Joseph: "al inicio de cada sesión te pide el idioma").
+		char language[8] = "";
+		bool ask_language = true;
 		bool from_file = false;
 	};
 
@@ -71,6 +75,12 @@ namespace ForjaSettings
 		{
 			char key[32] = {};
 			int value = 0;
+			char code[8] = {};
+			if (std::sscanf(line, " idioma = %7[a-z]", code) == 1)
+			{
+				std::snprintf(v.language, sizeof(v.language), "%s", code);
+				continue;
+			}
 			if (line[0] == ';' || line[0] == '#' || std::sscanf(line, " %31[a-z_] = %d", key, &value) != 2)
 				continue;
 			if (!std::strcmp(key, "ee_rate"))
@@ -97,6 +107,8 @@ namespace ForjaSettings
 				v.frame_gen = value != 0;
 			else if (!std::strcmp(key, "menu_boton"))
 				v.menu_button = value;
+			else if (!std::strcmp(key, "preguntar_idioma"))
+				v.ask_language = value != 0;
 		}
 		std::fclose(file);
 		return Clamp(v);
@@ -113,9 +125,9 @@ namespace ForjaSettings
 		std::fprintf(file,
 			"; Forja SX2: ajustes para todos los juegos (pestaña Ajustes de la biblioteca)\n"
 			"ee_rate=%d\nupscale=%d\naspect=%d\noverlay=%d\nstick=%d\nfast_cdvd=%d\nfast_boot=%d\nreadback=%d\nvideo_mode=%d\n"
-			"frame_gen=%d\ncpu_auto=%d\nmenu_boton=%d\n",
+			"frame_gen=%d\ncpu_auto=%d\nmenu_boton=%d\nidioma=%s\npreguntar_idioma=%d\n",
 			v.ee_rate, v.upscale, v.aspect, v.overlay ? 1 : 0, v.stick, v.fast_cdvd ? 1 : 0, v.fast_boot ? 1 : 0,
-			v.readback, v.video_mode ? 1 : 0, v.frame_gen ? 1 : 0, v.cpu_auto, v.menu_button);
+			v.readback, v.video_mode ? 1 : 0, v.frame_gen ? 1 : 0, v.cpu_auto, v.menu_button, v.language, v.ask_language ? 1 : 0);
 		const bool written = std::fclose(file) == 0;
 		return written && std::rename(temporary, Path) == 0;
 	}

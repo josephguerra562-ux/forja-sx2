@@ -1,0 +1,1037 @@
+# Forja SX2 — العربية (ar). Cada texto: "es:" el español del código, "tr:" su traducción. \n es otra línea.
+# Each text: "es:" the Spanish in the code, "tr:" its translation. \n is a new line. Check: python idiomas.py
+
+es: No se pudo iniciar la detección del disco.
+tr: تعذّر بدء اكتشاف القرص.
+
+es: Idioma
+tr: اللغة
+
+es: Preguntar el idioma al iniciar
+tr: السؤال عن اللغة عند البدء
+
+es: Velocidad del CPU de la PS2
+tr: سرعة معالج PS2
+
+es: CPU automático
+tr: المعالج التلقائي
+
+es: Resolución interna
+tr: الدقة الداخلية
+
+es: Relación de aspecto
+tr: نسبة العرض إلى الارتفاع
+
+es: Contador de FPS al jugar
+tr: عدّاد FPS أثناء اللعب
+
+es: Sensibilidad de la palanca
+tr: حساسية عصا التحكم
+
+es: Cargas rápidas del disco
+tr: تحميل سريع من القرص
+
+es: Saltar el logo de la PS2
+tr: تخطي شعار PS2
+
+es: Lecturas de la gráfica (readbacks)
+tr: القراءة من بطاقة الرسوميات (readbacks)
+
+es: Modo video automático
+tr: وضع الفيديو التلقائي
+
+es: Generación de cuadros (30 a 60 FPS)
+tr: توليد الإطارات (من 30 إلى 60 FPS)
+
+es: Botón del menú del emulador
+tr: زر قائمة المحاكي
+
+es: El idioma de todo el emulador. X abre la lista de idiomas
+tr: لغة المحاكي كله. X يفتح قائمة اللغات
+
+es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
+tr: نعم: تظهر قائمة اللغات في كل مرة تفتح فيها Forja SX2
+
+es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
+tr: كل لعبة تبدأ من هنا. إذا كانت إحداها بطيئة، ارفعها من L3+R3 (تُحفظ لتلك اللعبة)
+
+es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
+tr: إذا رفعت معالج لعبة وأصبحت بطيئة، ينخفض وحده في المشاهد الثقيلة حتى هذا الحد
+
+es: 1x es la de la PS2. En PS4 Pro aguanta 2x-4x en juegos ligeros
+tr: 1x هي دقة PS2. يتحمّل PS4 Pro من 2x إلى 4x في الألعاب الخفيفة
+
+es: Auto respeta lo que pide el juego
+tr: الوضع التلقائي يتبع ما تطلبه اللعبة
+
+es: Muestra FPS y velocidad arriba a la derecha (se cambia también en L3+R3)
+tr: يعرض FPS والسرعة أعلى اليمين (يمكن تغييره أيضًا من L3+R3)
+
+es: Qué tanto hay que empujar la palanca para llegar al tope. 133 % es como el PCSX2 de PC
+tr: مدى دفع عصا التحكم للوصول إلى أقصاها. 133 % مثل PCSX2 على الحاسوب
+
+es: Acorta las cargas. Algunos juegos se cuelgan con esto: si pasa, apágalo
+tr: يقصّر التحميل. بعض الألعاب تتجمّد بسببه: إن حدث ذلك فأطفئه
+
+es: Arranca directo el juego, sin la animación de la PS2
+tr: يشغّل اللعبة مباشرة دون رسوم PS2 المتحركة
+
+es: Si el juego se traba sin que el CPU esté al 100 %: prueba Sin esperar. Desactivadas puede romper efectos
+tr: إذا تقطّعت اللعبة والمعالج ليس عند 100 %: جرّب «دون انتظار». «معطّلة» قد تُفسد المؤثرات
+
+es: En los videos del juego busca el CPU de la PS2 que da más cuadros (31 a 100 %) y lo devuelve al terminar
+tr: في فيديوهات اللعبة يبحث عن سرعة معالج PS2 التي تعطي أكثر الإطارات (من 31 إلى 100 %) ثم يعيدها
+
+es: EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso
+tr: تجريبي: لعبة ثابتة على 30 FPS تُعرض بـ 60 (بطاقة الرسوميات تصنع الإطار الأوسط). تأخير +1 إطار
+
+es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
+tr: لوحة اللمس: اضغط نصفها الأيمن. يبقى النصف الأيسر زر SELECT في PS2
+
+es: 100 % (PS2 real)
+tr: 100 % (PS2 الحقيقي)
+
+es: No
+tr: لا
+
+es: Hasta 75 %
+tr: حتى 75 %
+
+es: Hasta 60 %
+tr: حتى 60 %
+
+es: Hasta 50 %
+tr: حتى 50 %
+
+es: Hasta 36 %
+tr: حتى 36 %
+
+es: Hasta 31 %
+tr: حتى 31 %
+
+es: Hasta 27 %
+tr: حتى 27 %
+
+es: Estirar
+tr: تمديد
+
+es: Auto
+tr: تلقائي
+
+es: Sí
+tr: نعم
+
+es: %dx (nativa)
+tr: %dx (الأصلية)
+
+es: Precisas
+tr: دقيقة
+
+es: Sin esperar (más rápido)
+tr: دون انتظار (أسرع)
+
+es: Desactivadas
+tr: معطّلة
+
+es: Panel táctil (derecha)
+tr: لوحة اللمس (اليمين)
+
+es: Los dos
+tr: كلاهما
+
+es: Elige el idioma
+tr: اختر اللغة
+
+es: También se cambia en Ajustes, donde puedes apagar esta pregunta.
+tr: يمكن تغييرها أيضًا من الإعدادات، وهناك يمكنك إيقاف هذا السؤال.
+
+es: Aceptar
+tr: موافق
+
+es: Atrás
+tr: رجوع
+
+es: No se detectó ningún disco
+tr: لم يُكتشف أي قرص
+
+es: No hay juegos recientes
+tr: لا توجد ألعاب حديثة
+
+es: No hay juegos favoritos
+tr: لا توجد ألعاب مفضلة
+
+es: Ajustes de Forja SX2 (para todos los juegos)
+tr: إعدادات Forja SX2 (لكل الألعاب)
+
+es: No se encontraron juegos
+tr: لم يُعثر على ألعاب
+
+es: Cargando...
+tr: جارٍ التحميل...
+
+es: No se pudieron guardar los ajustes.
+tr: تعذّر حفظ الإعدادات.
+
+es: Guardado. Se aplica al iniciar el próximo juego.
+tr: تم الحفظ. يُطبَّق عند تشغيل اللعبة التالية.
+
+es: Copiando el disco
+tr: جارٍ نسخ القرص
+
+es: Revisando el DVD...
+tr: جارٍ فحص قرص DVD...
+
+es: Falló la detección del disco
+tr: فشل اكتشاف القرص
+
+es: Leyendo la unidad. Puedes seguir navegando.
+tr: جارٍ قراءة المشغّل. يمكنك متابعة التصفح.
+
+es: Idioma guardado.
+tr: تم حفظ اللغة.
+
+es: No se encontró el archivo de ese idioma: queda el español.
+tr: لم يُعثر على ملف تلك اللغة: تبقى الإسبانية.
+
+es:  Portada no disponible. Triángulo para reintentar.
+tr:  الغلاف غير متاح. المثلث لإعادة المحاولة.
+
+es: DVD de PS2 - 
+tr: DVD لـ PS2 - 
+
+es:  | DVD doble capa
+tr:  | DVD مزدوج الطبقة
+
+es:  | X: jugar desde el disco · □: copiarlo a la PS4
+tr:  | X: اللعب من القرص · □: نسخه إلى PS4
+
+es:  | Ya está copiado en la PS4 · X: jugar la copia
+tr:  | منسوخ على PS4 بالفعل · X: تشغيل النسخة
+
+es: DVD no disponible
+tr: قرص DVD غير متاح
+
+es:  Descargando portada...
+tr:  جارٍ تنزيل الغلاف...
+
+es: Cancelando la copia...
+tr: جارٍ إلغاء النسخ...
+
+es: Este disco ya está copiado en la PS4. X para jugar la copia.
+tr: هذا القرص منسوخ على PS4 بالفعل. X لتشغيل النسخة.
+
+es: Pulsa Triángulo para leer el disco y después □ para copiarlo.
+tr: اضغط المثلث لقراءة القرص، ثم □ لنسخه.
+
+es: Quitado de favoritos.
+tr: أُزيلت من المفضلة.
+
+es: Agregado a favoritos.
+tr: أُضيفت إلى المفضلة.
+
+es: No se pudieron guardar los favoritos.
+tr: تعذّر حفظ المفضلة.
+
+es: Hay una copia del disco en curso: espera a que termine o cancélala con □ en Disco.
+tr: يجري نسخ القرص: انتظر حتى ينتهي أو ألغِه بـ □ في القرص.
+
+es: El soporte de disco físico está en preparación.
+tr: دعم الأقراص الفعلية قيد التحضير.
+
+es: Aquí irán las opciones de ajustes.
+tr: ستكون خيارات الإعدادات هنا.
+
+es: No hay juegos en esta vista.
+tr: لا توجد ألعاب في هذا العرض.
+
+es: Archivo no disponible. Pulsa Triángulo para actualizar.
+tr: الملف غير متاح. اضغط المثلث للتحديث.
+
+es: No se puede abrir el juego: 
+tr: تعذّر فتح اللعبة: 
+
+es: Iniciando...
+tr: جارٍ البدء...
+
+es: Conecta un control para elegir un juego.
+tr: وصّل يد تحكم لاختيار لعبة.
+
+es: Terminando de bajar la portada...
+tr: جارٍ إنهاء تنزيل الغلاف...
+
+es: Terminando de detectar el disco...
+tr: جارٍ إنهاء اكتشاف القرص...
+
+es: Preparando el emulador...
+tr: جارٍ تجهيز المحاكي...
+
+es: Menú del emulador
+tr: قائمة المحاكي
+
+es: JUEGO EN PAUSA
+tr: اللعبة متوقفة مؤقتًا
+
+es: Perfil de este juego:  de fábrica %s  ·  tuyo %s
+tr: ملف هذه اللعبة:  المصنع %s  ·  ملفك %s
+
+es: sí
+tr: نعم
+
+es: no
+tr: لا
+
+es: global
+tr: عام
+
+es: perfil de fábrica
+tr: ملف المصنع
+
+es: tu perfil
+tr: ملفك
+
+es: Resolución interna:  < %ux >  (nativa)
+tr: الدقة الداخلية:  < %ux >  (الأصلية)
+
+es: Resolución interna:  < %ux >
+tr: الدقة الداخلية:  < %ux >
+
+es: Relación de aspecto:  < %s >
+tr: نسبة العرض إلى الارتفاع:  < %s >
+
+es: Contador de rendimiento:  < %s >
+tr: عدّاد الأداء:  < %s >
+
+es: 27 % (exp.)
+tr: 27 % (تجريبي)
+
+es: 31 % (exp.)
+tr: 31 % (تجريبي)
+
+es: 36 % (exp.)
+tr: 36 % (تجريبي)
+
+es: Velocidad del CPU de la PS2:  < %s >
+tr: سرعة معالج PS2:  < %s >
+
+es: Modo video:  < %s >
+tr: وضع الفيديو:  < %s >
+
+es: %s Para este juego  ·  ahora: %s
+tr: %s لهذه اللعبة  ·  الآن: %s
+
+es: Busca el CPU de la PS2 que da más cuadros en cada video (31 a 100 %).
+tr: يبحث في كل فيديو عن سرعة معالج PS2 التي تعطي أكثر الإطارات (من 31 إلى 100 %).
+
+es: CPU de la PS2 durante las cinemáticas.
+tr: سرعة معالج PS2 أثناء المشاهد السينمائية.
+
+es: Suave
+tr: ناعمة
+
+es: Nítida
+tr: حادّة
+
+es: CAS fuerte
+tr: CAS قوي
+
+es: Píxeles
+tr: بكسلات
+
+es: Como hasta ahora: la imagen escalada y suavizada. Se guarda para este juego
+tr: كما كان: الصورة مكبّرة ومنعّمة. تُحفظ لهذه اللعبة
+
+es: Bilineal nítido: bordes más definidos, sin costo. Se guarda para este juego
+tr: ثنائي خطي حاد: حواف أوضح دون تكلفة. تُحفظ لهذه اللعبة
+
+es: AMD CAS (de la familia del FSR): realza el detalle al agrandar la imagen. Cuesta muy poco
+tr: AMD CAS (من عائلة FSR): يُبرز التفاصيل عند تكبير الصورة. تكلفته قليلة جدًا
+
+es: AMD CAS al máximo: aún más detalle; puede verse algo granulado
+tr: AMD CAS بأقصى قوة: تفاصيل أكثر؛ قد تبدو محبّبة قليلًا
+
+es: Sin filtro: cada píxel tal cual, estilo retro. Se guarda para este juego
+tr: دون مرشّح: كل بكسل كما هو، بأسلوب قديم. تُحفظ لهذه اللعبة
+
+es: Nitidez:  < %s >
+tr: الحدّة:  < %s >
+
+es: Fluida
+tr: سلسة
+
+es: Generación de cuadros:  < %s >
+tr: توليد الإطارات:  < %s >
+
+es: Rellena cada refresco que la tele repetiría (juegos PAL, cuadros desparejos).
+tr: يملأ كل تحديث كان التلفاز سيكرّره (ألعاب PAL، إطارات غير منتظمة).
+
+es: Muestra a 60 un juego estable a 30 (experimental).
+tr: يعرض بـ 60 لعبة ثابتة على 30 (تجريبي).
+
+es: 1 de 2
+tr: 1 من 2
+
+es: Saltar cuadros (GS):  < %s >
+tr: تخطي الإطارات (GS):  < %s >
+
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
+tr: إذا لم يلحق GS يرسم إطارًا من كل 2: تسير اللعبة بسرعتها (تجريبي)  ·  الآن: %s  ·  %s
+
+es: saltando
+tr: يتخطى
+
+es: dibuja todos
+tr: يرسم الكل
+
+es: Global
+tr: عام
+
+es: Normal
+tr: عادي
+
+es: Plan B
+tr: الخطة ب
+
+es: Propio
+tr: مخصص
+
+es: Núcleos de la CPU:  < %s >
+tr: أنوية المعالج:  < %s >
+
+es: Reparto de EE, VU1 y GS (Plan B: EE 1, VU1 2, GS 3). Para este juego  ·  ahora: %s
+tr: توزيع EE وVU1 وGS (الخطة ب: EE 1، VU1 2، GS 3). لهذه اللعبة  ·  الآن: %s
+
+es: Hasta 36 % (exp.)
+tr: حتى 36 % (تجريبي)
+
+es: Hasta 31 % (exp.)
+tr: حتى 31 % (تجريبي)
+
+es: Hasta 27 % (exp.)
+tr: حتى 27 % (تجريبي)
+
+es: CPU automático:  < %s >
+tr: المعالج التلقائي:  < %s >
+
+es: Baja el CPU de la PS2 solo en escenas pesadas: el juego va a su velocidad, con menos cuadros
+tr: يخفض معالج PS2 في المشاهد الثقيلة فقط: تسير اللعبة بسرعتها بإطارات أقل
+
+es: Solo en escenas pesadas, para este juego  ·  ahora: %s  ·  %s
+tr: في المشاهد الثقيلة فقط، لهذه اللعبة  ·  الآن: %s  ·  %s
+
+es: sin bajar
+tr: دون خفض
+
+es: Guardar estado:  < Ranura %u >
+tr: حفظ الحالة:  < الخانة %u >
+
+es: Cargar estado:  < Ranura %u >
+tr: تحميل الحالة:  < الخانة %u >
+
+es: Guardado en la ranura %u.
+tr: حُفظت في الخانة %u.
+
+es: No se pudo guardar en la ranura %u.
+tr: تعذّر الحفظ في الخانة %u.
+
+es: X: guarda aquí (reemplaza el del %s)
+tr: X: احفظ هنا (يستبدل حفظ %s)
+
+es: X: guarda aquí (reemplaza lo que hay en esta ranura)
+tr: X: احفظ هنا (يستبدل ما في هذه الخانة)
+
+es: X: guarda la partida en esta ranura (vacía)
+tr: X: احفظ اللعبة في هذه الخانة (فارغة)
+
+es: La ranura %u está vacía.
+tr: الخانة %u فارغة.
+
+es: No se pudo cargar la ranura %u.
+tr: تعذّر تحميل الخانة %u.
+
+es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
+tr: حُفظت في %s  ·  X: العودة إلى تلك اللحظة ومتابعة اللعب
+
+es: X: vuelve a ese momento y sigue jugando
+tr: X: العودة إلى تلك اللحظة ومتابعة اللعب
+
+es: Ranura vacía
+tr: خانة فارغة
+
+es: Volver al juego
+tr: العودة إلى اللعبة
+
+es: Reiniciar juego
+tr: إعادة تشغيل اللعبة
+
+es: Restablecer ajustes de este juego
+tr: إعادة ضبط إعدادات هذه اللعبة
+
+es: Volver a la biblioteca
+tr: العودة إلى المكتبة
+
+es: Salir de la aplicación
+tr: الخروج من التطبيق
+
+es: Seguir jugando desde donde quedó
+tr: متابعة اللعب من حيث توقفت
+
+es: X: empieza el juego de nuevo sin cerrarlo (lo no guardado se pierde)
+tr: X: يبدأ اللعبة من جديد دون إغلاقها (يضيع ما لم يُحفظ)
+
+es: Más calidad de imagen (consume más). Se guarda para este juego
+tr: جودة صورة أعلى (تستهلك أكثر). تُحفظ لهذه اللعبة
+
+es: Forma de la imagen en pantalla. Se guarda para este juego
+tr: شكل الصورة على الشاشة. تُحفظ لهذه اللعبة
+
+es: Mostrar u ocultar FPS, velocidad y tiempos
+tr: إظهار أو إخفاء FPS والسرعة والأزمنة
+
+es: Menos % = más FPS en la PS4 (el juego puede perder cuadros). Se guarda para este juego
+tr: نسبة أقل = FPS أعلى على PS4 (قد تفقد اللعبة إطارات). تُحفظ لهذه اللعبة
+
+es: X: borra tus cambios de este juego (queda copia .bak). Siguen el perfil de fábrica y los globales
+tr: X: يمحو تغييراتك لهذه اللعبة (تبقى نسخة .bak). يبقى ملف المصنع والإعدادات العامة
+
+es: Este juego no tiene cambios tuyos
+tr: لا توجد تغييرات لك في هذه اللعبة
+
+es: Cerrar el juego y volver a la biblioteca
+tr: إغلاق اللعبة والعودة إلى المكتبة
+
+es: Cerrar el juego y salir de Forja SX2
+tr: إغلاق اللعبة والخروج من Forja SX2
+
+es: Partida
+tr: اللعبة
+
+es: Imagen
+tr: الصورة
+
+es: Rendimiento
+tr: الأداء
+
+es: Extras
+tr: إضافات
+
+es: No tocar
+tr: لا تلمس
+
+es: Sistema
+tr: النظام
+
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: تجارب لقياس الألعاب وتحسينها (قيد الاختبار). إن لم تعرف ما يفعله خيار فاتركه كما هو.
+
+es: AJUSTAR
+tr: ضبط
+
+es: ELEGIR
+tr: اختيار
+
+es: ELEGIR  ·  X  ·  CUADRADO
+tr: اختيار  ·  X  ·  المربع
+
+es: ELEGIR  ·  X
+tr: اختيار  ·  X
+
+es: CAMBIAR
+tr: تبديل
+
+es: X  ·  RANURA
+tr: X  ·  الخانة
+
+es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
+tr: الدقة: 1x-%ux (3x أو أكثر تجريبي ولـ PS4 Pro فقط).   ما تغيّره في الصورة والأداء يُحفظ لهذه اللعبة فقط.
+
+es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1: تغيير التبويب     أعلى/أسفل: اختيار     يسار/يمين: تغيير القيمة أو الخانة
+
+es: Volver
+tr: رجوع
+
+es: EMULADOR DE PLAYSTATION 2
+tr: محاكي PLAYSTATION 2
+
+es: Biblioteca
+tr: المكتبة
+
+es: Disco
+tr: القرص
+
+es: Recientes
+tr: الحديثة
+
+es: Favoritos
+tr: المفضلة
+
+es: Ajustes
+tr: الإعدادات
+
+es: Versión %d.%02d (%d)
+tr: الإصدار %d.%02d (%d)
+
+es: Versión %d.%02d (local)
+tr: الإصدار %d.%02d (محلي)
+
+es: DVD de PS2
+tr: قرص DVD لـ PS2
+
+es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
+tr: جارٍ نسخ القرص إلى PS4. يمكنك البقاء في المكتبة.
+
+es: □ cancela la copia. No saques el disco hasta que termine.
+tr: □ يلغي النسخ. لا تُخرج القرص حتى ينتهي.
+
+es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
+tr: اكتُشف القرص. X للعب · □ لنسخه إلى PS4.
+
+es: Mete un DVD y pulsa Triángulo para actualizar.
+tr: أدخل قرص DVD واضغط المثلث للتحديث.
+
+es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
+tr: بعد نسخه مرة، يفتح القرص نسخته: أسرع ودون ضجيج المشغّل.
+
+es: Cambiar
+tr: تغيير
+
+es: Izq./Der.: ajustar   Arriba/Abajo: elegir
+tr: يسار/يمين: ضبط   أعلى/أسفل: اختيار
+
+es: Menú lateral
+tr: القائمة الجانبية
+
+es: Jugar
+tr: العب
+
+es: Quitar favorito
+tr: إزالة من المفضلة
+
+es: Agregar favorito
+tr: إضافة إلى المفضلة
+
+es: Revisar disco
+tr: فحص القرص
+
+es: Actualizar biblioteca
+tr: تحديث المكتبة
+
+es: Salir
+tr: خروج
+
+es: ¿Cerrar Forja SX2?
+tr: إغلاق Forja SX2؟
+
+es: ¿Seguro que quieres salir de la aplicación?
+tr: هل أنت متأكد من الخروج من التطبيق؟
+
+es: Salir de Forja SX2
+tr: الخروج من Forja SX2
+
+es: Cancelar
+tr: إلغاء
+
+es: %s disponible
+tr: %s متاح
+
+es: Se baja a /data/pkg y se verifica. Después cierra Forja e instálala con GoldHEN.
+tr: تُنزَّل إلى /data/pkg ويُتحقق منها. بعدها أغلق Forja وثبّتها بـ GoldHEN.
+
+es: Tus juegos, ajustes y perfiles se quedan como están.
+tr: تبقى ألعابك وإعداداتك وملفاتك كما هي.
+
+es: Descargar
+tr: تنزيل
+
+es: Ahora no
+tr: ليس الآن
+
+es: Parches:  ninguno para este juego
+tr: التصحيحات:  لا شيء لهذه اللعبة
+
+es: Al empezar un juego se bajan los de la comunidad de PCSX2 (con internet). Los tuyos van en /data/ForjaSX2/patches
+tr: عند بدء لعبة تُنزَّل تصحيحات مجتمع PCSX2 (مع الإنترنت). تصحيحاتك توضع في /data/ForjaSX2/patches
+
+es: Parche %u de %zu:  < %s >  %s
+tr: التصحيح %u من %zu:  < %s >  %s
+
+es: Sin descripción
+tr: دون وصف
+
+es:   ·  X: quitar (algunos piden reiniciar el juego)
+tr:   ·  X: إزالة (بعضها يتطلب إعادة تشغيل اللعبة)
+
+es:   ·  X: poner
+tr:   ·  X: تفعيل
+
+es:   ·  aquí: %.0f %% del GS
+tr:   ·  هنا: %.0f %% من GS
+
+es: Pon tus trucos en /data/ForjaSX2/cheats/%s_%08X.pnach (escritos como un parche) y vuelve a abrir este menú
+tr: ضع شفرات الغش في /data/ForjaSX2/cheats/%s_%08X.pnach (مكتوبة مثل تصحيح) ثم افتح هذه القائمة من جديد
+
+es: Trucos:  ninguno para este juego
+tr: شفرات الغش:  لا شيء لهذه اللعبة
+
+es: Truco %u de %zu:  < %s >  %s
+tr: الشفرة %u من %zu:  < %s >  %s
+
+es:   ·  X: quitar
+tr:   ·  X: إزالة
+
+es: Avance rápido:  < Sí >
+tr: التقديم السريع:  < نعم >
+
+es: Avance rápido:  < No >
+tr: التقديم السريع:  < لا >
+
+es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
+tr: X: تجري اللعبة بأقصى سرعة يتحملها PS4 (التحميل، الحوارات). لا يُحفظ
+
+es: Filtro VU1:  sin datos todavía
+tr: مرشّح VU1:  لا بيانات بعد
+
+es: Juega unos segundos: el medidor del VU1 lista sus programas más costosos y aquí los apagas uno por uno (experimental)
+tr: العب بضع ثوانٍ: يعرض مقياس VU1 أثقل برامجه وهنا تطفئها واحدًا تلو الآخر (تجريبي)
+
+es: Filtro VU1 %u de %zu:  < programa %04x · %.1f %% >  %s
+tr: مرشّح VU1 %u من %zu:  < البرنامج %04x · %.1f %% >  %s
+
+es: QUITADO
+tr: محذوف
+
+es: Activo
+tr: نشط
+
+es: No se dibuja lo que hace este programa. X lo devuelve; Cuadrado devuelve todos. Se guarda para este juego
+tr: لا يُرسم ما يفعله هذا البرنامج. X يعيده؛ المربع يعيد الكل. تُحفظ لهذه اللعبة
+
+es: X lo apaga: mira qué deja de verse y cuánto sube la velocidad (experimental). Se guarda para este juego
+tr: X يطفئه: لاحظ ما يختفي وكم ترتفع السرعة (تجريبي). تُحفظ لهذه اللعبة
+
+es: puntos
+tr: نقاط
+
+es: líneas
+tr: خطوط
+
+es: triángulos
+tr: مثلثات
+
+es: sprites
+tr: رسوم متحركة (sprites)
+
+es:  transparentes
+tr:  شفافة
+
+es: En la pantalla
+tr: على الشاشة
+
+es: En %05x
+tr: في %05x
+
+es: %s sin textura, %s%s
+tr: %s دون نسيج، %s%s
+
+es: 16 colores
+tr: 16 لونًا
+
+es: 256 colores
+tr: 256 لونًا
+
+es: profundidad
+tr: العمق
+
+es: color
+tr: لون
+
+es: %s con la textura %05x (%ux%u, %s), %s%s
+tr: %s بالنسيج %05x (%ux%u، %s)، %s%s
+
+es: Filtro GS:  sin datos todavía
+tr: مرشّح GS:  لا بيانات بعد
+
+es: Juega unos segundos: el GS lista sus grupos de dibujos más costosos y aquí los apagas uno por uno (experimental)
+tr: العب بضع ثوانٍ: يعرض GS أثقل مجموعات الرسم وهنا تطفئها واحدة تلو الأخرى (تجريبي)
+
+es: Filtro GS %u de %zu:  < grupo quitado >  QUITADO
+tr: مرشّح GS %u من %zu:  < مجموعة محذوفة >  محذوف
+
+es: Filtro GS %u de %zu:  < era el %.1f %% del GS · %u dibujos/s >  QUITADO
+tr: مرشّح GS %u من %zu:  < كان %.1f %% من GS · %u رسمة/ث >  محذوف
+
+es: Filtro GS %u de %zu:  < %.1f %% del GS · %u dibujos/s >  Activo
+tr: مرشّح GS %u من %zu:  < %.1f %% من GS · %u رسمة/ث >  نشط
+
+es: : no se dibuja. X lo devuelve; Cuadrado devuelve todos
+tr: : لا يُرسم. X يعيده؛ المربع يعيد الكل
+
+es: . X lo apaga: mira qué deja de verse
+tr: . X يطفئه: لاحظ ما يختفي
+
+es: Sí, precargadas
+tr: نعم، محمّلة مسبقًا
+
+es: Texturas HD:  < %s >
+tr: نسيج عالي الدقة:  < %s >
+
+es: Pack encontrado (textures/%s/replacements). Precargar evita tirones pero usa más memoria
+tr: عُثر على الحزمة (textures/%s/replacements). التحميل المسبق يمنع التقطّع لكنه يستهلك ذاكرة أكثر
+
+es: No hay pack: cópialo por FTP a /data/ForjaSX2/textures/%s/replacements
+tr: لا توجد حزمة: انسخها عبر FTP إلى /data/ForjaSX2/textures/%s/replacements
+
+es: Ajustes recomendados:  buscando en GitHub...
+tr: الإعدادات المقترحة:  جارٍ البحث في GitHub...
+
+es: Ajustes recomendados:  del centro (GitHub), %s
+tr: الإعدادات المقترحة:  من المركز (GitHub)، %s
+
+es: Ajustes recomendados:  del PKG
+tr: الإعدادات المقترحة:  من حزمة PKG
+
+es: Ajustes recomendados:  ninguno para este juego
+tr: الإعدادات المقترحة:  لا شيء لهذه اللعبة
+
+es: X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos
+tr: X: جلبها مجددًا من GitHub (مع الإنترنت). تسري من التشغيل التالي. النظام > إعادة الضبط يعود إليها
+
+es: Cambiar disco:  este juego tiene un solo disco
+tr: تغيير القرص:  لهذه اللعبة قرص واحد فقط
+
+es: Para juegos de varios discos: ponlos en roms/ como "Juego (Disco 1).iso", "Juego (Disco 2).iso"...
+tr: للألعاب متعددة الأقراص: ضعها في roms/ باسم "Game (Disc 1).iso" و"Game (Disc 2).iso"...
+
+es: Cambiar disco:  < Disco %d de %zu >%s
+tr: تغيير القرص:  < القرص %d من %zu >%s
+
+es:   (puesto)
+tr:   (مُدخل)
+
+es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
+tr: X: يبدّل إلى القرص المختار، كفتح درج PS2 وإدخال قرص آخر. افعل ذلك عندما تطلبه اللعبة
+
+es: %d/%m a las %H:%M
+tr: %d/%m الساعة %H:%M
+
+es: Preparando la BIOS de la PS2...
+tr: جارٍ تجهيز BIOS الخاص بـ PS2...
+
+es: Abriendo el DVD...
+tr: جارٍ فتح قرص DVD...
+
+es: Abriendo la imagen del juego...
+tr: جارٍ فتح صورة اللعبة...
+
+es: Iniciando la máquina virtual...
+tr: جارٍ تشغيل الآلة الافتراضية...
+
+es: Encendiendo la PlayStation 2...
+tr: جارٍ تشغيل PlayStation 2...
+
+es: Listo
+tr: جاهز
+
+es: Juego %.0f / Pantalla %.0f FPS (FG)
+tr: اللعبة %.0f / الشاشة %.0f FPS (FG)
+
+es: Juego ~%.1f FPS
+tr: اللعبة ~%.1f FPS
+
+es: FPS del juego: sin datos
+tr: FPS اللعبة: لا بيانات
+
+es: Velocidad %.0f%%
+tr: السرعة %.0f%%
+
+es: No se pudo bajar la %d: %s · OPTIONS reintenta
+tr: تعذّر تنزيل %d: %s · OPTIONS لإعادة المحاولة
+
+es: la versión no trae SHA256SUMS.txt
+tr: الإصدار لا يتضمن SHA256SUMS.txt
+
+es: SHA256SUMS.txt no nombra el paquete
+tr: SHA256SUMS.txt لا يذكر الحزمة
+
+es: no se pudo escribir en /data/pkg (%d)
+tr: تعذّرت الكتابة في /data/pkg (%d)
+
+es: no hay espacio o falló la escritura
+tr: لا توجد مساحة أو فشلت الكتابة
+
+es: la verificación no coincide (se borró)
+tr: التحقق غير مطابق (حُذف)
+
+es: no se pudo guardar el paquete
+tr: تعذّر حفظ الحزمة
+
+es: %s lista en /data/pkg · instálala con GoldHEN
+tr: %s جاهزة في /data/pkg · ثبّتها بـ GoldHEN
+
+es: Compilación %d
+tr: البناء %d
+
+es: Versión %s (%d)
+tr: الإصدار %s (%d)
+
+es: No se pudo iniciar la descarga.
+tr: تعذّر بدء التنزيل.
+
+es: Bajando %s: %u %%
+tr: جارٍ تنزيل %s: %u %%
+
+es: %s disponible · OPTIONS para bajarla
+tr: %s متاح · OPTIONS لتنزيله
+
+es: No se pudo crear la copia en /data/ForjaSX2/roms (error %d).
+tr: تعذّر إنشاء النسخة في /data/ForjaSX2/roms (الخطأ %d).
+
+es: Copia cancelada. No quedó nada a medias.
+tr: أُلغي النسخ. لم يبقَ شيء غير مكتمل.
+
+es: Se sacó el disco o la unidad dejó de leerlo: la copia a medias se borró.
+tr: أُخرج القرص أو توقّف المشغّل عن قراءته: حُذفت النسخة غير المكتملة.
+
+es: No hay espacio en la PS4: hacen falta %llu GB libres. La copia a medias se borró.
+tr: لا توجد مساحة على PS4: يلزم %llu غيغابايت فارغة. حُذفت النسخة غير المكتملة.
+
+es: No se pudo escribir la copia (error %d). La copia a medias se borró.
+tr: تعذّرت كتابة النسخة (الخطأ %d). حُذفت النسخة غير المكتملة.
+
+es: No se pudo terminar la copia (error %d).
+tr: تعذّر إنهاء النسخ (الخطأ %d).
+
+es: Copia lista: %s. %u sectores no se pudieron leer (van en ceros). X para jugar.
+tr: النسخة جاهزة: %s. تعذّرت قراءة %u قطاعًا (مملوءة بالأصفار). X للعب.
+
+es: Copia lista: %s. Desde ahora, con el disco puesto, X juega la copia.
+tr: النسخة جاهزة: %s. من الآن، والقرص مُدخل، X يشغّل النسخة.
+
+es: Ya hay una copia en curso.
+tr: يجري نسخ آخر بالفعل.
+
+es: Pulsa Triángulo para leer el disco primero.
+tr: اضغط المثلث أولًا لقراءة القرص.
+
+es: Ya estaba copiado: %s.
+tr: منسوخ مسبقًا: %s.
+
+es: No se pudo iniciar la copia.
+tr: تعذّر بدء النسخ.
+
+es: Copiando %s: %u %% · %.1f MB/s · faltan %.0f min · □ para cancelar
+tr: جارٍ نسخ %s: %u %% · %.1f م.ب/ث · بقي %.0f دقيقة · □ للإلغاء
+
+es: Copiando %s: empezando... · □ para cancelar
+tr: جارٍ نسخ %s: البدء... · □ للإلغاء
+
+es: sin red
+tr: لا توجد شبكة
+
+es: sin conexión
+tr: لا يوجد اتصال
+
+es: no se pudo preparar la conexión
+tr: تعذّر تجهيز الاتصال
+
+es: no se pudo crear la petición
+tr: تعذّر إنشاء الطلب
+
+es: demasiadas redirecciones
+tr: عمليات إعادة توجيه كثيرة جدًا
+
+es: redirección sin destino
+tr: إعادة توجيه دون وجهة
+
+es: error de red %#x
+tr: خطأ في الشبكة %#x
+
+es: respuesta HTTP %d
+tr: استجابة HTTP %d
+
+es: tardó demasiado
+tr: استغرق وقتًا طويلًا جدًا
+
+es: se cortó la descarga (%#x)
+tr: انقطع التنزيل (%#x)
+
+es: cancelada
+tr: أُلغي
+
+es: llegó incompleta
+tr: وصل ناقصًا
+
+es: El sistema no deja usar la unidad de disco.
+tr: النظام لا يسمح باستخدام مشغّل الأقراص.
+
+es: La unidad de disco no está disponible.
+tr: مشغّل الأقراص غير متاح.
+
+es: Falló la lectura de la unidad. Mira el registro.
+tr: فشلت قراءة المشغّل. راجع السجل.
+
+es: La unidad de disco no tiene dispositivo CAM pass.
+tr: لا يملك مشغّل الأقراص جهاز CAM pass.
+
+es: No se encontró la dirección de la unidad de disco.
+tr: لم يُعثر على عنوان مشغّل الأقراص.
+
+es: La unidad tardó demasiado. Espera y actualiza Disco.
+tr: استغرق المشغّل وقتًا طويلًا. انتظر ثم حدّث القرص.
+
+es: No hay disco. Mete un DVD de PS2 y actualiza.
+tr: لا يوجد قرص. أدخل قرص DVD لـ PS2 وحدّث.
+
+es: Cambió el disco. Actualiza el panel Disco.
+tr: تغيّر القرص. حدّث لوحة القرص.
+
+es: La unidad se está preparando. Actualiza en unos segundos.
+tr: المشغّل يستعد. حدّث بعد بضع ثوانٍ.
+
+es: La unidad no puede leer este tipo de disco.
+tr: لا يستطيع المشغّل قراءة هذا النوع من الأقراص.
+
+es: Falló una orden al disco. Mira el registro y actualiza.
+tr: فشل أمر إلى القرص. راجع السجل وحدّث.
+
+es: No hay disco.
+tr: لا يوجد قرص.
+
+es: Disco no compatible. Esta versión solo lee DVD de PS2.
+tr: قرص غير مدعوم. هذا الإصدار يقرأ أقراص DVD لـ PS2 فقط.
+
+es: Tamaño de sector o capacidad del DVD no compatible.
+tr: حجم قطاع أو سعة DVD غير مدعومة.
+
+es: El DVD no dio su descripción completa.
+tr: لم يُعطِ قرص DVD وصفه الكامل.
+
+es: Capas del DVD no compatibles.
+tr: طبقات DVD غير مدعومة.
+
+es: El cambio de capa del DVD no es válido.
+tr: موضع تبديل طبقة DVD غير صالح.
+
+es: Este DVD no tiene un sistema de archivos ISO9660 compatible.
+tr: لا يحتوي هذا القرص على نظام ملفات ISO9660 مدعوم.
+
+es: La carpeta raíz del DVD no es compatible.
+tr: المجلد الجذر لقرص DVD غير مدعوم.
+
+es: SYSTEM.CNF no tiene la línea BOOT2 de la PS2.
+tr: لا يحتوي SYSTEM.CNF على سطر BOOT2 الخاص بـ PS2.
+
+es: Los datos del disco no son válidos.
+tr: بيانات القرص غير صالحة.
+
+es: Menos efectos: sombreado de personajes
+tr: مؤثرات أقل: تظليل الشخصيات
+
+es: Quita las sombras y brillos de ropa y personajes: menos detalle, mucha más velocidad (Dragon Ball: ~45 a ~85 %)
+tr: يزيل ظلال الملابس والشخصيات ولمعانها: تفاصيل أقل وسرعة أعلى بكثير (Dragon Ball: من ~45 إلى ~85 %)
+
+es: Menos efectos: pasadas de pantalla (experimental)
+tr: مؤثرات أقل: معالجات الشاشة (تجريبي)
+
+es: Quita efectos que el juego dibuja en imágenes aparte (brillos, desenfoques, reflejos). Si falta algo importante, apágalo
+tr: يزيل مؤثرات ترسمها اللعبة في صور منفصلة (توهج، تمويه، انعكاسات). إذا اختفى شيء مهم فأطفئه

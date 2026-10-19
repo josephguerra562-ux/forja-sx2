@@ -1,0 +1,1037 @@
+# Forja SX2 — 한국어 (ko). Cada texto: "es:" el español del código, "tr:" su traducción. \n es otra línea.
+# Each text: "es:" the Spanish in the code, "tr:" its translation. \n is a new line. Check: python idiomas.py
+
+es: No se pudo iniciar la detección del disco.
+tr: 디스크 감지를 시작할 수 없습니다.
+
+es: Idioma
+tr: 언어
+
+es: Preguntar el idioma al iniciar
+tr: 시작할 때 언어 묻기
+
+es: Velocidad del CPU de la PS2
+tr: PS2 CPU 속도
+
+es: CPU automático
+tr: CPU 자동 조절
+
+es: Resolución interna
+tr: 내부 해상도
+
+es: Relación de aspecto
+tr: 화면 비율
+
+es: Contador de FPS al jugar
+tr: 게임 중 FPS 표시
+
+es: Sensibilidad de la palanca
+tr: 스틱 감도
+
+es: Cargas rápidas del disco
+tr: 디스크 빠른 로딩
+
+es: Saltar el logo de la PS2
+tr: PS2 로고 건너뛰기
+
+es: Lecturas de la gráfica (readbacks)
+tr: GPU 리드백
+
+es: Modo video automático
+tr: 자동 영상 모드
+
+es: Generación de cuadros (30 a 60 FPS)
+tr: 프레임 생성 (30에서 60 FPS로)
+
+es: Botón del menú del emulador
+tr: 에뮬레이터 메뉴 버튼
+
+es: El idioma de todo el emulador. X abre la lista de idiomas
+tr: 에뮬레이터 전체의 언어. X로 언어 목록을 엽니다
+
+es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
+tr: 예: Forja SX2를 열 때마다 언어 목록이 나옵니다
+
+es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
+tr: 모든 게임이 여기서 시작합니다. 느려지는 게임은 L3+R3에서 올리세요 (그 게임에 저장됨)
+
+es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
+tr: 게임의 CPU를 올려서 느려지면 무거운 장면에서만 이 값까지 스스로 내려갑니다
+
+es: 1x es la de la PS2. En PS4 Pro aguanta 2x-4x en juegos ligeros
+tr: 1x는 PS2 원래 해상도입니다. PS4 Pro는 가벼운 게임에서 2x-4x까지 됩니다
+
+es: Auto respeta lo que pide el juego
+tr: 자동은 게임이 요구하는 대로 따릅니다
+
+es: Muestra FPS y velocidad arriba a la derecha (se cambia también en L3+R3)
+tr: 오른쪽 위에 FPS와 속도를 표시합니다 (L3+R3에서도 변경 가능)
+
+es: Qué tanto hay que empujar la palanca para llegar al tope. 133 % es como el PCSX2 de PC
+tr: 스틱을 얼마나 밀어야 끝까지 가는지. 133 %는 PC용 PCSX2와 같습니다
+
+es: Acorta las cargas. Algunos juegos se cuelgan con esto: si pasa, apágalo
+tr: 로딩을 줄입니다. 일부 게임은 멈출 수 있으니 그러면 끄세요
+
+es: Arranca directo el juego, sin la animación de la PS2
+tr: PS2 애니메이션 없이 바로 게임을 시작합니다
+
+es: Si el juego se traba sin que el CPU esté al 100 %: prueba Sin esperar. Desactivadas puede romper efectos
+tr: CPU가 100 %가 아닌데 끊기면 '기다리지 않음'을 시도하세요. '끄기'는 효과가 깨질 수 있습니다
+
+es: En los videos del juego busca el CPU de la PS2 que da más cuadros (31 a 100 %) y lo devuelve al terminar
+tr: 게임 영상에서 프레임이 가장 많은 PS2 CPU 속도(31~100 %)를 찾고 끝나면 되돌립니다
+
+es: EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso
+tr: 실험 기능: 30 FPS로 안정된 게임을 60으로 표시 (GPU가 중간 프레임을 만듦). 지연 +1 프레임
+
+es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
+tr: 터치패드: 오른쪽 절반을 누르세요. 왼쪽은 여전히 PS2의 SELECT입니다
+
+es: 100 % (PS2 real)
+tr: 100 % (실제 PS2)
+
+es: No
+tr: 아니요
+
+es: Hasta 75 %
+tr: 75 %까지
+
+es: Hasta 60 %
+tr: 60 %까지
+
+es: Hasta 50 %
+tr: 50 %까지
+
+es: Hasta 36 %
+tr: 36 %까지
+
+es: Hasta 31 %
+tr: 31 %까지
+
+es: Hasta 27 %
+tr: 27 %까지
+
+es: Estirar
+tr: 늘리기
+
+es: Auto
+tr: 자동
+
+es: Sí
+tr: 예
+
+es: %dx (nativa)
+tr: %dx (기본)
+
+es: Precisas
+tr: 정확
+
+es: Sin esperar (más rápido)
+tr: 기다리지 않음 (더 빠름)
+
+es: Desactivadas
+tr: 끄기
+
+es: Panel táctil (derecha)
+tr: 터치패드 (오른쪽)
+
+es: Los dos
+tr: 둘 다
+
+es: Elige el idioma
+tr: 언어를 선택하세요
+
+es: También se cambia en Ajustes, donde puedes apagar esta pregunta.
+tr: '설정'에서도 바꿀 수 있고, 이 질문을 끌 수도 있습니다.
+
+es: Aceptar
+tr: 확인
+
+es: Atrás
+tr: 뒤로
+
+es: No se detectó ningún disco
+tr: 디스크가 감지되지 않았습니다
+
+es: No hay juegos recientes
+tr: 최근 게임이 없습니다
+
+es: No hay juegos favoritos
+tr: 즐겨찾기한 게임이 없습니다
+
+es: Ajustes de Forja SX2 (para todos los juegos)
+tr: Forja SX2 설정 (모든 게임에 적용)
+
+es: No se encontraron juegos
+tr: 게임을 찾지 못했습니다
+
+es: Cargando...
+tr: 불러오는 중...
+
+es: No se pudieron guardar los ajustes.
+tr: 설정을 저장할 수 없습니다.
+
+es: Guardado. Se aplica al iniciar el próximo juego.
+tr: 저장했습니다. 다음 게임을 시작할 때 적용됩니다.
+
+es: Copiando el disco
+tr: 디스크 복사 중
+
+es: Revisando el DVD...
+tr: DVD 확인 중...
+
+es: Falló la detección del disco
+tr: 디스크 감지에 실패했습니다
+
+es: Leyendo la unidad. Puedes seguir navegando.
+tr: 드라이브를 읽는 중입니다. 계속 둘러봐도 됩니다.
+
+es: Idioma guardado.
+tr: 언어를 저장했습니다.
+
+es: No se encontró el archivo de ese idioma: queda el español.
+tr: 그 언어의 파일을 찾지 못했습니다: 스페인어로 유지합니다.
+
+es:  Portada no disponible. Triángulo para reintentar.
+tr:  표지를 받을 수 없습니다. 세모 버튼으로 다시 시도.
+
+es: DVD de PS2 - 
+tr: PS2 DVD - 
+
+es:  | DVD doble capa
+tr:  | 듀얼 레이어 DVD
+
+es:  | X: jugar desde el disco · □: copiarlo a la PS4
+tr:  | X: 디스크로 플레이 · □: PS4에 복사
+
+es:  | Ya está copiado en la PS4 · X: jugar la copia
+tr:  | 이미 PS4에 복사됨 · X: 사본으로 플레이
+
+es: DVD no disponible
+tr: DVD를 사용할 수 없습니다
+
+es:  Descargando portada...
+tr:  표지 다운로드 중...
+
+es: Cancelando la copia...
+tr: 복사를 취소하는 중...
+
+es: Este disco ya está copiado en la PS4. X para jugar la copia.
+tr: 이 디스크는 이미 PS4에 복사되어 있습니다. X로 사본을 플레이하세요.
+
+es: Pulsa Triángulo para leer el disco y después □ para copiarlo.
+tr: 세모 버튼으로 디스크를 읽은 뒤 □로 복사하세요.
+
+es: Quitado de favoritos.
+tr: 즐겨찾기에서 뺐습니다.
+
+es: Agregado a favoritos.
+tr: 즐겨찾기에 추가했습니다.
+
+es: No se pudieron guardar los favoritos.
+tr: 즐겨찾기를 저장할 수 없습니다.
+
+es: Hay una copia del disco en curso: espera a que termine o cancélala con □ en Disco.
+tr: 디스크 복사 중입니다. 끝날 때까지 기다리거나 '디스크'에서 □로 취소하세요.
+
+es: El soporte de disco físico está en preparación.
+tr: 실물 디스크 지원은 준비 중입니다.
+
+es: Aquí irán las opciones de ajustes.
+tr: 여기에 설정 항목이 들어갑니다.
+
+es: No hay juegos en esta vista.
+tr: 이 보기에는 게임이 없습니다.
+
+es: Archivo no disponible. Pulsa Triángulo para actualizar.
+tr: 파일을 사용할 수 없습니다. 세모 버튼으로 새로 고치세요.
+
+es: No se puede abrir el juego: 
+tr: 게임을 열 수 없습니다: 
+
+es: Iniciando...
+tr: 시작하는 중...
+
+es: Conecta un control para elegir un juego.
+tr: 게임을 고르려면 컨트롤러를 연결하세요.
+
+es: Terminando de bajar la portada...
+tr: 표지 다운로드를 마무리하는 중...
+
+es: Terminando de detectar el disco...
+tr: 디스크 감지를 마무리하는 중...
+
+es: Preparando el emulador...
+tr: 에뮬레이터 준비 중...
+
+es: Menú del emulador
+tr: 에뮬레이터 메뉴
+
+es: JUEGO EN PAUSA
+tr: 게임 일시 정지
+
+es: Perfil de este juego:  de fábrica %s  ·  tuyo %s
+tr: 이 게임의 프로필:  기본 제공 %s  ·  내 것 %s
+
+es: sí
+tr: 있음
+
+es: no
+tr: 없음
+
+es: global
+tr: 전체
+
+es: perfil de fábrica
+tr: 기본 제공 프로필
+
+es: tu perfil
+tr: 내 프로필
+
+es: Resolución interna:  < %ux >  (nativa)
+tr: 내부 해상도:  < %ux >  (기본)
+
+es: Resolución interna:  < %ux >
+tr: 내부 해상도:  < %ux >
+
+es: Relación de aspecto:  < %s >
+tr: 화면 비율:  < %s >
+
+es: Contador de rendimiento:  < %s >
+tr: 성능 표시:  < %s >
+
+es: 27 % (exp.)
+tr: 27 % (실험)
+
+es: 31 % (exp.)
+tr: 31 % (실험)
+
+es: 36 % (exp.)
+tr: 36 % (실험)
+
+es: Velocidad del CPU de la PS2:  < %s >
+tr: PS2 CPU 속도:  < %s >
+
+es: Modo video:  < %s >
+tr: 영상 모드:  < %s >
+
+es: %s Para este juego  ·  ahora: %s
+tr: %s 이 게임용  ·  현재: %s
+
+es: Busca el CPU de la PS2 que da más cuadros en cada video (31 a 100 %).
+tr: 영상마다 프레임이 가장 많은 PS2 CPU 속도를 찾습니다 (31~100 %).
+
+es: CPU de la PS2 durante las cinemáticas.
+tr: 컷신 동안의 PS2 CPU 속도.
+
+es: Suave
+tr: 부드럽게
+
+es: Nítida
+tr: 선명하게
+
+es: CAS fuerte
+tr: 강한 CAS
+
+es: Píxeles
+tr: 픽셀
+
+es: Como hasta ahora: la imagen escalada y suavizada. Se guarda para este juego
+tr: 지금까지처럼: 확대하고 부드럽게 한 화면. 이 게임에 저장됩니다
+
+es: Bilineal nítido: bordes más definidos, sin costo. Se guarda para este juego
+tr: 선명한 바이리니어: 경계가 또렷하고 부담 없음. 이 게임에 저장됩니다
+
+es: AMD CAS (de la familia del FSR): realza el detalle al agrandar la imagen. Cuesta muy poco
+tr: AMD CAS (FSR 계열): 확대할 때 디테일을 살립니다. 부담이 아주 적습니다
+
+es: AMD CAS al máximo: aún más detalle; puede verse algo granulado
+tr: AMD CAS 최대: 디테일이 더 많아지지만 약간 거칠어 보일 수 있습니다
+
+es: Sin filtro: cada píxel tal cual, estilo retro. Se guarda para este juego
+tr: 필터 없음: 픽셀을 그대로, 레트로 스타일. 이 게임에 저장됩니다
+
+es: Nitidez:  < %s >
+tr: 선명도:  < %s >
+
+es: Fluida
+tr: 매끄럽게
+
+es: Generación de cuadros:  < %s >
+tr: 프레임 생성:  < %s >
+
+es: Rellena cada refresco que la tele repetiría (juegos PAL, cuadros desparejos).
+tr: TV가 반복할 화면 갱신을 채웁니다 (PAL 게임, 고르지 않은 프레임).
+
+es: Muestra a 60 un juego estable a 30 (experimental).
+tr: 30으로 안정된 게임을 60으로 표시합니다 (실험).
+
+es: 1 de 2
+tr: 2개 중 1개
+
+es: Saltar cuadros (GS):  < %s >
+tr: 프레임 스킵 (GS):  < %s >
+
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
+tr: GS가 따라가지 못하면 2프레임 중 1프레임만 그려 게임이 제 속도로 갑니다 (실험)  ·  현재: %s  ·  %s
+
+es: saltando
+tr: 스킵 중
+
+es: dibuja todos
+tr: 모두 그림
+
+es: Global
+tr: 전체
+
+es: Normal
+tr: 보통
+
+es: Plan B
+tr: 플랜 B
+
+es: Propio
+tr: 사용자 지정
+
+es: Núcleos de la CPU:  < %s >
+tr: CPU 코어:  < %s >
+
+es: Reparto de EE, VU1 y GS (Plan B: EE 1, VU1 2, GS 3). Para este juego  ·  ahora: %s
+tr: EE, VU1, GS 배치 (플랜 B: EE 1, VU1 2, GS 3). 이 게임용  ·  현재: %s
+
+es: Hasta 36 % (exp.)
+tr: 36 %까지 (실험)
+
+es: Hasta 31 % (exp.)
+tr: 31 %까지 (실험)
+
+es: Hasta 27 % (exp.)
+tr: 27 %까지 (실험)
+
+es: CPU automático:  < %s >
+tr: CPU 자동 조절:  < %s >
+
+es: Baja el CPU de la PS2 solo en escenas pesadas: el juego va a su velocidad, con menos cuadros
+tr: 무거운 장면에서만 PS2 CPU를 낮춥니다: 게임은 제 속도로, 프레임은 적게
+
+es: Solo en escenas pesadas, para este juego  ·  ahora: %s  ·  %s
+tr: 무거운 장면에서만, 이 게임용  ·  현재: %s  ·  %s
+
+es: sin bajar
+tr: 낮추지 않음
+
+es: Guardar estado:  < Ranura %u >
+tr: 상태 저장:  < 슬롯 %u >
+
+es: Cargar estado:  < Ranura %u >
+tr: 상태 불러오기:  < 슬롯 %u >
+
+es: Guardado en la ranura %u.
+tr: 슬롯 %u에 저장했습니다.
+
+es: No se pudo guardar en la ranura %u.
+tr: 슬롯 %u에 저장할 수 없습니다.
+
+es: X: guarda aquí (reemplaza el del %s)
+tr: X: 여기에 저장 (%s 저장을 덮어씀)
+
+es: X: guarda aquí (reemplaza lo que hay en esta ranura)
+tr: X: 여기에 저장 (이 슬롯의 내용을 덮어씀)
+
+es: X: guarda la partida en esta ranura (vacía)
+tr: X: 이 슬롯에 게임 저장 (비어 있음)
+
+es: La ranura %u está vacía.
+tr: 슬롯 %u은(는) 비어 있습니다.
+
+es: No se pudo cargar la ranura %u.
+tr: 슬롯 %u을(를) 불러올 수 없습니다.
+
+es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
+tr: 저장 시각 %s  ·  X: 그 순간으로 돌아가 계속 플레이
+
+es: X: vuelve a ese momento y sigue jugando
+tr: X: 그 순간으로 돌아가 계속 플레이
+
+es: Ranura vacía
+tr: 빈 슬롯
+
+es: Volver al juego
+tr: 게임으로 돌아가기
+
+es: Reiniciar juego
+tr: 게임 다시 시작
+
+es: Restablecer ajustes de este juego
+tr: 이 게임의 설정 초기화
+
+es: Volver a la biblioteca
+tr: 라이브러리로 돌아가기
+
+es: Salir de la aplicación
+tr: 앱 종료
+
+es: Seguir jugando desde donde quedó
+tr: 멈춘 곳부터 계속 플레이
+
+es: X: empieza el juego de nuevo sin cerrarlo (lo no guardado se pierde)
+tr: X: 닫지 않고 게임을 처음부터 시작 (저장하지 않은 진행은 사라짐)
+
+es: Más calidad de imagen (consume más). Se guarda para este juego
+tr: 화질이 좋아집니다 (부담이 커짐). 이 게임에 저장됩니다
+
+es: Forma de la imagen en pantalla. Se guarda para este juego
+tr: 화면에 보이는 그림의 모양. 이 게임에 저장됩니다
+
+es: Mostrar u ocultar FPS, velocidad y tiempos
+tr: FPS, 속도, 처리 시간 표시 또는 숨기기
+
+es: Menos % = más FPS en la PS4 (el juego puede perder cuadros). Se guarda para este juego
+tr: %가 낮을수록 PS4의 FPS가 높아집니다 (게임 프레임이 빠질 수 있음). 이 게임에 저장됩니다
+
+es: X: borra tus cambios de este juego (queda copia .bak). Siguen el perfil de fábrica y los globales
+tr: X: 이 게임에서 바꾼 것을 지웁니다 (.bak 사본이 남음). 기본 제공 프로필과 전체 설정은 그대로
+
+es: Este juego no tiene cambios tuyos
+tr: 이 게임에는 내가 바꾼 것이 없습니다
+
+es: Cerrar el juego y volver a la biblioteca
+tr: 게임을 닫고 라이브러리로 돌아가기
+
+es: Cerrar el juego y salir de Forja SX2
+tr: 게임을 닫고 Forja SX2 종료
+
+es: Partida
+tr: 게임
+
+es: Imagen
+tr: 화면
+
+es: Rendimiento
+tr: 성능
+
+es: Extras
+tr: 부가 기능
+
+es: No tocar
+tr: 손대지 않기
+
+es: Sistema
+tr: 시스템
+
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: 게임을 측정하고 개선하기 위한 실험 기능 (테스트 중). 무엇을 하는지 모르면 그대로 두세요.
+
+es: AJUSTAR
+tr: 조절
+
+es: ELEGIR
+tr: 선택
+
+es: ELEGIR  ·  X  ·  CUADRADO
+tr: 선택  ·  X  ·  네모
+
+es: ELEGIR  ·  X
+tr: 선택  ·  X
+
+es: CAMBIAR
+tr: 전환
+
+es: X  ·  RANURA
+tr: X  ·  슬롯
+
+es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
+tr: 해상도: 1x-%ux (3x 이상은 실험 기능이며 PS4 Pro 전용).   '화면'과 '성능'에서 바꾼 것은 이 게임에만 저장됩니다.
+
+es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1: 탭 전환     위/아래: 선택     왼쪽/오른쪽: 값이나 슬롯 변경
+
+es: Volver
+tr: 돌아가기
+
+es: EMULADOR DE PLAYSTATION 2
+tr: 플레이스테이션 2 에뮬레이터
+
+es: Biblioteca
+tr: 라이브러리
+
+es: Disco
+tr: 디스크
+
+es: Recientes
+tr: 최근
+
+es: Favoritos
+tr: 즐겨찾기
+
+es: Ajustes
+tr: 설정
+
+es: Versión %d.%02d (%d)
+tr: 버전 %d.%02d (%d)
+
+es: Versión %d.%02d (local)
+tr: 버전 %d.%02d (로컬)
+
+es: DVD de PS2
+tr: PS2 DVD
+
+es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
+tr: 디스크를 PS4에 복사하는 중입니다. 라이브러리를 계속 써도 됩니다.
+
+es: □ cancela la copia. No saques el disco hasta que termine.
+tr: □로 복사를 취소합니다. 끝날 때까지 디스크를 빼지 마세요.
+
+es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
+tr: 디스크를 감지했습니다. X로 플레이 · □로 PS4에 복사.
+
+es: Mete un DVD y pulsa Triángulo para actualizar.
+tr: DVD를 넣고 세모 버튼을 눌러 새로 고치세요.
+
+es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
+tr: 한 번 복사하면 디스크가 사본을 엽니다: 더 빠르고 드라이브 소음도 없습니다.
+
+es: Cambiar
+tr: 변경
+
+es: Izq./Der.: ajustar   Arriba/Abajo: elegir
+tr: 왼쪽/오른쪽: 조절   위/아래: 선택
+
+es: Menú lateral
+tr: 사이드 메뉴
+
+es: Jugar
+tr: 플레이
+
+es: Quitar favorito
+tr: 즐겨찾기 해제
+
+es: Agregar favorito
+tr: 즐겨찾기 추가
+
+es: Revisar disco
+tr: 디스크 확인
+
+es: Actualizar biblioteca
+tr: 라이브러리 새로 고침
+
+es: Salir
+tr: 종료
+
+es: ¿Cerrar Forja SX2?
+tr: Forja SX2를 닫을까요?
+
+es: ¿Seguro que quieres salir de la aplicación?
+tr: 정말 앱을 종료할까요?
+
+es: Salir de Forja SX2
+tr: Forja SX2 종료
+
+es: Cancelar
+tr: 취소
+
+es: %s disponible
+tr: %s 사용 가능
+
+es: Se baja a /data/pkg y se verifica. Después cierra Forja e instálala con GoldHEN.
+tr: /data/pkg에 내려받고 검증합니다. 그다음 Forja를 닫고 GoldHEN으로 설치하세요.
+
+es: Tus juegos, ajustes y perfiles se quedan como están.
+tr: 게임, 설정, 프로필은 그대로 남습니다.
+
+es: Descargar
+tr: 다운로드
+
+es: Ahora no
+tr: 나중에
+
+es: Parches:  ninguno para este juego
+tr: 패치:  이 게임에는 없음
+
+es: Al empezar un juego se bajan los de la comunidad de PCSX2 (con internet). Los tuyos van en /data/ForjaSX2/patches
+tr: 게임을 시작하면 PCSX2 커뮤니티의 패치를 받습니다 (인터넷 필요). 내 패치는 /data/ForjaSX2/patches에 넣으세요
+
+es: Parche %u de %zu:  < %s >  %s
+tr: 패치 %u/%zu:  < %s >  %s
+
+es: Sin descripción
+tr: 설명 없음
+
+es:   ·  X: quitar (algunos piden reiniciar el juego)
+tr:   ·  X: 끄기 (일부는 게임을 다시 시작해야 함)
+
+es:   ·  X: poner
+tr:   ·  X: 켜기
+
+es:   ·  aquí: %.0f %% del GS
+tr:   ·  여기: GS의 %.0f %%
+
+es: Pon tus trucos en /data/ForjaSX2/cheats/%s_%08X.pnach (escritos como un parche) y vuelve a abrir este menú
+tr: 치트를 /data/ForjaSX2/cheats/%s_%08X.pnach에 넣고 (패치처럼 작성) 이 메뉴를 다시 여세요
+
+es: Trucos:  ninguno para este juego
+tr: 치트:  이 게임에는 없음
+
+es: Truco %u de %zu:  < %s >  %s
+tr: 치트 %u/%zu:  < %s >  %s
+
+es:   ·  X: quitar
+tr:   ·  X: 끄기
+
+es: Avance rápido:  < Sí >
+tr: 빨리 감기:  < 예 >
+
+es: Avance rápido:  < No >
+tr: 빨리 감기:  < 아니요 >
+
+es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
+tr: X: PS4가 버티는 최대 속도로 게임이 달립니다 (로딩, 대화). 저장되지 않음
+
+es: Filtro VU1:  sin datos todavía
+tr: VU1 필터:  아직 데이터 없음
+
+es: Juega unos segundos: el medidor del VU1 lista sus programas más costosos y aquí los apagas uno por uno (experimental)
+tr: 몇 초 플레이하면 VU1 측정기가 가장 무거운 프로그램을 보여 주고, 여기서 하나씩 끌 수 있습니다 (실험)
+
+es: Filtro VU1 %u de %zu:  < programa %04x · %.1f %% >  %s
+tr: VU1 필터 %u/%zu:  < 프로그램 %04x · %.1f %% >  %s
+
+es: QUITADO
+tr: 제거됨
+
+es: Activo
+tr: 활성
+
+es: No se dibuja lo que hace este programa. X lo devuelve; Cuadrado devuelve todos. Se guarda para este juego
+tr: 이 프로그램이 그리는 것을 빼고 있습니다. X로 되돌리고, 네모로 전부 되돌립니다. 이 게임에 저장됩니다
+
+es: X lo apaga: mira qué deja de verse y cuánto sube la velocidad (experimental). Se guarda para este juego
+tr: X로 끕니다: 무엇이 사라지고 속도가 얼마나 오르는지 보세요 (실험). 이 게임에 저장됩니다
+
+es: puntos
+tr: 점
+
+es: líneas
+tr: 선
+
+es: triángulos
+tr: 삼각형
+
+es: sprites
+tr: 스프라이트
+
+es:  transparentes
+tr:  (반투명)
+
+es: En la pantalla
+tr: 화면에
+
+es: En %05x
+tr: %05x에
+
+es: %s sin textura, %s%s
+tr: %s 텍스처 없음, %s%s
+
+es: 16 colores
+tr: 16색
+
+es: 256 colores
+tr: 256색
+
+es: profundidad
+tr: 깊이
+
+es: color
+tr: 컬러
+
+es: %s con la textura %05x (%ux%u, %s), %s%s
+tr: %s 텍스처 %05x (%ux%u, %s), %s%s
+
+es: Filtro GS:  sin datos todavía
+tr: GS 필터:  아직 데이터 없음
+
+es: Juega unos segundos: el GS lista sus grupos de dibujos más costosos y aquí los apagas uno por uno (experimental)
+tr: 몇 초 플레이하면 GS가 가장 무거운 그리기 그룹을 보여 주고, 여기서 하나씩 끌 수 있습니다 (실험)
+
+es: Filtro GS %u de %zu:  < grupo quitado >  QUITADO
+tr: GS 필터 %u/%zu:  < 제거한 그룹 >  제거됨
+
+es: Filtro GS %u de %zu:  < era el %.1f %% del GS · %u dibujos/s >  QUITADO
+tr: GS 필터 %u/%zu:  < GS의 %.1f %%였음 · 초당 %u회 그리기 >  제거됨
+
+es: Filtro GS %u de %zu:  < %.1f %% del GS · %u dibujos/s >  Activo
+tr: GS 필터 %u/%zu:  < GS의 %.1f %% · 초당 %u회 그리기 >  활성
+
+es: : no se dibuja. X lo devuelve; Cuadrado devuelve todos
+tr: : 그리지 않음. X로 되돌리고, 네모로 전부 되돌림
+
+es: . X lo apaga: mira qué deja de verse
+tr: . X로 끄기: 무엇이 사라지는지 보세요
+
+es: Sí, precargadas
+tr: 예, 미리 불러옴
+
+es: Texturas HD:  < %s >
+tr: HD 텍스처:  < %s >
+
+es: Pack encontrado (textures/%s/replacements). Precargar evita tirones pero usa más memoria
+tr: 팩을 찾았습니다 (textures/%s/replacements). 미리 불러오면 끊김이 없지만 메모리를 더 씁니다
+
+es: No hay pack: cópialo por FTP a /data/ForjaSX2/textures/%s/replacements
+tr: 팩 없음: FTP로 /data/ForjaSX2/textures/%s/replacements에 복사하세요
+
+es: Ajustes recomendados:  buscando en GitHub...
+tr: 추천 설정:  GitHub에서 찾는 중...
+
+es: Ajustes recomendados:  del centro (GitHub), %s
+tr: 추천 설정:  센터 (GitHub)에서, %s
+
+es: Ajustes recomendados:  del PKG
+tr: 추천 설정:  PKG에서
+
+es: Ajustes recomendados:  ninguno para este juego
+tr: 추천 설정:  이 게임에는 없음
+
+es: X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos
+tr: X: GitHub에서 다시 받기 (인터넷 필요). 다음 시작부터 적용됩니다. 시스템 > 초기화로 이 설정으로 돌아갑니다
+
+es: Cambiar disco:  este juego tiene un solo disco
+tr: 디스크 교체:  이 게임은 디스크가 하나뿐입니다
+
+es: Para juegos de varios discos: ponlos en roms/ como "Juego (Disco 1).iso", "Juego (Disco 2).iso"...
+tr: 디스크가 여러 장인 게임: roms/에 "게임 (Disc 1).iso", "게임 (Disc 2).iso"... 처럼 넣으세요
+
+es: Cambiar disco:  < Disco %d de %zu >%s
+tr: 디스크 교체:  < 디스크 %d/%zu >%s
+
+es:   (puesto)
+tr:   (넣은 디스크)
+
+es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
+tr: X: 고른 디스크로 바꿉니다. PS2 트레이를 열고 다른 디스크를 넣는 것과 같습니다. 게임이 요청할 때 하세요
+
+es: %d/%m a las %H:%M
+tr: %m월 %d일 %H:%M
+
+es: Preparando la BIOS de la PS2...
+tr: PS2 BIOS 준비 중...
+
+es: Abriendo el DVD...
+tr: DVD 여는 중...
+
+es: Abriendo la imagen del juego...
+tr: 게임 이미지 여는 중...
+
+es: Iniciando la máquina virtual...
+tr: 가상 머신 시작 중...
+
+es: Encendiendo la PlayStation 2...
+tr: 플레이스테이션 2 켜는 중...
+
+es: Listo
+tr: 준비 완료
+
+es: Juego %.0f / Pantalla %.0f FPS (FG)
+tr: 게임 %.0f / 화면 %.0f FPS (FG)
+
+es: Juego ~%.1f FPS
+tr: 게임 ~%.1f FPS
+
+es: FPS del juego: sin datos
+tr: 게임 FPS: 데이터 없음
+
+es: Velocidad %.0f%%
+tr: 속도 %.0f%%
+
+es: No se pudo bajar la %d: %s · OPTIONS reintenta
+tr: %d을(를) 내려받지 못했습니다: %s · OPTIONS로 다시 시도
+
+es: la versión no trae SHA256SUMS.txt
+tr: 이 버전에는 SHA256SUMS.txt가 없습니다
+
+es: SHA256SUMS.txt no nombra el paquete
+tr: SHA256SUMS.txt에 패키지가 없습니다
+
+es: no se pudo escribir en /data/pkg (%d)
+tr: /data/pkg에 쓸 수 없습니다 (%d)
+
+es: no hay espacio o falló la escritura
+tr: 공간이 없거나 쓰기에 실패했습니다
+
+es: la verificación no coincide (se borró)
+tr: 검증이 맞지 않습니다 (삭제함)
+
+es: no se pudo guardar el paquete
+tr: 패키지를 저장할 수 없습니다
+
+es: %s lista en /data/pkg · instálala con GoldHEN
+tr: %s 준비됨 (/data/pkg) · GoldHEN으로 설치하세요
+
+es: Compilación %d
+tr: 빌드 %d
+
+es: Versión %s (%d)
+tr: 버전 %s (%d)
+
+es: No se pudo iniciar la descarga.
+tr: 다운로드를 시작할 수 없습니다.
+
+es: Bajando %s: %u %%
+tr: %s 다운로드 중: %u %%
+
+es: %s disponible · OPTIONS para bajarla
+tr: %s 사용 가능 · OPTIONS로 다운로드
+
+es: No se pudo crear la copia en /data/ForjaSX2/roms (error %d).
+tr: /data/ForjaSX2/roms에 사본을 만들 수 없습니다 (오류 %d).
+
+es: Copia cancelada. No quedó nada a medias.
+tr: 복사를 취소했습니다. 반쯤 된 파일은 남지 않았습니다.
+
+es: Se sacó el disco o la unidad dejó de leerlo: la copia a medias se borró.
+tr: 디스크를 뺐거나 드라이브가 읽지 못했습니다: 반쯤 된 사본은 지웠습니다.
+
+es: No hay espacio en la PS4: hacen falta %llu GB libres. La copia a medias se borró.
+tr: PS4에 공간이 없습니다: %llu GB가 비어 있어야 합니다. 반쯤 된 사본은 지웠습니다.
+
+es: No se pudo escribir la copia (error %d). La copia a medias se borró.
+tr: 사본을 쓸 수 없습니다 (오류 %d). 반쯤 된 사본은 지웠습니다.
+
+es: No se pudo terminar la copia (error %d).
+tr: 복사를 마칠 수 없습니다 (오류 %d).
+
+es: Copia lista: %s. %u sectores no se pudieron leer (van en ceros). X para jugar.
+tr: 복사 완료: %s. %u개 섹터를 읽지 못했습니다 (0으로 채움). X로 플레이.
+
+es: Copia lista: %s. Desde ahora, con el disco puesto, X juega la copia.
+tr: 복사 완료: %s. 이제 디스크를 넣은 채 X를 누르면 사본으로 플레이합니다.
+
+es: Ya hay una copia en curso.
+tr: 이미 복사가 진행 중입니다.
+
+es: Pulsa Triángulo para leer el disco primero.
+tr: 먼저 세모 버튼으로 디스크를 읽으세요.
+
+es: Ya estaba copiado: %s.
+tr: 이미 복사됨: %s.
+
+es: No se pudo iniciar la copia.
+tr: 복사를 시작할 수 없습니다.
+
+es: Copiando %s: %u %% · %.1f MB/s · faltan %.0f min · □ para cancelar
+tr: %s 복사 중: %u %% · %.1f MB/s · %.0f분 남음 · □로 취소
+
+es: Copiando %s: empezando... · □ para cancelar
+tr: %s 복사 중: 시작하는 중... · □로 취소
+
+es: sin red
+tr: 네트워크 없음
+
+es: sin conexión
+tr: 연결 없음
+
+es: no se pudo preparar la conexión
+tr: 연결을 준비할 수 없습니다
+
+es: no se pudo crear la petición
+tr: 요청을 만들 수 없습니다
+
+es: demasiadas redirecciones
+tr: 리디렉션이 너무 많습니다
+
+es: redirección sin destino
+tr: 목적지 없는 리디렉션
+
+es: error de red %#x
+tr: 네트워크 오류 %#x
+
+es: respuesta HTTP %d
+tr: HTTP 응답 %d
+
+es: tardó demasiado
+tr: 너무 오래 걸렸습니다
+
+es: se cortó la descarga (%#x)
+tr: 다운로드가 끊겼습니다 (%#x)
+
+es: cancelada
+tr: 취소됨
+
+es: llegó incompleta
+tr: 불완전하게 받았습니다
+
+es: El sistema no deja usar la unidad de disco.
+tr: 시스템이 디스크 드라이브 사용을 허용하지 않습니다.
+
+es: La unidad de disco no está disponible.
+tr: 디스크 드라이브를 사용할 수 없습니다.
+
+es: Falló la lectura de la unidad. Mira el registro.
+tr: 드라이브 읽기에 실패했습니다. 로그를 확인하세요.
+
+es: La unidad de disco no tiene dispositivo CAM pass.
+tr: 디스크 드라이브에 CAM pass 장치가 없습니다.
+
+es: No se encontró la dirección de la unidad de disco.
+tr: 디스크 드라이브의 주소를 찾지 못했습니다.
+
+es: La unidad tardó demasiado. Espera y actualiza Disco.
+tr: 드라이브가 너무 오래 걸렸습니다. 잠시 후 '디스크'를 새로 고치세요.
+
+es: No hay disco. Mete un DVD de PS2 y actualiza.
+tr: 디스크가 없습니다. PS2 DVD를 넣고 새로 고치세요.
+
+es: Cambió el disco. Actualiza el panel Disco.
+tr: 디스크가 바뀌었습니다. '디스크' 화면을 새로 고치세요.
+
+es: La unidad se está preparando. Actualiza en unos segundos.
+tr: 드라이브가 준비 중입니다. 몇 초 뒤 새로 고치세요.
+
+es: La unidad no puede leer este tipo de disco.
+tr: 드라이브가 이 종류의 디스크를 읽을 수 없습니다.
+
+es: Falló una orden al disco. Mira el registro y actualiza.
+tr: 디스크 명령이 실패했습니다. 로그를 보고 새로 고치세요.
+
+es: No hay disco.
+tr: 디스크가 없습니다.
+
+es: Disco no compatible. Esta versión solo lee DVD de PS2.
+tr: 지원하지 않는 디스크입니다. 이 버전은 PS2 DVD만 읽습니다.
+
+es: Tamaño de sector o capacidad del DVD no compatible.
+tr: 지원하지 않는 DVD 섹터 크기 또는 용량입니다.
+
+es: El DVD no dio su descripción completa.
+tr: DVD가 전체 정보를 주지 않았습니다.
+
+es: Capas del DVD no compatibles.
+tr: 지원하지 않는 DVD 레이어 구성입니다.
+
+es: El cambio de capa del DVD no es válido.
+tr: DVD 레이어 전환 위치가 올바르지 않습니다.
+
+es: Este DVD no tiene un sistema de archivos ISO9660 compatible.
+tr: 이 DVD에는 지원되는 ISO9660 파일 시스템이 없습니다.
+
+es: La carpeta raíz del DVD no es compatible.
+tr: DVD의 루트 폴더를 지원하지 않습니다.
+
+es: SYSTEM.CNF no tiene la línea BOOT2 de la PS2.
+tr: SYSTEM.CNF에 PS2의 BOOT2 줄이 없습니다.
+
+es: Los datos del disco no son válidos.
+tr: 디스크 데이터가 올바르지 않습니다.
+
+es: Menos efectos: sombreado de personajes
+tr: 효과 줄이기: 캐릭터 음영
+
+es: Quita las sombras y brillos de ropa y personajes: menos detalle, mucha más velocidad (Dragon Ball: ~45 a ~85 %)
+tr: 옷과 캐릭터의 그림자와 광택을 없앱니다: 디테일은 줄고 속도는 크게 오릅니다 (드래곤볼: 약 45 %에서 약 85 %로)
+
+es: Menos efectos: pasadas de pantalla (experimental)
+tr: 효과 줄이기: 화면 패스 (실험)
+
+es: Quita efectos que el juego dibuja en imágenes aparte (brillos, desenfoques, reflejos). Si falta algo importante, apágalo
+tr: 게임이 따로 그리는 효과 (빛, 흐림, 반사)를 없앱니다. 중요한 것이 사라지면 끄세요

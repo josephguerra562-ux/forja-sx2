@@ -1,0 +1,1037 @@
+# Forja SX2 — 日本語 (ja). Cada texto: "es:" el español del código, "tr:" su traducción. \n es otra línea.
+# Each text: "es:" the Spanish in the code, "tr:" its translation. \n is a new line. Check: python idiomas.py
+
+es: No se pudo iniciar la detección del disco.
+tr: ディスクの検出を開始できませんでした。
+
+es: Idioma
+tr: 言語
+
+es: Preguntar el idioma al iniciar
+tr: 起動時に言語を確認
+
+es: Velocidad del CPU de la PS2
+tr: PS2のCPU速度
+
+es: CPU automático
+tr: CPU自動調整
+
+es: Resolución interna
+tr: 内部解像度
+
+es: Relación de aspecto
+tr: アスペクト比
+
+es: Contador de FPS al jugar
+tr: プレイ中のFPS表示
+
+es: Sensibilidad de la palanca
+tr: スティック感度
+
+es: Cargas rápidas del disco
+tr: ディスクの高速読み込み
+
+es: Saltar el logo de la PS2
+tr: PS2のロゴをスキップ
+
+es: Lecturas de la gráfica (readbacks)
+tr: GPUリードバック
+
+es: Modo video automático
+tr: ムービーモード自動
+
+es: Generación de cuadros (30 a 60 FPS)
+tr: フレーム生成（30→60 FPS）
+
+es: Botón del menú del emulador
+tr: エミュレーターメニューのボタン
+
+es: El idioma de todo el emulador. X abre la lista de idiomas
+tr: エミュレーター全体の言語。Xで言語の一覧を開きます
+
+es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
+tr: はい：Forja SX2を開くたびに言語の一覧が出ます
+
+es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
+tr: すべてのゲームはここから始まります。スローになるゲームはL3+R3で上げてください（そのゲーム用に保存）
+
+es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
+tr: ゲームのCPUを上げて重くなったとき、重い場面だけ自動でこの値まで下げます
+
+es: 1x es la de la PS2. En PS4 Pro aguanta 2x-4x en juegos ligeros
+tr: 1xはPS2本来の解像度。PS4 Proなら軽いゲームで2x-4xまで可能
+
+es: Auto respeta lo que pide el juego
+tr: 自動はゲームの指定に従います
+
+es: Muestra FPS y velocidad arriba a la derecha (se cambia también en L3+R3)
+tr: 右上にFPSと速度を表示します（L3+R3でも変更可能）
+
+es: Qué tanto hay que empujar la palanca para llegar al tope. 133 % es como el PCSX2 de PC
+tr: どこまでスティックを倒せば最大になるか。133 %はPC版PCSX2と同じ
+
+es: Acorta las cargas. Algunos juegos se cuelgan con esto: si pasa, apágalo
+tr: 読み込みを短くします。固まるゲームもあるので、その場合はオフに
+
+es: Arranca directo el juego, sin la animación de la PS2
+tr: PS2の起動アニメなしで、すぐにゲームを始めます
+
+es: Si el juego se traba sin que el CPU esté al 100 %: prueba Sin esperar. Desactivadas puede romper efectos
+tr: CPUが100 %でないのにカクつくなら「待たない」を。「オフ」は効果が崩れることがあります
+
+es: En los videos del juego busca el CPU de la PS2 que da más cuadros (31 a 100 %) y lo devuelve al terminar
+tr: ゲーム内ムービーでフレームが最も多いPS2のCPU速度（31～100 %）を探し、終わると戻します
+
+es: EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso
+tr: 実験的：30 FPSで安定したゲームを60で表示（GPUが中間フレームを作成）。遅延+1フレーム
+
+es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
+tr: タッチパッド：右半分を押します。左半分はPS2のSELECTのままです
+
+es: 100 % (PS2 real)
+tr: 100 %（実機PS2）
+
+es: No
+tr: いいえ
+
+es: Hasta 75 %
+tr: 75 %まで
+
+es: Hasta 60 %
+tr: 60 %まで
+
+es: Hasta 50 %
+tr: 50 %まで
+
+es: Hasta 36 %
+tr: 36 %まで
+
+es: Hasta 31 %
+tr: 31 %まで
+
+es: Hasta 27 %
+tr: 27 %まで
+
+es: Estirar
+tr: 引き伸ばし
+
+es: Auto
+tr: 自動
+
+es: Sí
+tr: はい
+
+es: %dx (nativa)
+tr: %dx（ネイティブ）
+
+es: Precisas
+tr: 正確
+
+es: Sin esperar (más rápido)
+tr: 待たない（高速）
+
+es: Desactivadas
+tr: オフ
+
+es: Panel táctil (derecha)
+tr: タッチパッド（右）
+
+es: Los dos
+tr: 両方
+
+es: Elige el idioma
+tr: 言語を選んでください
+
+es: También se cambia en Ajustes, donde puedes apagar esta pregunta.
+tr: 「設定」でも変更でき、この確認をオフにすることもできます。
+
+es: Aceptar
+tr: 決定
+
+es: Atrás
+tr: 戻る
+
+es: No se detectó ningún disco
+tr: ディスクが見つかりません
+
+es: No hay juegos recientes
+tr: 最近のゲームはありません
+
+es: No hay juegos favoritos
+tr: お気に入りのゲームはありません
+
+es: Ajustes de Forja SX2 (para todos los juegos)
+tr: Forja SX2の設定（すべてのゲーム共通）
+
+es: No se encontraron juegos
+tr: ゲームが見つかりません
+
+es: Cargando...
+tr: 読み込み中...
+
+es: No se pudieron guardar los ajustes.
+tr: 設定を保存できませんでした。
+
+es: Guardado. Se aplica al iniciar el próximo juego.
+tr: 保存しました。次にゲームを起動したときに反映されます。
+
+es: Copiando el disco
+tr: ディスクをコピー中
+
+es: Revisando el DVD...
+tr: DVDを確認中...
+
+es: Falló la detección del disco
+tr: ディスクの検出に失敗しました
+
+es: Leyendo la unidad. Puedes seguir navegando.
+tr: ドライブを読み込み中。操作を続けられます。
+
+es: Idioma guardado.
+tr: 言語を保存しました。
+
+es: No se encontró el archivo de ese idioma: queda el español.
+tr: その言語のファイルが見つかりません：スペイン語のままです。
+
+es:  Portada no disponible. Triángulo para reintentar.
+tr:  ジャケット画像がありません。△ボタンで再試行。
+
+es: DVD de PS2 - 
+tr: PS2のDVD - 
+
+es:  | DVD doble capa
+tr:  | 2層DVD
+
+es:  | X: jugar desde el disco · □: copiarlo a la PS4
+tr:  | X：ディスクでプレイ · □：PS4にコピー
+
+es:  | Ya está copiado en la PS4 · X: jugar la copia
+tr:  | PS4にコピー済み · X：コピーでプレイ
+
+es: DVD no disponible
+tr: DVDを使用できません
+
+es:  Descargando portada...
+tr:  ジャケット画像をダウンロード中...
+
+es: Cancelando la copia...
+tr: コピーを中止しています...
+
+es: Este disco ya está copiado en la PS4. X para jugar la copia.
+tr: このディスクはPS4にコピー済みです。Xでコピーをプレイ。
+
+es: Pulsa Triángulo para leer el disco y después □ para copiarlo.
+tr: △ボタンでディスクを読み込み、□でコピーします。
+
+es: Quitado de favoritos.
+tr: お気に入りから外しました。
+
+es: Agregado a favoritos.
+tr: お気に入りに追加しました。
+
+es: No se pudieron guardar los favoritos.
+tr: お気に入りを保存できませんでした。
+
+es: Hay una copia del disco en curso: espera a que termine o cancélala con □ en Disco.
+tr: ディスクのコピー中です。終わるまで待つか、「ディスク」で□を押して中止してください。
+
+es: El soporte de disco físico está en preparación.
+tr: 物理ディスクへの対応は準備中です。
+
+es: Aquí irán las opciones de ajustes.
+tr: ここに設定の項目が入ります。
+
+es: No hay juegos en esta vista.
+tr: この表示にはゲームがありません。
+
+es: Archivo no disponible. Pulsa Triángulo para actualizar.
+tr: ファイルを使用できません。△ボタンで更新してください。
+
+es: No se puede abrir el juego: 
+tr: ゲームを開けません： 
+
+es: Iniciando...
+tr: 起動中...
+
+es: Conecta un control para elegir un juego.
+tr: ゲームを選ぶにはコントローラーを接続してください。
+
+es: Terminando de bajar la portada...
+tr: ジャケット画像のダウンロードを終えています...
+
+es: Terminando de detectar el disco...
+tr: ディスクの検出を終えています...
+
+es: Preparando el emulador...
+tr: エミュレーターを準備中...
+
+es: Menú del emulador
+tr: エミュレーターメニュー
+
+es: JUEGO EN PAUSA
+tr: ゲーム一時停止中
+
+es: Perfil de este juego:  de fábrica %s  ·  tuyo %s
+tr: このゲームのプロファイル：  標準 %s  ·  自分用 %s
+
+es: sí
+tr: あり
+
+es: no
+tr: なし
+
+es: global
+tr: 共通
+
+es: perfil de fábrica
+tr: 標準プロファイル
+
+es: tu perfil
+tr: 自分用プロファイル
+
+es: Resolución interna:  < %ux >  (nativa)
+tr: 内部解像度：  < %ux >  （ネイティブ）
+
+es: Resolución interna:  < %ux >
+tr: 内部解像度：  < %ux >
+
+es: Relación de aspecto:  < %s >
+tr: アスペクト比：  < %s >
+
+es: Contador de rendimiento:  < %s >
+tr: パフォーマンス表示：  < %s >
+
+es: 27 % (exp.)
+tr: 27 %（実験）
+
+es: 31 % (exp.)
+tr: 31 %（実験）
+
+es: 36 % (exp.)
+tr: 36 %（実験）
+
+es: Velocidad del CPU de la PS2:  < %s >
+tr: PS2のCPU速度：  < %s >
+
+es: Modo video:  < %s >
+tr: ムービーモード：  < %s >
+
+es: %s Para este juego  ·  ahora: %s
+tr: %s このゲーム用  ·  現在：%s
+
+es: Busca el CPU de la PS2 que da más cuadros en cada video (31 a 100 %).
+tr: ムービーごとにフレームが最も多いPS2のCPU速度を探します（31～100 %）。
+
+es: CPU de la PS2 durante las cinemáticas.
+tr: ムービー中のPS2のCPU速度。
+
+es: Suave
+tr: なめらか
+
+es: Nítida
+tr: くっきり
+
+es: CAS fuerte
+tr: CAS強
+
+es: Píxeles
+tr: ドット
+
+es: Como hasta ahora: la imagen escalada y suavizada. Se guarda para este juego
+tr: これまで通り：拡大してなめらかにした画面。このゲーム用に保存
+
+es: Bilineal nítido: bordes más definidos, sin costo. Se guarda para este juego
+tr: シャープなバイリニア：輪郭がくっきり、負荷なし。このゲーム用に保存
+
+es: AMD CAS (de la familia del FSR): realza el detalle al agrandar la imagen. Cuesta muy poco
+tr: AMD CAS（FSRの仲間）：拡大時にディテールを強調。負荷はごくわずか
+
+es: AMD CAS al máximo: aún más detalle; puede verse algo granulado
+tr: AMD CAS最大：さらに細かく。少しザラついて見えることがあります
+
+es: Sin filtro: cada píxel tal cual, estilo retro. Se guarda para este juego
+tr: フィルターなし：ドットをそのまま表示するレトロ風。このゲーム用に保存
+
+es: Nitidez:  < %s >
+tr: シャープネス：  < %s >
+
+es: Fluida
+tr: スムーズ
+
+es: Generación de cuadros:  < %s >
+tr: フレーム生成：  < %s >
+
+es: Rellena cada refresco que la tele repetiría (juegos PAL, cuadros desparejos).
+tr: テレビが繰り返すはずのリフレッシュを埋めます（PALのゲーム、不揃いなフレーム）。
+
+es: Muestra a 60 un juego estable a 30 (experimental).
+tr: 30で安定したゲームを60で表示（実験的）。
+
+es: 1 de 2
+tr: 2回に1回
+
+es: Saltar cuadros (GS):  < %s >
+tr: フレームスキップ（GS）：  < %s >
+
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
+tr: GSが追いつかないとき2フレームに1回だけ描画し、ゲームは本来の速度で進みます（実験的）  ·  現在：%s  ·  %s
+
+es: saltando
+tr: スキップ中
+
+es: dibuja todos
+tr: すべて描画
+
+es: Global
+tr: 共通
+
+es: Normal
+tr: 標準
+
+es: Plan B
+tr: プランB
+
+es: Propio
+tr: カスタム
+
+es: Núcleos de la CPU:  < %s >
+tr: CPUコア：  < %s >
+
+es: Reparto de EE, VU1 y GS (Plan B: EE 1, VU1 2, GS 3). Para este juego  ·  ahora: %s
+tr: EE、VU1、GSの割り当て（プランB：EE 1、VU1 2、GS 3）。このゲーム用  ·  現在：%s
+
+es: Hasta 36 % (exp.)
+tr: 36 %まで（実験）
+
+es: Hasta 31 % (exp.)
+tr: 31 %まで（実験）
+
+es: Hasta 27 % (exp.)
+tr: 27 %まで（実験）
+
+es: CPU automático:  < %s >
+tr: CPU自動調整：  < %s >
+
+es: Baja el CPU de la PS2 solo en escenas pesadas: el juego va a su velocidad, con menos cuadros
+tr: 重い場面だけPS2のCPUを下げます：ゲームは本来の速度で、フレーム数は減ります
+
+es: Solo en escenas pesadas, para este juego  ·  ahora: %s  ·  %s
+tr: 重い場面だけ、このゲーム用  ·  現在：%s  ·  %s
+
+es: sin bajar
+tr: 下げていない
+
+es: Guardar estado:  < Ranura %u >
+tr: ステートセーブ：  < スロット %u >
+
+es: Cargar estado:  < Ranura %u >
+tr: ステートロード：  < スロット %u >
+
+es: Guardado en la ranura %u.
+tr: スロット %u にセーブしました。
+
+es: No se pudo guardar en la ranura %u.
+tr: スロット %u にセーブできませんでした。
+
+es: X: guarda aquí (reemplaza el del %s)
+tr: X：ここにセーブ（%sのデータを上書き）
+
+es: X: guarda aquí (reemplaza lo que hay en esta ranura)
+tr: X：ここにセーブ（このスロットを上書き）
+
+es: X: guarda la partida en esta ranura (vacía)
+tr: X：このスロットにセーブ（空き）
+
+es: La ranura %u está vacía.
+tr: スロット %u は空です。
+
+es: No se pudo cargar la ranura %u.
+tr: スロット %u をロードできませんでした。
+
+es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
+tr: セーブ日時 %s  ·  X：その時点に戻って続きをプレイ
+
+es: X: vuelve a ese momento y sigue jugando
+tr: X：その時点に戻って続きをプレイ
+
+es: Ranura vacía
+tr: 空きスロット
+
+es: Volver al juego
+tr: ゲームに戻る
+
+es: Reiniciar juego
+tr: ゲームをリセット
+
+es: Restablecer ajustes de este juego
+tr: このゲームの設定をリセット
+
+es: Volver a la biblioteca
+tr: ライブラリに戻る
+
+es: Salir de la aplicación
+tr: アプリを終了
+
+es: Seguir jugando desde donde quedó
+tr: 中断したところから続けます
+
+es: X: empieza el juego de nuevo sin cerrarlo (lo no guardado se pierde)
+tr: X：閉じずに最初から始めます（セーブしていない進行は消えます）
+
+es: Más calidad de imagen (consume más). Se guarda para este juego
+tr: 画質を上げます（負荷が増えます）。このゲーム用に保存
+
+es: Forma de la imagen en pantalla. Se guarda para este juego
+tr: 画面の形。このゲーム用に保存
+
+es: Mostrar u ocultar FPS, velocidad y tiempos
+tr: FPS、速度、処理時間の表示・非表示
+
+es: Menos % = más FPS en la PS4 (el juego puede perder cuadros). Se guarda para este juego
+tr: %を下げるとPS4のFPSが上がります（ゲームのフレームが落ちることも）。このゲーム用に保存
+
+es: X: borra tus cambios de este juego (queda copia .bak). Siguen el perfil de fábrica y los globales
+tr: X：このゲームの変更を消します（.bakのコピーが残ります）。標準プロファイルと共通設定は残ります
+
+es: Este juego no tiene cambios tuyos
+tr: このゲームに自分の変更はありません
+
+es: Cerrar el juego y volver a la biblioteca
+tr: ゲームを閉じてライブラリに戻ります
+
+es: Cerrar el juego y salir de Forja SX2
+tr: ゲームを閉じてForja SX2を終了します
+
+es: Partida
+tr: ゲーム
+
+es: Imagen
+tr: 画面
+
+es: Rendimiento
+tr: パフォーマンス
+
+es: Extras
+tr: エクストラ
+
+es: No tocar
+tr: さわらない
+
+es: Sistema
+tr: システム
+
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: ゲームを測定・改善するための実験機能（テスト中）。何をするかわからない項目はそのままにしてください。
+
+es: AJUSTAR
+tr: 調整
+
+es: ELEGIR
+tr: 選択
+
+es: ELEGIR  ·  X  ·  CUADRADO
+tr: 選択  ·  X  ·  □
+
+es: ELEGIR  ·  X
+tr: 選択  ·  X
+
+es: CAMBIAR
+tr: 切替
+
+es: X  ·  RANURA
+tr: X  ·  スロット
+
+es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
+tr: 解像度：1x-%ux（3x以上は実験的でPS4 Pro専用）。   「画面」と「パフォーマンス」の変更はこのゲームだけに保存されます。
+
+es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1：タブ切替     上/下：選択     左/右：値やスロットを変更
+
+es: Volver
+tr: 戻る
+
+es: EMULADOR DE PLAYSTATION 2
+tr: プレイステーション2 エミュレーター
+
+es: Biblioteca
+tr: ライブラリ
+
+es: Disco
+tr: ディスク
+
+es: Recientes
+tr: 最近
+
+es: Favoritos
+tr: お気に入り
+
+es: Ajustes
+tr: 設定
+
+es: Versión %d.%02d (%d)
+tr: バージョン %d.%02d（%d）
+
+es: Versión %d.%02d (local)
+tr: バージョン %d.%02d（ローカル）
+
+es: DVD de PS2
+tr: PS2のDVD
+
+es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
+tr: ディスクをPS4にコピー中。ライブラリはそのまま使えます。
+
+es: □ cancela la copia. No saques el disco hasta que termine.
+tr: □でコピーを中止。終わるまでディスクを取り出さないでください。
+
+es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
+tr: ディスクを検出しました。Xでプレイ · □でPS4にコピー。
+
+es: Mete un DVD y pulsa Triángulo para actualizar.
+tr: DVDを入れて△ボタンで更新してください。
+
+es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
+tr: 一度コピーすれば、ディスクを入れるとコピーが開きます：速くてドライブの音もしません。
+
+es: Cambiar
+tr: 変更
+
+es: Izq./Der.: ajustar   Arriba/Abajo: elegir
+tr: 左/右：調整   上/下：選択
+
+es: Menú lateral
+tr: サイドメニュー
+
+es: Jugar
+tr: プレイ
+
+es: Quitar favorito
+tr: お気に入りから外す
+
+es: Agregar favorito
+tr: お気に入りに追加
+
+es: Revisar disco
+tr: ディスクを確認
+
+es: Actualizar biblioteca
+tr: ライブラリを更新
+
+es: Salir
+tr: 終了
+
+es: ¿Cerrar Forja SX2?
+tr: Forja SX2を閉じますか？
+
+es: ¿Seguro que quieres salir de la aplicación?
+tr: アプリを終了してもよろしいですか？
+
+es: Salir de Forja SX2
+tr: Forja SX2を終了
+
+es: Cancelar
+tr: キャンセル
+
+es: %s disponible
+tr: %sが利用可能
+
+es: Se baja a /data/pkg y se verifica. Después cierra Forja e instálala con GoldHEN.
+tr: /data/pkgにダウンロードして検証します。その後Forjaを閉じてGoldHENでインストールしてください。
+
+es: Tus juegos, ajustes y perfiles se quedan como están.
+tr: ゲーム、設定、プロファイルはそのまま残ります。
+
+es: Descargar
+tr: ダウンロード
+
+es: Ahora no
+tr: 今はしない
+
+es: Parches:  ninguno para este juego
+tr: パッチ：  このゲームにはありません
+
+es: Al empezar un juego se bajan los de la comunidad de PCSX2 (con internet). Los tuyos van en /data/ForjaSX2/patches
+tr: ゲーム開始時にPCSX2コミュニティのパッチを取得します（要ネット接続）。自分のパッチは /data/ForjaSX2/patches へ
+
+es: Parche %u de %zu:  < %s >  %s
+tr: パッチ %u/%zu：  < %s >  %s
+
+es: Sin descripción
+tr: 説明なし
+
+es:   ·  X: quitar (algunos piden reiniciar el juego)
+tr:   ·  X：オフ（ゲームの再起動が必要なものもあります）
+
+es:   ·  X: poner
+tr:   ·  X：オン
+
+es:   ·  aquí: %.0f %% del GS
+tr:   ·  ここ：GSの %.0f %%
+
+es: Pon tus trucos en /data/ForjaSX2/cheats/%s_%08X.pnach (escritos como un parche) y vuelve a abrir este menú
+tr: チートを /data/ForjaSX2/cheats/%s_%08X.pnach に置き（パッチと同じ書き方）、このメニューを開き直してください
+
+es: Trucos:  ninguno para este juego
+tr: チート：  このゲームにはありません
+
+es: Truco %u de %zu:  < %s >  %s
+tr: チート %u/%zu：  < %s >  %s
+
+es:   ·  X: quitar
+tr:   ·  X：オフ
+
+es: Avance rápido:  < Sí >
+tr: 早送り：  < はい >
+
+es: Avance rápido:  < No >
+tr: 早送り：  < いいえ >
+
+es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
+tr: X：PS4が出せる最高速度でゲームを進めます（読み込み、会話）。保存されません
+
+es: Filtro VU1:  sin datos todavía
+tr: VU1フィルター：  まだデータがありません
+
+es: Juega unos segundos: el medidor del VU1 lista sus programas más costosos y aquí los apagas uno por uno (experimental)
+tr: 数秒プレイすると、VU1の計測が重いプログラムを並べます。ここで1つずつオフにできます（実験的）
+
+es: Filtro VU1 %u de %zu:  < programa %04x · %.1f %% >  %s
+tr: VU1フィルター %u/%zu：  < プログラム %04x · %.1f %% >  %s
+
+es: QUITADO
+tr: 除外中
+
+es: Activo
+tr: 有効
+
+es: No se dibuja lo que hace este programa. X lo devuelve; Cuadrado devuelve todos. Se guarda para este juego
+tr: このプログラムの描画を省いています。Xで戻し、□ですべて戻します。このゲーム用に保存
+
+es: X lo apaga: mira qué deja de verse y cuánto sube la velocidad (experimental). Se guarda para este juego
+tr: Xでオフ：何が消えて速度がどれだけ上がるか確認してください（実験的）。このゲーム用に保存
+
+es: puntos
+tr: 点
+
+es: líneas
+tr: 線
+
+es: triángulos
+tr: 三角形
+
+es: sprites
+tr: スプライト
+
+es:  transparentes
+tr:  （半透明）
+
+es: En la pantalla
+tr: 画面上
+
+es: En %05x
+tr: %05x 内
+
+es: %s sin textura, %s%s
+tr: %s・テクスチャなし・%s%s
+
+es: 16 colores
+tr: 16色
+
+es: 256 colores
+tr: 256色
+
+es: profundidad
+tr: 深度
+
+es: color
+tr: カラー
+
+es: %s con la textura %05x (%ux%u, %s), %s%s
+tr: %s・テクスチャ %05x（%ux%u、%s）・%s%s
+
+es: Filtro GS:  sin datos todavía
+tr: GSフィルター：  まだデータがありません
+
+es: Juega unos segundos: el GS lista sus grupos de dibujos más costosos y aquí los apagas uno por uno (experimental)
+tr: 数秒プレイすると、GSが重い描画グループを並べます。ここで1つずつオフにできます（実験的）
+
+es: Filtro GS %u de %zu:  < grupo quitado >  QUITADO
+tr: GSフィルター %u/%zu：  < 除外したグループ >  除外中
+
+es: Filtro GS %u de %zu:  < era el %.1f %% del GS · %u dibujos/s >  QUITADO
+tr: GSフィルター %u/%zu：  < GSの %.1f %% だった · 毎秒 %u 描画 >  除外中
+
+es: Filtro GS %u de %zu:  < %.1f %% del GS · %u dibujos/s >  Activo
+tr: GSフィルター %u/%zu：  < GSの %.1f %% · 毎秒 %u 描画 >  有効
+
+es: : no se dibuja. X lo devuelve; Cuadrado devuelve todos
+tr: ：描画しません。Xで戻し、□ですべて戻します
+
+es: . X lo apaga: mira qué deja de verse
+tr: 。Xでオフ：何が消えるか確認してください
+
+es: Sí, precargadas
+tr: はい（先読み）
+
+es: Texturas HD:  < %s >
+tr: HDテクスチャ：  < %s >
+
+es: Pack encontrado (textures/%s/replacements). Precargar evita tirones pero usa más memoria
+tr: パックを検出（textures/%s/replacements）。先読みでカクつきを防げますが、メモリを多く使います
+
+es: No hay pack: cópialo por FTP a /data/ForjaSX2/textures/%s/replacements
+tr: パックなし：FTPで /data/ForjaSX2/textures/%s/replacements にコピーしてください
+
+es: Ajustes recomendados:  buscando en GitHub...
+tr: おすすめ設定：  GitHubで検索中...
+
+es: Ajustes recomendados:  del centro (GitHub), %s
+tr: おすすめ設定：  センター（GitHub）から、%s
+
+es: Ajustes recomendados:  del PKG
+tr: おすすめ設定：  PKGから
+
+es: Ajustes recomendados:  ninguno para este juego
+tr: おすすめ設定：  このゲームにはありません
+
+es: X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos
+tr: X：GitHubから再取得（要ネット接続）。次の起動から有効。「システム > リセット」でこの設定に戻ります
+
+es: Cambiar disco:  este juego tiene un solo disco
+tr: ディスク交換：  このゲームはディスク1枚です
+
+es: Para juegos de varios discos: ponlos en roms/ como "Juego (Disco 1).iso", "Juego (Disco 2).iso"...
+tr: 複数ディスクのゲーム：roms/ に "ゲーム (Disc 1).iso"、"ゲーム (Disc 2).iso"... の名前で置きます
+
+es: Cambiar disco:  < Disco %d de %zu >%s
+tr: ディスク交換：  < ディスク %d/%zu >%s
+
+es:   (puesto)
+tr:   （使用中）
+
+es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
+tr: X：選んだディスクに替えます（PS2のトレイを開けて入れ替えるのと同じ）。ゲームに求められたときに
+
+es: %d/%m a las %H:%M
+tr: %m月%d日 %H:%M
+
+es: Preparando la BIOS de la PS2...
+tr: PS2のBIOSを準備中...
+
+es: Abriendo el DVD...
+tr: DVDを開いています...
+
+es: Abriendo la imagen del juego...
+tr: ゲームのイメージを開いています...
+
+es: Iniciando la máquina virtual...
+tr: 仮想マシンを起動中...
+
+es: Encendiendo la PlayStation 2...
+tr: プレイステーション2を起動中...
+
+es: Listo
+tr: 準備完了
+
+es: Juego %.0f / Pantalla %.0f FPS (FG)
+tr: ゲーム %.0f / 画面 %.0f FPS（FG）
+
+es: Juego ~%.1f FPS
+tr: ゲーム ~%.1f FPS
+
+es: FPS del juego: sin datos
+tr: ゲームのFPS：データなし
+
+es: Velocidad %.0f%%
+tr: 速度 %.0f%%
+
+es: No se pudo bajar la %d: %s · OPTIONS reintenta
+tr: %d をダウンロードできませんでした：%s · OPTIONSで再試行
+
+es: la versión no trae SHA256SUMS.txt
+tr: このバージョンにはSHA256SUMS.txtがありません
+
+es: SHA256SUMS.txt no nombra el paquete
+tr: SHA256SUMS.txtにパッケージが載っていません
+
+es: no se pudo escribir en /data/pkg (%d)
+tr: /data/pkgに書き込めませんでした（%d）
+
+es: no hay espacio o falló la escritura
+tr: 空き容量不足か、書き込みに失敗しました
+
+es: la verificación no coincide (se borró)
+tr: 検証が一致しません（削除しました）
+
+es: no se pudo guardar el paquete
+tr: パッケージを保存できませんでした
+
+es: %s lista en /data/pkg · instálala con GoldHEN
+tr: %sを /data/pkg に用意しました · GoldHENでインストール
+
+es: Compilación %d
+tr: ビルド %d
+
+es: Versión %s (%d)
+tr: バージョン %s（%d）
+
+es: No se pudo iniciar la descarga.
+tr: ダウンロードを開始できませんでした。
+
+es: Bajando %s: %u %%
+tr: %sをダウンロード中：%u %%
+
+es: %s disponible · OPTIONS para bajarla
+tr: %sが利用可能 · OPTIONSでダウンロード
+
+es: No se pudo crear la copia en /data/ForjaSX2/roms (error %d).
+tr: /data/ForjaSX2/roms にコピーを作れませんでした（エラー %d）。
+
+es: Copia cancelada. No quedó nada a medias.
+tr: コピーを中止しました。途中のファイルは残っていません。
+
+es: Se sacó el disco o la unidad dejó de leerlo: la copia a medias se borró.
+tr: ディスクが取り出されたか読めなくなりました：途中のコピーは削除しました。
+
+es: No hay espacio en la PS4: hacen falta %llu GB libres. La copia a medias se borró.
+tr: PS4の空き容量が足りません：%llu GBの空きが必要です。途中のコピーは削除しました。
+
+es: No se pudo escribir la copia (error %d). La copia a medias se borró.
+tr: コピーを書き込めませんでした（エラー %d）。途中のコピーは削除しました。
+
+es: No se pudo terminar la copia (error %d).
+tr: コピーを完了できませんでした（エラー %d）。
+
+es: Copia lista: %s. %u sectores no se pudieron leer (van en ceros). X para jugar.
+tr: コピー完了：%s。%u セクタが読めませんでした（ゼロで埋めています）。Xでプレイ。
+
+es: Copia lista: %s. Desde ahora, con el disco puesto, X juega la copia.
+tr: コピー完了：%s。今後はディスクを入れた状態でXを押すとコピーでプレイします。
+
+es: Ya hay una copia en curso.
+tr: すでにコピー中です。
+
+es: Pulsa Triángulo para leer el disco primero.
+tr: 先に△ボタンでディスクを読み込んでください。
+
+es: Ya estaba copiado: %s.
+tr: コピー済みです：%s。
+
+es: No se pudo iniciar la copia.
+tr: コピーを開始できませんでした。
+
+es: Copiando %s: %u %% · %.1f MB/s · faltan %.0f min · □ para cancelar
+tr: %sをコピー中：%u %% · %.1f MB/s · 残り %.0f 分 · □で中止
+
+es: Copiando %s: empezando... · □ para cancelar
+tr: %sをコピー中：開始しています... · □で中止
+
+es: sin red
+tr: ネットワークなし
+
+es: sin conexión
+tr: 接続なし
+
+es: no se pudo preparar la conexión
+tr: 接続を準備できませんでした
+
+es: no se pudo crear la petición
+tr: リクエストを作成できませんでした
+
+es: demasiadas redirecciones
+tr: リダイレクトが多すぎます
+
+es: redirección sin destino
+tr: 転送先のないリダイレクト
+
+es: error de red %#x
+tr: ネットワークエラー %#x
+
+es: respuesta HTTP %d
+tr: HTTP応答 %d
+
+es: tardó demasiado
+tr: 時間がかかりすぎました
+
+es: se cortó la descarga (%#x)
+tr: ダウンロードが途切れました（%#x）
+
+es: cancelada
+tr: 中止しました
+
+es: llegó incompleta
+tr: 不完全な状態で届きました
+
+es: El sistema no deja usar la unidad de disco.
+tr: システムがディスクドライブの使用を許可していません。
+
+es: La unidad de disco no está disponible.
+tr: ディスクドライブを使用できません。
+
+es: Falló la lectura de la unidad. Mira el registro.
+tr: ドライブの読み込みに失敗しました。ログを確認してください。
+
+es: La unidad de disco no tiene dispositivo CAM pass.
+tr: ディスクドライブにCAM passデバイスがありません。
+
+es: No se encontró la dirección de la unidad de disco.
+tr: ディスクドライブのアドレスが見つかりません。
+
+es: La unidad tardó demasiado. Espera y actualiza Disco.
+tr: ドライブの応答が遅すぎます。少し待って「ディスク」を更新してください。
+
+es: No hay disco. Mete un DVD de PS2 y actualiza.
+tr: ディスクがありません。PS2のDVDを入れて更新してください。
+
+es: Cambió el disco. Actualiza el panel Disco.
+tr: ディスクが替わりました。「ディスク」画面を更新してください。
+
+es: La unidad se está preparando. Actualiza en unos segundos.
+tr: ドライブの準備中です。数秒後に更新してください。
+
+es: La unidad no puede leer este tipo de disco.
+tr: ドライブはこの種類のディスクを読めません。
+
+es: Falló una orden al disco. Mira el registro y actualiza.
+tr: ディスクへの命令が失敗しました。ログを確認して更新してください。
+
+es: No hay disco.
+tr: ディスクがありません。
+
+es: Disco no compatible. Esta versión solo lee DVD de PS2.
+tr: 対応していないディスクです。このバージョンはPS2のDVDのみ読めます。
+
+es: Tamaño de sector o capacidad del DVD no compatible.
+tr: 対応していないDVDのセクタサイズまたは容量です。
+
+es: El DVD no dio su descripción completa.
+tr: DVDが完全な情報を返しませんでした。
+
+es: Capas del DVD no compatibles.
+tr: 対応していないDVDの層構成です。
+
+es: El cambio de capa del DVD no es válido.
+tr: DVDの層の切り替え位置が正しくありません。
+
+es: Este DVD no tiene un sistema de archivos ISO9660 compatible.
+tr: このDVDには対応したISO9660ファイルシステムがありません。
+
+es: La carpeta raíz del DVD no es compatible.
+tr: DVDのルートフォルダーに対応していません。
+
+es: SYSTEM.CNF no tiene la línea BOOT2 de la PS2.
+tr: SYSTEM.CNFにPS2のBOOT2行がありません。
+
+es: Los datos del disco no son válidos.
+tr: ディスクのデータが正しくありません。
+
+es: Menos efectos: sombreado de personajes
+tr: エフェクト削減：キャラクターの陰影
+
+es: Quita las sombras y brillos de ropa y personajes: menos detalle, mucha más velocidad (Dragon Ball: ~45 a ~85 %)
+tr: 服やキャラクターの影と光沢を消します：細部は減り、速度は大きく上がります（ドラゴンボール：約45 %→約85 %）
+
+es: Menos efectos: pasadas de pantalla (experimental)
+tr: エフェクト削減：画面のパス処理（実験的）
+
+es: Quita efectos que el juego dibuja en imágenes aparte (brillos, desenfoques, reflejos). Si falta algo importante, apágalo
+tr: ゲームが別の画像に描く効果（光、ぼかし、反射）を消します。大事なものが消えたらオフに

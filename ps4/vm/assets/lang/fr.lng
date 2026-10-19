@@ -1,0 +1,1037 @@
+# Forja SX2 — Français (fr). Cada texto: "es:" el español del código, "tr:" su traducción. \n es otra línea.
+# Each text: "es:" the Spanish in the code, "tr:" its translation. \n is a new line. Check: python idiomas.py
+
+es: No se pudo iniciar la detección del disco.
+tr: Impossible de lancer la détection du disque.
+
+es: Idioma
+tr: Langue
+
+es: Preguntar el idioma al iniciar
+tr: Demander la langue au démarrage
+
+es: Velocidad del CPU de la PS2
+tr: Vitesse du CPU de la PS2
+
+es: CPU automático
+tr: CPU automatique
+
+es: Resolución interna
+tr: Résolution interne
+
+es: Relación de aspecto
+tr: Format d'image
+
+es: Contador de FPS al jugar
+tr: Compteur de FPS en jeu
+
+es: Sensibilidad de la palanca
+tr: Sensibilité du stick
+
+es: Cargas rápidas del disco
+tr: Chargement rapide du disque
+
+es: Saltar el logo de la PS2
+tr: Passer le logo de la PS2
+
+es: Lecturas de la gráfica (readbacks)
+tr: Relectures du GPU (readbacks)
+
+es: Modo video automático
+tr: Mode vidéo automatique
+
+es: Generación de cuadros (30 a 60 FPS)
+tr: Génération d'images (30 à 60 FPS)
+
+es: Botón del menú del emulador
+tr: Bouton du menu de l'émulateur
+
+es: El idioma de todo el emulador. X abre la lista de idiomas
+tr: La langue de tout l'émulateur. X ouvre la liste des langues
+
+es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
+tr: Oui : la liste des langues s'affiche à chaque ouverture de Forja SX2
+
+es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
+tr: Chaque jeu démarre ici. S'il tourne au ralenti, augmentez-la dans L3+R3 (enregistré pour ce jeu)
+
+es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
+tr: Si vous augmentez le CPU d'un jeu et qu'il ralentit, il baisse seul dans les scènes lourdes, jusqu'à ce plancher
+
+es: 1x es la de la PS2. En PS4 Pro aguanta 2x-4x en juegos ligeros
+tr: 1x est celle de la PS2. Une PS4 Pro tient 2x-4x dans les jeux légers
+
+es: Auto respeta lo que pide el juego
+tr: Auto respecte ce que demande le jeu
+
+es: Muestra FPS y velocidad arriba a la derecha (se cambia también en L3+R3)
+tr: Affiche les FPS et la vitesse en haut à droite (se change aussi dans L3+R3)
+
+es: Qué tanto hay que empujar la palanca para llegar al tope. 133 % es como el PCSX2 de PC
+tr: Jusqu'où pousser le stick pour atteindre le maximum. 133 % comme PCSX2 sur PC
+
+es: Acorta las cargas. Algunos juegos se cuelgan con esto: si pasa, apágalo
+tr: Raccourcit les chargements. Certains jeux plantent avec : si ça arrive, désactivez-le
+
+es: Arranca directo el juego, sin la animación de la PS2
+tr: Lance directement le jeu, sans l'animation de la PS2
+
+es: Si el juego se traba sin que el CPU esté al 100 %: prueba Sin esperar. Desactivadas puede romper efectos
+tr: Si le jeu saccade sans que le CPU soit à 100 % : essayez Sans attendre. Désactivées peut casser des effets
+
+es: En los videos del juego busca el CPU de la PS2 que da más cuadros (31 a 100 %) y lo devuelve al terminar
+tr: Pendant les vidéos du jeu, cherche le CPU de la PS2 qui donne le plus d'images (31 à 100 %) puis le rétablit
+
+es: EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso
+tr: EXPÉRIMENTAL : un jeu stable à 30 FPS s'affiche à 60 (le GPU invente l'image intermédiaire). +1 image de latence
+
+es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
+tr: Pavé tactile : appuyez sur sa moitié DROITE. La gauche reste le SELECT de la PS2
+
+es: 100 % (PS2 real)
+tr: 100 % (vraie PS2)
+
+es: No
+tr: Non
+
+es: Hasta 75 %
+tr: Jusqu'à 75 %
+
+es: Hasta 60 %
+tr: Jusqu'à 60 %
+
+es: Hasta 50 %
+tr: Jusqu'à 50 %
+
+es: Hasta 36 %
+tr: Jusqu'à 36 %
+
+es: Hasta 31 %
+tr: Jusqu'à 31 %
+
+es: Hasta 27 %
+tr: Jusqu'à 27 %
+
+es: Estirar
+tr: Étirer
+
+es: Auto
+tr: Auto
+
+es: Sí
+tr: Oui
+
+es: %dx (nativa)
+tr: %dx (native)
+
+es: Precisas
+tr: Précises
+
+es: Sin esperar (más rápido)
+tr: Sans attendre (plus rapide)
+
+es: Desactivadas
+tr: Désactivées
+
+es: Panel táctil (derecha)
+tr: Pavé tactile (droite)
+
+es: Los dos
+tr: Les deux
+
+es: Elige el idioma
+tr: Choisissez la langue
+
+es: También se cambia en Ajustes, donde puedes apagar esta pregunta.
+tr: Modifiable aussi dans Paramètres, où vous pouvez désactiver cette question.
+
+es: Aceptar
+tr: Valider
+
+es: Atrás
+tr: Retour
+
+es: No se detectó ningún disco
+tr: Aucun disque détecté
+
+es: No hay juegos recientes
+tr: Aucun jeu récent
+
+es: No hay juegos favoritos
+tr: Aucun jeu favori
+
+es: Ajustes de Forja SX2 (para todos los juegos)
+tr: Paramètres de Forja SX2 (pour tous les jeux)
+
+es: No se encontraron juegos
+tr: Aucun jeu trouvé
+
+es: Cargando...
+tr: Chargement...
+
+es: No se pudieron guardar los ajustes.
+tr: Impossible d'enregistrer les paramètres.
+
+es: Guardado. Se aplica al iniciar el próximo juego.
+tr: Enregistré. S'applique au lancement du prochain jeu.
+
+es: Copiando el disco
+tr: Copie du disque
+
+es: Revisando el DVD...
+tr: Vérification du DVD...
+
+es: Falló la detección del disco
+tr: Échec de la détection du disque
+
+es: Leyendo la unidad. Puedes seguir navegando.
+tr: Lecture du lecteur. Vous pouvez continuer à naviguer.
+
+es: Idioma guardado.
+tr: Langue enregistrée.
+
+es: No se encontró el archivo de ese idioma: queda el español.
+tr: Fichier de cette langue introuvable : l'espagnol reste.
+
+es:  Portada no disponible. Triángulo para reintentar.
+tr:  Jaquette indisponible. Triangle pour réessayer.
+
+es: DVD de PS2 - 
+tr: DVD PS2 - 
+
+es:  | DVD doble capa
+tr:  | DVD double couche
+
+es:  | X: jugar desde el disco · □: copiarlo a la PS4
+tr:  | X : jouer depuis le disque · □ : le copier sur la PS4
+
+es:  | Ya está copiado en la PS4 · X: jugar la copia
+tr:  | Déjà copié sur la PS4 · X : jouer la copie
+
+es: DVD no disponible
+tr: DVD indisponible
+
+es:  Descargando portada...
+tr:  Téléchargement de la jaquette...
+
+es: Cancelando la copia...
+tr: Annulation de la copie...
+
+es: Este disco ya está copiado en la PS4. X para jugar la copia.
+tr: Ce disque est déjà copié sur la PS4. X pour jouer la copie.
+
+es: Pulsa Triángulo para leer el disco y después □ para copiarlo.
+tr: Appuyez sur Triangle pour lire le disque, puis □ pour le copier.
+
+es: Quitado de favoritos.
+tr: Retiré des favoris.
+
+es: Agregado a favoritos.
+tr: Ajouté aux favoris.
+
+es: No se pudieron guardar los favoritos.
+tr: Impossible d'enregistrer les favoris.
+
+es: Hay una copia del disco en curso: espera a que termine o cancélala con □ en Disco.
+tr: Une copie du disque est en cours : attendez la fin ou annulez-la avec □ dans Disque.
+
+es: El soporte de disco físico está en preparación.
+tr: La prise en charge des disques physiques est en préparation.
+
+es: Aquí irán las opciones de ajustes.
+tr: Les options de réglage seront ici.
+
+es: No hay juegos en esta vista.
+tr: Aucun jeu dans cette vue.
+
+es: Archivo no disponible. Pulsa Triángulo para actualizar.
+tr: Fichier indisponible. Appuyez sur Triangle pour actualiser.
+
+es: No se puede abrir el juego: 
+tr: Impossible d'ouvrir le jeu : 
+
+es: Iniciando...
+tr: Démarrage...
+
+es: Conecta un control para elegir un juego.
+tr: Branchez une manette pour choisir un jeu.
+
+es: Terminando de bajar la portada...
+tr: Fin du téléchargement de la jaquette...
+
+es: Terminando de detectar el disco...
+tr: Fin de la détection du disque...
+
+es: Preparando el emulador...
+tr: Préparation de l'émulateur...
+
+es: Menú del emulador
+tr: Menu de l'émulateur
+
+es: JUEGO EN PAUSA
+tr: JEU EN PAUSE
+
+es: Perfil de este juego:  de fábrica %s  ·  tuyo %s
+tr: Profil de ce jeu :  d'usine %s  ·  le vôtre %s
+
+es: sí
+tr: oui
+
+es: no
+tr: non
+
+es: global
+tr: global
+
+es: perfil de fábrica
+tr: profil d'usine
+
+es: tu perfil
+tr: votre profil
+
+es: Resolución interna:  < %ux >  (nativa)
+tr: Résolution interne :  < %ux >  (native)
+
+es: Resolución interna:  < %ux >
+tr: Résolution interne :  < %ux >
+
+es: Relación de aspecto:  < %s >
+tr: Format d'image :  < %s >
+
+es: Contador de rendimiento:  < %s >
+tr: Compteur de performances :  < %s >
+
+es: 27 % (exp.)
+tr: 27 % (exp.)
+
+es: 31 % (exp.)
+tr: 31 % (exp.)
+
+es: 36 % (exp.)
+tr: 36 % (exp.)
+
+es: Velocidad del CPU de la PS2:  < %s >
+tr: Vitesse du CPU de la PS2 :  < %s >
+
+es: Modo video:  < %s >
+tr: Mode vidéo :  < %s >
+
+es: %s Para este juego  ·  ahora: %s
+tr: %s Pour ce jeu  ·  actuel : %s
+
+es: Busca el CPU de la PS2 que da más cuadros en cada video (31 a 100 %).
+tr: Cherche le CPU de la PS2 qui donne le plus d'images dans chaque vidéo (31 à 100 %).
+
+es: CPU de la PS2 durante las cinemáticas.
+tr: CPU de la PS2 pendant les cinématiques.
+
+es: Suave
+tr: Doux
+
+es: Nítida
+tr: Net
+
+es: CAS fuerte
+tr: CAS fort
+
+es: Píxeles
+tr: Pixels
+
+es: Como hasta ahora: la imagen escalada y suavizada. Se guarda para este juego
+tr: Comme avant : l'image agrandie et lissée. Enregistré pour ce jeu
+
+es: Bilineal nítido: bordes más definidos, sin costo. Se guarda para este juego
+tr: Bilinéaire net : bords plus nets, sans coût. Enregistré pour ce jeu
+
+es: AMD CAS (de la familia del FSR): realza el detalle al agrandar la imagen. Cuesta muy poco
+tr: AMD CAS (de la famille FSR) : fait ressortir les détails en agrandissant l'image. Coûte très peu
+
+es: AMD CAS al máximo: aún más detalle; puede verse algo granulado
+tr: AMD CAS au maximum : encore plus de détails ; peut sembler un peu granuleux
+
+es: Sin filtro: cada píxel tal cual, estilo retro. Se guarda para este juego
+tr: Sans filtre : chaque pixel tel quel, style rétro. Enregistré pour ce jeu
+
+es: Nitidez:  < %s >
+tr: Netteté :  < %s >
+
+es: Fluida
+tr: Fluide
+
+es: Generación de cuadros:  < %s >
+tr: Génération d'images :  < %s >
+
+es: Rellena cada refresco que la tele repetiría (juegos PAL, cuadros desparejos).
+tr: Remplit chaque rafraîchissement que la télé répéterait (jeux PAL, images inégales).
+
+es: Muestra a 60 un juego estable a 30 (experimental).
+tr: Affiche à 60 un jeu stable à 30 (expérimental).
+
+es: 1 de 2
+tr: 1 sur 2
+
+es: Saltar cuadros (GS):  < %s >
+tr: Saut d'images (GS) :  < %s >
+
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
+tr: Si le GS ne suit pas, il dessine 1 image sur 2 : le jeu garde sa vitesse (expérimental)  ·  actuel : %s  ·  %s
+
+es: saltando
+tr: saut actif
+
+es: dibuja todos
+tr: tout dessiné
+
+es: Global
+tr: Global
+
+es: Normal
+tr: Normal
+
+es: Plan B
+tr: Plan B
+
+es: Propio
+tr: Personnalisé
+
+es: Núcleos de la CPU:  < %s >
+tr: Cœurs du CPU :  < %s >
+
+es: Reparto de EE, VU1 y GS (Plan B: EE 1, VU1 2, GS 3). Para este juego  ·  ahora: %s
+tr: Répartition de l'EE, du VU1 et du GS (Plan B : EE 1, VU1 2, GS 3). Pour ce jeu  ·  actuel : %s
+
+es: Hasta 36 % (exp.)
+tr: Jusqu'à 36 % (exp.)
+
+es: Hasta 31 % (exp.)
+tr: Jusqu'à 31 % (exp.)
+
+es: Hasta 27 % (exp.)
+tr: Jusqu'à 27 % (exp.)
+
+es: CPU automático:  < %s >
+tr: CPU automatique :  < %s >
+
+es: Baja el CPU de la PS2 solo en escenas pesadas: el juego va a su velocidad, con menos cuadros
+tr: Baisse le CPU de la PS2 seulement dans les scènes lourdes : le jeu garde sa vitesse, avec moins d'images
+
+es: Solo en escenas pesadas, para este juego  ·  ahora: %s  ·  %s
+tr: Seulement dans les scènes lourdes, pour ce jeu  ·  actuel : %s  ·  %s
+
+es: sin bajar
+tr: non baissé
+
+es: Guardar estado:  < Ranura %u >
+tr: Sauvegarder l'état :  < Emplacement %u >
+
+es: Cargar estado:  < Ranura %u >
+tr: Charger l'état :  < Emplacement %u >
+
+es: Guardado en la ranura %u.
+tr: Sauvegardé dans l'emplacement %u.
+
+es: No se pudo guardar en la ranura %u.
+tr: Impossible de sauvegarder dans l'emplacement %u.
+
+es: X: guarda aquí (reemplaza el del %s)
+tr: X : sauvegarder ici (remplace celle du %s)
+
+es: X: guarda aquí (reemplaza lo que hay en esta ranura)
+tr: X : sauvegarder ici (remplace le contenu de l'emplacement)
+
+es: X: guarda la partida en esta ranura (vacía)
+tr: X : sauvegarder la partie ici (emplacement vide)
+
+es: La ranura %u está vacía.
+tr: L'emplacement %u est vide.
+
+es: No se pudo cargar la ranura %u.
+tr: Impossible de charger l'emplacement %u.
+
+es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
+tr: Sauvegardé le %s  ·  X : revenir à ce moment et continuer
+
+es: X: vuelve a ese momento y sigue jugando
+tr: X : revenir à ce moment et continuer
+
+es: Ranura vacía
+tr: Emplacement vide
+
+es: Volver al juego
+tr: Retour au jeu
+
+es: Reiniciar juego
+tr: Redémarrer le jeu
+
+es: Restablecer ajustes de este juego
+tr: Réinitialiser les réglages de ce jeu
+
+es: Volver a la biblioteca
+tr: Retour à la bibliothèque
+
+es: Salir de la aplicación
+tr: Quitter l'application
+
+es: Seguir jugando desde donde quedó
+tr: Reprendre là où vous en étiez
+
+es: X: empieza el juego de nuevo sin cerrarlo (lo no guardado se pierde)
+tr: X : relance le jeu sans le fermer (ce qui n'est pas sauvegardé est perdu)
+
+es: Más calidad de imagen (consume más). Se guarda para este juego
+tr: Meilleure qualité d'image (plus gourmand). Enregistré pour ce jeu
+
+es: Forma de la imagen en pantalla. Se guarda para este juego
+tr: Forme de l'image à l'écran. Enregistré pour ce jeu
+
+es: Mostrar u ocultar FPS, velocidad y tiempos
+tr: Afficher ou masquer FPS, vitesse et temps
+
+es: Menos % = más FPS en la PS4 (el juego puede perder cuadros). Se guarda para este juego
+tr: Moins de % = plus de FPS sur la PS4 (le jeu peut perdre des images). Enregistré pour ce jeu
+
+es: X: borra tus cambios de este juego (queda copia .bak). Siguen el perfil de fábrica y los globales
+tr: X : efface vos changements pour ce jeu (copie .bak conservée). Le profil d'usine et les réglages globaux restent
+
+es: Este juego no tiene cambios tuyos
+tr: Ce jeu n'a aucun changement de votre part
+
+es: Cerrar el juego y volver a la biblioteca
+tr: Fermer le jeu et revenir à la bibliothèque
+
+es: Cerrar el juego y salir de Forja SX2
+tr: Fermer le jeu et quitter Forja SX2
+
+es: Partida
+tr: Partie
+
+es: Imagen
+tr: Image
+
+es: Rendimiento
+tr: Performances
+
+es: Extras
+tr: Extras
+
+es: No tocar
+tr: Ne pas toucher
+
+es: Sistema
+tr: Système
+
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: Expériences pour mesurer et améliorer les jeux (en test). Si vous ne savez pas ce que fait une option, laissez-la.
+
+es: AJUSTAR
+tr: RÉGLER
+
+es: ELEGIR
+tr: CHOISIR
+
+es: ELEGIR  ·  X  ·  CUADRADO
+tr: CHOISIR  ·  X  ·  CARRÉ
+
+es: ELEGIR  ·  X
+tr: CHOISIR  ·  X
+
+es: CAMBIAR
+tr: CHANGER
+
+es: X  ·  RANURA
+tr: X  ·  EMPLACEMENT
+
+es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
+tr: Résolution : 1x-%ux (3x ou plus est expérimental, PS4 Pro seulement).   Ce que vous changez dans Image et Performances est enregistré pour ce jeu seulement.
+
+es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1 : changer d'onglet     Haut/Bas : choisir     Gauche/Droite : changer la valeur ou l'emplacement
+
+es: Volver
+tr: Retour
+
+es: EMULADOR DE PLAYSTATION 2
+tr: ÉMULATEUR PLAYSTATION 2
+
+es: Biblioteca
+tr: Bibliothèque
+
+es: Disco
+tr: Disque
+
+es: Recientes
+tr: Récents
+
+es: Favoritos
+tr: Favoris
+
+es: Ajustes
+tr: Paramètres
+
+es: Versión %d.%02d (%d)
+tr: Version %d.%02d (%d)
+
+es: Versión %d.%02d (local)
+tr: Version %d.%02d (locale)
+
+es: DVD de PS2
+tr: DVD PS2
+
+es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
+tr: Copie du disque sur la PS4. Vous pouvez rester dans la bibliothèque.
+
+es: □ cancela la copia. No saques el disco hasta que termine.
+tr: □ annule la copie. Ne retirez pas le disque avant la fin.
+
+es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
+tr: Disque détecté. X pour jouer · □ pour le copier sur la PS4.
+
+es: Mete un DVD y pulsa Triángulo para actualizar.
+tr: Insérez un DVD et appuyez sur Triangle pour actualiser.
+
+es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
+tr: Une fois copié, le disque ouvre sa copie : plus rapide et sans bruit du lecteur.
+
+es: Cambiar
+tr: Modifier
+
+es: Izq./Der.: ajustar   Arriba/Abajo: elegir
+tr: Gauche/Droite : régler   Haut/Bas : choisir
+
+es: Menú lateral
+tr: Menu latéral
+
+es: Jugar
+tr: Jouer
+
+es: Quitar favorito
+tr: Retirer des favoris
+
+es: Agregar favorito
+tr: Ajouter aux favoris
+
+es: Revisar disco
+tr: Vérifier le disque
+
+es: Actualizar biblioteca
+tr: Actualiser la bibliothèque
+
+es: Salir
+tr: Quitter
+
+es: ¿Cerrar Forja SX2?
+tr: Fermer Forja SX2 ?
+
+es: ¿Seguro que quieres salir de la aplicación?
+tr: Voulez-vous vraiment quitter l'application ?
+
+es: Salir de Forja SX2
+tr: Quitter Forja SX2
+
+es: Cancelar
+tr: Annuler
+
+es: %s disponible
+tr: %s disponible
+
+es: Se baja a /data/pkg y se verifica. Después cierra Forja e instálala con GoldHEN.
+tr: Elle se télécharge dans /data/pkg et se vérifie. Fermez ensuite Forja et installez-la avec GoldHEN.
+
+es: Tus juegos, ajustes y perfiles se quedan como están.
+tr: Vos jeux, paramètres et profils restent tels quels.
+
+es: Descargar
+tr: Télécharger
+
+es: Ahora no
+tr: Pas maintenant
+
+es: Parches:  ninguno para este juego
+tr: Correctifs :  aucun pour ce jeu
+
+es: Al empezar un juego se bajan los de la comunidad de PCSX2 (con internet). Los tuyos van en /data/ForjaSX2/patches
+tr: Au lancement d'un jeu, ceux de la communauté PCSX2 sont téléchargés (avec internet). Les vôtres vont dans /data/ForjaSX2/patches
+
+es: Parche %u de %zu:  < %s >  %s
+tr: Correctif %u sur %zu :  < %s >  %s
+
+es: Sin descripción
+tr: Sans description
+
+es:   ·  X: quitar (algunos piden reiniciar el juego)
+tr:   ·  X : retirer (certains demandent de redémarrer le jeu)
+
+es:   ·  X: poner
+tr:   ·  X : activer
+
+es:   ·  aquí: %.0f %% del GS
+tr:   ·  ici : %.0f %% du GS
+
+es: Pon tus trucos en /data/ForjaSX2/cheats/%s_%08X.pnach (escritos como un parche) y vuelve a abrir este menú
+tr: Mettez vos triches dans /data/ForjaSX2/cheats/%s_%08X.pnach (écrites comme un correctif) puis rouvrez ce menu
+
+es: Trucos:  ninguno para este juego
+tr: Triches :  aucune pour ce jeu
+
+es: Truco %u de %zu:  < %s >  %s
+tr: Triche %u sur %zu :  < %s >  %s
+
+es:   ·  X: quitar
+tr:   ·  X : retirer
+
+es: Avance rápido:  < Sí >
+tr: Avance rapide :  < Oui >
+
+es: Avance rápido:  < No >
+tr: Avance rapide :  < Non >
+
+es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
+tr: X : le jeu tourne aussi vite que la PS4 le permet (chargements, dialogues). Non enregistré
+
+es: Filtro VU1:  sin datos todavía
+tr: Filtre VU1 :  pas encore de données
+
+es: Juega unos segundos: el medidor del VU1 lista sus programas más costosos y aquí los apagas uno por uno (experimental)
+tr: Jouez quelques secondes : le compteur du VU1 liste ses programmes les plus coûteux et ici vous les coupez un par un (expérimental)
+
+es: Filtro VU1 %u de %zu:  < programa %04x · %.1f %% >  %s
+tr: Filtre VU1 %u sur %zu :  < programme %04x · %.1f %% >  %s
+
+es: QUITADO
+tr: RETIRÉ
+
+es: Activo
+tr: Actif
+
+es: No se dibuja lo que hace este programa. X lo devuelve; Cuadrado devuelve todos. Se guarda para este juego
+tr: Ce que fait ce programme n'est pas dessiné. X le rétablit ; Carré les rétablit tous. Enregistré pour ce jeu
+
+es: X lo apaga: mira qué deja de verse y cuánto sube la velocidad (experimental). Se guarda para este juego
+tr: X le coupe : regardez ce qui disparaît et de combien la vitesse monte (expérimental). Enregistré pour ce jeu
+
+es: puntos
+tr: points
+
+es: líneas
+tr: lignes
+
+es: triángulos
+tr: triangles
+
+es: sprites
+tr: sprites
+
+es:  transparentes
+tr:  transparents
+
+es: En la pantalla
+tr: À l'écran
+
+es: En %05x
+tr: Dans %05x
+
+es: %s sin textura, %s%s
+tr: %s sans texture, %s%s
+
+es: 16 colores
+tr: 16 couleurs
+
+es: 256 colores
+tr: 256 couleurs
+
+es: profundidad
+tr: profondeur
+
+es: color
+tr: couleur
+
+es: %s con la textura %05x (%ux%u, %s), %s%s
+tr: %s avec la texture %05x (%ux%u, %s), %s%s
+
+es: Filtro GS:  sin datos todavía
+tr: Filtre GS :  pas encore de données
+
+es: Juega unos segundos: el GS lista sus grupos de dibujos más costosos y aquí los apagas uno por uno (experimental)
+tr: Jouez quelques secondes : le GS liste ses groupes de dessins les plus coûteux et ici vous les coupez un par un (expérimental)
+
+es: Filtro GS %u de %zu:  < grupo quitado >  QUITADO
+tr: Filtre GS %u sur %zu :  < groupe retiré >  RETIRÉ
+
+es: Filtro GS %u de %zu:  < era el %.1f %% del GS · %u dibujos/s >  QUITADO
+tr: Filtre GS %u sur %zu :  < était %.1f %% du GS · %u dessins/s >  RETIRÉ
+
+es: Filtro GS %u de %zu:  < %.1f %% del GS · %u dibujos/s >  Activo
+tr: Filtre GS %u sur %zu :  < %.1f %% du GS · %u dessins/s >  Actif
+
+es: : no se dibuja. X lo devuelve; Cuadrado devuelve todos
+tr: : non dessiné. X le rétablit ; Carré les rétablit tous
+
+es: . X lo apaga: mira qué deja de verse
+tr: . X le coupe : regardez ce qui disparaît
+
+es: Sí, precargadas
+tr: Oui, préchargées
+
+es: Texturas HD:  < %s >
+tr: Textures HD :  < %s >
+
+es: Pack encontrado (textures/%s/replacements). Precargar evita tirones pero usa más memoria
+tr: Pack trouvé (textures/%s/replacements). Le préchargement évite les saccades mais utilise plus de mémoire
+
+es: No hay pack: cópialo por FTP a /data/ForjaSX2/textures/%s/replacements
+tr: Aucun pack : copiez-le par FTP dans /data/ForjaSX2/textures/%s/replacements
+
+es: Ajustes recomendados:  buscando en GitHub...
+tr: Réglages recommandés :  recherche sur GitHub...
+
+es: Ajustes recomendados:  del centro (GitHub), %s
+tr: Réglages recommandés :  du centre (GitHub), %s
+
+es: Ajustes recomendados:  del PKG
+tr: Réglages recommandés :  du PKG
+
+es: Ajustes recomendados:  ninguno para este juego
+tr: Réglages recommandés :  aucun pour ce jeu
+
+es: X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos
+tr: X : les rechercher à nouveau sur GitHub (avec internet). Valables au prochain démarrage. Système > Réinitialiser y revient
+
+es: Cambiar disco:  este juego tiene un solo disco
+tr: Changer de disque :  ce jeu n'a qu'un disque
+
+es: Para juegos de varios discos: ponlos en roms/ como "Juego (Disco 1).iso", "Juego (Disco 2).iso"...
+tr: Pour les jeux à plusieurs disques : mettez-les dans roms/ comme "Jeu (Disque 1).iso", "Jeu (Disque 2).iso"...
+
+es: Cambiar disco:  < Disco %d de %zu >%s
+tr: Changer de disque :  < Disque %d sur %zu >%s
+
+es:   (puesto)
+tr:   (inséré)
+
+es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
+tr: X : passe au disque choisi, comme ouvrir le tiroir de la PS2 et en mettre un autre. À faire quand le jeu le demande
+
+es: %d/%m a las %H:%M
+tr: %d/%m à %H:%M
+
+es: Preparando la BIOS de la PS2...
+tr: Préparation du BIOS de la PS2...
+
+es: Abriendo el DVD...
+tr: Ouverture du DVD...
+
+es: Abriendo la imagen del juego...
+tr: Ouverture de l'image du jeu...
+
+es: Iniciando la máquina virtual...
+tr: Démarrage de la machine virtuelle...
+
+es: Encendiendo la PlayStation 2...
+tr: Allumage de la PlayStation 2...
+
+es: Listo
+tr: Prêt
+
+es: Juego %.0f / Pantalla %.0f FPS (FG)
+tr: Jeu %.0f / Écran %.0f FPS (FG)
+
+es: Juego ~%.1f FPS
+tr: Jeu ~%.1f FPS
+
+es: FPS del juego: sin datos
+tr: FPS du jeu : aucune donnée
+
+es: Velocidad %.0f%%
+tr: Vitesse %.0f%%
+
+es: No se pudo bajar la %d: %s · OPTIONS reintenta
+tr: Impossible de télécharger la %d : %s · OPTIONS réessaie
+
+es: la versión no trae SHA256SUMS.txt
+tr: la version n'a pas de SHA256SUMS.txt
+
+es: SHA256SUMS.txt no nombra el paquete
+tr: SHA256SUMS.txt ne mentionne pas le paquet
+
+es: no se pudo escribir en /data/pkg (%d)
+tr: impossible d'écrire dans /data/pkg (%d)
+
+es: no hay espacio o falló la escritura
+tr: plus d'espace ou l'écriture a échoué
+
+es: la verificación no coincide (se borró)
+tr: la vérification ne correspond pas (supprimé)
+
+es: no se pudo guardar el paquete
+tr: impossible d'enregistrer le paquet
+
+es: %s lista en /data/pkg · instálala con GoldHEN
+tr: %s prête dans /data/pkg · installez-la avec GoldHEN
+
+es: Compilación %d
+tr: Compilation %d
+
+es: Versión %s (%d)
+tr: Version %s (%d)
+
+es: No se pudo iniciar la descarga.
+tr: Impossible de lancer le téléchargement.
+
+es: Bajando %s: %u %%
+tr: Téléchargement de %s : %u %%
+
+es: %s disponible · OPTIONS para bajarla
+tr: %s disponible · OPTIONS pour la télécharger
+
+es: No se pudo crear la copia en /data/ForjaSX2/roms (error %d).
+tr: Impossible de créer la copie dans /data/ForjaSX2/roms (erreur %d).
+
+es: Copia cancelada. No quedó nada a medias.
+tr: Copie annulée. Rien n'est resté à moitié.
+
+es: Se sacó el disco o la unidad dejó de leerlo: la copia a medias se borró.
+tr: Le disque a été retiré ou le lecteur a cessé de le lire : la copie partielle a été supprimée.
+
+es: No hay espacio en la PS4: hacen falta %llu GB libres. La copia a medias se borró.
+tr: Plus d'espace sur la PS4 : il faut %llu Go libres. La copie partielle a été supprimée.
+
+es: No se pudo escribir la copia (error %d). La copia a medias se borró.
+tr: Impossible d'écrire la copie (erreur %d). La copie partielle a été supprimée.
+
+es: No se pudo terminar la copia (error %d).
+tr: Impossible de terminer la copie (erreur %d).
+
+es: Copia lista: %s. %u sectores no se pudieron leer (van en ceros). X para jugar.
+tr: Copie prête : %s. %u secteurs illisibles (remplis de zéros). X pour jouer.
+
+es: Copia lista: %s. Desde ahora, con el disco puesto, X juega la copia.
+tr: Copie prête : %s. Désormais, disque inséré, X lance la copie.
+
+es: Ya hay una copia en curso.
+tr: Une copie est déjà en cours.
+
+es: Pulsa Triángulo para leer el disco primero.
+tr: Appuyez d'abord sur Triangle pour lire le disque.
+
+es: Ya estaba copiado: %s.
+tr: Déjà copié : %s.
+
+es: No se pudo iniciar la copia.
+tr: Impossible de lancer la copie.
+
+es: Copiando %s: %u %% · %.1f MB/s · faltan %.0f min · □ para cancelar
+tr: Copie de %s : %u %% · %.1f Mo/s · encore %.0f min · □ pour annuler
+
+es: Copiando %s: empezando... · □ para cancelar
+tr: Copie de %s : démarrage... · □ pour annuler
+
+es: sin red
+tr: pas de réseau
+
+es: sin conexión
+tr: pas de connexion
+
+es: no se pudo preparar la conexión
+tr: impossible de préparer la connexion
+
+es: no se pudo crear la petición
+tr: impossible de créer la requête
+
+es: demasiadas redirecciones
+tr: trop de redirections
+
+es: redirección sin destino
+tr: redirection sans destination
+
+es: error de red %#x
+tr: erreur réseau %#x
+
+es: respuesta HTTP %d
+tr: réponse HTTP %d
+
+es: tardó demasiado
+tr: trop long
+
+es: se cortó la descarga (%#x)
+tr: le téléchargement s'est coupé (%#x)
+
+es: cancelada
+tr: annulé
+
+es: llegó incompleta
+tr: arrivé incomplet
+
+es: El sistema no deja usar la unidad de disco.
+tr: Le système n'autorise pas l'accès au lecteur.
+
+es: La unidad de disco no está disponible.
+tr: Le lecteur de disque n'est pas disponible.
+
+es: Falló la lectura de la unidad. Mira el registro.
+tr: La lecture du lecteur a échoué. Voir le journal.
+
+es: La unidad de disco no tiene dispositivo CAM pass.
+tr: Le lecteur n'a pas de périphérique CAM pass.
+
+es: No se encontró la dirección de la unidad de disco.
+tr: L'adresse du lecteur est introuvable.
+
+es: La unidad tardó demasiado. Espera y actualiza Disco.
+tr: Le lecteur a mis trop de temps. Attendez puis actualisez Disque.
+
+es: No hay disco. Mete un DVD de PS2 y actualiza.
+tr: Pas de disque. Insérez un DVD PS2 et actualisez.
+
+es: Cambió el disco. Actualiza el panel Disco.
+tr: Le disque a changé. Actualisez le panneau Disque.
+
+es: La unidad se está preparando. Actualiza en unos segundos.
+tr: Le lecteur se prépare. Actualisez dans quelques secondes.
+
+es: La unidad no puede leer este tipo de disco.
+tr: Le lecteur ne peut pas lire ce type de disque.
+
+es: Falló una orden al disco. Mira el registro y actualiza.
+tr: Une commande au disque a échoué. Voir le journal puis actualiser.
+
+es: No hay disco.
+tr: Pas de disque.
+
+es: Disco no compatible. Esta versión solo lee DVD de PS2.
+tr: Disque non pris en charge. Cette version lit seulement les DVD PS2.
+
+es: Tamaño de sector o capacidad del DVD no compatible.
+tr: Taille de secteur ou capacité du DVD non prise en charge.
+
+es: El DVD no dio su descripción completa.
+tr: Le DVD n'a pas donné sa description complète.
+
+es: Capas del DVD no compatibles.
+tr: Couches du DVD non prises en charge.
+
+es: El cambio de capa del DVD no es válido.
+tr: Le changement de couche du DVD n'est pas valide.
+
+es: Este DVD no tiene un sistema de archivos ISO9660 compatible.
+tr: Ce DVD n'a pas de système de fichiers ISO9660 pris en charge.
+
+es: La carpeta raíz del DVD no es compatible.
+tr: Le dossier racine du DVD n'est pas pris en charge.
+
+es: SYSTEM.CNF no tiene la línea BOOT2 de la PS2.
+tr: SYSTEM.CNF n'a pas la ligne BOOT2 de la PS2.
+
+es: Los datos del disco no son válidos.
+tr: Les données du disque ne sont pas valides.
+
+es: Menos efectos: sombreado de personajes
+tr: Moins d'effets : ombrage des personnages
+
+es: Quita las sombras y brillos de ropa y personajes: menos detalle, mucha más velocidad (Dragon Ball: ~45 a ~85 %)
+tr: Retire les ombres et reflets des vêtements et personnages : moins de détails, bien plus de vitesse (Dragon Ball : ~45 à ~85 %)
+
+es: Menos efectos: pasadas de pantalla (experimental)
+tr: Moins d'effets : passes d'écran (expérimental)
+
+es: Quita efectos que el juego dibuja en imágenes aparte (brillos, desenfoques, reflejos). Si falta algo importante, apágalo
+tr: Retire les effets que le jeu dessine dans des images à part (lueurs, flous, reflets). S'il manque quelque chose d'important, désactivez-le

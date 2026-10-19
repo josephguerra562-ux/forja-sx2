@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0+
 // (AI-assisted) Uses the same Vulkan/ImGui presentation as the in-game HUD.
 #include "GameMenu.h"
+#include "ForjaLang.h"
 #include "ForjaSettings.h"
 #include "InGameMenuState.h"
 #include "PhysicalDisc.h"
@@ -31,7 +32,9 @@
 #include <cmath>
 #include <cstdio>
 #include <cfloat>
+#include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <dirent.h>
 #include <memory>
 #include <pthread.h>
@@ -40,6 +43,10 @@
 #include <vector>
 
 extern void ProbeLog(const char* format, ...);
+// Forja SX2 (languages): the fonts UIVM.cpp made, Chinese first and Japanese first.
+extern ImFont* g_forja_language_fonts[2];
+using ForjaLang::T;
+using ForjaLang::TF;
 // Forja SX2: the watchdog in main.cpp checks that the library loop keeps turning.
 extern std::atomic<u64> g_forja_menu_ticks;
 extern std::atomic<bool> g_forja_menu_active;
@@ -144,7 +151,7 @@ namespace PS4GameMenu
 					return nullptr;
 				}, this);
 				active = result == 0;
-				if (!active) error = "No se pudo iniciar la detección del disco.";
+				if (!active) error = T("No se pudo iniciar la detección del disco.");
 				return active;
 			}
 			bool Collect()
@@ -178,71 +185,96 @@ namespace PS4GameMenu
 		// Forja SX2: the Settings page. The CPU thread owns the values; the GS thread draws this copy.
 		ForjaSettings::Values s_settings_gs;
 		unsigned s_settings_row_gs = 0;
-		constexpr unsigned SettingsRows = 12; // compilation 53: the menu's button
+		// The Settings page's rows, in their order on the page (compilation 53: the menu's button; 2026-10-19: the language,
+		// first, and whether to ask for it at every start).
+		enum SettingRow : unsigned
+		{
+			SET_LANGUAGE,
+			SET_ASK_LANGUAGE,
+			SET_EE_RATE,
+			SET_CPU_AUTO,
+			SET_UPSCALE,
+			SET_ASPECT,
+			SET_OVERLAY,
+			SET_STICK,
+			SET_FAST_CDVD,
+			SET_FAST_BOOT,
+			SET_READBACK,
+			SET_VIDEO_MODE,
+			SET_FRAME_GEN,
+			SET_MENU_BUTTON,
+			SettingsRows
+		};
 
 		const char* SettingLabel(unsigned row)
 		{
-			static constexpr const char* labels[SettingsRows] = {
-				"Velocidad del CPU de la PS2", "CPU automático", "Resolución interna", "Relación de aspecto", "Contador de FPS al jugar",
-				"Sensibilidad de la palanca", "Cargas rápidas del disco", "Saltar el logo de la PS2",
-				"Lecturas de la gráfica (readbacks)", "Modo video automático", "Generación de cuadros (30 a 60 FPS)",
-				"Botón del menú del emulador"};
-			return labels[std::min(row, SettingsRows - 1)];
+			static constexpr const char* labels[SettingsRows] = {N_("Idioma"), N_("Preguntar el idioma al iniciar"),
+				N_("Velocidad del CPU de la PS2"), N_("CPU automático"), N_("Resolución interna"), N_("Relación de aspecto"),
+				N_("Contador de FPS al jugar"), N_("Sensibilidad de la palanca"), N_("Cargas rápidas del disco"),
+				N_("Saltar el logo de la PS2"), N_("Lecturas de la gráfica (readbacks)"), N_("Modo video automático"),
+				N_("Generación de cuadros (30 a 60 FPS)"), N_("Botón del menú del emulador")};
+			return T(labels[std::min(row, SettingsRows - 1)]);
 		}
 
 		const char* SettingHelp(unsigned row)
 		{
 			static constexpr const char* help[SettingsRows] = {
-				"Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)",
-				"Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso",
-				"1x es la de la PS2. En PS4 Pro aguanta 2x-4x en juegos ligeros",
-				"Auto respeta lo que pide el juego",
-				"Muestra FPS y velocidad arriba a la derecha (se cambia también en L3+R3)",
-				"Qué tanto hay que empujar la palanca para llegar al tope. 133 % es como el PCSX2 de PC",
-				"Acorta las cargas. Algunos juegos se cuelgan con esto: si pasa, apágalo",
-				"Arranca directo el juego, sin la animación de la PS2",
-				"Si el juego se traba sin que el CPU esté al 100 %: prueba Sin esperar. Desactivadas puede romper efectos",
-				"En los videos del juego busca el CPU de la PS2 que da más cuadros (31 a 100 %) y lo devuelve al terminar",
-				"EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso",
-				"Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2"};
-			return help[std::min(row, SettingsRows - 1)];
+				N_("El idioma de todo el emulador. X abre la lista de idiomas"),
+				N_("Sí: la lista de idiomas sale cada vez que abres Forja SX2"),
+				N_("Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)"),
+				N_("Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso"),
+				N_("1x es la de la PS2. En PS4 Pro aguanta 2x-4x en juegos ligeros"),
+				N_("Auto respeta lo que pide el juego"),
+				N_("Muestra FPS y velocidad arriba a la derecha (se cambia también en L3+R3)"),
+				N_("Qué tanto hay que empujar la palanca para llegar al tope. 133 % es como el PCSX2 de PC"),
+				N_("Acorta las cargas. Algunos juegos se cuelgan con esto: si pasa, apágalo"),
+				N_("Arranca directo el juego, sin la animación de la PS2"),
+				N_("Si el juego se traba sin que el CPU esté al 100 %: prueba Sin esperar. Desactivadas puede romper efectos"),
+				N_("En los videos del juego busca el CPU de la PS2 que da más cuadros (31 a 100 %) y lo devuelve al terminar"),
+				N_("EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso"),
+				N_("Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2")};
+			return T(help[std::min(row, SettingsRows - 1)]);
 		}
 
 		void SettingValue(const ForjaSettings::Values& v, unsigned row, char* out, size_t size)
 		{
-			static constexpr const char* ee_names[] = {"27 %", "31 %", "36 %", "50 %", "60 %", "75 %", "100 % (PS2 real)", "130 %",
+			static constexpr const char* ee_names[] = {"27 %", "31 %", "36 %", "50 %", "60 %", "75 %", N_("100 % (PS2 real)"), "130 %",
 				"180 %", "300 %"};
-			static constexpr const char* cpu_auto_names[] = {"No", "Hasta 75 %", "Hasta 60 %", "Hasta 50 %", "Hasta 36 %", "Hasta 31 %",
-				"Hasta 27 %"};
-			static constexpr const char* aspect_names[] = {"Estirar", "Auto", "4:3", "16:9", "10:7"};
+			static constexpr const char* cpu_auto_names[] = {N_("No"), N_("Hasta 75 %"), N_("Hasta 60 %"), N_("Hasta 50 %"),
+				N_("Hasta 36 %"), N_("Hasta 31 %"), N_("Hasta 27 %")};
+			static constexpr const char* aspect_names[] = {N_("Estirar"), N_("Auto"), "4:3", "16:9", "10:7"};
+			const auto yes_no = [](bool on) { return on ? T("Sí") : T("No"); };
 			switch (row)
 			{
-				case 0: std::snprintf(out, size, "%s", ee_names[std::clamp(v.ee_rate, -6, 3) + 6]); break;
-				case 1: std::snprintf(out, size, "%s", cpu_auto_names[-std::clamp(v.cpu_auto, -6, 0)]); break;
-				case 2: std::snprintf(out, size, "%dx%s", v.upscale, v.upscale == 1 ? " (nativa)" : ""); break;
-				case 3: std::snprintf(out, size, "%s", aspect_names[std::clamp(v.aspect, 0, 4)]); break;
-				case 4: std::snprintf(out, size, "%s", v.overlay ? "Sí" : "No"); break;
-				case 5: std::snprintf(out, size, "%d %%", v.stick); break;
-				case 6: std::snprintf(out, size, "%s", v.fast_cdvd ? "Sí" : "No"); break;
-				case 7: std::snprintf(out, size, "%s", v.fast_boot ? "Sí" : "No"); break;
-				case 8:
+				case SET_LANGUAGE: std::snprintf(out, size, "%s", ForjaLang::Languages[ForjaLang::Current()].name); break;
+				case SET_ASK_LANGUAGE: std::snprintf(out, size, "%s", yes_no(v.ask_language)); break;
+				case SET_EE_RATE: std::snprintf(out, size, "%s", T(ee_names[std::clamp(v.ee_rate, -6, 3) + 6])); break;
+				case SET_CPU_AUTO: std::snprintf(out, size, "%s", T(cpu_auto_names[-std::clamp(v.cpu_auto, -6, 0)])); break;
+				case SET_UPSCALE: std::snprintf(out, size, v.upscale == 1 ? TF("%dx (nativa)") : "%dx", v.upscale); break;
+				case SET_ASPECT: std::snprintf(out, size, "%s", T(aspect_names[std::clamp(v.aspect, 0, 4)])); break;
+				case SET_OVERLAY: std::snprintf(out, size, "%s", yes_no(v.overlay)); break;
+				case SET_STICK: std::snprintf(out, size, "%d %%", v.stick); break;
+				case SET_FAST_CDVD: std::snprintf(out, size, "%s", yes_no(v.fast_cdvd)); break;
+				case SET_FAST_BOOT: std::snprintf(out, size, "%s", yes_no(v.fast_boot)); break;
+				case SET_READBACK:
 				{
-					static constexpr const char* readback_names[] = {"Precisas", "Sin esperar (más rápido)", "Desactivadas"};
-					std::snprintf(out, size, "%s", readback_names[std::clamp(v.readback, 0, 2)]);
+					static constexpr const char* readback_names[] = {N_("Precisas"), N_("Sin esperar (más rápido)"), N_("Desactivadas")};
+					std::snprintf(out, size, "%s", T(readback_names[std::clamp(v.readback, 0, 2)]));
 					break;
 				}
-				case 9: std::snprintf(out, size, "%s", v.video_mode ? "Sí" : "No"); break;
-				case 10: std::snprintf(out, size, "%s", v.frame_gen ? "Sí" : "No"); break;
+				case SET_VIDEO_MODE: std::snprintf(out, size, "%s", yes_no(v.video_mode)); break;
+				case SET_FRAME_GEN: std::snprintf(out, size, "%s", yes_no(v.frame_gen)); break;
 				default:
 				{
-					static constexpr const char* menu_names[] = {"L3+R3", "Panel táctil (derecha)", "Los dos"};
-					std::snprintf(out, size, "%s", menu_names[std::clamp(v.menu_button, 0, 2)]);
+					static constexpr const char* menu_names[] = {"L3+R3", N_("Panel táctil (derecha)"), N_("Los dos")};
+					std::snprintf(out, size, "%s", T(menu_names[std::clamp(v.menu_button, 0, 2)]));
 					break;
 				}
 			}
 		}
 
-		// delta -1/+1 from Left/Right; X passes +1 with wrap so it cycles through the choices.
+		// delta -1/+1 from Left/Right; X passes +1 with wrap so it cycles through the choices. The language row is Select()'s:
+		// it loads the new language.
 		void ChangeSetting(ForjaSettings::Values& v, unsigned row, int delta, bool wrap)
 		{
 			const auto step = [&](int value, int lo, int hi) {
@@ -253,12 +285,14 @@ namespace PS4GameMenu
 			};
 			switch (row)
 			{
-				case 0: v.ee_rate = step(v.ee_rate, -6, 3); break;
-				case 1: v.cpu_auto = -step(-v.cpu_auto, 0, 6); break; // right: a lower floor
-				case 2: v.upscale = step(v.upscale, 1, 4); break;
-				case 3: v.aspect = step(v.aspect, 0, 4); break;
-				case 4: v.overlay = !v.overlay; break;
-				case 5:
+				case SET_LANGUAGE: break;
+				case SET_ASK_LANGUAGE: v.ask_language = !v.ask_language; break;
+				case SET_EE_RATE: v.ee_rate = step(v.ee_rate, -6, 3); break;
+				case SET_CPU_AUTO: v.cpu_auto = -step(-v.cpu_auto, 0, 6); break; // right: a lower floor
+				case SET_UPSCALE: v.upscale = step(v.upscale, 1, 4); break;
+				case SET_ASPECT: v.aspect = step(v.aspect, 0, 4); break;
+				case SET_OVERLAY: v.overlay = !v.overlay; break;
+				case SET_STICK:
 				{
 					int index = 0;
 					while (index + 1 < ForjaSettings::StickStepCount && ForjaSettings::StickSteps[index] < v.stick)
@@ -266,11 +300,11 @@ namespace PS4GameMenu
 					v.stick = ForjaSettings::StickSteps[step(index, 0, ForjaSettings::StickStepCount - 1)];
 					break;
 				}
-				case 6: v.fast_cdvd = !v.fast_cdvd; break;
-				case 7: v.fast_boot = !v.fast_boot; break;
-				case 8: v.readback = step(v.readback, 0, 2); break;
-				case 9: v.video_mode = !v.video_mode; break;
-				case 10: v.frame_gen = !v.frame_gen; break;
+				case SET_FAST_CDVD: v.fast_cdvd = !v.fast_cdvd; break;
+				case SET_FAST_BOOT: v.fast_boot = !v.fast_boot; break;
+				case SET_READBACK: v.readback = step(v.readback, 0, 2); break;
+				case SET_VIDEO_MODE: v.video_mode = !v.video_mode; break;
+				case SET_FRAME_GEN: v.frame_gen = !v.frame_gen; break;
 				default: v.menu_button = step(v.menu_button, 0, 2); break;
 			}
 		}
@@ -281,6 +315,88 @@ namespace PS4GameMenu
 				s_settings_gs = values;
 				s_settings_row_gs = row;
 			});
+		}
+
+		// Forja SX2 (2026-10-19): the language picker, over the library at every start (or from Settings > Idioma). Its texts are
+		// in the language under the cursor, so a player who doesn't read Spanish finds their own; the CPU thread picks them.
+		constexpr unsigned LanguageRowsPerColumn = 7;
+		bool s_language_dialog_visible = false;
+		unsigned s_language_focus = 0;
+		std::string s_language_texts[4];
+
+		void PublishLanguageDialog(bool visible, unsigned focus)
+		{
+			ForjaLang::LoadTable(focus);
+			std::string texts[4] = {ForjaLang::TIn(focus, N_("Elige el idioma")),
+				ForjaLang::TIn(focus, N_("También se cambia en Ajustes, donde puedes apagar esta pregunta.")),
+				ForjaLang::TIn(focus, N_("Aceptar")), ForjaLang::TIn(focus, N_("Atrás"))};
+			MTGS::RunOnGSThread([visible, focus, texts]() {
+				s_language_dialog_visible = visible;
+				s_language_focus = focus;
+				for (unsigned i = 0; i < 4; i++)
+					s_language_texts[i] = texts[i];
+			});
+		}
+
+		// Japanese is drawn with the font that has its own shapes first (UIVM.cpp).
+		ImFont* MenuFont()
+		{
+			ImFont* japanese = g_forja_language_fonts[1];
+			return ForjaLang::Current() == ForjaLang::Japanese && japanese ? japanese : ImGui::GetFont();
+		}
+
+		float TextWidth(ImFont* font, float pixels, const char* text)
+		{
+			return font->CalcTextSizeA(pixels, FLT_MAX, 0.0f, ForjaLang::Visual(text)).x;
+		}
+
+		// Every text the menus draw goes through here: ForjaLang::Visual for Arabic and, given a width, the fit: a translation
+		// longer than its place is drawn smaller (down to 80 %, in whole pixels, so the atlas keeps few sizes) and then cut with "…".
+		void DrawText(ImDrawList* draw, ImFont* font, float pixels, ImVec2 position, ImU32 color, const char* text, float max_width = 0.0f)
+		{
+			if (!text || !*text)
+				return;
+			const char* shown = ForjaLang::Visual(text);
+			std::string cut;
+			if (max_width > 0.0f)
+			{
+				float width = font->CalcTextSizeA(pixels, FLT_MAX, 0.0f, shown).x;
+				if (width > max_width)
+				{
+					const float smaller = std::max(std::floor(pixels * std::max(0.8f, max_width / width)), 1.0f);
+					position.y += (pixels - smaller) * 0.6f;
+					pixels = smaller;
+					width = font->CalcTextSizeA(pixels, FLT_MAX, 0.0f, shown).x;
+				}
+				if (width > max_width)
+				{
+					// The most characters that fit with the "…", by halves.
+					std::vector<size_t> ends;
+					const size_t length = std::strlen(text);
+					for (size_t i = 1; i <= length; i++)
+						if (i == length || (static_cast<unsigned char>(text[i]) & 0xc0) != 0x80)
+							ends.push_back(i);
+					size_t keep = 0, low = 1, high = ends.size();
+					while (low <= high)
+					{
+						const size_t middle = (low + high) / 2;
+						const std::string candidate = std::string(text, ends[middle - 1]) + "…";
+						if (font->CalcTextSizeA(pixels, FLT_MAX, 0.0f, ForjaLang::Visual(candidate.c_str())).x <= max_width)
+						{
+							keep = middle;
+							low = middle + 1;
+						}
+						else
+							high = middle - 1;
+					}
+					cut = std::string(text, keep ? ends[keep - 1] : 0);
+					while (!cut.empty() && cut.back() == ' ')
+						cut.pop_back();
+					cut += "…";
+					shown = ForjaLang::Visual(cut.c_str());
+				}
+			}
+			draw->AddText(font, pixels, position, color, shown);
 		}
 		bool s_loading_visible = false;
 		bool s_loading_carousel = false;
@@ -554,11 +670,11 @@ namespace PS4GameMenu
 			}
 			if (items.empty())
 			{
-				const char* message = view == LibraryView::Disc      ? "No se detectó ningún disco" :
-				                      view == LibraryView::Recent    ? "No hay juegos recientes" :
-				                      view == LibraryView::Favorites ? "No hay juegos favoritos" :
-				                      view == LibraryView::Settings  ? "Ajustes de Forja SX2 (para todos los juegos)" :
-				                                                       "No se encontraron juegos";
+				const char* message = view == LibraryView::Disc      ? T("No se detectó ningún disco") :
+				                      view == LibraryView::Recent    ? T("No hay juegos recientes") :
+				                      view == LibraryView::Favorites ? T("No hay juegos favoritos") :
+				                      view == LibraryView::Settings  ? T("Ajustes de Forja SX2 (para todos los juegos)") :
+				                                                       T("No se encontraron juegos");
 				items.push_back({message, {}, {}, false});
 			}
 			return items;
@@ -612,7 +728,7 @@ namespace PS4GameMenu
 				s_loading_carousel = true;
 				s_loading_progress = std::min(progress, 100u);
 				s_loading_carousel_phase = carousel_phase;
-				s_loading_status = "Cargando...";
+				s_loading_status = T("Cargando...");
 				GSPresentCurrentFrame();
 			});
 			MTGS::WaitGS(false);
@@ -831,6 +947,12 @@ namespace PS4GameMenu
 			ProbeLog("Game menu: GS initialization failed\n");
 			return false;
 		}
+		// Forja SX2 (2026-10-19): the saved language, before the first text is drawn. Settings page state too: every change is
+		// saved at once (ajustes.ini) and used by the next game.
+		ForjaSettings::Values settings = ForjaSettings::Load();
+		if (!ForjaLang::Use(ForjaLang::IndexOf(settings.language)))
+			ProbeLog("Game menu: the file of language %s is missing; Spanish\n", settings.language);
+		ProbeLog("Game menu: language %s%s\n", ForjaLang::CurrentCode(), settings.ask_language ? ", asked at start" : "");
 		// Decode the packaged button artwork on the CPU thread; the GS callback
 		// only uploads textures and draws them.
 		LoadUiAssets();
@@ -860,17 +982,43 @@ namespace PS4GameMenu
 		bool update_dialog_visible = false;
 		bool update_confirm = true;
 		std::string status;
-		// Forja SX2: Settings page state. Every change is saved at once (ajustes.ini) and used by the next game.
-		ForjaSettings::Values settings = ForjaSettings::Load();
 		unsigned settings_row = 0;
 		PublishSettings(settings, settings_row);
+		// The language is saved with the rest, so ajustes.ini always names the one in use.
+		const auto save_settings = [&](const char* saved) {
+			std::snprintf(settings.language, sizeof(settings.language), "%s", ForjaLang::CurrentCode());
+			status = ForjaSettings::Save(settings) ? saved : T("No se pudieron guardar los ajustes.");
+			PublishSettings(settings, settings_row);
+		};
 		const auto change_setting = [&](int delta, bool wrap) {
 			ChangeSetting(settings, settings_row, delta, wrap);
 			ProbeLog("Game menu: setting %u changed\n", settings_row);
-			status = ForjaSettings::Save(settings) ? "Guardado. Se aplica al iniciar el próximo juego." :
-			                                         "No se pudieron guardar los ajustes.";
-			PublishSettings(settings, settings_row);
+			save_settings(T("Guardado. Se aplica al iniciar el próximo juego."));
 		};
+		// Forja SX2 (2026-10-19): the language picker. At every start while Settings > "Preguntar el idioma al iniciar" says
+		// Sí, and the first time (no language saved yet, the cursor on the PS4's own language). Not when the library comes back
+		// from a game (main.cpp starts the app again for it and leaves this marker): that is the same session.
+		bool returning = false;
+		if (std::FILE* marker = std::fopen("/data/ForjaSX2/volver-biblioteca", "r"))
+		{
+			long long when = 0;
+			returning = std::fscanf(marker, "%lld", &when) == 1 && std::llabs(static_cast<long long>(std::time(nullptr)) - when) < 300;
+			std::fclose(marker);
+			std::remove("/data/ForjaSX2/volver-biblioteca");
+		}
+		bool language_dialog_visible = !returning && (settings.ask_language || !settings.language[0]);
+		if (returning)
+			ProbeLog("Game menu: back from a game; the language is not asked again\n");
+		unsigned language_focus = ForjaLang::Current();
+		if (!settings.language[0])
+		{
+			int32_t system_language = 1;
+			if (sceSystemServiceParamGetInt(ORBIS_SYSTEM_SERVICE_PARAM_ID_LANG, &system_language) == 0)
+				language_focus = ForjaLang::FromSystemLanguage(system_language);
+			ProbeLog("Game menu: no language saved; the PS4's is %d\n", system_language);
+		}
+		if (language_dialog_visible)
+			PublishLanguageDialog(true, language_focus);
 		DiscProbe disc_probe;
 		DiscCoverDownload disc_cover;
 		DiscCoverDownload library_cover;
@@ -903,7 +1051,7 @@ namespace PS4GameMenu
 			if (PS4DiscCopy::Busy())
 			{
 				// The drive is the copy's until it ends.
-				items = {{disc_title.empty() ? "Copiando el disco" : disc_title, {}, {}, false}};
+				items = {{disc_title.empty() ? T("Copiando el disco") : disc_title, {}, {}, false}};
 				Publish(items, view);
 				status = disc_status = PS4DiscCopy::StatusText();
 				return;
@@ -911,10 +1059,10 @@ namespace PS4GameMenu
 			disc_probe_at = 0.0;
 			boot_disc_when_ready = boot;
 			const bool started = disc_probe.Start();
-			items = {{started ? "Revisando el DVD..." : "Falló la detección del disco", {}, {}, false}};
+			items = {{started ? T("Revisando el DVD...") : T("Falló la detección del disco"), {}, {}, false}};
 			selected = 0;
 			Publish(items, view);
-			status = started ? "Leyendo la unidad. Puedes seguir navegando." : disc_probe.error;
+			status = started ? T("Leyendo la unidad. Puedes seguir navegando.") : disc_probe.error;
 			disc_status = status;
 		};
 		const auto set_view = [&](LibraryView next) {
@@ -930,17 +1078,17 @@ namespace PS4GameMenu
 			{
 				if (PS4DiscCopy::Busy())
 				{
-					items = {{disc_title.empty() ? "Copiando el disco" : disc_title, {}, {}, false}};
+					items = {{disc_title.empty() ? T("Copiando el disco") : disc_title, {}, {}, false}};
 					Publish(items, view);
 					status = disc_status = PS4DiscCopy::StatusText();
 				}
 				else if (!disc_probe.active)
 				{
 					disc_probe_at = timer.GetTimeSeconds() + 0.7;
-					items = {{"Revisando el DVD...", {}, {}, false}};
+					items = {{T("Revisando el DVD..."), {}, {}, false}};
 					Publish(items, view);
 				}
-				else status = "Revisando el DVD...";
+				else status = T("Revisando el DVD...");
 			}
 			else if (view == LibraryView::Settings)
 			{
@@ -948,6 +1096,16 @@ namespace PS4GameMenu
 				settings_row = 0;
 				PublishSettings(settings, settings_row);
 			}
+		};
+		// A language picked (the picker, or Left/Right on Settings > Idioma): its texts from now on, everywhere.
+		const auto apply_language = [&](unsigned index) {
+			const bool loaded = ForjaLang::Use(index);
+			ProbeLog("Game menu: language %s%s\n", ForjaLang::Languages[index].code, loaded ? "" : " (its file is missing: Spanish)");
+			if (view != LibraryView::Disc)
+				items = BuildView(library, view, favorites, recent);
+			selected = std::min(selected, items.size() - 1);
+			Publish(items, view);
+			save_settings(loaded ? T("Idioma guardado.") : T("No se encontró el archivo de ese idioma: queda el español."));
 		};
 		// Library refreshes now begin a serialized cover queue. The UI remains
 		// responsive while each native HTTPS request completes in its own thread.
@@ -1004,7 +1162,7 @@ namespace PS4GameMenu
 				}
 				status = disc_status;
 				if (!disc_cover.Succeeded())
-					status += " Portada no disponible. Triángulo para reintentar.";
+					status += T(" Portada no disponible. Triángulo para reintentar.");
 			}
 			if (disc_probe.Collect() && view == LibraryView::Disc)
 			{
@@ -1012,7 +1170,7 @@ namespace PS4GameMenu
 				{
 					const auto& disc = disc_probe.reader->GetInfo();
 					const auto* game = GameDatabase::findGame(disc.serial);
-					const std::string title = game ? std::string(game->name) : "PS2 DVD - " + disc.serial;
+					const std::string title = game ? std::string(game->name) : T("DVD de PS2 - ") + disc.serial;
 					// Serial identifies the exact disc edition; the database title is a fallback.
 					auto cover = LoadCover(disc.serial + ".iso");
 					if (!cover && game && title.find_first_of("/\\") == std::string::npos)
@@ -1031,9 +1189,9 @@ namespace PS4GameMenu
 							break;
 						}
 					}
-					status = disc.serial + (disc.dual_type ? " | DVD doble capa" : " | DVD") +
-					         (disc_copy_path.empty() ? " | X: jugar desde el disco · □: copiarlo a la PS4" :
-					                                   " | Ya está copiado en la PS4 · X: jugar la copia");
+					status = disc.serial + (disc.dual_type ? T(" | DVD doble capa") : " | DVD") +
+					         (disc_copy_path.empty() ? T(" | X: jugar desde el disco · □: copiarlo a la PS4") :
+					                                   T(" | Ya está copiado en la PS4 · X: jugar la copia"));
 					if (boot_disc_when_ready && !disc_copy_path.empty())
 					{
 						// The disc is the key: its copy starts, read from the console's storage (faster, and the drive rests).
@@ -1055,13 +1213,13 @@ namespace PS4GameMenu
 				}
 				else
 				{
-					items = {{"DVD no disponible", {}, {}, false}};
+					items = {{T("DVD no disponible"), {}, {}, false}};
 					status = disc_probe.error;
 				}
 				boot_disc_when_ready = false;
 				disc_status = status;
 				if (disc_cover.Active())
-					status += " Descargando portada...";
+					status += T(" Descargando portada...");
 				selected = 0;
 				Publish(items, view);
 			}
@@ -1077,8 +1235,49 @@ namespace PS4GameMenu
 			const u32 buttons = connected ? data.buttons : 0;
 			const u32 pressed = buttons & ~previous;
 			previous = buttons;
+			// Forja SX2 (2026-10-19): the language picker, two columns: Up/Down in one, Left/Right to the other. X keeps the
+			// language under the cursor; Circle leaves the one there was.
+			if (language_dialog_visible)
+			{
+				static constexpr u32 directions[] = {ORBIS_PAD_BUTTON_UP, ORBIS_PAD_BUTTON_DOWN, ORBIS_PAD_BUTTON_LEFT, ORBIS_PAD_BUTTON_RIGHT};
+				u32 dialog_navigation = 0;
+				for (const u32 direction : directions)
+					if (!dialog_navigation && (buttons & direction))
+						dialog_navigation = direction;
+				if (connected && !dialog_navigation)
+					dialog_navigation = data.leftStick.y < 72 ? ORBIS_PAD_BUTTON_UP : data.leftStick.y > 184 ? ORBIS_PAD_BUTTON_DOWN :
+					                    data.leftStick.x < 72 ? ORBIS_PAD_BUTTON_LEFT : data.leftStick.x > 184 ? ORBIS_PAD_BUTTON_RIGHT : 0;
+				if (dialog_navigation && (dialog_navigation != held_direction || now >= next_repeat))
+				{
+					const unsigned row = language_focus % LanguageRowsPerColumn, column = language_focus / LanguageRowsPerColumn;
+					if (dialog_navigation == ORBIS_PAD_BUTTON_UP && row > 0)
+						language_focus--;
+					else if (dialog_navigation == ORBIS_PAD_BUTTON_DOWN && row + 1 < LanguageRowsPerColumn &&
+					         language_focus + 1 < ForjaLang::LanguageCount)
+						language_focus++;
+					else if (dialog_navigation == ORBIS_PAD_BUTTON_LEFT && column > 0)
+						language_focus -= LanguageRowsPerColumn;
+					else if (dialog_navigation == ORBIS_PAD_BUTTON_RIGHT && column == 0)
+						language_focus = std::min(language_focus + LanguageRowsPerColumn, ForjaLang::LanguageCount - 1);
+					next_repeat = now + (dialog_navigation == held_direction ? 0.12 : 0.35);
+					PublishLanguageDialog(true, language_focus);
+				}
+				held_direction = dialog_navigation;
+				if (pressed & (ORBIS_PAD_BUTTON_CROSS | ORBIS_PAD_BUTTON_CIRCLE))
+				{
+					language_dialog_visible = false;
+					PublishLanguageDialog(false, language_focus);
+					if (pressed & ORBIS_PAD_BUTTON_CROSS)
+						apply_language(language_focus);
+					else
+						status.clear();
+				}
+				Present(selected, status, connected, sidebar_focused, false, false);
+				Threading::Sleep(16);
+				continue;
+			}
 			// Forja SX2: the updater. A newer build than this one is offered once per app run; OPTIONS offers it again.
-			if (!s_update_asked && !exit_dialog_visible && PS4Release::HasUpdate())
+			if (!s_update_asked && !exit_dialog_visible && !language_dialog_visible && PS4Release::HasUpdate())
 			{
 				s_update_asked = true;
 				update_dialog_visible = true;
@@ -1220,6 +1419,9 @@ namespace PS4GameMenu
 						--settings_row;
 					else if (navigation == ORBIS_PAD_BUTTON_DOWN && settings_row + 1 < SettingsRows)
 						++settings_row;
+					else if ((navigation == ORBIS_PAD_BUTTON_LEFT || navigation == ORBIS_PAD_BUTTON_RIGHT) && settings_row == SET_LANGUAGE)
+						apply_language((ForjaLang::Current() + (navigation == ORBIS_PAD_BUTTON_LEFT ? ForjaLang::LanguageCount - 1 : 1)) %
+						               ForjaLang::LanguageCount);
 					else if (navigation == ORBIS_PAD_BUTTON_LEFT)
 						change_setting(-1, false);
 					else if (navigation == ORBIS_PAD_BUTTON_RIGHT)
@@ -1253,10 +1455,10 @@ namespace PS4GameMenu
 				if (PS4DiscCopy::Busy())
 				{
 					PS4DiscCopy::Cancel();
-					status = disc_status = "Cancelando la copia...";
+					status = disc_status = T("Cancelando la copia...");
 				}
 				else if (!disc_copy_path.empty())
-					status = "Este disco ya está copiado en la PS4. X para jugar la copia.";
+					status = T("Este disco ya está copiado en la PS4. X para jugar la copia.");
 				else if (!disc_probe.active && disc_probe.reader)
 				{
 					std::string error;
@@ -1266,7 +1468,7 @@ namespace PS4GameMenu
 						status = error;
 				}
 				else
-					status = "Pulsa Triángulo para leer el disco y después □ para copiarlo.";
+					status = T("Pulsa Triángulo para leer el disco y después □ para copiarlo.");
 			}
 			if ((pressed & ORBIS_PAD_BUTTON_SQUARE) && !sidebar_focused && view != LibraryView::Disc)
 			{
@@ -1280,8 +1482,8 @@ namespace PS4GameMenu
 					else
 						favorites.push_back(selected_path);
 					status = SavePathList(FavoritesFile, favorites) ?
-					             (removing ? "Quitado de favoritos." : "Agregado a favoritos.") :
-					             "No se pudieron guardar los favoritos.";
+					             (removing ? T("Quitado de favoritos.") : T("Agregado a favoritos.")) :
+					             T("No se pudieron guardar los favoritos.");
 					items = BuildView(library, view, favorites, recent);
 					const auto same_item = std::find_if(items.begin(), items.end(), [&](const Item& item) { return item.path == selected_path; });
 					selected = same_item == items.end() ? std::min(selected, items.size() - 1) : static_cast<size_t>(same_item - items.begin());
@@ -1297,8 +1499,15 @@ namespace PS4GameMenu
 				}
 				if (view == LibraryView::Settings)
 				{
-					// Forja SX2: X moves the selected setting to its next choice (and wraps around).
-					change_setting(1, true);
+					// Forja SX2: X moves the selected setting to its next choice (and wraps around); on Idioma it opens the picker.
+					if (settings_row == SET_LANGUAGE)
+					{
+						language_dialog_visible = true;
+						language_focus = ForjaLang::Current();
+						PublishLanguageDialog(true, language_focus);
+					}
+					else
+						change_setting(1, true);
 					Present(selected, status, connected, false, false, false);
 					Threading::Sleep(16);
 					continue;
@@ -1306,7 +1515,7 @@ namespace PS4GameMenu
 				if (PS4DiscCopy::Busy())
 				{
 					// Forja SX2 (compilation 41): no game while the drive and the storage are the copy's.
-					status = "Hay una copia del disco en curso: espera a que termine o cancélala con □ en Disco.";
+					status = T("Hay una copia del disco en curso: espera a que termine o cancélala con □ en Disco.");
 					Present(selected, status, connected, false, false, false);
 					Threading::Sleep(16);
 					continue;
@@ -1322,11 +1531,11 @@ namespace PS4GameMenu
 				path = items[selected].path;
 				struct stat info{};
 				if (path.empty())
-					status = view == LibraryView::Disc     ? "El soporte de disco físico está en preparación." :
-					         view == LibraryView::Settings ? "Aquí irán las opciones de ajustes." :
-					                                         "No hay juegos en esta vista.";
+					status = view == LibraryView::Disc     ? T("El soporte de disco físico está en preparación.") :
+					         view == LibraryView::Settings ? T("Aquí irán las opciones de ajustes.") :
+					                                         T("No hay juegos en esta vista.");
 				else if (stat(path.c_str(), &info) != 0 || !S_ISREG(info.st_mode) || info.st_size <= 0)
-					status = "Archivo no disponible. Pulsa Triángulo para actualizar.";
+					status = T("Archivo no disponible. Pulsa Triángulo para actualizar.");
 				else
 				{
 					// (AI-assisted) Keep an unreadable/unsupported image in the launcher
@@ -1335,7 +1544,7 @@ namespace PS4GameMenu
 					Error image_error;
 					if (!image.Open(path, &image_error))
 					{
-						status = "No se puede abrir el juego: " + image_error.GetDescription();
+						status = T("No se puede abrir el juego: ") + image_error.GetDescription();
 						ProbeLog("Game menu: launch rejected %s: %s\n", path.c_str(), image_error.GetDescription().c_str());
 						Present(selected, status, connected, false, false, false);
 						Threading::Sleep(16);
@@ -1348,7 +1557,7 @@ namespace PS4GameMenu
 						recent.resize(24);
 					if (!SavePathList(RecentFile, recent))
 						ProbeLog("Game menu: could not save recent list\n");
-					Present(selected, "Iniciando...", connected, false, false, false);
+					Present(selected, T("Iniciando..."), connected, false, false, false);
 					// Consume the confirmation before handing the controller to the game.
 					while (scePadReadState(pad, &data) == 0 && data.connected && (data.buttons & ORBIS_PAD_BUTTON_CROSS))
 						Threading::Sleep(16);
@@ -1358,7 +1567,7 @@ namespace PS4GameMenu
 					break;
 				}
 			}
-			Present(selected, connected ? (view == LibraryView::Disc && status.empty() ? disc_status : status) : "Conecta un control para elegir un juego.", connected,
+			Present(selected, connected ? (view == LibraryView::Disc && status.empty() ? disc_status : status) : T("Conecta un control para elegir un juego."), connected,
 				sidebar_focused, false, false);
 			Threading::Sleep(16);
 		}
@@ -1366,13 +1575,13 @@ namespace PS4GameMenu
 		disc_cover.Cancel();
 		while (disc_cover.Active() && !disc_cover.Collect())
 		{
-			Present(selected, "Terminando de bajar la portada...", true, sidebar_focused, false, false);
+			Present(selected, T("Terminando de bajar la portada..."), true, sidebar_focused, false, false);
 			Threading::Sleep(16);
 		}
 		// The driver timeout is requested per command; hardware behavior needs proper testing.
 		while (disc_probe.active && !disc_probe.Collect())
 		{
-			Present(selected, "Terminando de detectar el disco...", true, sidebar_focused, false, false);
+			Present(selected, T("Terminando de detectar el disco..."), true, sidebar_focused, false, false);
 			Threading::Sleep(16);
 		}
 		if (start && path == PS4Disc::DevicePath)
@@ -1387,12 +1596,13 @@ namespace PS4GameMenu
 			s_exit_dialog_visible = false;
 			s_exit_confirm = false;
 			s_update_dialog_visible = false;
+			s_language_dialog_visible = false;
 			s_items.clear();
 			s_status.clear();
 			s_loading_visible = start;
 			s_loading_carousel = false;
 			s_loading_progress = start ? 10u : 0u;
-			s_loading_status = start ? "Preparando el emulador..." : "";
+			s_loading_status = start ? T("Preparando el emulador...") : "";
 			ClearCoverTextures();
 			if (start)
 				GSPresentCurrentFrame();
@@ -1404,6 +1614,7 @@ namespace PS4GameMenu
 
 	bool Render()
 	{
+		ForjaLang::NewFrame();
 		if (s_intro_visible)
 		{
 			ImDrawList* draw = ImGui::GetBackgroundDrawList();
@@ -1421,7 +1632,7 @@ namespace PS4GameMenu
 		if (s_loading_visible)
 		{
 			ImDrawList* draw = ImGui::GetBackgroundDrawList();
-			ImFont* font = ImGui::GetFont();
+			ImFont* font = MenuFont();
 			const ImVec2 size = ImGui::GetIO().DisplaySize;
 			const float scale = std::min(size.x / 1920.0f, size.y / 1080.0f);
 			const ImVec2 origin((size.x - 1920.0f * scale) * 0.5f, (size.y - 1080.0f * scale) * 0.5f);
@@ -1477,9 +1688,9 @@ namespace PS4GameMenu
 				IM_COL32(190, 218, 241, 255), percentage);
 			if (!s_loading_status.empty())
 			{
-				const float status_width = font->CalcTextSizeA(18.0f * scale, FLT_MAX, 0.0f, s_loading_status.c_str()).x / scale;
-				draw->AddText(font, 18.0f * scale, point(960.0f - status_width * 0.5f, by + 62),
-					IM_COL32(213, 232, 249, 255), s_loading_status.c_str());
+				const float status_width = TextWidth(font, 18.0f * scale, s_loading_status.c_str()) / scale;
+				DrawText(draw, font, 18.0f * scale, point(960.0f - status_width * 0.5f, by + 62), IM_COL32(213, 232, 249, 255),
+					s_loading_status.c_str());
 			}
 			return true;
 		}
@@ -1493,7 +1704,7 @@ namespace PS4GameMenu
 			const bool show_performance_overlay = menu_state.show_overlay;
 			const int ee_rate = menu_state.ee_rate;
 			ImDrawList* draw = ImGui::GetBackgroundDrawList();
-			ImFont* font = ImGui::GetFont();
+			ImFont* font = MenuFont();
 			const ImVec2 size = ImGui::GetIO().DisplaySize;
 			const float scale = std::min(size.x / 1920.0f, size.y / 1080.0f);
 			const auto point = [scale](float x, float y) { return ImVec2(x * scale, y * scale); };
@@ -1512,117 +1723,118 @@ namespace PS4GameMenu
 			draw->AddRectFilled(point(64, 38), point(1856, 170), IM_COL32(4, 19, 34, 205), 24.0f * scale);
 			draw->AddLine(point(64, 170), point(1856, 170), IM_COL32(38, 103, 157, 150), 1.0f * scale);
 			image("status_controle", 126, 82, 40, 34);
-			draw->AddText(font, 34.0f * scale, point(196, 82), white, "Menú del emulador");
-			draw->AddText(font, 18.0f * scale, point(1180, 66), muted, "JUEGO EN PAUSA");
-			// Forja SX2: which profiles this game has (pcsx2/ForjaGameProfile.h).
-			char profile_label[128];
-			std::snprintf(profile_label, sizeof(profile_label), "Perfil de este juego:  de fábrica %s  ·  tuyo %s",
-				menu_state.has_factory ? "sí" : "no", menu_state.has_player ? "sí" : "no");
-			draw->AddText(font, 18.0f * scale, point(1180, 104), muted, profile_label);
-			static constexpr const char* origin_names[] = {"global", "perfil de fábrica", "tu perfil"};
-			char resolution[96];
-			std::snprintf(resolution, sizeof(resolution), "Resolución interna:  < %ux >%s", upscale,
-				upscale == 1 ? "  (nativa)" : "");
-			static constexpr const char* aspect_names[] = {"Estirar", "Auto", "4:3", "16:9", "10:7"};
-			char aspect_label[96];
-			std::snprintf(aspect_label, sizeof(aspect_label), "Relación de aspecto:  < %s >", aspect_names[std::min(aspect, 4u)]);
-			char performance_label[96];
-			std::snprintf(performance_label, sizeof(performance_label), "Contador de rendimiento:  < %s >",
-				show_performance_overlay ? "Sí" : "No");
+			DrawText(draw, font, 34.0f * scale, point(196, 82), white, T("Menú del emulador"), 960.0f * scale);
+			DrawText(draw, font, 18.0f * scale, point(1180, 66), muted, T("JUEGO EN PAUSA"), 640.0f * scale);
+			// Forja SX2: which profiles this game has (pcsx2/ForjaGameProfile.h). The buffers are big for the translations
+			// (2026-10-19): a Russian or Chinese letter takes two or three bytes.
+			const auto yes_no = [](bool on) { return on ? T("Sí") : T("No"); };
+			char profile_label[256];
+			std::snprintf(profile_label, sizeof(profile_label), TF("Perfil de este juego:  de fábrica %s  ·  tuyo %s"),
+				menu_state.has_factory ? T("sí") : T("no"), menu_state.has_player ? T("sí") : T("no"));
+			DrawText(draw, font, 18.0f * scale, point(1180, 104), muted, profile_label, 640.0f * scale);
+			static constexpr const char* origin_names[] = {N_("global"), N_("perfil de fábrica"), N_("tu perfil")};
+			const auto origin = [&](unsigned index) { return T(origin_names[std::min(index, 2u)]); };
+			char resolution[256];
+			std::snprintf(resolution, sizeof(resolution), upscale == 1 ? TF("Resolución interna:  < %ux >  (nativa)") :
+			                                                             TF("Resolución interna:  < %ux >"), upscale);
+			static constexpr const char* aspect_names[] = {N_("Estirar"), N_("Auto"), "4:3", "16:9", "10:7"};
+			char aspect_label[256];
+			std::snprintf(aspect_label, sizeof(aspect_label), TF("Relación de aspecto:  < %s >"), T(aspect_names[std::min(aspect, 4u)]));
+			char performance_label[256];
+			std::snprintf(performance_label, sizeof(performance_label), TF("Contador de rendimiento:  < %s >"),
+				yes_no(show_performance_overlay));
 			// Forja SX2: los mismos porcentajes que muestra PCSX2 para EECycleRate -3..3; -4..-6 (compilación 36) son experimentales.
-			static constexpr const char* ee_names[] = {"27 % (exp.)", "31 % (exp.)", "36 % (exp.)", "50 %", "60 %", "75 %",
-				"100 % (PS2 real)", "130 %", "180 %", "300 %"};
-			char ee_label[96];
-			std::snprintf(ee_label, sizeof(ee_label), "Velocidad del CPU de la PS2:  < %s >", ee_names[std::clamp(ee_rate, -6, 3) + 6]);
+			static constexpr const char* ee_names[] = {N_("27 % (exp.)"), N_("31 % (exp.)"), N_("36 % (exp.)"), "50 %", "60 %", "75 %",
+				N_("100 % (PS2 real)"), "130 %", "180 %", "300 %"};
+			char ee_label[256];
+			std::snprintf(ee_label, sizeof(ee_label), TF("Velocidad del CPU de la PS2:  < %s >"), T(ee_names[std::clamp(ee_rate, -6, 3) + 6]));
 			// Forja SX2: the game's profile rows. Video mode: the EE rate while a movie plays (0 = off).
-			static constexpr const char* video_names[] = {"No", "100 %", "75 %", "60 %", "50 %", "36 %", "Auto"};
-			char video_label[96];
-			std::snprintf(video_label, sizeof(video_label), "Modo video:  < %s >", video_names[std::min(menu_state.video, 6u)]);
-			char video_description[160];
-			std::snprintf(video_description, sizeof(video_description),
-				"%s Para este juego  ·  ahora: %s",
-				menu_state.video == 6 ? "Busca el CPU de la PS2 que da más cuadros en cada video (31 a 100 %)." :
-										"CPU de la PS2 durante las cinemáticas.",
-				origin_names[menu_state.video_origin]);
+			static constexpr const char* video_names[] = {N_("No"), "100 %", "75 %", "60 %", "50 %", "36 %", N_("Auto")};
+			char video_label[256];
+			std::snprintf(video_label, sizeof(video_label), TF("Modo video:  < %s >"), T(video_names[std::min(menu_state.video, 6u)]));
+			char video_description[512];
+			std::snprintf(video_description, sizeof(video_description), TF("%s Para este juego  ·  ahora: %s"),
+				menu_state.video == 6 ? T("Busca el CPU de la PS2 que da más cuadros en cada video (31 a 100 %).") :
+										T("CPU de la PS2 durante las cinemáticas."),
+				origin(menu_state.video_origin));
 			// Forja SX2 (compilation 44): the picture's sharpness (main.cpp, ApplyGameSharpness).
-			static constexpr const char* sharpness_names[] = {"Suave", "Nítida", "CAS", "CAS fuerte", "Píxeles"};
+			static constexpr const char* sharpness_names[] = {N_("Suave"), N_("Nítida"), "CAS", N_("CAS fuerte"), N_("Píxeles")};
 			static constexpr const char* sharpness_descriptions[] = {
-				"Como hasta ahora: la imagen escalada y suavizada. Se guarda para este juego",
-				"Bilineal nítido: bordes más definidos, sin costo. Se guarda para este juego",
-				"AMD CAS (de la familia del FSR): realza el detalle al agrandar la imagen. Cuesta muy poco",
-				"AMD CAS al máximo: aún más detalle; puede verse algo granulado",
-				"Sin filtro: cada píxel tal cual, estilo retro. Se guarda para este juego"};
-			char sharpness_label[96];
-			std::snprintf(sharpness_label, sizeof(sharpness_label), "Nitidez:  < %s >", sharpness_names[std::min(menu_state.sharpness, 4u)]);
+				N_("Como hasta ahora: la imagen escalada y suavizada. Se guarda para este juego"),
+				N_("Bilineal nítido: bordes más definidos, sin costo. Se guarda para este juego"),
+				N_("AMD CAS (de la familia del FSR): realza el detalle al agrandar la imagen. Cuesta muy poco"),
+				N_("AMD CAS al máximo: aún más detalle; puede verse algo granulado"),
+				N_("Sin filtro: cada píxel tal cual, estilo retro. Se guarda para este juego")};
+			char sharpness_label[256];
+			std::snprintf(sharpness_label, sizeof(sharpness_label), TF("Nitidez:  < %s >"), T(sharpness_names[std::min(menu_state.sharpness, 4u)]));
 			// Forja SX2 (compilation 40): No, Sí (PS5SX2's, for a steady 30) and Fluida (every refresh the game leaves empty).
-			static constexpr const char* frame_gen_names[] = {"No", "Sí", "Fluida"};
-			char frame_gen_label[96];
-			std::snprintf(frame_gen_label, sizeof(frame_gen_label), "Generación de cuadros:  < %s >",
-				frame_gen_names[std::min(menu_state.frame_gen, 2u)]);
-			char frame_gen_description[192];
-			std::snprintf(frame_gen_description, sizeof(frame_gen_description), "%s Para este juego  ·  ahora: %s",
-				menu_state.frame_gen >= 2 ? "Rellena cada refresco que la tele repetiría (juegos PAL, cuadros desparejos)." :
-											"Muestra a 60 un juego estable a 30 (experimental).",
-				origin_names[menu_state.frame_gen_origin]);
+			static constexpr const char* frame_gen_names[] = {N_("No"), N_("Sí"), N_("Fluida")};
+			char frame_gen_label[256];
+			std::snprintf(frame_gen_label, sizeof(frame_gen_label), TF("Generación de cuadros:  < %s >"),
+				T(frame_gen_names[std::min(menu_state.frame_gen, 2u)]));
+			char frame_gen_description[512];
+			std::snprintf(frame_gen_description, sizeof(frame_gen_description), TF("%s Para este juego  ·  ahora: %s"),
+				menu_state.frame_gen >= 2 ? T("Rellena cada refresco que la tele repetiría (juegos PAL, cuadros desparejos).") :
+											T("Muestra a 60 un juego estable a 30 (experimental)."),
+				origin(menu_state.frame_gen_origin));
 			// Forja SX2 (compilation 47): "Saltar cuadros" (main.cpp, UpdateGsSkip; GSRendererPS4.cpp, VSync).
-			static constexpr const char* gs_skip_names[] = {"No", "Auto", "1 de 2"};
-			char gs_skip_label[96];
-			std::snprintf(gs_skip_label, sizeof(gs_skip_label), "Saltar cuadros (GS):  < %s >", gs_skip_names[std::min(menu_state.gs_skip, 2u)]);
-			char gs_skip_description[192];
+			static constexpr const char* gs_skip_names[] = {N_("No"), N_("Auto"), N_("1 de 2")};
+			char gs_skip_label[256];
+			std::snprintf(gs_skip_label, sizeof(gs_skip_label), TF("Saltar cuadros (GS):  < %s >"), T(gs_skip_names[std::min(menu_state.gs_skip, 2u)]));
+			char gs_skip_description[512];
 			std::snprintf(gs_skip_description, sizeof(gs_skip_description),
-				"Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s",
-				menu_state.gs_skip_active ? "saltando" : "dibuja todos", origin_names[menu_state.gs_skip_origin]);
-			static constexpr const char* cores_names[] = {"Global", "Normal", "Plan B", "Propio"};
-			char cores_label[96];
-			std::snprintf(cores_label, sizeof(cores_label), "Núcleos de la CPU:  < %s >", cores_names[std::min(menu_state.cores, 3u)]);
-			char cores_description[160];
+				TF("Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s"),
+				menu_state.gs_skip_active ? T("saltando") : T("dibuja todos"), origin(menu_state.gs_skip_origin));
+			static constexpr const char* cores_names[] = {N_("Global"), N_("Normal"), N_("Plan B"), N_("Propio")};
+			char cores_label[256];
+			std::snprintf(cores_label, sizeof(cores_label), TF("Núcleos de la CPU:  < %s >"), T(cores_names[std::min(menu_state.cores, 3u)]));
+			char cores_description[512];
 			std::snprintf(cores_description, sizeof(cores_description),
-				"Reparto de EE, VU1 y GS (Plan B: EE 1, VU1 2, GS 3). Para este juego  ·  ahora: %s",
-				origin_names[menu_state.cores_origin]);
+				TF("Reparto de EE, VU1 y GS (Plan B: EE 1, VU1 2, GS 3). Para este juego  ·  ahora: %s"), origin(menu_state.cores_origin));
 			// Forja SX2 (compilation 35): the automatic PS2 CPU speed (main.cpp, UpdateCpuAuto).
-			static constexpr const char* cpu_auto_names[] = {"No", "Hasta 75 %", "Hasta 60 %", "Hasta 50 %", "Hasta 36 % (exp.)",
-				"Hasta 31 % (exp.)", "Hasta 27 % (exp.)"};
-			char cpu_auto_label[96];
-			std::snprintf(cpu_auto_label, sizeof(cpu_auto_label), "CPU automático:  < %s >", cpu_auto_names[std::min(menu_state.cpu_auto, 6u)]);
-			char cpu_auto_description[192];
+			static constexpr const char* cpu_auto_names[] = {N_("No"), N_("Hasta 75 %"), N_("Hasta 60 %"), N_("Hasta 50 %"),
+				N_("Hasta 36 % (exp.)"), N_("Hasta 31 % (exp.)"), N_("Hasta 27 % (exp.)")};
+			char cpu_auto_label[256];
+			std::snprintf(cpu_auto_label, sizeof(cpu_auto_label), TF("CPU automático:  < %s >"), T(cpu_auto_names[std::min(menu_state.cpu_auto, 6u)]));
+			char cpu_auto_description[512];
 			if (menu_state.cpu_auto == 0)
 				std::snprintf(cpu_auto_description, sizeof(cpu_auto_description), "%s",
-					"Baja el CPU de la PS2 solo en escenas pesadas: el juego va a su velocidad, con menos cuadros");
+					T("Baja el CPU de la PS2 solo en escenas pesadas: el juego va a su velocidad, con menos cuadros"));
 			else
 				std::snprintf(cpu_auto_description, sizeof(cpu_auto_description),
-					"Solo en escenas pesadas, para este juego  ·  ahora: %s  ·  %s",
-					menu_state.cpu_auto_steps > 0 ? ee_names[std::clamp(ee_rate - static_cast<int>(menu_state.cpu_auto_steps), -6, 3) + 6] :
-													"sin bajar",
-					origin_names[menu_state.cpu_auto_origin]);
+					TF("Solo en escenas pesadas, para este juego  ·  ahora: %s  ·  %s"),
+					menu_state.cpu_auto_steps > 0 ? T(ee_names[std::clamp(ee_rate - static_cast<int>(menu_state.cpu_auto_steps), -6, 3) + 6]) :
+													T("sin bajar"),
+					origin(menu_state.cpu_auto_origin));
 			// Forja SX2: save states (compilation 31). The slot is shared by the save and load rows.
 			const unsigned slot = menu_state.slot + 1;
-			char save_label[64], load_label[64], save_description[160], load_description[160];
+			char save_label[256], load_label[256], save_description[512], load_description[512];
 			std::string state_date; // compilation 58: when the slot was saved
 			{
 				std::lock_guard lock(s_patch_text_mutex);
 				state_date = s_state_date;
 			}
-			std::snprintf(save_label, sizeof(save_label), "Guardar estado:  < Ranura %u >", slot);
-			std::snprintf(load_label, sizeof(load_label), "Cargar estado:  < Ranura %u >", slot);
+			std::snprintf(save_label, sizeof(save_label), TF("Guardar estado:  < Ranura %u >"), slot);
+			std::snprintf(load_label, sizeof(load_label), TF("Cargar estado:  < Ranura %u >"), slot);
 			if (menu_state.action == STATE_SAVED)
-				std::snprintf(save_description, sizeof(save_description), "Guardado en la ranura %u.", slot);
+				std::snprintf(save_description, sizeof(save_description), TF("Guardado en la ranura %u."), slot);
 			else if (menu_state.action == STATE_SAVE_FAILED)
-				std::snprintf(save_description, sizeof(save_description), "No se pudo guardar en la ranura %u.", slot);
+				std::snprintf(save_description, sizeof(save_description), TF("No se pudo guardar en la ranura %u."), slot);
 			else if (menu_state.slot_used && !state_date.empty())
-				std::snprintf(save_description, sizeof(save_description), "X: guarda aquí (reemplaza el del %s)", state_date.c_str());
+				std::snprintf(save_description, sizeof(save_description), TF("X: guarda aquí (reemplaza el del %s)"), state_date.c_str());
 			else
 				std::snprintf(save_description, sizeof(save_description), "%s",
-					menu_state.slot_used ? "X: guarda aquí (reemplaza lo que hay en esta ranura)" : "X: guarda la partida en esta ranura (vacía)");
+					menu_state.slot_used ? T("X: guarda aquí (reemplaza lo que hay en esta ranura)") : T("X: guarda la partida en esta ranura (vacía)"));
 			if (menu_state.action == STATE_EMPTY)
-				std::snprintf(load_description, sizeof(load_description), "La ranura %u está vacía.", slot);
+				std::snprintf(load_description, sizeof(load_description), TF("La ranura %u está vacía."), slot);
 			else if (menu_state.action == STATE_LOAD_FAILED)
-				std::snprintf(load_description, sizeof(load_description), "No se pudo cargar la ranura %u.", slot);
+				std::snprintf(load_description, sizeof(load_description), TF("No se pudo cargar la ranura %u."), slot);
 			else if (menu_state.slot_used && !state_date.empty())
-				std::snprintf(load_description, sizeof(load_description), "Guardado el %s  ·  X: vuelve a ese momento y sigue jugando",
+				std::snprintf(load_description, sizeof(load_description), TF("Guardado el %s  ·  X: vuelve a ese momento y sigue jugando"),
 					state_date.c_str());
 			else
 				std::snprintf(load_description, sizeof(load_description), "%s",
-					menu_state.slot_used ? "X: vuelve a ese momento y sigue jugando" : "Ranura vacía");
+					menu_state.slot_used ? T("X: vuelve a ese momento y sigue jugando") : T("Ranura vacía"));
 			// Each row's text by its name, not by its place: the rows moved into tabs in compilation 35.
 			std::string row_labels[ROW_COUNT], row_descriptions[ROW_COUNT];
 			{
@@ -1638,10 +1850,10 @@ namespace PS4GameMenu
 					return row_labels[row].c_str();
 				switch (row)
 				{
-					case ROW_RESUME: return "Volver al juego";
+					case ROW_RESUME: return T("Volver al juego");
 					case ROW_SAVE_STATE: return save_label;
 					case ROW_LOAD_STATE: return load_label;
-					case ROW_RESTART: return "Reiniciar juego";
+					case ROW_RESTART: return T("Reiniciar juego");
 					case ROW_RESOLUTION: return resolution;
 					case ROW_ASPECT: return aspect_label;
 					case ROW_FRAME_GEN: return frame_gen_label;
@@ -1652,9 +1864,9 @@ namespace PS4GameMenu
 					case ROW_VIDEO_MODE: return video_label;
 					case ROW_CORES: return cores_label;
 					case ROW_GS_SKIP: return gs_skip_label;
-					case ROW_RESET_PROFILE: return "Restablecer ajustes de este juego";
-					case ROW_LIBRARY: return "Volver a la biblioteca";
-					default: return "Salir de la aplicación";
+					case ROW_RESET_PROFILE: return T("Restablecer ajustes de este juego");
+					case ROW_LIBRARY: return T("Volver a la biblioteca");
+					default: return T("Salir de la aplicación");
 				}
 			};
 			const auto description_of = [&](unsigned row) -> const char* {
@@ -1662,25 +1874,25 @@ namespace PS4GameMenu
 					return row_descriptions[row].c_str();
 				switch (row)
 				{
-					case ROW_RESUME: return "Seguir jugando desde donde quedó";
+					case ROW_RESUME: return T("Seguir jugando desde donde quedó");
 					case ROW_SAVE_STATE: return save_description;
 					case ROW_LOAD_STATE: return load_description;
-					case ROW_RESTART: return "X: empieza el juego de nuevo sin cerrarlo (lo no guardado se pierde)";
-					case ROW_RESOLUTION: return "Más calidad de imagen (consume más). Se guarda para este juego";
-					case ROW_ASPECT: return "Forma de la imagen en pantalla. Se guarda para este juego";
+					case ROW_RESTART: return T("X: empieza el juego de nuevo sin cerrarlo (lo no guardado se pierde)");
+					case ROW_RESOLUTION: return T("Más calidad de imagen (consume más). Se guarda para este juego");
+					case ROW_ASPECT: return T("Forma de la imagen en pantalla. Se guarda para este juego");
 					case ROW_FRAME_GEN: return frame_gen_description;
-					case ROW_SHARPNESS: return sharpness_descriptions[std::min(menu_state.sharpness, 4u)];
-					case ROW_OVERLAY: return "Mostrar u ocultar FPS, velocidad y tiempos";
-					case ROW_EE_RATE: return "Menos % = más FPS en la PS4 (el juego puede perder cuadros). Se guarda para este juego";
+					case ROW_SHARPNESS: return T(sharpness_descriptions[std::min(menu_state.sharpness, 4u)]);
+					case ROW_OVERLAY: return T("Mostrar u ocultar FPS, velocidad y tiempos");
+					case ROW_EE_RATE: return T("Menos % = más FPS en la PS4 (el juego puede perder cuadros). Se guarda para este juego");
 					case ROW_CPU_AUTO: return cpu_auto_description;
 					case ROW_VIDEO_MODE: return video_description;
 					case ROW_CORES: return cores_description;
 					case ROW_GS_SKIP: return gs_skip_description;
 					case ROW_RESET_PROFILE:
-						return menu_state.has_player ? "X: borra tus cambios de este juego (queda copia .bak). Siguen el perfil de fábrica y los globales" :
-													   "Este juego no tiene cambios tuyos";
-					case ROW_LIBRARY: return "Cerrar el juego y volver a la biblioteca";
-					default: return "Cerrar el juego y salir de Forja SX2";
+						return menu_state.has_player ? T("X: borra tus cambios de este juego (queda copia .bak). Siguen el perfil de fábrica y los globales") :
+													   T("Este juego no tiene cambios tuyos");
+					case ROW_LIBRARY: return T("Cerrar el juego y volver a la biblioteca");
+					default: return T("Cerrar el juego y salir de Forja SX2");
 				}
 			};
 			// Icons in a 32 px circle; the shapes are drawn on a +-16 grid.
@@ -1821,27 +2033,35 @@ namespace PS4GameMenu
 			};
 			// Forja SX2 (compilation 35): the rows in four tabs, as Dolphin's quick menu (Joseph, 2026-10-16: one list of fifteen
 			// rows was hard to follow). L1/R1 move between the tabs (main.cpp); each tab fits without scrolling.
-			static constexpr const char* tab_names[TAB_COUNT] = {"Partida", "Imagen", "Rendimiento", "Extras", "No tocar", "Sistema"};
+			static constexpr const char* tab_names[TAB_COUNT] = {N_("Partida"), N_("Imagen"), N_("Rendimiento"), N_("Extras"),
+				N_("No tocar"), N_("Sistema")};
 			const unsigned active_tab = TabOfRow(selected_row);
 			draw->AddText(font, 20.0f * scale, point(112, 198), muted, "L1");
+			// The tabs shrink together when a language's names don't fit between L1 and R1 (2026-10-19).
+			float tabs_w = 0.0f;
+			for (unsigned tab = 0; tab < TAB_COUNT; tab++)
+				tabs_w += TextWidth(font, 26.0f * scale, T(tab_names[tab])) / scale + 64.0f + 16.0f;
+			const float tab_fit = std::min(1.0f, (1760.0f - 152.0f) / tabs_w);
+			const float tab_pixels = std::floor(26.0f * tab_fit * scale);
 			float tab_x = 152.0f;
 			for (unsigned tab = 0; tab < TAB_COUNT; tab++)
 			{
-				const float text_w = font->CalcTextSizeA(26.0f * scale, FLT_MAX, 0.0f, tab_names[tab]).x / scale;
-				const float w = text_w + 64.0f;
+				const float text_w = TextWidth(font, tab_pixels, T(tab_names[tab])) / scale;
+				const float w = text_w + 64.0f * tab_fit;
 				const bool on = tab == active_tab;
 				draw->AddRectFilled(point(tab_x, 186), point(tab_x + w, 238), on ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 255),
 					26.0f * scale);
 				if (on)
 					draw->AddRect(point(tab_x, 186), point(tab_x + w, 238), accent, 26.0f * scale, 2.0f * scale, 0);
-				draw->AddText(font, 26.0f * scale, point(tab_x + 32, 196), on ? white : muted, tab_names[tab]);
-				tab_x += w + 16.0f;
+				DrawText(draw, font, tab_pixels, point(tab_x + 32.0f * tab_fit, 196 + (26.0f * scale - tab_pixels) * 0.5f / scale),
+					on ? white : muted, T(tab_names[tab]));
+				tab_x += w + 16.0f * tab_fit;
 			}
 			draw->AddText(font, 20.0f * scale, point(tab_x + 8, 198), muted, "R1");
 			// Compilation 53: the labs' tab says what it is.
 			if (active_tab == TAB_LAB)
-				draw->AddText(font, 18.0f * scale, point(112, 244), muted,
-					"Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.");
+				DrawText(draw, font, 18.0f * scale, point(112, 244), muted,
+					T("Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está."), 1690.0f * scale);
 			constexpr float ROW_TOP = 270.0f, ROW_PITCH = 112.0f, ROW_HEIGHT = 100.0f;
 			for (unsigned row = TAB_FIRST_ROW[active_tab]; row < TAB_FIRST_ROW[active_tab + 1]; row++)
 			{
@@ -1852,42 +2072,51 @@ namespace PS4GameMenu
 				if (selected)
 					draw->AddRect(point(112, y), point(1808, y + ROW_HEIGHT), accent, 14.0f * scale, 2.5f * scale, 0);
 				draw_option_icon(row, 176, y + ROW_HEIGHT * 0.5f, selected);
-				draw->AddText(font, 32.0f * scale, point(240, y + 12), white, label_of(row));
-				draw->AddText(font, 20.0f * scale, point(240, y + 60), muted, description_of(row));
 				const char* action = nullptr;
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
-					action = "AJUSTAR";
+					action = T("AJUSTAR");
 				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
 				         row == ROW_SHARPNESS || row == ROW_GS_SKIP)
-					action = "ELEGIR";
+					action = T("ELEGIR");
 				else if (row == ROW_VU1_FILTER || row == ROW_GS_FILTER)
-					action = "ELEGIR  ·  X  ·  CUADRADO"; // compilation 52: Cuadrado brings everything back
+					action = T("ELEGIR  ·  X  ·  CUADRADO"); // compilation 52: Cuadrado brings everything back
 				else if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC)
-					action = "ELEGIR  ·  X";
+					action = T("ELEGIR  ·  X");
 				else if (row == ROW_FAST_FORWARD) // compilation 58
 					action = "X";
 				else if (row == ROW_TEXTURES)
-					action = "ELEGIR";
+					action = T("ELEGIR");
 				else if (row == ROW_RECOMMENDED)
 					action = "X";
 				else if (row == ROW_OVERLAY)
-					action = "CAMBIAR";
+					action = T("CAMBIAR");
 				else if (row == ROW_SAVE_STATE || (row == ROW_LOAD_STATE && menu_state.slot_used))
-					action = "X  ·  RANURA";
+					action = T("X  ·  RANURA");
 				else if (row == ROW_RESTART || (row == ROW_RESET_PROFILE && menu_state.has_player))
 					action = "X";
+				// 2026-10-19: the action ends at the row's right edge, so a longer word in another language stays inside it and the
+				// texts on the left get the room left.
+				float text_right = 1780.0f;
 				if (action)
-					draw->AddText(font, 24.0f * scale, point(1560, y + 36), selected ? white : muted, action);
+				{
+					const float action_w = std::min(TextWidth(font, 24.0f * scale, action) / scale, 420.0f);
+					DrawText(draw, font, 24.0f * scale, point(1780.0f - action_w, y + 36), selected ? white : muted, action, 420.0f * scale);
+					text_right = 1780.0f - action_w - 28.0f;
+				}
+				DrawText(draw, font, 32.0f * scale, point(240, y + 12), white, label_of(row), (text_right - 240.0f) * scale);
+				DrawText(draw, font, 20.0f * scale, point(240, y + 60), muted, description_of(row), (text_right - 240.0f) * scale);
 			}
-			char hint[160];
-			std::snprintf(hint, sizeof(hint), "Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.",
+			char hint[512];
+			std::snprintf(hint, sizeof(hint),
+				TF("Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego."),
 				max_upscale);
-			draw->AddText(font, 20.0f * scale, point(138, 940), muted, "L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura");
-			draw->AddText(font, 17.0f * scale, point(138, 972), muted, hint);
+			DrawText(draw, font, 20.0f * scale, point(138, 940), muted,
+				T("L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura"), 1660.0f * scale);
+			DrawText(draw, font, 17.0f * scale, point(138, 972), muted, hint, 1660.0f * scale);
 			image("controle_x", 1480, 998, 30, 30);
-			draw->AddText(font, 21.0f * scale, point(1522, 1001), white, "Aceptar");
+			DrawText(draw, font, 21.0f * scale, point(1522, 1001), white, T("Aceptar"), 160.0f * scale);
 			image("controle_bola", 1690, 998, 30, 30);
-			draw->AddText(font, 21.0f * scale, point(1732, 1001), muted, "Volver");
+			DrawText(draw, font, 21.0f * scale, point(1732, 1001), muted, T("Volver"), 110.0f * scale);
 			return true;
 		}
 		if (!s_visible || s_items.empty())
@@ -1896,7 +2125,7 @@ namespace PS4GameMenu
 		// the emulator. Keep this path free of file I/O so a library refresh never
 		// stalls the GS thread. Cover files will plug into the art slot later.
 		ImDrawList* draw = ImGui::GetBackgroundDrawList();
-		ImFont* font = ImGui::GetFont();
+		ImFont* font = MenuFont();
 		const ImVec2 size = ImGui::GetIO().DisplaySize;
 		const float scale = std::min(size.x / 1920.0f, size.y / 1080.0f);
 		const ImVec2 origin((size.x - 1920 * scale) * 0.5f, (size.y - 1080 * scale) * 0.5f);
@@ -1904,30 +2133,18 @@ namespace PS4GameMenu
 		const auto fill = [&](float x, float y, float w, float h, ImU32 color, float radius = 12.0f) {
 			draw->AddRectFilled(point(x, y), point(x + w, y + h), color, radius * scale);
 		};
-		const auto text = [&](float x, float baseline, float pixels, ImU32 color, const char* value) {
-			draw->AddText(font, pixels * scale, point(x, baseline - pixels * 0.82f), color, value);
+		// 2026-10-19: a width (in 1080p units) fits a longer translation in its place (DrawText).
+		const auto text = [&](float x, float baseline, float pixels, ImU32 color, const char* value, float max_width = 0.0f) {
+			DrawText(draw, font, pixels * scale, point(x, baseline - pixels * 0.82f), color, value, max_width * scale);
 		};
-		const auto centered_text = [&](float center_x, float baseline, float pixels, ImU32 color, const char* value) {
-			const float width = font->CalcTextSizeA(pixels * scale, FLT_MAX, 0, value).x / scale;
-			text(center_x - width * 0.5f, baseline, pixels, color, value);
+		const auto text_width = [&](float pixels, const char* value) { return TextWidth(font, pixels * scale, value) / scale; };
+		const auto centered_text = [&](float center_x, float baseline, float pixels, ImU32 color, const char* value, float max_width = 0.0f) {
+			const float width = max_width > 0.0f ? std::min(text_width(pixels, value), max_width) : text_width(pixels, value);
+			text(center_x - width * 0.5f, baseline, pixels, color, value, max_width);
 		};
 		const auto image = [&](const char* name, float x, float y, float w, float h) {
 			if (ImTextureData* texture = GetCoverTexture(FindUiAsset(name)))
 				draw->AddImage(texture->GetTexRef(), point(x, y), point(x + w, y + h));
-		};
-		const auto fit = [&](std::string value, float pixels, float width) {
-			if (font->CalcTextSizeA(pixels * scale, FLT_MAX, 0, value.c_str()).x > width * scale)
-			{
-				do
-				{
-					size_t last = value.size() - 1;
-					while (last > 0 && (static_cast<unsigned char>(value[last]) & 0xc0) == 0x80)
-						--last;
-					value.resize(last);
-				} while (!value.empty() && font->CalcTextSizeA(pixels * scale, FLT_MAX, 0, (value + "…").c_str()).x > width * scale);
-				value += "…";
-			}
-			return value;
 		};
 		const ImU32 white = IM_COL32(239, 246, 253, 255);
 		const ImU32 muted = IM_COL32(145, 171, 193, 255);
@@ -1951,23 +2168,23 @@ namespace PS4GameMenu
 		fill(286, 0, 1634, 92, IM_COL32(4, 19, 34, 220), 0);
 		draw->AddLine(point(286, 92), point(1920, 92), IM_COL32(38, 103, 157, 110), 1.0f * scale);
 		image("menu_logo", 32, 0, 220, 73);
-		centered_text(142, 82, 11, muted, "EMULADOR DE PLAYSTATION 2");
+		centered_text(142, 82, 11, muted, T("EMULADOR DE PLAYSTATION 2"), 250);
 		const size_t selected = std::min(s_selected, s_items.size() - 1);
 		const Item& current = s_items[selected];
-		text(348, 59, 28, white, fit(current.name, 28, 1430).c_str());
+		text(348, 59, 28, white, current.name.c_str(), 1430);
 		// Forja SX2: the updater's line (a newer build, its download's progress, or where the package was left).
 		if (const std::string update_text = PS4Release::StatusText(); !update_text.empty())
 		{
-			const float text_w = font->CalcTextSizeA(16.0f * scale, FLT_MAX, 0.0f, update_text.c_str()).x / scale;
+			const float text_w = text_width(16, update_text.c_str());
 			const float box_w = std::min(text_w + 44.0f, 1000.0f), box_x = 1888.0f - box_w;
 			fill(box_x, 22, box_w, 50, IM_COL32(8, 54, 91, 235), 10);
 			draw->AddRect(point(box_x, 22), point(1888, 72), IM_COL32(42, 163, 255, 225), 10 * scale, 1.0f * scale, 0);
-			text(box_x + 22, 53, 16, white, update_text.c_str());
+			text(box_x + 22, 53, 16, white, update_text.c_str(), box_w - 44.0f);
 		}
 		// The sidebar changes the data source while retaining the same grid.
 		static constexpr const char* sidebar_icons[] = {
 			"menu_biblioteca", "menu_disc", "menu_recentes", "menu_favoritos", "menu_configuracoes"};
-		static constexpr const char* sidebar_labels[] = {"Biblioteca", "Disco", "Recientes", "Favoritos", "Ajustes"};
+		static constexpr const char* sidebar_labels[] = {N_("Biblioteca"), N_("Disco"), N_("Recientes"), N_("Favoritos"), N_("Ajustes")};
 		const unsigned active_view = static_cast<unsigned>(s_library_view);
 		for (unsigned i = 0; i < 5; ++i)
 		{
@@ -1980,18 +2197,18 @@ namespace PS4GameMenu
 					10 * scale, s_sidebar_focused ? 2.0f * scale : 1.0f * scale, 0);
 			}
 			image(sidebar_icons[i], 43, y + 12, 34, 34);
-			text(91, y + 37, active ? 19 : 18, active ? white : muted, sidebar_labels[i]);
+			text(91, y + 37, active ? 19 : 18, active ? white : muted, T(sidebar_labels[i]), 155);
 		}
 		// Forja SX2: the public version (VERSION) and, in brackets, the build, so a tester sees at a glance whether the new
 		// package is the one installed.
 		{
-			char build_text[48];
+			char build_text[128];
 			if (FORJA_BUILD_NUMBER > 0)
-				std::snprintf(build_text, sizeof(build_text), "Versión %d.%02d (%d)", FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR,
+				std::snprintf(build_text, sizeof(build_text), TF("Versión %d.%02d (%d)"), FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR,
 					FORJA_BUILD_NUMBER);
 			else
-				std::snprintf(build_text, sizeof(build_text), "Versión %d.%02d (local)", FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR);
-			text(43, 1023, 16, muted, build_text);
+				std::snprintf(build_text, sizeof(build_text), TF("Versión %d.%02d (local)"), FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR);
+			text(43, 1023, 16, muted, build_text, 230);
 		}
 		const size_t total_rows = (s_items.size() + GridColumns - 1) / GridColumns;
 		const size_t selected_row = selected / GridColumns;
@@ -2017,42 +2234,56 @@ namespace PS4GameMenu
 			}
 			else
 				image("menu_disc", 810, 280, 180, 180);
-			text(1030, 340, 30, white, "DVD de PS2");
+			text(1030, 340, 30, white, T("DVD de PS2"), 790);
 			if (PS4DiscCopy::Busy())
 			{
 				// Forja SX2 (compilation 41): the progress is on the status line below.
-				text(1030, 390, 20, muted, "Copiando el disco a la PS4. Puedes seguir en la biblioteca.");
-				text(1030, 424, 18, muted, "□ cancela la copia. No saques el disco hasta que termine.");
+				text(1030, 390, 20, muted, T("Copiando el disco a la PS4. Puedes seguir en la biblioteca."), 790);
+				text(1030, 424, 18, muted, T("□ cancela la copia. No saques el disco hasta que termine."), 790);
 			}
 			else
 			{
-				text(1030, 390, 20, muted, detected ? "Disco detectado. X para jugar · □ para copiarlo a la PS4." :
-				                                      "Mete un DVD y pulsa Triángulo para actualizar.");
+				text(1030, 390, 20, muted, detected ? T("Disco detectado. X para jugar · □ para copiarlo a la PS4.") :
+				                                      T("Mete un DVD y pulsa Triángulo para actualizar."), 790);
 				if (detected)
-					text(1030, 424, 18, muted, "Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.");
+					text(1030, 424, 18, muted, T("Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad."), 790);
 			}
 		}
-		// Forja SX2: the Settings page, one row per choice with its value on the right.
+		// Forja SX2: the Settings page, one row per choice with its value on the right. 2026-10-19 (Joseph: "ya está muy chiquito
+		// las letras"): bigger letters, the value on the name's line and the help under both, eight rows on screen in a list that
+		// scrolls with the cursor; the bar on the right and "3 / 14" say where the page is.
 		const bool settings_view = s_library_view == LibraryView::Settings;
 		if (settings_view)
 		{
+			constexpr unsigned visible_rows = 8;
+			constexpr float rows_top = 110.0f, row_pitch = 100.0f, row_height = 92.0f;
 			const unsigned focused_row = std::min(s_settings_row_gs, SettingsRows - 1);
-			for (unsigned row = 0; row < SettingsRows; ++row)
+			const unsigned first_row = std::min(focused_row > 3 ? focused_row - 3 : 0u, SettingsRows - visible_rows);
+			for (unsigned slot = 0; slot < visible_rows && first_row + slot < SettingsRows; ++slot)
 			{
-				const float y = 108.0f + static_cast<float>(row) * 72.0f;
+				const unsigned row = first_row + slot;
+				const float y = rows_top + static_cast<float>(slot) * row_pitch;
 				const bool focused = !s_sidebar_focused && row == focused_row;
-				fill(346, y, 1470, 66, focused ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 235), 10);
+				fill(346, y, 1450, row_height, focused ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 235), 10);
 				if (focused)
-					draw->AddRect(point(346, y), point(1816, y + 66), accent, 10 * scale, 2.0f * scale, 0);
-				text(380, y + 31, 22, white, SettingLabel(row));
-				text(380, y + 57, 15, muted, SettingHelp(row));
-				char value[64];
+					draw->AddRect(point(346, y), point(1796, y + row_height), accent, 10 * scale, 2.0f * scale, 0);
+				char value[128];
 				SettingValue(s_settings_gs, row, value, sizeof(value));
-				char shown[96];
+				char shown[160];
 				std::snprintf(shown, sizeof(shown), focused ? "<  %s  >" : "%s", value);
-				const float width = font->CalcTextSizeA(25.0f * scale, FLT_MAX, 0, shown).x / scale;
-				text(1786 - width, y + 42, 25, focused ? white : accent, shown);
+				const float value_w = std::min(text_width(28, shown), 640.0f);
+				text(1766 - value_w, y + 42, 28, focused ? white : accent, shown, 640);
+				text(380, y + 42, 28, white, SettingLabel(row), 1766 - value_w - 40 - 380);
+				text(380, y + 76, 20, muted, SettingHelp(row), 1386);
 			}
+			constexpr float track_h = visible_rows * row_pitch - (row_pitch - row_height);
+			const float thumb_h = track_h * static_cast<float>(visible_rows) / static_cast<float>(SettingsRows);
+			const float thumb_y = rows_top + (track_h - thumb_h) * static_cast<float>(first_row) / static_cast<float>(SettingsRows - visible_rows);
+			fill(1810, rows_top, 6, track_h, IM_COL32(30, 66, 94, 180), 3);
+			fill(1810, thumb_y, 6, thumb_h, accent, 3);
+			char where[24];
+			std::snprintf(where, sizeof(where), "%u / %u", focused_row + 1, static_cast<unsigned>(SettingsRows));
+			text(1796 - text_width(18, where), 1023, 18, muted, where);
 		}
 		for (size_t slot = 0; !disc_view && !settings_view && slot < VisibleItems && first + slot < s_items.size(); ++slot)
 		{
@@ -2112,33 +2343,33 @@ namespace PS4GameMenu
 			fill(1815, thumb_y, 5, thumb_h, accent, 3);
 		}
 		if (!s_status.empty())
-			text(346, 936, 17, accent, fit(s_status, 17, 1496).c_str());
+			text(346, 936, 17, accent, s_status.c_str(), 1496);
 		if (settings_view)
 		{
 			// Forja SX2: the Settings page's own buttons.
 			image("controle_x", 346, 1001, 30, 30);
-			text(384, 1023, 16, white, "Cambiar");
-			text(520, 1023, 16, white, "Izq./Der.: ajustar   Arriba/Abajo: elegir");
+			text(384, 1023, 16, white, T("Cambiar"), 126);
+			text(520, 1023, 16, white, T("Izq./Der.: ajustar   Arriba/Abajo: elegir"), 500);
 			image("controle_bola", 1035, 1001, 30, 30);
-			text(1073, 1023, 16, muted, "Menú lateral");
+			text(1073, 1023, 16, muted, T("Menú lateral"), 400);
 		}
 		else
 		{
 		image("controle_x", 346, 1001, 30, 30);
-		text(384, 1023, 16, white, "Jugar");
+		text(384, 1023, 16, white, T("Jugar"), 108);
 		if (!disc_view)
 		{
 			image("controle_quadrado", 500, 1001, 30, 30);
 			text(538, 1023, 16, current.path.empty() ? muted : white,
-				current.favorite ? "Quitar favorito" : "Agregar favorito");
+				current.favorite ? T("Quitar favorito") : T("Agregar favorito"), 214);
 		}
 		// Disc has no favorite action: use the next Library slots without an empty gap.
 		const float refresh_x = disc_view ? 500.0f : 760.0f;
 		const float exit_x = disc_view ? 760.0f : 1035.0f;
 		image("controle_triangulo", refresh_x, 1001, 30, 30);
-		text(refresh_x + 38, 1023, 16, white, disc_view ? "Revisar disco" : "Actualizar biblioteca");
+		text(refresh_x + 38, 1023, 16, white, disc_view ? T("Revisar disco") : T("Actualizar biblioteca"), exit_x - refresh_x - 46);
 		image("controle_bola", exit_x, 1001, 30, 30);
-		text(exit_x + 38, 1023, 16, muted, "Salir");
+		text(exit_x + 38, 1023, 16, muted, T("Salir"), 300);
 		}
 		if (s_exit_dialog_visible)
 		{
@@ -2148,21 +2379,21 @@ namespace PS4GameMenu
 			draw->AddRect(point(438, 322), point(1482, 758), IM_COL32(35, 105, 161, 225), 12 * scale,
 				1.5f * scale, 0);
 			image("menu_logo", 790, 338, 340, 113);
-			centered_text(960, 480, 32, white, "¿Cerrar Forja SX2?");
-			centered_text(960, 520, 18, muted, "¿Seguro que quieres salir de la aplicación?");
+			centered_text(960, 480, 32, white, T("¿Cerrar Forja SX2?"), 980);
+			centered_text(960, 520, 18, muted, T("¿Seguro que quieres salir de la aplicación?"), 980);
 			const auto dialog_button = [&](float x, const char* label, bool active) {
 				fill(x, 580, 260, 72, active ? IM_COL32(18, 88, 153, 255) : IM_COL32(11, 34, 54, 255), 10);
 				draw->AddRect(point(x, 580), point(x + 260, 652),
 					active ? IM_COL32(48, 170, 255, 255) : IM_COL32(37, 80, 113, 190), 10 * scale,
 					active ? 2.0f * scale : 1.0f * scale, 0);
-				centered_text(x + 130, 626, 20, active ? white : muted, label);
+				centered_text(x + 130, 626, 20, active ? white : muted, label, 236);
 			};
-			dialog_button(670, "Salir de Forja SX2", s_exit_confirm);
-			dialog_button(990, "Cancelar", !s_exit_confirm);
+			dialog_button(670, T("Salir de Forja SX2"), s_exit_confirm);
+			dialog_button(990, T("Cancelar"), !s_exit_confirm);
 			image("controle_x", 780, 694, 28, 28);
-			text(816, 715, 16, white, "Aceptar");
+			text(816, 715, 16, white, T("Aceptar"), 170);
 			image("controle_bola", 995, 694, 28, 28);
-			text(1031, 715, 16, muted, "Atrás");
+			text(1031, 715, 16, muted, T("Atrás"), 170);
 		}
 		// Forja SX2: the updater's question, laid out like the exit dialog above.
 		if (s_update_dialog_visible)
@@ -2172,23 +2403,50 @@ namespace PS4GameMenu
 			fill(438, 322, 1044, 436, IM_COL32(4, 17, 31, 252), 12);
 			draw->AddRect(point(438, 322), point(1482, 758), IM_COL32(35, 105, 161, 225), 12 * scale, 1.5f * scale, 0);
 			image("menu_logo", 790, 338, 340, 113);
-			char title[64];
-			std::snprintf(title, sizeof(title), "%s disponible", PS4Release::LatestName().c_str());
-			centered_text(960, 480, 32, white, title);
-			centered_text(960, 520, 18, muted, "Se baja a /data/pkg y se verifica. Después cierra Forja e instálala con GoldHEN.");
-			centered_text(960, 548, 16, muted, "Tus juegos, ajustes y perfiles se quedan como están.");
+			char title[256];
+			std::snprintf(title, sizeof(title), TF("%s disponible"), PS4Release::LatestName().c_str());
+			centered_text(960, 480, 32, white, title, 980);
+			centered_text(960, 520, 18, muted, T("Se baja a /data/pkg y se verifica. Después cierra Forja e instálala con GoldHEN."), 980);
+			centered_text(960, 548, 16, muted, T("Tus juegos, ajustes y perfiles se quedan como están."), 980);
 			const auto update_button = [&](float x, const char* label, bool active) {
 				fill(x, 580, 260, 72, active ? IM_COL32(18, 88, 153, 255) : IM_COL32(11, 34, 54, 255), 10);
 				draw->AddRect(point(x, 580), point(x + 260, 652), active ? IM_COL32(48, 170, 255, 255) : IM_COL32(37, 80, 113, 190),
 					10 * scale, active ? 2.0f * scale : 1.0f * scale, 0);
-				centered_text(x + 130, 626, 20, active ? white : muted, label);
+				centered_text(x + 130, 626, 20, active ? white : muted, label, 236);
 			};
-			update_button(670, "Descargar", s_update_confirm);
-			update_button(990, "Ahora no", !s_update_confirm);
+			update_button(670, T("Descargar"), s_update_confirm);
+			update_button(990, T("Ahora no"), !s_update_confirm);
 			image("controle_x", 780, 694, 28, 28);
-			text(816, 715, 16, white, "Aceptar");
+			text(816, 715, 16, white, T("Aceptar"), 170);
 			image("controle_bola", 995, 694, 28, 28);
-			text(1031, 715, 16, muted, "Atrás");
+			text(1031, 715, 16, muted, T("Atrás"), 170);
+		}
+		// Forja SX2 (2026-10-19): the language picker, over everything; each language's name in its own letters, the title in
+		// the language under the cursor.
+		if (s_language_dialog_visible)
+		{
+			draw->AddRectFilled(ImVec2(0, 0), size, IM_COL32(0, 0, 0, 165));
+			fill(398, 92, 1124, 896, IM_COL32(0, 0, 0, 120), 20);
+			fill(438, 132, 1044, 816, IM_COL32(4, 17, 31, 252), 12);
+			draw->AddRect(point(438, 132), point(1482, 948), IM_COL32(35, 105, 161, 225), 12 * scale, 1.5f * scale, 0);
+			image("menu_logo", 840, 144, 240, 80);
+			centered_text(960, 272, 32, white, s_language_texts[0].c_str(), 980);
+			centered_text(960, 308, 18, muted, s_language_texts[1].c_str(), 980);
+			for (unsigned index = 0; index < ForjaLang::LanguageCount; index++)
+			{
+				const float x = index < LanguageRowsPerColumn ? 500.0f : 980.0f;
+				const float y = 340.0f + static_cast<float>(index % LanguageRowsPerColumn) * 74.0f;
+				const bool active = index == s_language_focus;
+				const bool current_language = index == ForjaLang::Current();
+				fill(x, y, 440, 62, active ? IM_COL32(18, 88, 153, 255) : IM_COL32(11, 34, 54, 255), 10);
+				draw->AddRect(point(x, y), point(x + 440, y + 62), active ? IM_COL32(48, 170, 255, 255) : IM_COL32(37, 80, 113, 190),
+					10 * scale, active ? 2.0f * scale : 1.0f * scale, 0);
+				centered_text(x + 220, y + 41, 24, active ? white : current_language ? accent : muted, ForjaLang::Languages[index].name, 400);
+			}
+			image("controle_x", 780, 878, 28, 28);
+			text(816, 899, 16, white, s_language_texts[2].c_str(), 170);
+			image("controle_bola", 995, 878, 28, 28);
+			text(1031, 899, 16, muted, s_language_texts[3].c_str(), 170);
 		}
 		return true;
 	}

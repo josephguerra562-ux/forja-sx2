@@ -2,6 +2,7 @@
 // (AI-assisted) PS4 CAM discovery follows Al-Azif/ps-disc-detect (see DISC_SUPPORT.md).
 #include "PhysicalDisc.h"
 #include "DiscCamABI.h"
+#include "ForjaLang.h"
 #include <algorithm>
 #include <array>
 #include <cerrno>
@@ -78,9 +79,10 @@ namespace PS4Disc
 		bool SystemError(const char* operation)
 		{
 			const int code = errno;
-			error = code == EACCES || code == EPERM  ? "Drive access denied by the system." :
-			        code == ENOENT || code == ENODEV ? "Optical drive device is unavailable." :
-			                                           "Optical drive I/O failed. Check the log.";
+			// 2026-10-19: the player reads these in the Disc panel, in the library's language (ForjaLang.h).
+			error = code == EACCES || code == EPERM  ? ForjaLang::T("El sistema no deja usar la unidad de disco.") :
+			        code == ENOENT || code == ENODEV ? ForjaLang::T("La unidad de disco no está disponible.") :
+			                                           ForjaLang::T("Falló la lectura de la unidad. Mira el registro.");
 			ProbeLog("Physical disc: %s errno=%d (%s)\n", operation, code, std::strerror(code));
 			return false;
 		}
@@ -102,7 +104,7 @@ namespace PS4Disc
 			if (ccb.Get<uint32_t>(CAM::DeviceStatus) == 3 ||
 				std::memcmp(ccb.bytes + CAM::PeriphName, "pass\0", 5) != 0)
 			{
-				error = "The optical drive has no CAM pass device.";
+				error = ForjaLang::T("La unidad de disco no tiene dispositivo CAM pass.");
 				return false;
 			}
 			char device[64];
@@ -116,7 +118,7 @@ namespace PS4Disc
 				return SystemError("CAMGETPASSTHRU pass");
 			if (ccb.Get<uint32_t>(CAM::DeviceStatus) == 3)
 			{
-				error = "Could not resolve the optical drive address.";
+				error = ForjaLang::T("No se encontró la dirección de la unidad de disco.");
 				return false;
 			}
 			path = ccb.Get<uint32_t>(CAM::Path);
@@ -170,12 +172,12 @@ namespace PS4Disc
 				else
 					sense = (s[2] & 15) << 16 | (s[7] >= 5 ? s[12] << 8 : 0) | (s[7] >= 6 ? s[13] : 0);
 			}
-			error = (status & 0x3f) == 0x0b        ? "The optical drive timed out. Wait, then refresh Disc." :
-			        (sense & 0xffff00) == 0x023a00 ? "No disc inserted. Insert a PS2 DVD and refresh." :
-			        (sense >> 16) == 6             ? "Disc changed. Refresh the Disc panel." :
-			        (sense & 0xffff00) == 0x020400 ? "Drive is becoming ready. Refresh in a few seconds." :
-			        (sense & 0xffff00) == 0x023000 ? "The drive cannot read this disc format." :
-			                                         "Disc command failed. Check the log and refresh.";
+			error = (status & 0x3f) == 0x0b        ? ForjaLang::T("La unidad tardó demasiado. Espera y actualiza Disco.") :
+			        (sense & 0xffff00) == 0x023a00 ? ForjaLang::T("No hay disco. Mete un DVD de PS2 y actualiza.") :
+			        (sense >> 16) == 6             ? ForjaLang::T("Cambió el disco. Actualiza el panel Disco.") :
+			        (sense & 0xffff00) == 0x020400 ? ForjaLang::T("La unidad se está preparando. Actualiza en unos segundos.") :
+			        (sense & 0xffff00) == 0x023000 ? ForjaLang::T("La unidad no puede leer este tipo de disco.") :
+			                                         ForjaLang::T("Falló una orden al disco. Mira el registro y actualiza.");
 			ProbeLog("Physical disc: opcode=%02x CAM=%08x SCSI=%02x sense=%06x residual=%u/%u timeout_ms=%u elapsed_ms=%.2f queue_frozen=%d (%s)\n",
 				cdb[0], status, ccb.bytes[CAM::ScsiStatus], sense, residual, bytes, timeout_ms, elapsed_ms, (status & 0x40) != 0, error.c_str());
 			return false;
@@ -272,7 +274,7 @@ namespace PS4Disc
 			ProbeLog("Physical disc: current profile=%04x\n", profile);
 			if (!DVDProfile(profile))
 			{
-				error = profile == 0 ? "No disc inserted." : "Unsupported media. This build supports PS2 DVDs only.";
+				error = profile == 0 ? ForjaLang::T("No hay disco.") : ForjaLang::T("Disco no compatible. Esta versión solo lee DVD de PS2.");
 				return false;
 			}
 			response.fill(0);
@@ -282,7 +284,7 @@ namespace PS4Disc
 			const uint32_t last = BE32(response.data());
 			if (BE32(response.data() + 4) != 2048 || last < 16 || last >= 0x800000)
 			{
-				error = "Unsupported DVD sector size or capacity.";
+				error = ForjaLang::T("Tamaño de sector o capacidad del DVD no compatible.");
 				return false;
 			}
 			info.sectors = last + 1;
@@ -292,13 +294,13 @@ namespace PS4Disc
 				return false;
 			if ((unsigned(response[0]) << 8 | response[1]) < 18)
 			{
-				error = "Incomplete DVD physical descriptor.";
+				error = ForjaLang::T("El DVD no dio su descripción completa.");
 				return false;
 			}
 			const unsigned layers = (response[6] >> 5) & 3;
 			if (layers > 1)
 			{
-				error = "Unsupported DVD layer layout.";
+				error = ForjaLang::T("Capas del DVD no compatibles.");
 				return false;
 			}
 			if (layers)
@@ -308,7 +310,7 @@ namespace PS4Disc
 				const uint32_t end = BE32(response.data() + (info.dual_type == 2 ? 16 : 12)) & 0xffffff;
 				if (end < first || end - first + 1 >= info.sectors)
 				{
-					error = "Invalid DVD layer break.";
+					error = ForjaLang::T("El cambio de capa del DVD no es válido.");
 					return false;
 				}
 				info.layer1_start = end - first + 1;
@@ -320,13 +322,13 @@ namespace PS4Disc
 			if (pvd[0] != 1 || std::memcmp(pvd.data() + 1, "CD001\1", 6) != 0 ||
 				pvd[128] != 0 || pvd[129] != 8 || pvd[156] < 34)
 			{
-				error = "No supported ISO9660 filesystem on this DVD.";
+				error = ForjaLang::T("Este DVD no tiene un sistema de archivos ISO9660 compatible.");
 				return false;
 			}
 			const uint32_t root = LE32(pvd.data() + 158), root_size = LE32(pvd.data() + 166);
 			if (!root_size || root_size > 65536 || root != BE32(pvd.data() + 162) || root_size != BE32(pvd.data() + 170))
 			{
-				error = "Unsupported DVD root directory.";
+				error = ForjaLang::T("La carpeta raíz del DVD no es compatible.");
 				return false;
 			}
 			const uint32_t blocks = (root_size + 2047) / 2048;
@@ -399,7 +401,7 @@ namespace PS4Disc
 				}
 				offset += length;
 			}
-			error = "No PS2 BOOT2 entry found in SYSTEM.CNF.";
+			error = ForjaLang::T("SYSTEM.CNF no tiene la línea BOOT2 de la PS2.");
 			return false;
 		}
 	};
@@ -415,7 +417,7 @@ namespace PS4Disc
 		auto reader = std::unique_ptr<Reader>(new Reader());
 		if (!reader->m_impl->Identify())
 		{
-			error = reader->m_impl->error.empty() ? "Invalid disc metadata." : reader->m_impl->error;
+			error = reader->m_impl->error.empty() ? std::string(ForjaLang::T("Los datos del disco no son válidos.")) : reader->m_impl->error;
 			ProbeLog("Physical disc: probe failed: %s\n", error.c_str());
 			return {};
 		}

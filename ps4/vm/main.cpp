@@ -46,6 +46,7 @@
 #include "ps4/core/GSProfilePS4.h"
 #include "HostPollGate.h"
 #include "GameMenu.h"
+#include "ForjaLang.h"
 #include "ForjaSettings.h"
 #include "SessionLogs.h"
 #include "ps4/core/WorkerProfilePS4.h"
@@ -785,24 +786,26 @@ static bool PatchIsOn(size_t index)
 
 static void PublishPatchMenuText()
 {
+	// 2026-10-19: the menu's texts in the language picked in the library (ForjaLang.h); the patches' own names and
+	// descriptions are their authors'.
+	using ForjaLang::T;
+	using ForjaLang::TF;
 	if (s_patch_infos.empty())
 	{
-		PS4GameMenu::SetPatchMenuText("Parches:  ninguno para este juego",
-			"Al empezar un juego se bajan los de la comunidad de PCSX2 (con internet). Los tuyos van en /data/ForjaSX2/patches");
+		PS4GameMenu::SetPatchMenuText(T("Parches:  ninguno para este juego"),
+			T("Al empezar un juego se bajan los de la comunidad de PCSX2 (con internet). Los tuyos van en /data/ForjaSX2/patches"));
 		return;
 	}
 	const Patch::PatchInfo& patch = s_patch_infos[s_patch_index];
 	const bool on = PatchIsOn(s_patch_index);
-	char label[256];
-	std::snprintf(label, sizeof(label), "Parche %u de %zu:  < %s >  %s", s_patch_index + 1, s_patch_infos.size(), patch.name.c_str(),
-		on ? "Sí" : "No");
-	std::string description = patch.description.empty() ? std::string("Sin descripción") : patch.description;
+	char label[512];
+	std::snprintf(label, sizeof(label), TF("Parche %u de %zu:  < %s >  %s"), s_patch_index + 1, s_patch_infos.size(), patch.name.c_str(),
+		on ? T("Sí") : T("No"));
+	std::string description = patch.description.empty() ? std::string(T("Sin descripción")) : patch.description;
 	if (!patch.author.empty())
 		description += "  ·  " + patch.author;
-	description += on ? "  ·  X: quitar (algunos piden reiniciar el juego)" : "  ·  X: poner";
-	if (description.size() > 180)
-		description = description.substr(0, 177) + "...";
-	PS4GameMenu::SetPatchMenuText(label, description);
+	description += on ? T("  ·  X: quitar (algunos piden reiniciar el juego)") : T("  ·  X: poner");
+	PS4GameMenu::SetPatchMenuText(label, ForjaLang::Cut(description, 600));
 }
 
 static void ReloadPatchMenu()
@@ -816,13 +819,15 @@ static void ReloadPatchMenu()
 	{
 		if (!RuleOffered(i))
 			continue;
+		// The fingerprints' names and descriptions (huellas.ini) are the settings center's Spanish ones; the language files
+		// translate the ones it has (assets/lang/idiomas.py reads assets/huellas.ini too).
 		Patch::PatchInfo rule;
-		rule.name = s_rules[i].name + " (Forja)";
-		rule.description = s_rules[i].description;
+		rule.name = ForjaLang::T(s_rules[i].name) + " (Forja)";
+		rule.description = ForjaLang::T(s_rules[i].description);
 		if (s_rule_share_seen[i] > 0)
 		{
-			char seen[64];
-			std::snprintf(seen, sizeof(seen), "  ·  aquí: %.0f %% del GS", s_rule_share_seen[i] / 10.0);
+			char seen[160];
+			std::snprintf(seen, sizeof(seen), ForjaLang::TF("  ·  aquí: %.0f %% del GS"), s_rule_share_seen[i] / 10.0);
 			rule.description += seen;
 		}
 		rule.author = "Forja SX2";
@@ -882,27 +887,27 @@ static bool CheatIsOn(const std::string& name)
 
 static void PublishCheatText()
 {
+	using ForjaLang::T;
+	using ForjaLang::TF;
 	if (s_cheat_infos.empty())
 	{
-		char description[220];
+		char description[512];
 		std::snprintf(description, sizeof(description),
-			"Pon tus trucos en /data/ForjaSX2/cheats/%s_%08X.pnach (escritos como un parche) y vuelve a abrir este menú",
+			TF("Pon tus trucos en /data/ForjaSX2/cheats/%s_%08X.pnach (escritos como un parche) y vuelve a abrir este menú"),
 			VMManager::GetDiscSerial().c_str(), VMManager::GetDiscCRC());
-		PS4GameMenu::SetRowText(PS4GameMenu::ROW_CHEATS, "Trucos:  ninguno para este juego", description);
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_CHEATS, T("Trucos:  ninguno para este juego"), description);
 		return;
 	}
 	const Patch::PatchInfo& cheat = s_cheat_infos[s_cheat_index];
 	const bool on = CheatIsOn(cheat.name);
-	char label[256];
-	std::snprintf(label, sizeof(label), "Truco %u de %zu:  < %s >  %s", s_cheat_index + 1, s_cheat_infos.size(), cheat.name.c_str(),
-		on ? "Sí" : "No");
-	std::string description = cheat.description.empty() ? std::string("Sin descripción") : cheat.description;
+	char label[512];
+	std::snprintf(label, sizeof(label), TF("Truco %u de %zu:  < %s >  %s"), s_cheat_index + 1, s_cheat_infos.size(), cheat.name.c_str(),
+		on ? T("Sí") : T("No"));
+	std::string description = cheat.description.empty() ? std::string(T("Sin descripción")) : cheat.description;
 	if (!cheat.author.empty())
 		description += "  ·  " + cheat.author;
-	description += on ? "  ·  X: quitar" : "  ·  X: poner";
-	if (description.size() > 180)
-		description = description.substr(0, 177) + "...";
-	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CHEATS, label, description);
+	description += on ? T("  ·  X: quitar") : T("  ·  X: poner");
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CHEATS, label, ForjaLang::Cut(description, 600));
 }
 
 static void ReloadCheats()
@@ -942,8 +947,9 @@ static bool s_fast_forward = false;
 
 static void PublishFastForwardText()
 {
-	PS4GameMenu::SetRowText(PS4GameMenu::ROW_FAST_FORWARD, s_fast_forward ? "Avance rápido:  < Sí >" : "Avance rápido:  < No >",
-		"X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda");
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_FAST_FORWARD,
+		s_fast_forward ? ForjaLang::T("Avance rápido:  < Sí >") : ForjaLang::T("Avance rápido:  < No >"),
+		ForjaLang::T("X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda"));
 }
 
 static void ToggleFastForward()
@@ -1073,20 +1079,21 @@ static void ApplyVu1SkipList(const std::string& list)
 
 static void PublishVu1FilterText()
 {
+	using ForjaLang::T;
 	if (s_vu1_candidates.empty())
 	{
-		PS4GameMenu::SetRowText(PS4GameMenu::ROW_VU1_FILTER, "Filtro VU1:  sin datos todavía",
-			"Juega unos segundos: el medidor del VU1 lista sus programas más costosos y aquí los apagas uno por uno (experimental)");
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_VU1_FILTER, T("Filtro VU1:  sin datos todavía"),
+			T("Juega unos segundos: el medidor del VU1 lista sus programas más costosos y aquí los apagas uno por uno (experimental)"));
 		return;
 	}
 	const u32 program = s_vu1_candidates[s_vu1_index];
 	const bool skipped = Vu1Skipped(program);
-	char label[160];
-	std::snprintf(label, sizeof(label), "Filtro VU1 %u de %zu:  < programa %04x · %.1f %% >  %s", s_vu1_index + 1, s_vu1_candidates.size(),
-		program * 8, s_vu1_shares[s_vu1_index] / 10.0, skipped ? "QUITADO" : "Activo");
+	char label[512];
+	std::snprintf(label, sizeof(label), ForjaLang::TF("Filtro VU1 %u de %zu:  < programa %04x · %.1f %% >  %s"), s_vu1_index + 1,
+		s_vu1_candidates.size(), program * 8, s_vu1_shares[s_vu1_index] / 10.0, skipped ? T("QUITADO") : T("Activo"));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_VU1_FILTER, label,
-		skipped ? "No se dibuja lo que hace este programa. X lo devuelve; Cuadrado devuelve todos. Se guarda para este juego" :
-				  "X lo apaga: mira qué deja de verse y cuánto sube la velocidad (experimental). Se guarda para este juego");
+		skipped ? T("No se dibuja lo que hace este programa. X lo devuelve; Cuadrado devuelve todos. Se guarda para este juego") :
+				  T("X lo apaga: mira qué deja de verse y cuánto sube la velocidad (experimental). Se guarda para este juego"));
 }
 
 static void ReloadVu1Filter()
@@ -1228,54 +1235,62 @@ static void ApplyGsFilterList(const std::string& list)
 }
 
 // "En la pantalla con la textura 03d40 (256x256, 256 colores), triángulos transparentes" (GS block addresses).
-static std::string GsGroupText(u64 key)
+// 2026-10-19: in the library's language for the menu; the log keeps the Spanish (translated = false).
+static std::string GsGroupText(u64 key, bool translated = true)
 {
-	static constexpr const char* prims[] = {"puntos", "líneas", "triángulos", "sprites"};
+	const auto tr = [translated](const char* text) { return translated ? ForjaLang::T(text) : text; };
+	const auto trf = [translated](const char* text) { return translated ? ForjaLang::TF(text) : text; };
+	static constexpr const char* prims[] = {N_("puntos"), N_("líneas"), N_("triángulos"), N_("sprites")};
 	const u32 fbp = static_cast<u32>(key >> 31) & 0x1ffu;
 	const u32 tbp = static_cast<u32>(key >> 17) & 0x3fffu;
 	const u32 psm = static_cast<u32>(key >> 11) & 0x3fu;
 	const u32 tw = static_cast<u32>(key >> 7) & 0xfu, th = static_cast<u32>(key >> 3) & 0xfu;
-	const char* prim = prims[(key >> 1) & 3u];
-	const char* blend = (key & 1u) ? " transparentes" : "";
-	char where[24] = "En la pantalla"; // compilation 52: the framebuffers the TV shows
+	const char* prim = tr(prims[(key >> 1) & 3u]);
+	const char* blend = (key & 1u) ? tr(N_(" transparentes")) : "";
+	char where[128];
+	std::snprintf(where, sizeof(where), "%s", tr(N_("En la pantalla"))); // compilation 52: the framebuffers the TV shows
 	if (fbp != 0x1ffu)
-		std::snprintf(where, sizeof(where), "En %05x", fbp << 5);
-	char text[160];
+		std::snprintf(where, sizeof(where), trf(N_("En %05x")), fbp << 5);
+	char text[512];
 	if (tbp == 0x3fffu)
 	{
-		std::snprintf(text, sizeof(text), "%s sin textura, %s%s", where, prim, blend);
+		std::snprintf(text, sizeof(text), trf(N_("%s sin textura, %s%s")), where, prim, blend);
 		return text;
 	}
 	// The texture's colours: 4- and 8-bit ones are palettes, the others full colour or a depth buffer read as a texture.
-	const char* colours = (psm == 0x14 || psm == 0x24 || psm == 0x2c) ? "16 colores" : (psm == 0x13 || psm == 0x1b) ? "256 colores" :
-		(psm >= 0x30) ? "profundidad" : "color";
-	std::snprintf(text, sizeof(text), "%s con la textura %05x (%ux%u, %s), %s%s", where, tbp, 1u << tw, 1u << th, colours, prim, blend);
+	const char* colours = (psm == 0x14 || psm == 0x24 || psm == 0x2c) ? tr(N_("16 colores")) :
+	                      (psm == 0x13 || psm == 0x1b)                ? tr(N_("256 colores")) :
+	                      (psm >= 0x30)                               ? tr(N_("profundidad")) : tr(N_("color"));
+	std::snprintf(text, sizeof(text), trf(N_("%s con la textura %05x (%ux%u, %s), %s%s")), where, tbp, 1u << tw, 1u << th, colours,
+		prim, blend);
 	return text;
 }
 
 static void PublishGsFilterText()
 {
+	using ForjaLang::T;
+	using ForjaLang::TF;
 	if (s_gs_candidates.empty())
 	{
-		PS4GameMenu::SetRowText(PS4GameMenu::ROW_GS_FILTER, "Filtro GS:  sin datos todavía",
-			"Juega unos segundos: el GS lista sus grupos de dibujos más costosos y aquí los apagas uno por uno (experimental)");
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_GS_FILTER, T("Filtro GS:  sin datos todavía"),
+			T("Juega unos segundos: el GS lista sus grupos de dibujos más costosos y aquí los apagas uno por uno (experimental)"));
 		return;
 	}
 	const u64 key = s_gs_candidates[s_gs_index];
 	const bool skipped = GsFiltered(key);
 	const u32 info = s_gs_infos[s_gs_index];
-	char label[160];
+	char label[512];
 	if (skipped && info == 0)
-		std::snprintf(label, sizeof(label), "Filtro GS %u de %zu:  < grupo quitado >  QUITADO", s_gs_index + 1, s_gs_candidates.size());
+		std::snprintf(label, sizeof(label), TF("Filtro GS %u de %zu:  < grupo quitado >  QUITADO"), s_gs_index + 1, s_gs_candidates.size());
 	else if (skipped)
-		std::snprintf(label, sizeof(label), "Filtro GS %u de %zu:  < era el %.1f %% del GS · %u dibujos/s >  QUITADO", s_gs_index + 1,
+		std::snprintf(label, sizeof(label), TF("Filtro GS %u de %zu:  < era el %.1f %% del GS · %u dibujos/s >  QUITADO"), s_gs_index + 1,
 			s_gs_candidates.size(), (info >> 16) / 10.0, info & 0xffffu);
 	else
-		std::snprintf(label, sizeof(label), "Filtro GS %u de %zu:  < %.1f %% del GS · %u dibujos/s >  Activo", s_gs_index + 1,
+		std::snprintf(label, sizeof(label), TF("Filtro GS %u de %zu:  < %.1f %% del GS · %u dibujos/s >  Activo"), s_gs_index + 1,
 			s_gs_candidates.size(), (info >> 16) / 10.0, info & 0xffffu);
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_GS_FILTER, label,
-		GsGroupText(key) + (skipped ? ": no se dibuja. X lo devuelve; Cuadrado devuelve todos" :
-									  ". X lo apaga: mira qué deja de verse"));
+		GsGroupText(key) + (skipped ? T(": no se dibuja. X lo devuelve; Cuadrado devuelve todos") :
+									  T(". X lo apaga: mira qué deja de verse")));
 }
 
 // Compilation 54: the list keeps its places while a game runs. Builds 52-53 sorted it again by the last measure each time the
@@ -1393,7 +1408,7 @@ static void ToggleGsGroup()
 	const std::string list = GsFilterList();
 	SavePlayerProfile("GS filter", [list](INISettingsInterface& ini) { ini.SetStringValue("Forja", "GSQuitar", list.c_str()); }, false);
 	ProbeLog("GS filter: group %u %llx (%s) %s; left out now: [%s]\n", s_gs_index + 1, static_cast<unsigned long long>(key),
-		GsGroupText(key).c_str(), skip ? "left out" : "back", list.c_str());
+		GsGroupText(key, false).c_str(), skip ? "left out" : "back", list.c_str());
 	PublishGsFilterText();
 }
 
@@ -1403,17 +1418,19 @@ static void ToggleGsGroup()
 
 static void PublishTexturesText()
 {
-	static constexpr const char* names[] = {"No", "Sí", "Sí, precargadas"};
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	static constexpr const char* names[] = {N_("No"), N_("Sí"), N_("Sí, precargadas")};
 	const std::string serial = VMManager::GetDiscSerial();
 	const std::string folder = Path::Combine(EmuFolders::Textures, serial + "/replacements");
 	const bool pack = !serial.empty() && FileSystem::DirectoryExists(folder.c_str());
-	char label[96], description[256];
-	std::snprintf(label, sizeof(label), "Texturas HD:  < %s >", names[std::min(s_game_textures, 2u)]);
+	char label[256], description[512];
+	std::snprintf(label, sizeof(label), TF("Texturas HD:  < %s >"), T(names[std::min(s_game_textures, 2u)]));
 	if (pack)
-		std::snprintf(description, sizeof(description), "Pack encontrado (textures/%s/replacements). Precargar evita tirones pero usa más memoria",
+		std::snprintf(description, sizeof(description), TF("Pack encontrado (textures/%s/replacements). Precargar evita tirones pero usa más memoria"),
 			serial.c_str());
 	else
-		std::snprintf(description, sizeof(description), "No hay pack: cópialo por FTP a /data/ForjaSX2/textures/%s/replacements",
+		std::snprintf(description, sizeof(description), TF("No hay pack: cópialo por FTP a /data/ForjaSX2/textures/%s/replacements"),
 			serial.empty() ? "<SERIAL>" : serial.c_str());
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_TEXTURES, label, description);
 }
@@ -1441,24 +1458,25 @@ static void PublishRecommendedText(bool fetching = false)
 	const std::string serial = VMManager::GetDiscSerial();
 	const std::string center = Path::Combine(EmuFolders::DataRoot, "centro/perfiles/" + serial + ".ini");
 	const std::string package = Path::Combine(EmuFolders::Resources, "perfiles/" + serial + ".ini");
+	using ForjaLang::T;
 	struct stat info{};
-	char label[160];
+	char label[512];
 	if (fetching)
-		std::snprintf(label, sizeof(label), "Ajustes recomendados:  buscando en GitHub...");
+		std::snprintf(label, sizeof(label), "%s", T("Ajustes recomendados:  buscando en GitHub..."));
 	else if (!serial.empty() && stat(center.c_str(), &info) == 0)
 	{
 		char date[32] = "?";
 		const std::time_t when = info.st_mtime;
 		if (const std::tm* tm = std::localtime(&when))
 			std::strftime(date, sizeof(date), "%d/%m %H:%M", tm);
-		std::snprintf(label, sizeof(label), "Ajustes recomendados:  del centro (GitHub), %s", date);
+		std::snprintf(label, sizeof(label), ForjaLang::TF("Ajustes recomendados:  del centro (GitHub), %s"), date);
 	}
 	else if (!serial.empty() && FileSystem::FileExists(package.c_str()))
-		std::snprintf(label, sizeof(label), "Ajustes recomendados:  del PKG");
+		std::snprintf(label, sizeof(label), "%s", T("Ajustes recomendados:  del PKG"));
 	else
-		std::snprintf(label, sizeof(label), "Ajustes recomendados:  ninguno para este juego");
+		std::snprintf(label, sizeof(label), "%s", T("Ajustes recomendados:  ninguno para este juego"));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_RECOMMENDED, label,
-		"X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos");
+		T("X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos"));
 }
 
 // Forja SX2 (compilation 44): the other discs of a game of several, as Dolphin for PS4 changes them (v04.13). Its files sit
@@ -1492,18 +1510,20 @@ static std::pair<std::string, int> DiscKey(std::string name)
 
 static void PublishDiscText()
 {
+	using ForjaLang::T;
 	if (s_disc_paths.size() < 2)
 	{
-		PS4GameMenu::SetRowText(PS4GameMenu::ROW_CHANGE_DISC, "Cambiar disco:  este juego tiene un solo disco",
-			"Para juegos de varios discos: ponlos en roms/ como \"Juego (Disco 1).iso\", \"Juego (Disco 2).iso\"...");
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_CHANGE_DISC, T("Cambiar disco:  este juego tiene un solo disco"),
+			T("Para juegos de varios discos: ponlos en roms/ como \"Juego (Disco 1).iso\", \"Juego (Disco 2).iso\"..."));
 		return;
 	}
 	const int number = DiscKey(std::string(Path::GetFileName(s_disc_paths[s_disc_index]))).second;
 	const bool current = s_disc_paths[s_disc_index] == s_selected_game;
-	char label[128];
-	std::snprintf(label, sizeof(label), "Cambiar disco:  < Disco %d de %zu >%s", number, s_disc_paths.size(), current ? "  (puesto)" : "");
+	char label[512];
+	std::snprintf(label, sizeof(label), ForjaLang::TF("Cambiar disco:  < Disco %d de %zu >%s"), number, s_disc_paths.size(),
+		current ? T("  (puesto)") : "");
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CHANGE_DISC, label,
-		"X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida");
+		T("X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida"));
 }
 
 static void ReloadDiscList()
@@ -2291,7 +2311,7 @@ static void RefreshStateSlot()
 		char text[40] = "";
 		const std::time_t when = info.st_mtime;
 		if (const std::tm* tm = std::localtime(&when))
-			std::strftime(text, sizeof(text), "%d/%m a las %H:%M", tm);
+			std::strftime(text, sizeof(text), ForjaLang::T("%d/%m a las %H:%M"), tm); // strftime: any translation is safe
 		date = text;
 	}
 	PS4GameMenu::SetStateSlotDate(date);
@@ -3166,8 +3186,8 @@ static void* RunVM(void*)
 		platform == GamePlatform::PS1 ? "PS1" : platform == GamePlatform::PS2 ? "PS2" : "Other");
 	PS4Telemetry::Stage(boot.filename.empty() ? "game-bios" : "game-selected");
 	if (s_use_vulkan_selector)
-		PS4GameMenu::ShowLoading(24, boot.filename.empty() ? "Preparing PS2 BIOS..." :
-			boot.filename == PS4Disc::DevicePath ? "Opening physical DVD..." : "Mounting game image...");
+		PS4GameMenu::ShowLoading(24, boot.filename.empty() ? ForjaLang::T("Preparando la BIOS de la PS2...") :
+			boot.filename == PS4Disc::DevicePath ? ForjaLang::T("Abriendo el DVD...") : ForjaLang::T("Abriendo la imagen del juego..."));
 	ProbeLog("Disc selection: library returned %s\n", boot.filename.empty() ? "BIOS (no disc)" : boot.filename.c_str());
 	if (boot.filename.empty())
 	{
@@ -3183,14 +3203,14 @@ static void* RunVM(void*)
 	ProbeLog("Fast boot: %s (PS1 always uses full BIOS boot; PS2 override: /data/ForjaSX2/vm-no-fast-boot)\n", fast_boot ? "enabled" : "disabled");
 	Error error;
 	if (s_use_vulkan_selector)
-		PS4GameMenu::ShowLoading(45, "Initializing virtual machine...");
+		PS4GameMenu::ShowLoading(45, ForjaLang::T("Iniciando la máquina virtual..."));
 	ProbeLog("STAGE: VMManager::Initialize\n");
 	PS4Telemetry::Stage("vm-init");
 	const auto result = VMManager::Initialize(boot, &error);
 	if (result == VMBootResult::StartupSuccess)
 	{
 		if (s_use_vulkan_selector)
-			PS4GameMenu::ShowLoading(92, "Starting PlayStation 2...");
+			PS4GameMenu::ShowLoading(92, ForjaLang::T("Encendiendo la PlayStation 2..."));
 		ProbeLog("VM runtime Fastmem=%s (after initial VTLB mappings)\n",
 			EmuConfig.Cpu.Recompiler.EnableFastmem ? "on" : "off");
 		ProbeLog("VM initialized: executing BIOS; no probe MMIO shadows\n");
@@ -3274,7 +3294,7 @@ static void* RunVM(void*)
 			"L3+R3 or touchpad right half");
 		if (s_use_vulkan_selector)
 		{
-			PS4GameMenu::ShowLoading(100, "Listo");
+			PS4GameMenu::ShowLoading(100, ForjaLang::T("Listo"));
 			Threading::Sleep(50);
 			PS4GameMenu::HideLoading();
 		}
@@ -3544,6 +3564,13 @@ int main()
 		// VM teardown closes Vulkan/VideoOut resources. Reinitializing them in the
 		// same process was the source of the return-to-menu crash; ask the shell to
 		// start a clean selector process instead.
+		// Forja SX2 (2026-10-19): the library that starts knows it is the same session coming back from a game, so it does
+		// not ask for the language again (GameMenu.cpp reads and deletes this).
+		if (std::FILE* marker = std::fopen("/data/ForjaSX2/volver-biblioteca", "w"))
+		{
+			std::fprintf(marker, "%lld\n", static_cast<long long>(std::time(nullptr)));
+			std::fclose(marker);
+		}
 		sceSystemServiceLoadExec("/app0/eboot.bin", nullptr);
 	}
 	sceSystemServiceLoadExec("exit", nullptr);

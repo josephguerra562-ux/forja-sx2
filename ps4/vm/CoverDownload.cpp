@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0+
 #include "CoverDownload.h"
+#include "ForjaLang.h"
 #include "stb_image.h"
 #include <orbis/Http.h>
 #include <orbis/Net.h>
@@ -176,7 +177,7 @@ bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
 	const int context = HttpContext();
 	if (context < 0 || url.empty() || !user_agent)
 	{
-		error = "sin red";
+		error = ForjaLang::T("sin red");
 		return false;
 	}
 	Request request;
@@ -184,7 +185,7 @@ bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
 	ProbeLog("Native HTTPS stream: template=%#x url=%s\n", request.tmpl, url.c_str());
 	if (request.tmpl < 0)
 	{
-		error = "sin conexión";
+		error = ForjaLang::T("sin conexión");
 		return false;
 	}
 	// GitHub's release downloads answer with a redirect to their storage host. Compilation 50: followed by hand below; with
@@ -200,7 +201,7 @@ bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
 		if (rc < 0)
 		{
 			ProbeLog("Native HTTPS stream: setup failed=%#x\n", rc);
-			error = "no se pudo preparar la conexión";
+			error = ForjaLang::T("no se pudo preparar la conexión");
 			return false;
 		}
 	}
@@ -224,7 +225,7 @@ bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
 		if (request.request < 0 || sceHttpAddRequestHeader(request.request, "User-Agent", user_agent, 0) < 0 ||
 			sceHttpAddRequestHeader(request.request, "Accept", "application/octet-stream", 0) < 0)
 		{
-			error = "no se pudo crear la petición";
+			error = ForjaLang::T("no se pudo crear la petición");
 			return false;
 		}
 		sceHttpSetConnectTimeOut(request.request, 8000000);
@@ -239,7 +240,7 @@ bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
 			break;
 		if (hop >= 5)
 		{
-			error = "demasiadas redirecciones";
+			error = ForjaLang::T("demasiadas redirecciones");
 			return false;
 		}
 		char* headers = nullptr;
@@ -250,7 +251,7 @@ bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
 		if (location.rfind("https://", 0) != 0)
 		{
 			ProbeLog("Native HTTPS stream: redirect %d without an https Location (%zu bytes of headers)\n", http, headers_size);
-			error = "redirección sin destino";
+			error = ForjaLang::T("redirección sin destino");
 			return false;
 		}
 		const size_t host_end = location.find('/', 8);
@@ -259,11 +260,11 @@ bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
 	}
 	if (status < 0 || http != 200)
 	{
-		char text[64];
+		char text[256];
 		if (status < 0)
-			std::snprintf(text, sizeof(text), "error de red %#x", static_cast<unsigned>(status));
+			std::snprintf(text, sizeof(text), ForjaLang::TF("error de red %#x"), static_cast<unsigned>(status));
 		else
-			std::snprintf(text, sizeof(text), "respuesta HTTP %d", http);
+			std::snprintf(text, sizeof(text), ForjaLang::TF("respuesta HTTP %d"), http);
 		error = text;
 		return false;
 	}
@@ -279,14 +280,14 @@ bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
 		if (std::chrono::steady_clock::now() > deadline)
 		{
 			sceHttpAbortRequest(request.request);
-			error = "tardó demasiado";
+			error = ForjaLang::T("tardó demasiado");
 			return false;
 		}
 		const int count = sceHttpReadData(request.request, buffer.data(), static_cast<unsigned>(buffer.size()));
 		if (count < 0)
 		{
-			char text[48];
-			std::snprintf(text, sizeof(text), "se cortó la descarga (%#x)", static_cast<unsigned>(count));
+			char text[256];
+			std::snprintf(text, sizeof(text), ForjaLang::TF("se cortó la descarga (%#x)"), static_cast<unsigned>(count));
 			error = text;
 			return false;
 		}
@@ -297,14 +298,14 @@ bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
 		{
 			sceHttpAbortRequest(request.request);
 			if (error.empty())
-				error = "cancelada";
+				error = ForjaLang::T("cancelada");
 			return false;
 		}
 	}
 	ProbeLog("Native HTTPS stream: bytes=%zu content_length=%zu\n", received, total);
 	if (total != 0 && received != total)
 	{
-		error = "llegó incompleta";
+		error = ForjaLang::T("llegó incompleta");
 		return false;
 	}
 	return true;

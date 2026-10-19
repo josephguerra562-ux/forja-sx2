@@ -13,12 +13,16 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "GameMenu.h"
+#include "ForjaLang.h"
 #include "ForjaSettings.h"
 #include <algorithm>
 #include <atomic>
 #include <cfloat>
 #include <cstdio>
+#include <cstring>
+#include <initializer_list>
 #include <unistd.h>
+#include <vector>
 
 extern void ProbeLog(const char* format, ...);
 
@@ -106,6 +110,63 @@ namespace FullscreenUI
 extern std::atomic<bool> g_orbis_fg_active;
 extern std::atomic<u32> g_forja_presents;
 
+// Forja SX2 (2026-10-19, languages): the letters Gontserrat lacks, merged into it: Cyrillic (Montserrat, its own family),
+// Arabic and Chinese, Japanese and Korean (Noto), subsets made by assets/fonts/fuentes.py. ImGui 1.92 rasterizes a glyph the
+// first time it is drawn, so they cost only the files' memory. Two fonts: Chinese first, and Japanese first (the same
+// characters are drawn the Japanese way); GameMenu.cpp draws with the second one in Japanese (g_forja_language_fonts).
+ImFont* g_forja_language_fonts[2] = {};
+
+static void AddLanguageFonts(ImFont* ui_font, const char* base_path)
+{
+	// stb_truetype sizes a font by its ascent-to-descent height, which is 1.219 em in Gontserrat, 1.448 in Noto CJK and 2.112
+	// in Noto Arabic: each one is scaled by that ratio so its letters have the same em as Gontserrat's.
+	struct Source
+	{
+		const char* path;
+		float scale;
+		std::vector<unsigned char> data;
+	};
+	static Source sources[] = {{"/app0/resources/fonts/Forja-Cirilico.ttf", 1.0f, {}},
+		{"/app0/resources/fonts/NotoSansArabic-Forja.ttf", 2.112f / 1.219f, {}},
+		{"/app0/resources/fonts/NotoSansSC-Forja.ttf", 1.448f / 1.219f, {}},
+		{"/app0/resources/fonts/NotoSansJP-Forja.ttf", 1.448f / 1.219f, {}},
+		{"/app0/resources/fonts/NotoSansKR-Forja.ttf", 1.448f / 1.219f, {}}};
+	for (Source& source : sources)
+	{
+		if (std::FILE* file = std::fopen(source.path, "rb"))
+		{
+			std::fseek(file, 0, SEEK_END);
+			const long size = std::ftell(file);
+			std::rewind(file);
+			source.data.resize(size > 0 ? static_cast<size_t>(size) : 0);
+			if (size <= 0 || std::fread(source.data.data(), 1, source.data.size(), file) != source.data.size())
+				source.data.clear();
+			std::fclose(file);
+		}
+		ProbeLog("Language font: %s %zu bytes\n", source.path, source.data.size());
+	}
+	auto& io = ImGui::GetIO();
+	const auto merge = [&](ImFont* into, std::initializer_list<int> order) {
+		for (const int index : order)
+		{
+			Source& source = sources[index];
+			if (source.data.empty())
+				continue;
+			ImFontConfig config;
+			config.MergeMode = true;
+			config.DstFont = into;
+			config.FontDataOwnedByAtlas = false; // the same file serves both fonts
+			io.Fonts->AddFontFromMemoryTTF(source.data.data(), static_cast<int>(source.data.size()), 20.0f * source.scale, &config);
+		}
+	};
+	merge(ui_font, {0, 1, 2, 3, 4});
+	ImFont* japanese = io.Fonts->AddFontFromFileTTF(base_path, 20.0f);
+	if (japanese)
+		merge(japanese, {0, 1, 3, 2, 4});
+	g_forja_language_fonts[0] = ui_font;
+	g_forja_language_fonts[1] = japanese ? japanese : ui_font;
+}
+
 namespace ImGuiManager
 {
 	static bool s_show_performance_hud = true;
@@ -140,6 +201,8 @@ namespace ImGuiManager
 		ImFont* ui_font = access(font_path, F_OK) == 0 ? io.Fonts->AddFontFromFileTTF(font_path, 20.0f) : nullptr;
 		io.FontDefault = ui_font ? ui_font : io.Fonts->AddFontDefault();
 		ProbeLog("Library font: %s\n", ui_font ? "Gontserrat" : "default fallback");
+		if (ui_font)
+			AddLanguageFonts(ui_font, font_path);
 		io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures | ImGuiBackendFlags_RendererHasVtxOffset;
 		ProbeLog("STAGE: ImGui first frame (stb font loader)\n");
 		ImGui::NewFrame();
@@ -215,7 +278,7 @@ namespace ImGuiManager
 		// (AI-assisted) Use the GS thread's existing samples; avoid CPU/GS sharing.
 		if (!s_show_performance_hud || VMManager::GetState() != VMState::Running || PerformanceMetrics::GetFPS() <= 0.0f)
 			return;
-		char fields[6][64];
+		char fields[6][192];
 		// Forja SX2: with frame generation at work the box shows both the game's frames and the frames the TV gets (the game's
 		// and the generated ones, counted in GSRendererPS4.cpp), measured here over half a second.
 		static Common::Timer::Value s_presents_since = 0;
@@ -237,14 +300,15 @@ namespace ImGuiManager
 				s_presents_at = presents;
 			}
 		}
+		// 2026-10-19: in the library's language (ForjaLang.h), the figures' names; the units stay.
 		if (g_orbis_fg_active.load(std::memory_order_relaxed) && PerformanceMetrics::IsInternalFPSValid() && s_shown_fps > 0.0f)
-			std::snprintf(fields[0], sizeof(fields[0]), "Juego %.0f / Pantalla %.0f FPS (FG)", PerformanceMetrics::GetInternalFPS(),
+			std::snprintf(fields[0], sizeof(fields[0]), ForjaLang::TF("Juego %.0f / Pantalla %.0f FPS (FG)"), PerformanceMetrics::GetInternalFPS(),
 				s_shown_fps);
 		else if (PerformanceMetrics::IsInternalFPSValid())
-			std::snprintf(fields[0], sizeof(fields[0]), "Game ~%.1f FPS", PerformanceMetrics::GetInternalFPS());
+			std::snprintf(fields[0], sizeof(fields[0]), ForjaLang::TF("Juego ~%.1f FPS"), PerformanceMetrics::GetInternalFPS());
 		else
-			std::snprintf(fields[0], sizeof(fields[0]), "Internal FPS N/A");
-		std::snprintf(fields[1], sizeof(fields[1]), "Speed %.0f%%", PerformanceMetrics::GetSpeed());
+			std::snprintf(fields[0], sizeof(fields[0]), "%s", ForjaLang::T("FPS del juego: sin datos"));
+		std::snprintf(fields[1], sizeof(fields[1]), ForjaLang::TF("Velocidad %.0f%%"), PerformanceMetrics::GetSpeed());
 		std::snprintf(fields[2], sizeof(fields[2]), "PS2 %.1f Hz", PerformanceMetrics::GetFPS());
 		const double ee_ms = PerformanceMetrics::GetCPUThreadAverageTime();
 		const float gs_ms = PerformanceMetrics::GetGSThreadAverageTime();
@@ -277,7 +341,7 @@ namespace ImGuiManager
 			float width = separator_width * 5;
 			for (unsigned i = 0; i < 6; i++)
 			{
-				widths[i] = font->CalcTextSizeA(font_size, FLT_MAX, 0.0f, fields[i]).x;
+				widths[i] = font->CalcTextSizeA(font_size, FLT_MAX, 0.0f, ForjaLang::Visual(fields[i])).x;
 				width += widths[i];
 			}
 			return width;
@@ -305,7 +369,7 @@ namespace ImGuiManager
 			ImVec2(x + row_width + padding, top + font_size + 20.0f * scale), IM_COL32(4, 13, 24, 200), 8.0f * scale);
 		for (unsigned i = 0; i < 6; i++)
 		{
-			draw->AddText(font, font_size, ImVec2(x, top + 10.0f * scale), colors[i], fields[i]);
+			draw->AddText(font, font_size, ImVec2(x, top + 10.0f * scale), colors[i], ForjaLang::Visual(fields[i]));
 			x += widths[i];
 			if (i < 5)
 			{
