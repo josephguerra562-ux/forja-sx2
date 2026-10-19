@@ -67,6 +67,10 @@ namespace ForjaGameProfile
 		// two). main.cpp, UpdateGsSkip; GSRendererPS4.cpp, VSync.
 		int gs_skip = -1;
 		Origin gs_skip_origin = Origin::Global;
+		// [Forja] Huellas (compilation 55): the draw fingerprint rules turned on for the game, their huellas.ini ids with commas
+		// (ps4/vm/main.cpp, LoadRules; pcsx2/ForjaGsRules.h).
+		std::string rules_on;
+		Origin rules_on_origin = Origin::Global;
 	};
 
 	// Forja SX2 (compilation 44): the settings center's copy (/data/ForjaSX2/centro/perfiles, fetched from the project's GitHub by
@@ -167,6 +171,10 @@ namespace ForjaGameProfile
 			v.cores_origin = Origin::Player;
 		else if (v.has_factory && factory.GetStringValue("Forja", "Nucleos", &v.cores))
 			v.cores_origin = Origin::Factory;
+		if (v.has_player && player.GetStringValue("Forja", "Huellas", &v.rules_on))
+			v.rules_on_origin = Origin::Player;
+		else if (v.has_factory && factory.GetStringValue("Forja", "Huellas", &v.rules_on))
+			v.rules_on_origin = Origin::Factory;
 		if (v.has_player && player.GetStringValue("Forja", "VU1Quitar", &v.vu1_skip))
 			v.vu1_skip_origin = Origin::Player;
 		else if (v.has_factory && factory.GetStringValue("Forja", "VU1Quitar", &v.vu1_skip))

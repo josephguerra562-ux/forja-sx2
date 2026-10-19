@@ -48,6 +48,7 @@ namespace
 		CommunityPatches,
 		CenterProfile,
 		CenterPatches,
+		CenterRules, // compilation 55: huellas.ini, the draw fingerprints for every game
 	};
 
 	struct Job
@@ -65,6 +66,7 @@ namespace
 	const char* KindName(Kind kind)
 	{
 		return kind == Kind::CommunityPatches ? "Community patches" : kind == Kind::CenterProfile ? "Settings center profile" :
+		       kind == Kind::CenterRules ? "Settings center fingerprints" :
 		                                                                                        "Settings center patches";
 	}
 
@@ -93,6 +95,9 @@ namespace
 			if (job.kind == Kind::CommunityPatches)
 				header = "// The PCSX2 community's patches (github.com/PCSX2/pcsx2_patches), fetched by Forja SX2 on " + Today() +
 				         ".\n// Turn them on in L3+R3 > Parches. Forja fetches this file again after 7 days.\n\n";
+			else if (job.kind == Kind::CenterRules)
+				header = "; Forja SX2's draw fingerprints (huellas), from its settings center (the project's GitHub), fetched on " +
+				         Today() + ".\n\n";
 			else if (job.kind == Kind::CenterPatches)
 				header = "// Forja SX2's patches for this game, from its settings center (the project's GitHub), fetched on " +
 				         Today() + ".\n\n";
@@ -119,7 +124,7 @@ namespace
 			std::vector<unsigned char> bytes;
 			const bool got = PS4CoverHttp::Get(job.url, "ForjaSX2 downloads", bytes, MaxBytes);
 			const std::string text(bytes.begin(), bytes.end());
-			const bool looks_right = job.kind == Kind::CenterProfile ? text.find('[') != std::string::npos :
+			const bool looks_right = job.kind == Kind::CenterProfile || job.kind == Kind::CenterRules ? text.find('[') != std::string::npos :
 			                                                          text.find("patch=") != std::string::npos;
 			if (!got || !looks_right)
 			{
@@ -132,8 +137,8 @@ namespace
 				continue;
 			}
 			ProbeLog("%s: %s saved (%zu bytes)%s\n", KindName(job.kind), job.path.c_str(), text.size(),
-				job.kind == Kind::CenterProfile ? "; used from the game's next start" : "");
-			if (job.kind != Kind::CenterProfile)
+				job.kind == Kind::CenterProfile || job.kind == Kind::CenterRules ? "; used from the game's next start" : "");
+			if (job.kind != Kind::CenterProfile && job.kind != Kind::CenterRules)
 				s_arrived.store(true, std::memory_order_release);
 		}
 		s_busy.store(false, std::memory_order_release);
@@ -174,6 +179,9 @@ namespace ForjaPatches
 				jobs->push_back({Kind::CenterProfile, std::string(CenterSource) + "perfiles/" + serial + ".ini", profile});
 			if (force || !Fresh(patches, center_age))
 				jobs->push_back({Kind::CenterPatches, std::string(CenterSource) + "parches/" + name + "_forja.pnach", patches});
+			const std::string rules = root + "/centro/huellas.ini"; // compilation 55
+			if (force || !Fresh(rules, center_age))
+				jobs->push_back({Kind::CenterRules, std::string(CenterSource) + "huellas.ini", rules});
 		}
 		if (jobs->empty() || s_busy.exchange(true, std::memory_order_acq_rel))
 			return;

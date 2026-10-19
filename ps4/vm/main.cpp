@@ -17,6 +17,7 @@
 #include "common/MemorySettingsInterface.h"
 #include "INISettingsInterface.h"
 #include "ForjaGameProfile.h"
+#include "ForjaGsRules.h"
 #include "Patch.h"
 #include "PatchDownload.h"
 #include "GameList.h"
@@ -483,12 +484,299 @@ static unsigned CoresMenuValue()
 // community's, Patch::GetPatchInfo), one at a time: Left/Right pick, X turns it on or off in the player's profile ([Patches]
 // Enable, and Disable so a factory profile's can be turned off too).
 static std::vector<Patch::PatchInfo> s_patch_infos;
+static std::vector<int> s_patch_rule; // compilation 55: for each entry, the fingerprint rule it is (-1: a pnach patch group)
 static std::vector<std::string> s_patch_enabled, s_patch_disabled;
 static unsigned s_patch_index = 0;
 static u32 s_patch_fetch_crc = 0;
 
-static bool PatchIsOn(const std::string& name)
+// Forja SX2 (compilation 55): draw fingerprints ("huellas", pcsx2/ForjaGsRules.h): Forja's own patches, at the end of the list,
+// found by what a game draws and not by addresses, so each one holds for every game drawn the same way, any copy or region
+// (Joseph, 2026-10-18: "que todo sea nativo del emulador para aplicar a cualquier juego con los mismos esquemas"). They come
+// from huellas.ini: the settings center's copy (fetched from the project's GitHub at every game start) or the package's, so
+// an effect found in one game reaches every other game without a new package. A rule is offered where it is named (a
+// serial, or a GameDB draw hook such as OI_DBZBTGames, Spike's Budokai Tenkaichi engine: BT2, BT3 and the BT4 mod in every
+// region) and in any game where it takes its "ofrecer_desde" share of the GS or more while it plays; the ones the player
+// turns on go in [Forja] Huellas (their ids). The descriptor's layout is in GSRendererHW.cpp.
+struct ForjaRule
 {
+	std::string id, name, description;
+	ForjaGsRule gs{};
+	u32 offer_permille = 150;
+	std::vector<std::string> games;
+};
+static std::vector<ForjaRule> s_rules;
+static u32 s_rules_on = 0;              // a bit per rule: on for this game
+static u32 s_rule_share_seen[16] = {};  // the largest share of the GS seen in this game, permille
+
+static std::string RuleTrim(std::string text)
+{
+	while (!text.empty() && (text.back() == '\n' || text.back() == '\r' || text.back() == ' ' || text.back() == '\t'))
+		text.pop_back();
+	size_t start = 0;
+	while (start < text.size() && (text[start] == ' ' || text[start] == '\t'))
+		start++;
+	return text.substr(start);
+}
+
+static std::string RuleLower(std::string text)
+{
+	for (char& c : text)
+		c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+	return text;
+}
+
+static std::vector<std::string> RuleSplit(const std::string& text)
+{
+	std::vector<std::string> parts;
+	size_t start = 0;
+	while (start <= text.size())
+	{
+		size_t end = text.find(',', start);
+		if (end == std::string::npos)
+			end = text.size();
+		const std::string part = RuleTrim(text.substr(start, end - start));
+		if (!part.empty())
+			parts.push_back(part);
+		start = end + 1;
+	}
+	return parts;
+}
+
+static int RulePsm(const std::string& name)
+{
+	static constexpr std::pair<const char*, int> names[] = {{"c32", 0x00}, {"c24", 0x01}, {"c16", 0x02}, {"c16s", 0x0a}, {"t8", 0x13},
+		{"t4", 0x14}, {"t8h", 0x1b}, {"t4hl", 0x24}, {"t4hh", 0x2c}, {"z32", 0x30}, {"z24", 0x31}, {"z16", 0x32}, {"z16s", 0x3a}};
+	for (const auto& [text, psm] : names)
+	{
+		if (name == text)
+			return psm;
+	}
+	return -1;
+}
+
+static int RuleLog2(int value)
+{
+	for (int bit = 0; bit < 11; bit++)
+	{
+		if (value == (1 << bit))
+			return bit;
+	}
+	return -1;
+}
+
+static void PublishRules()
+{
+	g_forja_gs_rule_count.store(0, std::memory_order_release);
+	const u32 count = static_cast<u32>(std::min<size_t>(s_rules.size(), 16));
+	for (u32 i = 0; i < count; i++)
+		g_forja_gs_rules[i] = s_rules[i].gs;
+	g_forja_gs_rules_off.store(s_rules_on, std::memory_order_relaxed);
+	g_forja_gs_rule_count.store(count, std::memory_order_release);
+}
+
+static void ApplyRulesOn(const std::string& list)
+{
+	s_rules_on = 0;
+	for (const std::string& id : RuleSplit(list))
+	{
+		for (size_t i = 0; i < s_rules.size() && i < 16; i++)
+		{
+			if (RuleLower(s_rules[i].id) == RuleLower(id))
+				s_rules_on |= 1u << i;
+		}
+	}
+	g_forja_gs_rules_off.store(s_rules_on, std::memory_order_relaxed);
+}
+
+static std::string RulesOnList()
+{
+	std::string list;
+	for (size_t i = 0; i < s_rules.size() && i < 16; i++)
+	{
+		if (s_rules_on & (1u << i))
+			list += (list.empty() ? "" : ",") + s_rules[i].id;
+	}
+	return list;
+}
+
+// huellas.ini: one [section] a rule (its id), "key = value" lines, ';' comments. Keys: nombre, descripcion, juegos (serials or
+// GameDB draw hooks, with commas), ofrecer_desde (percent of the GS), and what the draw looks like, each optional: destino
+// (pantalla / fuera), textura (no / si / T4 / T8 / C32 / C16 / Z32...), funcion (modulate / decal / highlight / highlight2),
+// mezcla (si / no), ecuacion (up to four "ABCD" blends, digits 0-2, with commas), primitiva (puntos / lineas / triangulos /
+// sprites), escribe_z (si / no), tamano (256x256).
+static void LoadRules()
+{
+	s_rules.clear();
+	s_rules_on = 0;
+	std::fill(std::begin(s_rule_share_seen), std::end(s_rule_share_seen), 0u);
+	const std::string center = Path::Combine(EmuFolders::DataRoot, "centro/huellas.ini");
+	const std::string package = Path::Combine(EmuFolders::Resources, "huellas.ini");
+	const std::string path = FileSystem::FileExists(center.c_str()) ? center : package;
+	struct Pending
+	{
+		ForjaRule rule;
+		u64 mask = 0, value = 0;
+		std::vector<u32> blends;
+		bool ok = true;
+	};
+	std::vector<Pending> pending;
+	if (std::FILE* file = std::fopen(path.c_str(), "r"))
+	{
+		char buffer[512];
+		bool skipping = false;
+		while (std::fgets(buffer, sizeof(buffer), file))
+		{
+			const std::string line = RuleTrim(buffer);
+			if (line.empty() || line[0] == ';' || line[0] == '#')
+				continue;
+			if (line.front() == '[' && line.back() == ']')
+			{
+				skipping = pending.size() >= 16;
+				if (!skipping)
+				{
+					pending.emplace_back();
+					pending.back().rule.id = RuleTrim(line.substr(1, line.size() - 2));
+				}
+				continue;
+			}
+			const size_t equals = line.find('=');
+			if (skipping || pending.empty() || equals == std::string::npos)
+				continue;
+			Pending& p = pending.back();
+			const std::string key = RuleLower(RuleTrim(line.substr(0, equals)));
+			const std::string value = RuleTrim(line.substr(equals + 1));
+			const std::string low = RuleLower(value);
+			const auto set = [&p](u64 mask, u64 bits) {
+				p.mask |= mask;
+				p.value = (p.value & ~mask) | bits;
+			};
+			const auto pick = [&p, &low](std::initializer_list<const char*> names) -> int {
+				int index = 0;
+				for (const char* name : names)
+				{
+					if (low == name)
+						return index;
+					index++;
+				}
+				p.ok = false;
+				return 0;
+			};
+			if (key == "nombre")
+				p.rule.name = value;
+			else if (key == "descripcion")
+				p.rule.description = value;
+			else if (key == "juegos")
+				p.rule.games = RuleSplit(value);
+			else if (key == "ofrecer_desde")
+				p.rule.offer_permille = static_cast<u32>(std::clamp(std::atoi(value.c_str()), 1, 100)) * 10;
+			else if (key == "destino")
+				set(1, pick({"fuera", "pantalla"}) ? 1 : 0);
+			else if (key == "textura")
+			{
+				if (low == "no" || low == "si")
+					set(2, low == "si" ? 2 : 0);
+				else if (const int psm = RulePsm(low); psm >= 0)
+					set(2 | (u64{0x3f} << 2), 2 | (static_cast<u64>(psm) << 2));
+				else
+					p.ok = false;
+			}
+			else if (key == "funcion")
+				set(u64{3} << 8, static_cast<u64>(pick({"modulate", "decal", "highlight", "highlight2"})) << 8);
+			else if (key == "mezcla")
+				set(u64{1} << 11, pick({"no", "si"}) ? (u64{1} << 11) : 0);
+			else if (key == "ecuacion")
+			{
+				for (const std::string& blend : RuleSplit(value))
+				{
+					if (blend.size() != 4 || blend.find_first_not_of("012") != std::string::npos || p.blends.size() >= 4)
+					{
+						p.ok = false;
+						break;
+					}
+					p.blends.push_back(static_cast<u32>(blend[0] - '0') | (static_cast<u32>(blend[1] - '0') << 2) |
+									   (static_cast<u32>(blend[2] - '0') << 4) | (static_cast<u32>(blend[3] - '0') << 6));
+				}
+			}
+			else if (key == "primitiva")
+				set(u64{3} << 20, static_cast<u64>(pick({"puntos", "lineas", "triangulos", "sprites"})) << 20);
+			else if (key == "escribe_z")
+				set(u64{1} << 22, pick({"no", "si"}) ? (u64{1} << 22) : 0);
+			else if (key == "tamano")
+			{
+				const size_t x = low.find('x');
+				const int tw = x == std::string::npos ? -1 : RuleLog2(std::atoi(low.c_str()));
+				const int th = x == std::string::npos ? -1 : RuleLog2(std::atoi(low.c_str() + x + 1));
+				if (tw < 0 || th < 0)
+					p.ok = false;
+				else
+					set((u64{0xf} << 23) | (u64{0xf} << 27), (static_cast<u64>(tw) << 23) | (static_cast<u64>(th) << 27));
+			}
+			else
+			{
+				ProbeLog("Huellas: [%s] unknown key \"%s\", ignored\n", p.rule.id.c_str(), key.c_str());
+			}
+		}
+		std::fclose(file);
+	}
+	std::string ids;
+	for (Pending& p : pending)
+	{
+		if (!p.ok || p.rule.id.empty() || p.rule.name.empty() || p.mask == 0)
+		{
+			ProbeLog("Huellas: [%s] left out (a value it doesn't know, or no name or nothing to match)\n", p.rule.id.c_str());
+			continue;
+		}
+		p.rule.gs.mask = p.mask;
+		if (p.blends.empty())
+		{
+			p.rule.gs.values[0] = p.value;
+			p.rule.gs.count = 1;
+		}
+		else
+		{
+			p.rule.gs.mask |= u64{0xff} << 12;
+			for (size_t k = 0; k < p.blends.size(); k++)
+				p.rule.gs.values[k] = (p.value & ~(u64{0xff} << 12)) | (static_cast<u64>(p.blends[k]) << 12);
+			p.rule.gs.count = static_cast<u32>(p.blends.size());
+		}
+		ids += (ids.empty() ? "" : ", ") + p.rule.id;
+		s_rules.push_back(std::move(p.rule));
+	}
+	PublishRules();
+	ProbeLog("Huellas: %zu from %s (%s)\n", s_rules.size(), path.c_str(), ids.empty() ? "none" : ids.c_str());
+}
+
+// Called with the heartbeat: the largest share each rule took in this game (a rule left out takes none while it is out).
+static void UpdateRuleShares()
+{
+	for (size_t i = 0; i < s_rules.size() && i < 16; i++)
+		s_rule_share_seen[i] = std::max(s_rule_share_seen[i], g_forja_gs_rule_share[i].load(std::memory_order_relaxed));
+}
+
+static bool RuleOffered(size_t i)
+{
+	if ((s_rules_on & (1u << i)) || s_rule_share_seen[i] >= s_rules[i].offer_permille)
+		return true;
+	const std::string serial = VMManager::GetDiscSerial();
+	for (const std::string& game : s_rules[i].games)
+	{
+		if (game == serial)
+			return true;
+		if (game.rfind("OI_", 0) == 0)
+		{
+			const s16 hook = GSLookupBeforeDrawFunctionId(game);
+			if (hook >= 0 && EmuConfig.GS.BeforeDrawFunctionId == hook)
+				return true;
+		}
+	}
+	return false;
+}
+
+static bool PatchIsOn(size_t index)
+{
+	if (index < s_patch_rule.size() && s_patch_rule[index] >= 0)
+		return (s_rules_on & (1u << s_patch_rule[index])) != 0;
+	const std::string& name = s_patch_infos[index].name;
 	return std::find(s_patch_enabled.begin(), s_patch_enabled.end(), name) != s_patch_enabled.end() &&
 	       std::find(s_patch_disabled.begin(), s_patch_disabled.end(), name) == s_patch_disabled.end();
 }
@@ -502,7 +790,7 @@ static void PublishPatchMenuText()
 		return;
 	}
 	const Patch::PatchInfo& patch = s_patch_infos[s_patch_index];
-	const bool on = PatchIsOn(patch.name);
+	const bool on = PatchIsOn(s_patch_index);
 	char label[256];
 	std::snprintf(label, sizeof(label), "Parche %u de %zu:  < %s >  %s", s_patch_index + 1, s_patch_infos.size(), patch.name.c_str(),
 		on ? "Sí" : "No");
@@ -520,6 +808,25 @@ static void ReloadPatchMenu()
 	const std::string serial = VMManager::GetDiscSerial();
 	const u32 crc = VMManager::GetDiscCRC();
 	s_patch_infos = crc != 0 ? Patch::GetPatchInfo(serial, crc, false, false, nullptr) : std::vector<Patch::PatchInfo>{};
+	s_patch_rule.assign(s_patch_infos.size(), -1);
+	UpdateRuleShares();
+	for (size_t i = 0; crc != 0 && i < s_rules.size() && i < 16; i++)
+	{
+		if (!RuleOffered(i))
+			continue;
+		Patch::PatchInfo rule;
+		rule.name = s_rules[i].name + " (Forja)";
+		rule.description = s_rules[i].description;
+		if (s_rule_share_seen[i] > 0)
+		{
+			char seen[64];
+			std::snprintf(seen, sizeof(seen), "  ·  aquí: %.0f %% del GS", s_rule_share_seen[i] / 10.0);
+			rule.description += seen;
+		}
+		rule.author = "Forja SX2";
+		s_patch_infos.push_back(std::move(rule));
+		s_patch_rule.push_back(static_cast<int>(i));
+	}
 	s_patch_enabled = Host::GetStringListSetting(Patch::PATCHES_CONFIG_SECTION, Patch::PATCH_ENABLE_CONFIG_KEY);
 	s_patch_disabled = Host::GetStringListSetting(Patch::PATCHES_CONFIG_SECTION, Patch::PATCH_DISABLE_CONFIG_KEY);
 	if (s_patch_index >= s_patch_infos.size())
@@ -535,7 +842,17 @@ static void TogglePatch()
 	if (s_patch_infos.empty())
 		return;
 	const std::string name = s_patch_infos[s_patch_index].name;
-	const bool turning_on = !PatchIsOn(name);
+	const bool turning_on = !PatchIsOn(s_patch_index);
+	if (s_patch_rule[s_patch_index] >= 0) // compilation 55: a fingerprint rule, in [Forja] Huellas
+	{
+		const u32 bit = 1u << s_patch_rule[s_patch_index];
+		s_rules_on = turning_on ? (s_rules_on | bit) : (s_rules_on & ~bit);
+		const std::string list = RulesOnList();
+		SavePlayerProfile("Huellas", [list](INISettingsInterface& ini) { ini.SetStringValue("Forja", "Huellas", list.c_str()); }, false);
+		ProbeLog("Patches: \"%s\" %s; huellas on: [%s]\n", name.c_str(), turning_on ? "on" : "off", list.c_str());
+		ReloadPatchMenu();
+		return;
+	}
 	std::vector<std::string> enabled = s_patch_enabled, disabled = s_patch_disabled;
 	enabled.erase(std::remove(enabled.begin(), enabled.end(), name), enabled.end());
 	disabled.erase(std::remove(disabled.begin(), disabled.end(), name), disabled.end());
@@ -1092,9 +1409,9 @@ static void ChangeToSelectedDisc()
 static void LogGameSettings(const char* why)
 {
 	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d "
-			 "gs_left_out=[%s]\n", why,
+			 "gs_left_out=[%s] huellas=[%s]\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
-		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str());
+		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str());
 }
 
 static void PublishGameMenu()
@@ -1219,6 +1536,7 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
 	ApplyVu1SkipList(s_profile.vu1_skip); // compilation 44: the VU1 filter
 	ApplyGsFilterList(s_profile.gs_filter); // compilation 51: the GS filter
+	ApplyRulesOn(s_profile.rules_on); // compilation 55: the fingerprint rules the player turned on
 	ProbeLog("Game profile: %s %08X factory=%d player=%d video_mode=%d (%s) video_ee_rate=%d (%s) frame_gen=%d (%s) "
 			 "cores=\"%s\" (%s) cpu_auto=%d (%s)\n",
 		s_profile.serial.empty() ? "(no serial)" : s_profile.serial.c_str(), s_profile.crc, s_profile.has_factory ? 1 : 0,
@@ -1915,6 +2233,7 @@ void VMHostPoll()
 	{
 		UpdateGameProfile(elapsed);
 		UpdateVideoMode(elapsed);
+		UpdateRuleShares(); // compilation 55
 		UpdateCpuAuto(elapsed);
 		UpdateGsSkip(elapsed);
 		UpdateOutputRate(elapsed);
@@ -2627,6 +2946,7 @@ static void* RunVM(void*)
 			s_cpu_auto_steps = 0;
 			s_gs_skip_mode = -1; // compilation 47: a new game starts drawing every frame (ApplyGameProfile sets it again)
 			ResetGsFilterList(); // compilation 54: a new game's list starts empty
+			LoadRules(); // compilation 55: huellas.ini, before the profile turns its rules on
 			ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
 			RepinWorkersForProfile();
 		}

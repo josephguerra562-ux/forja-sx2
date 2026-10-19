@@ -63,6 +63,14 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
   - **Extras** (se llamaba Parches; desde la 44 trae más; desde la 53 los filtros están en **No tocar**):
     - **Parche:** los parches de ese juego, uno por uno. ←/→ elige, **X** lo pone o lo quita y se guarda para ese juego.
       Algunos piden reiniciar el juego para quitarse del todo.
+      **Huellas de Forja** (desde la 55): al final de la lista pueden aparecer parches propios de Forja, marcados "(Forja)".
+      Son efectos que Forja reconoce **por cómo se dibujan** (tipo de textura, mezcla, figura, dónde se dibujan), no por
+      direcciones de memoria, así que sirven con cualquier copia o región del juego y con cualquier otro juego que dibuje
+      igual. Forja mide cada huella mientras juegas y la ofrece en el juego donde aparece (o en los juegos que la huella
+      nombra). Vienen apagadas: tú las prendes. Las huellas están en `huellas.ini` y llegan por el centro de ajustes, así
+      que se pueden agregar nuevas sin otro PKG. La primera es **"Menos efectos: sombreado de personajes"**: en los Dragon
+      Ball Z Budokai Tenkaichi 2, 3 y el 4 (mod) quita la capa de sombras y brillos de la ropa y los personajes; se ve con
+      menos detalle, pero en las peleas del Tenkaichi 4 la velocidad pasó de ~45 % a ~85 % (de 13 a 25-30 cuadros por segundo).
     - **Texturas HD:** No / Sí / Sí, precargadas. El pack va por FTP en `/data/ForjaSX2/textures/<SERIAL>/replacements`
       (como en PCSX2). Precargar evita tirones pero usa más memoria: con packs enormes, mejor "Sí".
     - **Ajustes recomendados:** de dónde vienen los ajustes de fábrica de ese juego: del centro de ajustes (GitHub, con

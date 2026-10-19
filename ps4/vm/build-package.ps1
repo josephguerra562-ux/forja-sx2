@@ -101,6 +101,11 @@ foreach ($patchFile in @(Get-ChildItem -LiteralPath $patchRoot -Filter '*.pnach'
   Copy-Item -LiteralPath $patchFile.FullName -Destination (Join-Path $packageDir $relative)
   $packageFiles += $relative
 }
+# Forja SX2 (compilation 55): the draw fingerprints (resources/huellas.ini), read at every game start (ps4/vm/main.cpp, LoadRules).
+$rulesFile = Join-Path $PSScriptRoot 'assets/huellas.ini'
+if (-not (Test-Path -LiteralPath $rulesFile)) { throw 'Forja SX2 draw fingerprints (assets/huellas.ini) are missing.' }
+Copy-Item -LiteralPath $rulesFile -Destination (Join-Path $packageDir 'resources/huellas.ini')
+$packageFiles += 'resources/huellas.ini'
 # (AI-assisted) License notices for the bundled output resampler.
 New-Item -ItemType Directory -Force -Path (Join-Path $packageDir 'resources/licenses') | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'assets/licenses/speex-resampler.txt') -Destination (Join-Path $packageDir 'resources/licenses/speex-resampler.txt')

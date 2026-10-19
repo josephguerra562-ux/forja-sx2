@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <atomic>
 #include <cstring>
+#include "ForjaGsRules.h"
 // PS5 port (vk-285-107): this file's printf/fflush(stdout) go to the deferred log (OrbisDeferredLog.h), which the
 // ticker thread writes out: the [gsout] line's printf+fflush every 200 frames left the GS thread asleep ~33 ms in a
 // write now and then (vk-285-106's [vsslow], the "output" phase).
@@ -2944,6 +2945,19 @@ std::atomic<u32> g_forja_gs_filter_count{0};
 std::atomic<u64> g_forja_gs_top[8];
 std::atomic<u32> g_forja_gs_top_info[8]; // share of the draw time in permille << 16 | draws a second (65535 at most)
 std::atomic<u32> g_forja_gs_top_count{0};
+// Forja SX2 (compilation 55): draw fingerprints ("huellas"), effects found by what their draws look like and not by where they
+// are, so one rule holds for every game drawn the same way, any copy, region or scene (Joseph, 2026-10-18: "que todo sea
+// nativo del emulador para aplicar a cualquier juego con los mismos esquemas"). Each draw gets a descriptor (below, in Draw):
+// bit 0 into the picture the TV shows, 1 textured, 2-7 PSM, 8-9 TFX, 10 TCC, 11 ABE, 12-19 ALPHA (A | B << 2 | C << 4 |
+// D << 6), 20-21 primitive class, 22 writes depth, 23-26 TW, 27-30 TH. A rule (main.cpp reads them from huellas.ini) is a
+// mask and up to four values: a draw matches when its descriptor under the mask is one of them. The menu offers a rule as a
+// patch where it is found; the ones the player turns on aren't drawn. The first one: Dragon Ball Z Budokai Tenkaichi's
+// characters' shading layer (an 8-bit texture as a decal, blended, triangles, into the picture): ~12,000 draws a second and
+// 30-50 % of the GS in the BT4 mod's fights; left out, 80-92 % speed instead of ~45 %, with less detail on the clothes.
+ForjaGsRule g_forja_gs_rules[16]; // pcsx2/ForjaGsRules.h
+std::atomic<u32> g_forja_gs_rule_count{0};
+std::atomic<u32> g_forja_gs_rules_off{0}; // a bit per rule: the player left it out
+std::atomic<u32> g_forja_gs_rule_share[16]; // permille of the GS's draw time in the last ~5 s
 
 namespace
 {
@@ -2954,6 +2968,7 @@ namespace
 		u64 ticks;
 		// Compilation 52: what its draws look like (from the timed ones), for the session's analysis.
 		u32 psm, tw, th, tfx, tcc, alpha;
+		u64 desc; // compilation 55: its fingerprint descriptor, to write rules from any game's log
 		u32 cbp[4]; // the CLUT addresses seen, + 1 (0 = empty)
 		u32 palettes; // how many different ones (5 = more than 4): an 8- or 4-bit texture with other colours
 	};
@@ -2968,6 +2983,9 @@ namespace
 	u32 s_forja_gs_draws = 0;
 	u32 s_forja_gs_left_out = 0;
 	u32 s_forja_gs_lost = 0; // draws without a slot (compilation 53)
+	u64 s_forja_rule_ticks[16] = {}; // compilation 55: each rule's timed draws
+	u32 s_forja_rule_draws[16] = {};
+	u32 s_forja_rule_left_out = 0;
 
 	ForjaGsGroup* ForjaGsGroupOf(u64 key)
 	{
@@ -3036,6 +3054,15 @@ namespace
 			int len = std::snprintf(line, sizeof(line),
 				"GS groups: draws_per_s=%.0f left_out_per_s=%.0f groups=%u lost_per_s=%.0f top8(fb/tex:psm:size/prim=share/draws_per_s):",
 				s_forja_gs_draws / seconds, s_forja_gs_left_out / seconds, groups, s_forja_gs_lost / seconds);
+			// Compilation 55: each fingerprint rule's share (published for the menu) and the draws they left out.
+			const u32 rules = std::min(g_forja_gs_rule_count.load(std::memory_order_acquire), 16u);
+			len += std::snprintf(line + len, sizeof(line) - len, " rules_left_out_per_s=%.0f", s_forja_rule_left_out / seconds);
+			for (u32 i = 0; i < rules && len > 0 && len < static_cast<int>(sizeof(line)); i++)
+			{
+				const u32 permille = static_cast<u32>(std::min<u64>(s_forja_rule_ticks[i] * 1000 / total, 1000));
+				g_forja_gs_rule_share[i].store(permille, std::memory_order_relaxed);
+				len += std::snprintf(line + len, sizeof(line) - len, " rule%u=%.1f%%/%.0f", i, permille / 10.0, s_forja_rule_draws[i] / seconds);
+			}
 			for (unsigned k = 0; k < found && len > 0 && len < static_cast<int>(sizeof(line)); k++)
 			{
 				const ForjaGsGroup& group = s_forja_gs_groups[top[k]];
@@ -3058,10 +3085,10 @@ namespace
 			for (unsigned k = 0; k < found && k < 4 && len > 0 && len < static_cast<int>(sizeof(line)); k++)
 			{
 				const ForjaGsGroup& group = s_forja_gs_groups[top[k]];
-				len += std::snprintf(line + len, sizeof(line) - len, " %llx psm=%02x %ux%u tfx=%u tcc=%u alpha=%02x palettes=%u%s;",
+				len += std::snprintf(line + len, sizeof(line) - len, " %llx psm=%02x %ux%u tfx=%u tcc=%u alpha=%02x palettes=%u%s desc=%llx;",
 					static_cast<unsigned long long>(group.key), group.psm, group.tw, group.th, group.tfx, group.tcc, group.alpha,
 					std::min(group.palettes, 4u),
-					group.palettes > 4 ? "+" : "");
+					group.palettes > 4 ? "+" : "", static_cast<unsigned long long>(group.desc));
 			}
 			ProbeLog("%s\n", line);
 			for (unsigned k = 0; k < found; k++)
@@ -3076,10 +3103,14 @@ namespace
 		}
 		std::memset(s_forja_gs_groups, 0, sizeof(s_forja_gs_groups));
 		s_forja_gs_draws = s_forja_gs_left_out = s_forja_gs_lost = 0;
+		std::memset(s_forja_rule_ticks, 0, sizeof(s_forja_rule_ticks));
+		std::memset(s_forja_rule_draws, 0, sizeof(s_forja_rule_draws));
+		s_forja_rule_left_out = 0;
 	}
 
-	void ForjaGsNote(ForjaGsGroup& group, const GIFRegTEX0& tex0, const GIFRegALPHA& alpha, bool textured)
+	void ForjaGsNote(ForjaGsGroup& group, const GIFRegTEX0& tex0, const GIFRegALPHA& alpha, bool textured, u64 desc)
 	{
+		group.desc = desc;
 		group.alpha = static_cast<u32>(alpha.A) | (static_cast<u32>(alpha.B) << 2) | (static_cast<u32>(alpha.C) << 4) |
 			(static_cast<u32>(alpha.D) << 6);
 		if (!textured)
@@ -3109,6 +3140,7 @@ namespace
 	{
 		ForjaGsGroup* group = nullptr;
 		u64 t0 = 0;
+		u32 rules = 0; // compilation 55: the fingerprint rules this draw matches, a bit each
 		explicit ForjaGsDrawTimer(u64 key)
 		{
 			if ((++s_forja_gs_draw_number % FORJA_GS_SAMPLE) == 0)
@@ -3128,8 +3160,13 @@ namespace
 		}
 		~ForjaGsDrawTimer()
 		{
-			if (t0 && group)
-				group->ticks += (__builtin_ia32_rdtsc() - t0) * FORJA_GS_SAMPLE;
+			if (!t0)
+				return;
+			const u64 ticks = (__builtin_ia32_rdtsc() - t0) * FORJA_GS_SAMPLE;
+			if (group)
+				group->ticks += ticks;
+			for (u32 bits = rules; bits != 0; bits &= bits - 1)
+				s_forja_rule_ticks[__builtin_ctz(bits)] += ticks;
 		}
 	};
 } // namespace
@@ -3159,8 +3196,43 @@ void GSRendererHW::Draw()
 	}
 	const u32 forja_fbp = static_cast<u32>(m_context->FRAME.FBP);
 	const bool forja_tex = PRIM->TME != 0;
+	const bool forja_shown = forja_fbp == s_forja_shown[0] || forja_fbp == s_forja_shown[1];
+	// Compilation 55: the draw's fingerprint descriptor (g_forja_gs_rules has the layout) and the rules it matches.
+	const u64 forja_desc = (forja_shown ? u64{1} : u64{0}) | (forja_tex ? u64{2} : u64{0}) |
+		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.PSM) & 0x3fu) : 0x3fu) << 2) |
+		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.TFX) & 3u) : 0u) << 8) |
+		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.TCC) & 1u) : 0u) << 10) |
+		(PRIM->ABE ? (u64{1} << 11) : u64{0}) |
+		(static_cast<u64>(static_cast<u32>(m_context->ALPHA.A) | (static_cast<u32>(m_context->ALPHA.B) << 2) |
+			(static_cast<u32>(m_context->ALPHA.C) << 4) | (static_cast<u32>(m_context->ALPHA.D) << 6)) << 12) |
+		(static_cast<u64>(static_cast<u32>(m_vt.m_primclass) & 3u) << 20) |
+		(m_context->ZBUF.ZMSK ? u64{0} : (u64{1} << 22)) |
+		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.TW) & 0xfu) : 0u) << 23) |
+		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.TH) & 0xfu) : 0u) << 27);
+	u32 forja_rules = 0;
+	if (const u32 forja_rule_count = g_forja_gs_rule_count.load(std::memory_order_acquire)) [[unlikely]]
+	{
+		for (u32 i = 0; i < forja_rule_count && i < 16; i++)
+		{
+			const ForjaGsRule& rule = g_forja_gs_rules[i];
+			const u64 masked = forja_desc & rule.mask;
+			for (u32 v = 0; v < rule.count && v < 4; v++)
+			{
+				if (masked == rule.values[v])
+				{
+					forja_rules |= 1u << i;
+					break;
+				}
+			}
+		}
+		if (forja_rules & g_forja_gs_rules_off.load(std::memory_order_relaxed))
+		{
+			s_forja_rule_left_out++;
+			return;
+		}
+	}
 	const u64 forja_gs_key = (u64{1} << 63) |
-		(static_cast<u64>(forja_fbp == s_forja_shown[0] || forja_fbp == s_forja_shown[1] ? 0x1ffu : (forja_fbp & 0x1ffu)) << 31) |
+		(static_cast<u64>(forja_shown ? 0x1ffu : (forja_fbp & 0x1ffu)) << 31) |
 		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.TBP0) & 0x3fffu) : 0x3fffu) << 17) |
 		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.PSM) & 0x3fu) : 0x3fu) << 11) |
 		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.TW) & 0xfu) : 0xfu) << 7) |
@@ -3178,8 +3250,11 @@ void GSRendererHW::Draw()
 		}
 	}
 	ForjaGsDrawTimer forja_gs_timer(forja_gs_key);
+	forja_gs_timer.rules = forja_rules;
+	for (u32 bits = forja_rules; bits != 0; bits &= bits - 1)
+		s_forja_rule_draws[__builtin_ctz(bits)]++;
 	if (forja_gs_timer.t0 && forja_gs_timer.group)
-		ForjaGsNote(*forja_gs_timer.group, m_context->TEX0, m_context->ALPHA, PRIM->TME);
+		ForjaGsNote(*forja_gs_timer.group, m_context->TEX0, m_context->ALPHA, PRIM->TME, forja_desc);
 	PS4_GS_SCOPE(HWDraw);
 	OrbisHwDrawTimer orbis_hwdraw_timer;
 	g_orbis_ctx = m_context; g_orbis_tme = PRIM->TME; g_orbis_prim = (unsigned)m_vt.m_primclass; g_orbis_verts = (unsigned)m_index->tail;
