@@ -19,9 +19,13 @@ namespace ForjaSettings
 
 	struct Values
 	{
-		// EECycleRate, -6..3. Compilation 45: -6 (27 %) is the default, as God of War II measured best (98 %, 2026-10-17)
+		// EECycleRate, -6..3. Compilation 45: -6 (27 %) was the default, as God of War II measured best (98 %, 2026-10-17)
 		// and Crash Nitro Kart kept its own speed at it (2026-10-18); a game that needs more gets it in L3+R3, for that game.
-		int ee_rate = -6;
+		// Compilation 58: -4 (36 %), with the CPU automático below (27 %) under it. At 27 % the automatic speed had nowhere to
+		// go; at 36 % a game gets a third more PS2 CPU where the PS4 has room for it, and comes down to 27 % by itself in its
+		// heavy scenes: the recipe God of War II and Crash Nitro Kart's factory profiles have used since build 46 (~41 frames a
+		// second in GoW2's Colossus fight). A player's ajustes.ini keeps what it says.
+		int ee_rate = -4;
 		// [Forja] CpuAuto for every game without its own (compilation 45): 0 off, -1..-6 the lowest EE rate it may step down
 		// to (main.cpp, UpdateCpuAuto). -6: a game raised above 27 % in L3+R3 comes back down in its heavy scenes.
 		int cpu_auto = -6;
