@@ -1171,7 +1171,8 @@ static void ReloadGsFilter()
 		}
 		return u32{0};
 	};
-	// Places already in the list: a group left out stays, one measured again gets its new measure, the others free their place.
+	// Places already in the list: a group left out stays, one measured again gets its new measure, the others free their place
+	// for the next costliest one measured now.
 	std::vector<bool> free_place(s_gs_candidates.size(), false);
 	for (size_t i = 0; i < s_gs_candidates.size(); i++)
 	{
@@ -1192,13 +1193,8 @@ static void ReloadGsFilter()
 		measured.erase(measured.begin());
 		free_place[i] = false;
 	}
-	for (size_t i = s_gs_candidates.size(); i-- > 0;)
-	{
-		if (!free_place[i])
-			continue;
-		s_gs_candidates.erase(s_gs_candidates.begin() + static_cast<std::ptrdiff_t>(i));
-		s_gs_infos.erase(s_gs_infos.begin() + static_cast<std::ptrdiff_t>(i));
-	}
+	// Compilation 56: a place nobody new takes keeps its group (with its last measure) instead of closing up: in build 54 the
+	// ones after it moved up one, and Dragon Ball's "sin textura" sprites, left out as the 6, came back as the 5 (2026-10-19).
 	size_t on = 0;
 	for (const u64 key : s_gs_candidates)
 		on += GsFiltered(key) ? 0 : 1;
