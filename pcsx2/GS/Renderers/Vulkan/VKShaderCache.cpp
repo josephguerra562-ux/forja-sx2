@@ -9,6 +9,7 @@
 #include "GS/Renderers/Vulkan/VKOrbisTiming.h" // vk-285-38: [shaders]
 #if defined(PCSX2_PS4_VM_BOOT)
 #include "ps4/core/ThreadAffinityPS4.h"
+#include <pthread.h>
 #endif
 
 #include "Config.h"
@@ -667,9 +668,49 @@ bool VKShaderCache::FlushPipelineCacheInBackground()
 	m_pipeline_cache_dirty = false;
 
 	s_writing.store(true, std::memory_order_release);
-	// Forja SX2 (compilation 59): a thread the system can't give (no memory for its stack) throws std::system_error, which nothing
-	// caught on the GS thread: the app closed with "uncaught exception std::__1::system_error" (crash.log, 2026-10-18). Then the
-	// cache is just written by the next flush.
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2 (compilation 59): this writer, every 30 s of play when the cache changed (HostVM.cpp), was a std::thread with the
+	// default stack. When the system couldn't give that thread, std::thread threw std::system_error on the GS thread and nothing
+	// caught it: "uncaught exception std::__1::system_error" in crash.log, God of War II on 2026-10-19 (after the menu changed
+	// patches, sharpness or loaded a state, which compile new effects) and Dragon Ball on 2026-10-18. Now a thread of 256 KB;
+	// if it can't start either, the cache waits for the next flush.
+	struct Job
+	{
+		std::vector<u8> data;
+		std::string filename;
+	};
+	auto* job = new Job{std::move(data), m_pipeline_cache_filename};
+	pthread_t thread{};
+	pthread_attr_t attr;
+	int result = pthread_attr_init(&attr);
+	if (result == 0)
+	{
+		pthread_attr_setstacksize(&attr, 256 * 1024);
+		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+		result = pthread_create(&thread, &attr, [](void* argument) -> void* {
+			const std::unique_ptr<Job> job(static_cast<Job*>(argument));
+			PS4ThreadAffinity::PinCurrentThreadToHelpers("pipeline cache writer");
+			const std::string temporary = job->filename + ".tmp";
+			const bool ok = FileSystem::WriteBinaryFile(temporary.c_str(), job->data.data(), job->data.size()) &&
+							FileSystem::RenamePath(temporary.c_str(), job->filename.c_str());
+			Console.WriteLn("Forja SX2: pipeline cache %s in the background (%zu bytes)", ok ? "saved" : "NOT saved",
+				job->data.size());
+			s_writing.store(false, std::memory_order_release);
+			return nullptr;
+		}, job);
+		pthread_attr_destroy(&attr);
+	}
+	if (result != 0)
+	{
+		delete job;
+		s_writing.store(false, std::memory_order_release);
+		m_pipeline_cache_dirty = true;
+		Console.Error("Forja SX2: the pipeline cache writer could not start (error %d); kept for the next flush", result);
+		return false;
+	}
+	return true;
+#endif
+	// A thread the system can't give throws std::system_error; then the cache is just written by the next flush.
 	try
 	{
 		std::thread([data = std::move(data), filename = m_pipeline_cache_filename]() {
