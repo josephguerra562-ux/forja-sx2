@@ -11,7 +11,8 @@
   instalada, borra la app vieja y vuelve a instalar: tus juegos, ajustes y perfiles de `/data/ForjaSX2/` no se borran.
 - **Actualizador dentro de la app:** cuando salga una compilación más nueva que la tuya **en tu canal**, la biblioteca lo
   pregunta una vez (**Descargar** / **Ahora no**); **OPTIONS** lo vuelve a preguntar. Baja el PKG a
-  `/data/pkg/ForjaSX2-compilacion-N.pkg`, lo comprueba con el `SHA256SUMS.txt` de la versión y, si no coincide, lo borra.
+  `/data/pkg/ForjaSX2-Emulador-v<versión>-<compilación>.pkg` (por ejemplo `ForjaSX2-Emulador-v1.04-58.pkg`; hasta la 57 se
+  llamaba `ForjaSX2-compilacion-N.pkg`), lo comprueba con el `SHA256SUMS.txt` de la versión y, si no coincide, lo borra.
   Arriba a la derecha se ve el avance. Cuando diga "lista en /data/pkg", cierra Forja y en GoldHEN abre el
   **Package Installer**: el PKG aparece ahí.
 - **Dos canales de actualización:**

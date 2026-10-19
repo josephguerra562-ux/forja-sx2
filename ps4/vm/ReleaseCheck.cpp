@@ -34,6 +34,7 @@ namespace
 	constexpr const char* TestingMarker = "/data/ForjaSX2/canal-pruebas";
 	constexpr const char* PackageDirectory = "/data/pkg";
 	constexpr const char* PackagePrefix = "ForjaSX2-compilacion-";
+	constexpr const char* VersionedPrefix = "ForjaSX2-Emulador-v"; // compilation 58
 
 	std::atomic<bool> s_started{false};
 	std::atomic<bool> s_has_update{false};
@@ -227,15 +228,43 @@ namespace
 		return {};
 	}
 
+	// Compilation 58: the package is named after its version and build ("ForjaSX2-Emulador-v1.04-58.pkg"), as Joseph asked
+	// (2026-10-19): GoldHEN's Package Installer showed "ForjaSX2-compilacion-57.pkg", which did not say which version it was.
+	// A release whose title has no version keeps the old name.
+	std::string PackageFileName(int build, const std::string& version)
+	{
+		if (version.empty())
+			return std::string(PackagePrefix) + std::to_string(build) + ".pkg";
+		return std::string(VersionedPrefix) + version + "-" + std::to_string(build) + ".pkg";
+	}
+
+	// A package an updater left in /data/pkg: "ForjaSX2-compilacion-N.pkg" or "ForjaSX2-Emulador-vX.YY-N.pkg". One copied there
+	// by hand ("ForjaSX2-Emulador-v1.03.pkg", no build after the version) is not one of them.
+	bool UpdaterPackage(const std::string& name)
+	{
+		if (name.size() < 4 || name.compare(name.size() - 4, 4, ".pkg") != 0)
+			return false;
+		if (name.rfind(PackagePrefix, 0) == 0)
+			return true;
+		if (name.rfind(VersionedPrefix, 0) != 0)
+			return false;
+		const size_t dash = name.rfind('-');
+		if (dash == std::string::npos || dash < std::strlen(VersionedPrefix))
+			return false;
+		const std::string digits = name.substr(dash + 1, name.size() - 4 - dash - 1);
+		return !digits.empty() && digits.find_first_not_of("0123456789") == std::string::npos;
+	}
+
 	void* Download(void*)
 	{
 		pthread_setname_np(pthread_self(), "PS4 updater");
-		std::string package_url, sums_url, package_name;
+		std::string package_url, sums_url, package_name, version;
 		{
 			std::lock_guard lock(s_mutex);
 			package_url = s_package_url;
 			sums_url = s_sums_url;
 			package_name = s_package_name;
+			version = s_latest_version;
 		}
 		const int latest = s_latest_build.load(std::memory_order_relaxed);
 		const auto fail = [&](const std::string& why) {
@@ -262,7 +291,8 @@ namespace
 			return fail("SHA256SUMS.txt no nombra el paquete");
 
 		mkdir(PackageDirectory, 0777);
-		const std::string final_path = std::string(PackageDirectory) + "/" + PackagePrefix + std::to_string(latest) + ".pkg";
+		const std::string file_name = PackageFileName(latest, version);
+		const std::string final_path = std::string(PackageDirectory) + "/" + file_name;
 		const std::string part_path = final_path + ".part";
 		std::FILE* file = std::fopen(part_path.c_str(), "wb");
 		if (!file)
@@ -305,12 +335,11 @@ namespace
 		// Older packages the updater left behind go, so /data/pkg does not fill up with them.
 		if (DIR* dir = opendir(PackageDirectory))
 		{
-			const std::string keep = std::string(PackagePrefix) + std::to_string(latest) + ".pkg";
 			std::vector<std::string> old;
 			while (dirent* entry = readdir(dir))
 			{
 				const std::string name = entry->d_name;
-				if (name != keep && name.rfind(PackagePrefix, 0) == 0)
+				if (name != file_name && UpdaterPackage(name))
 					old.push_back(name);
 			}
 			closedir(dir);

@@ -6,8 +6,8 @@ generation, PS2 DVD copying and an in-app updater. It is still in testing: every
 stutters, audio dropouts or crashes.
 
 - **Download:** the recommended version is the one marked **Latest** in
-  [Releases](https://github.com/josephguerra562-ux/forja-sx2/releases/latest), for example `ForjaSX2-Emulador-v1.02.pkg`.
-  It has been tested on a PS4 Pro (stable channel). The "Pre-release" builds (such as "Forja SX2 v1.03 (prueba 51)") are
+  [Releases](https://github.com/josephguerra562-ux/forja-sx2/releases/latest), for example `ForjaSX2-Emulador-v1.03.pkg`.
+  It has been tested on a PS4 Pro (stable channel). The "Pre-release" builds (such as "Forja SX2 v1.04 (prueba 58)") are
   published automatically with every change and may break (testing channel). You can download whichever you like.
 - **Install and use:** the full guide is in Spanish, [LEEME_FORJA_SX2.md](LEEME_FORJA_SX2.md) (installation, folders,
   controls, per-game settings and troubleshooting). The app's menus are in Spanish.
@@ -37,7 +37,7 @@ session's `logs/sesiones` folder.
 Open an [issue](https://github.com/josephguerra562-ux/forja-sx2/issues/new/choose) and include:
 
 1. **Console model** (CUH-xxxx; PS4 Fat, Slim or Pro) and **firmware** (for example 9.00 or 11.00), and your GoldHEN version.
-2. **Forja SX2 version** (bottom left of the library, for example "Versión 1.02 (50)").
+2. **Forja SX2 version** (bottom left of the library, for example "Versión 1.03 (57)").
 3. **What happens:** the app doesn't open, the game closes, black screen, slow... and any error code the PS4 shows (CE-xxxxx-x).
 4. **The logs:** the `/data/ForjaSX2/logs` folder (via FTP). If the app closes before the library appears, that folder still
    shows how far it got.
