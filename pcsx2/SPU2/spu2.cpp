@@ -492,10 +492,14 @@ void SPU2::CreateOutputStream()
 
 void SPU2::UpdateSampleRate()
 {
-	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
-	if (s_output_stream && s_output_stream->GetSampleRate() == GetConsoleSampleRate())
-		return;
+	{
+		std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
+		if (s_output_stream && s_output_stream->GetSampleRate() == GetConsoleSampleRate())
+			return;
+	}
 
+	// Forja SX2 (compilation 59): without the lock, as CreateOutputStream() wants it: its ForjaSPU2Sync() may wait for the audio
+	// write thread, which needs the lock to write the stream.
 	CreateOutputStream();
 
 	// Can't be capturing when the sample rate changes.
@@ -704,7 +708,7 @@ bool SPU2::IsRunningPSXMode()
 
 void SPU2::CheckForConfigChanges(const Pcsx2Config& old_config)
 {
-	std::lock_guard forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
+	std::unique_lock forja_stream_lock(s_stream_mutex); // Forja SX2: ForjaAudioThread() writes the stream too
 	const Pcsx2Config::SPU2Options& opts = EmuConfig.SPU2;
 	const Pcsx2Config::SPU2Options& old_opts = old_config.SPU2;
 
@@ -734,9 +738,13 @@ void SPU2::CheckForConfigChanges(const Pcsx2Config& old_config)
 		opts.DriverName != old_opts.DriverName ||
 		opts.DeviceName != old_opts.DeviceName)
 	{
+		// Forja SX2 (compilation 59): CreateOutputStream() without the lock (its ForjaSPU2Sync() may wait for the audio write
+		// thread, which needs the lock); it takes the lock itself.
+		forja_stream_lock.unlock();
 		CreateOutputStream();
+		forja_stream_lock.lock();
 	}
-	else if (opts.IsTimeStretchEnabled() != old_opts.IsTimeStretchEnabled())
+	else if (opts.IsTimeStretchEnabled() != old_opts.IsTimeStretchEnabled() && s_output_stream)
 	{
 		s_output_stream->SetStretchEnabled(opts.IsTimeStretchEnabled());
 	}

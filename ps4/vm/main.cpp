@@ -3593,5 +3593,11 @@ int main()
 		sceSystemServiceLoadExec("/app0/eboot.bin", nullptr);
 	}
 	sceSystemServiceLoadExec("exit", nullptr);
-	return rc == 0 ? 0 : 1;
+	// Forja SX2 (compilation 59): out without the static destructors. Returning from main ran them while the detached threads
+	// (audio, SPU2 mix, the watchdogs) still went on: a lock on a mutex already destroyed throws std::system_error, and the old
+	// process aborted on its way out ("uncaught exception std::__1::system_error", 2026-10-18 16:34 and 2026-10-19 18:28, each
+	// a few seconds before the next game started). The logs are closed above; stdout and stderr (their own logs) are flushed.
+	std::fflush(stdout);
+	std::fflush(stderr);
+	_exit(rc == 0 ? 0 : 1);
 }
