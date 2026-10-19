@@ -15,6 +15,7 @@ namespace PS4GameMenu
 		ROW_RESUME = 0,
 		ROW_SAVE_STATE,
 		ROW_LOAD_STATE,
+		ROW_FAST_FORWARD, // compilation 58
 		ROW_RESTART,
 		ROW_CHANGE_DISC, // compilation 44
 		// Imagen
@@ -32,6 +33,7 @@ namespace PS4GameMenu
 		// Extras (compilation 42 "Parches", 44 "Extras"): the game's patch groups one at a time (main.cpp, PublishPatchMenuText),
 		// HD textures and where the recommended settings come from
 		ROW_PATCH,
+		ROW_CHEATS, // compilation 58
 		ROW_TEXTURES,
 		ROW_RECOMMENDED,
 		// No tocar (compilation 53, Joseph's name): the labs the games are measured with, apart so nobody takes them for settings

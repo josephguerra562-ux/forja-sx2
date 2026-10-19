@@ -11,7 +11,7 @@
   instalada, borra la app vieja y vuelve a instalar: tus juegos, ajustes y perfiles de `/data/ForjaSX2/` no se borran.
 - **Actualizador dentro de la app:** cuando salga una compilación más nueva que la tuya **en tu canal**, la biblioteca lo
   pregunta una vez (**Descargar** / **Ahora no**); **OPTIONS** lo vuelve a preguntar. Baja el PKG a
-  `/data/pkg/ForjaSX2-Emulador-v<versión>-<compilación>.pkg` (por ejemplo `ForjaSX2-Emulador-v1.04-58.pkg`; hasta la 57 se
+  `/data/pkg/ForjaSX2-Emulador-v<versión>-<compilación>.pkg` (por ejemplo `ForjaSX2-Emulador-v1.03-58.pkg`; hasta la 57 se
   llamaba `ForjaSX2-compilacion-N.pkg`), lo comprueba con el `SHA256SUMS.txt` de la versión y, si no coincide, lo borra.
   Arriba a la derecha se ve el avance. Cuando diga "lista en /data/pkg", cierra Forja y en GoldHEN abre el
   **Package Installer**: el PKG aparece ahí.
@@ -60,6 +60,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
   - **Imagen:** resolución interna, relación de aspecto, **nitidez** (desde la 44), generación de cuadros y contador de FPS.
     **Nitidez:** Suave (como antes), Nítida (bilineal nítido, sin costo), CAS y CAS fuerte (el realce de AMD, de la familia
     del FSR que usa Dolphin para PS4; cuesta muy poco) y Píxeles (sin filtro, estilo retro). Se guarda por juego.
+  - **Partida** (desde la 58 también): **Avance rápido** (X lo prende o lo apaga: el juego corre lo más rápido que aguante
+    la PS4, para cargas y diálogos; no se guarda) y, en Guardar/Cargar estado, **la fecha y la hora** en que se guardó cada
+    ranura.
   - **Rendimiento:** velocidad del CPU de la PS2, **CPU automático**, modo video y núcleos.
   - **Extras** (se llamaba Parches; desde la 44 trae más; desde la 53 los filtros están en **No tocar**):
     - **Parche:** los parches de ese juego, uno por uno. ←/→ elige, **X** lo pone o lo quita y se guarda para ese juego.
@@ -75,6 +78,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
       Desde la 56 hay otra, **"Menos efectos: pasadas de pantalla (experimental)"**: brillos y desenfoques que un juego
       dibuja en imágenes aparte; solo aparece donde pesa mucho. Y el parche automático del **motor Alchemy** (el de Crash
       Nitro Kart) sirve también con los juegos de ese motor que ya fijan su propio límite: 30 a 60 FPS (25 a 50 en PAL).
+    - **Trucos** (desde la 58): como los parches, pero tuyos: pon un archivo de trucos de PCSX2 en
+      `/data/ForjaSX2/cheats/<SERIAL>_<CRC>.pnach` (el menú te dice el nombre exacto) y aquí los prendes uno por uno con X.
     - **Texturas HD:** No / Sí / Sí, precargadas. El pack va por FTP en `/data/ForjaSX2/textures/<SERIAL>/replacements`
       (como en PCSX2). Precargar evita tirones pero usa más memoria: con packs enormes, mejor "Sí".
     - **Ajustes recomendados:** de dónde vienen los ajustes de fábrica de ese juego: del centro de ajustes (GitHub, con

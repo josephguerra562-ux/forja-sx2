@@ -21,4 +21,6 @@ namespace PS4GameMenu
 	void SetPatchMenuText(const std::string& label, const std::string& description);
 	// CPU thread (compilation 44): any row's own text, for the rows whose values are names (Extras, Cambiar disco).
 	void SetRowText(unsigned row, const std::string& label, const std::string& description);
+	// CPU thread (compilation 58): when the chosen save state slot was saved ("19/10 a las 02:31"; empty for an empty slot).
+	void SetStateSlotDate(const std::string& date);
 } // namespace PS4GameMenu

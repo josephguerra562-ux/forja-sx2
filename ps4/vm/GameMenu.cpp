@@ -61,7 +61,14 @@ namespace PS4GameMenu
 		std::mutex s_patch_text_mutex;
 		std::string s_row_labels[ROW_COUNT];
 		std::string s_row_descriptions[ROW_COUNT];
+		std::string s_state_date; // compilation 58
 	} // namespace
+
+	void SetStateSlotDate(const std::string& date)
+	{
+		std::lock_guard lock(s_patch_text_mutex);
+		s_state_date = date;
+	}
 
 	void SetRowText(unsigned row, const std::string& label, const std::string& description)
 	{
@@ -1589,13 +1596,20 @@ namespace PS4GameMenu
 					origin_names[menu_state.cpu_auto_origin]);
 			// Forja SX2: save states (compilation 31). The slot is shared by the save and load rows.
 			const unsigned slot = menu_state.slot + 1;
-			char save_label[64], load_label[64], save_description[128], load_description[128];
+			char save_label[64], load_label[64], save_description[160], load_description[160];
+			std::string state_date; // compilation 58: when the slot was saved
+			{
+				std::lock_guard lock(s_patch_text_mutex);
+				state_date = s_state_date;
+			}
 			std::snprintf(save_label, sizeof(save_label), "Guardar estado:  < Ranura %u >", slot);
 			std::snprintf(load_label, sizeof(load_label), "Cargar estado:  < Ranura %u >", slot);
 			if (menu_state.action == STATE_SAVED)
 				std::snprintf(save_description, sizeof(save_description), "Guardado en la ranura %u.", slot);
 			else if (menu_state.action == STATE_SAVE_FAILED)
 				std::snprintf(save_description, sizeof(save_description), "No se pudo guardar en la ranura %u.", slot);
+			else if (menu_state.slot_used && !state_date.empty())
+				std::snprintf(save_description, sizeof(save_description), "X: guarda aquí (reemplaza el del %s)", state_date.c_str());
 			else
 				std::snprintf(save_description, sizeof(save_description), "%s",
 					menu_state.slot_used ? "X: guarda aquí (reemplaza lo que hay en esta ranura)" : "X: guarda la partida en esta ranura (vacía)");
@@ -1603,6 +1617,9 @@ namespace PS4GameMenu
 				std::snprintf(load_description, sizeof(load_description), "La ranura %u está vacía.", slot);
 			else if (menu_state.action == STATE_LOAD_FAILED)
 				std::snprintf(load_description, sizeof(load_description), "No se pudo cargar la ranura %u.", slot);
+			else if (menu_state.slot_used && !state_date.empty())
+				std::snprintf(load_description, sizeof(load_description), "Guardado el %s  ·  X: vuelve a ese momento y sigue jugando",
+					state_date.c_str());
 			else
 				std::snprintf(load_description, sizeof(load_description), "%s",
 					menu_state.slot_used ? "X: vuelve a ese momento y sigue jugando" : "Ranura vacía");
@@ -1726,6 +1743,15 @@ namespace PS4GameMenu
 						draw->AddLine(ip(-3, 2), ip(-3, 14), icon_line, lw);
 						draw->AddLine(ip(3, 2), ip(3, 14), icon_line, lw);
 						break;
+					case ROW_FAST_FORWARD: // two arrows (compilation 58)
+						draw->AddTriangle(ip(-15, -10), ip(-2, 0), ip(-15, 10), icon_line, lw);
+						draw->AddTriangle(ip(0, -10), ip(13, 0), ip(0, 10), icon_line, lw);
+						break;
+					case ROW_CHEATS: // a lightning bolt (compilation 58)
+						draw->AddLine(ip(4, -15), ip(-8, 2), icon_line, lw);
+						draw->AddLine(ip(-8, 2), ip(4, 2), icon_line, lw);
+						draw->AddLine(ip(4, 2), ip(-4, 15), icon_line, lw);
+						break;
 					case ROW_GS_FILTER: // a picture crossed out (compilation 51)
 						draw->AddRect(ip(-15, -11), ip(15, 11), icon_line, 3 * scale, lw, 0);
 						draw->AddLine(ip(-11, 8), ip(11, -8), icon_line, lw);
@@ -1836,8 +1862,10 @@ namespace PS4GameMenu
 					action = "ELEGIR";
 				else if (row == ROW_VU1_FILTER || row == ROW_GS_FILTER)
 					action = "ELEGIR  ·  X  ·  CUADRADO"; // compilation 52: Cuadrado brings everything back
-				else if (row == ROW_PATCH || row == ROW_CHANGE_DISC)
+				else if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC)
 					action = "ELEGIR  ·  X";
+				else if (row == ROW_FAST_FORWARD) // compilation 58
+					action = "X";
 				else if (row == ROW_TEXTURES)
 					action = "ELEGIR";
 				else if (row == ROW_RECOMMENDED)

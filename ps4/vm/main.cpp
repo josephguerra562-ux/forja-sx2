@@ -18,6 +18,7 @@
 #include "INISettingsInterface.h"
 #include "ForjaGameProfile.h"
 #include "ForjaGsRules.h"
+#include "Counters.h" // compilation 58: g_FrameCount, for the hang watch
 #include "Patch.h"
 #include "PatchDownload.h"
 #include "GameList.h"
@@ -63,6 +64,7 @@
 #include <cerrno>
 #include <fcntl.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <atomic>
 #include <algorithm>
 #include <cctype>
@@ -864,6 +866,149 @@ static void TogglePatch()
 	VMManager::ReloadPatches(false, true, false, true);
 	ProbeLog("Patches: \"%s\" %s\n", name.c_str(), turning_on ? "on" : "off");
 	ReloadPatchMenu();
+}
+
+// Forja SX2 (compilation 58): "Trucos" (L3+R3 > Extras), an idea from M33's quick menu: the game's cheat groups (PCSX2's cheats
+// folder, /data/ForjaSX2/cheats/<SERIAL>_<CRC>.pnach, written as a patch file), one at a time like the patches; X turns one on
+// or off in the player's profile ([Cheats] Enable, with [EmuCore] EnableCheats while any is on).
+static std::vector<Patch::PatchInfo> s_cheat_infos;
+static std::vector<std::string> s_cheats_enabled;
+static unsigned s_cheat_index = 0;
+
+static bool CheatIsOn(const std::string& name)
+{
+	return std::find(s_cheats_enabled.begin(), s_cheats_enabled.end(), name) != s_cheats_enabled.end();
+}
+
+static void PublishCheatText()
+{
+	if (s_cheat_infos.empty())
+	{
+		char description[220];
+		std::snprintf(description, sizeof(description),
+			"Pon tus trucos en /data/ForjaSX2/cheats/%s_%08X.pnach (escritos como un parche) y vuelve a abrir este menú",
+			VMManager::GetDiscSerial().c_str(), VMManager::GetDiscCRC());
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_CHEATS, "Trucos:  ninguno para este juego", description);
+		return;
+	}
+	const Patch::PatchInfo& cheat = s_cheat_infos[s_cheat_index];
+	const bool on = CheatIsOn(cheat.name);
+	char label[256];
+	std::snprintf(label, sizeof(label), "Truco %u de %zu:  < %s >  %s", s_cheat_index + 1, s_cheat_infos.size(), cheat.name.c_str(),
+		on ? "Sí" : "No");
+	std::string description = cheat.description.empty() ? std::string("Sin descripción") : cheat.description;
+	if (!cheat.author.empty())
+		description += "  ·  " + cheat.author;
+	description += on ? "  ·  X: quitar" : "  ·  X: poner";
+	if (description.size() > 180)
+		description = description.substr(0, 177) + "...";
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CHEATS, label, description);
+}
+
+static void ReloadCheats()
+{
+	const std::string serial = VMManager::GetDiscSerial();
+	const u32 crc = VMManager::GetDiscCRC();
+	s_cheat_infos = crc != 0 ? Patch::GetPatchInfo(serial, crc, true, false, nullptr) : std::vector<Patch::PatchInfo>{};
+	s_cheats_enabled = Host::GetStringListSetting(Patch::CHEATS_CONFIG_SECTION, Patch::PATCH_ENABLE_CONFIG_KEY);
+	if (s_cheat_index >= s_cheat_infos.size())
+		s_cheat_index = 0;
+	PublishCheatText();
+}
+
+static void ToggleCheat()
+{
+	if (s_cheat_infos.empty())
+		return;
+	const std::string name = s_cheat_infos[s_cheat_index].name;
+	const bool turning_on = !CheatIsOn(name);
+	std::vector<std::string> enabled = s_cheats_enabled;
+	enabled.erase(std::remove(enabled.begin(), enabled.end(), name), enabled.end());
+	if (turning_on)
+		enabled.push_back(name);
+	const bool any = !enabled.empty();
+	SavePlayerProfile("Cheats", [enabled, any](INISettingsInterface& ini) {
+		ini.SetStringList(Patch::CHEATS_CONFIG_SECTION, Patch::PATCH_ENABLE_CONFIG_KEY, enabled);
+		ini.SetBoolValue("EmuCore", "EnableCheats", any);
+	}, true);
+	VMManager::ReloadPatches(false, true, false, true);
+	ProbeLog("Cheats: \"%s\" %s (%zu on)\n", name.c_str(), turning_on ? "on" : "off", enabled.size());
+	ReloadCheats();
+}
+
+// Forja SX2 (compilation 58): "Avance rápido" (L3+R3 > Partida), an idea from M33: the frame limiter off while it's on, for
+// loading screens and dialogues, as fast as the PS4 can run the game. Not saved; a game starts with it off.
+static bool s_fast_forward = false;
+
+static void PublishFastForwardText()
+{
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_FAST_FORWARD, s_fast_forward ? "Avance rápido:  < Sí >" : "Avance rápido:  < No >",
+		"X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda");
+}
+
+static void ToggleFastForward()
+{
+	s_fast_forward = !s_fast_forward;
+	VMManager::SetLimiterMode(s_fast_forward ? LimiterModeType::Unlimited : LimiterModeType::Nominal);
+	ProbeLog("Fast forward: %s\n", s_fast_forward ? "on" : "off");
+	PublishFastForwardText();
+}
+
+// Forja SX2 (compilation 58): the hang log, an idea from M33's hang.log: a thread checks once a second that the game's frames
+// still advance (g_FrameCount, the PS2's vsyncs). After 10 s without one while the game runs (not paused, no menu) it writes
+// where the EE and the IOP were to logs/hang.log and to the session log, once per stop, so a freeze leaves something to read.
+static std::atomic<bool> s_hang_watch_started{false};
+
+static void* HangWatch(void*)
+{
+	pthread_setname_np(pthread_self(), "Forja hang watch");
+	unsigned last_frame = 0, still = 0;
+	bool reported = false;
+	for (;;)
+	{
+		sleep(1);
+		const bool running = VMManager::GetState() == VMState::Running && !s_game_menu_open;
+		const unsigned frame = g_FrameCount;
+		if (!running || frame != last_frame)
+		{
+			if (reported && running)
+				ProbeLog("Hang watch: frames again after %u s without one\n", still);
+			last_frame = frame;
+			still = 0;
+			reported = false;
+			continue;
+		}
+		if (++still < 10 || reported)
+			continue;
+		reported = true;
+		char when[32] = "?";
+		const std::time_t now = std::time(nullptr);
+		if (const std::tm* tm = std::localtime(&now))
+			std::strftime(when, sizeof(when), "%Y-%m-%d %H:%M:%S", tm);
+		char line[400];
+		std::snprintf(line, sizeof(line),
+			"%s: %u s sin cuadros nuevos en %s %08X: cuadro %u, EE_PC=%08x IOP_PC=%08x EE_cycle=%llu vsyncq=%d\n",
+			when, still, VMManager::GetDiscSerial().c_str(), VMManager::GetDiscCRC(), frame, cpuRegs.pc,
+			psxRegs.pc, static_cast<unsigned long long>(cpuRegs.cycle), MTGS::GetCurrentVsyncQueueSize());
+		ProbeLog("Hang watch: %s", line);
+		if (std::FILE* file = std::fopen("/data/ForjaSX2/logs/hang.log", "a"))
+		{
+			std::fputs(line, file);
+			std::fclose(file);
+		}
+	}
+	return nullptr;
+}
+
+static void StartHangWatch()
+{
+	if (s_hang_watch_started.exchange(true))
+		return;
+	pthread_t thread{};
+	if (pthread_create(&thread, nullptr, HangWatch, nullptr) == 0)
+		pthread_detach(thread);
+	else
+		ProbeLog("Hang watch: the thread could not start\n");
 }
 
 
@@ -2021,6 +2166,16 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			}
 			break;
 		}
+		case PS4GameMenu::ROW_CHEATS: // compilation 58
+		{
+			if (!s_cheat_infos.empty())
+			{
+				const int count = static_cast<int>(s_cheat_infos.size());
+				s_cheat_index = static_cast<unsigned>((static_cast<int>(s_cheat_index) + delta % count + count) % count);
+				PublishCheatText();
+			}
+			break;
+		}
 		case PS4GameMenu::ROW_RESOLUTION:
 		{
 			const unsigned requested = static_cast<unsigned>(std::clamp(static_cast<int>(s_game_upscale) + delta,
@@ -2124,8 +2279,22 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 
 static void RefreshStateSlot()
 {
-	s_state_slot_used = VMManager::HasSaveStateInSlot(VMManager::GetDiscSerial().c_str(), VMManager::GetDiscCRC(),
-		static_cast<s32>(s_state_slot + 1));
+	const std::string serial = VMManager::GetDiscSerial();
+	const u32 crc = VMManager::GetDiscCRC();
+	s_state_slot_used = VMManager::HasSaveStateInSlot(serial.c_str(), crc, static_cast<s32>(s_state_slot + 1));
+	// Compilation 58: when the slot was saved, for the Guardar and Cargar rows (as M33's slot card; its picture comes later).
+	std::string date;
+	struct stat info{};
+	if (s_state_slot_used &&
+		stat(VMManager::GetSaveStateFileName(serial.c_str(), crc, static_cast<s32>(s_state_slot + 1)).c_str(), &info) == 0)
+	{
+		char text[40] = "";
+		const std::time_t when = info.st_mtime;
+		if (const std::tm* tm = std::localtime(&when))
+			std::strftime(text, sizeof(text), "%d/%m a las %H:%M", tm);
+		date = text;
+	}
+	PS4GameMenu::SetStateSlotDate(date);
 }
 
 // A movie's lowered EE rate is not part of a save state: put the game's own rate back before a load or a restart, which
@@ -2400,6 +2569,8 @@ void VMHostPoll()
 		s_state_action = PS4GameMenu::STATE_NONE;
 		RefreshStateSlot();
 		ReloadPatchMenu(); // Forja SX2 (compilation 42): the Parches tab
+		ReloadCheats(); // compilation 58
+		PublishFastForwardText();
 		// Compilation 44: the Extras tab's other rows and Partida's discs.
 		ReloadVu1Filter();
 		ReloadGsFilter(); // compilation 51
@@ -2515,6 +2686,7 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_CPU_AUTO || row == PS4GameMenu::ROW_RESET_PROFILE ||
 						   row == PS4GameMenu::ROW_GS_SKIP ||
 						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART ||
+						   row == PS4GameMenu::ROW_FAST_FORWARD || row == PS4GameMenu::ROW_CHEATS ||
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
 						   row == PS4GameMenu::ROW_TEXTURES ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC))
@@ -2542,6 +2714,10 @@ void VMHostPoll()
 			}
 			else if (row == PS4GameMenu::ROW_PATCH)
 				TogglePatch();
+			else if (row == PS4GameMenu::ROW_CHEATS) // compilation 58
+				ToggleCheat();
+			else if (row == PS4GameMenu::ROW_FAST_FORWARD)
+				ToggleFastForward();
 			else if (row == PS4GameMenu::ROW_VU1_FILTER)
 				ToggleVu1Program();
 			else if (row == PS4GameMenu::ROW_GS_FILTER)
@@ -2943,6 +3119,8 @@ static void* RunVM(void*)
 			s_gs_skip_mode = -1; // compilation 47: a new game starts drawing every frame (ApplyGameProfile sets it again)
 			ResetGsFilterList(); // compilation 54: a new game's list starts empty
 			LoadRules(); // compilation 55: huellas.ini, before the profile turns its rules on
+			s_fast_forward = false; // compilation 58: a game starts at its own speed
+			StartHangWatch();
 			ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
 			RepinWorkersForProfile();
 		}

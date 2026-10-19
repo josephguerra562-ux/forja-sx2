@@ -7,7 +7,7 @@ stutters, audio dropouts or crashes.
 
 - **Download:** the recommended version is the one marked **Latest** in
   [Releases](https://github.com/josephguerra562-ux/forja-sx2/releases/latest), for example `ForjaSX2-Emulador-v1.03.pkg`.
-  It has been tested on a PS4 Pro (stable channel). The "Pre-release" builds (such as "Forja SX2 v1.04 (prueba 58)") are
+  It has been tested on a PS4 Pro (stable channel). The "Pre-release" builds (such as "Forja SX2 v1.03 (prueba 58)") are
   published automatically with every change and may break (testing channel). You can download whichever you like.
 - **Install and use:** the full guide is in Spanish, [LEEME_FORJA_SX2.md](LEEME_FORJA_SX2.md) (installation, folders,
   controls, per-game settings and troubleshooting). The app's menus are in Spanish.
