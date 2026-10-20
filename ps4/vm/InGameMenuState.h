@@ -22,6 +22,8 @@ namespace PS4GameMenu
 		ROW_RESOLUTION,
 		ROW_ASPECT,
 		ROW_SHARPNESS, // compilation 44
+		// Compilation 61 (Joseph, 2026-10-20: "esa no le pongas como no tocar, déjale donde estaba antes"): back from No tocar.
+		ROW_FRAME_GEN,
 		ROW_OVERLAY,
 		// Rendimiento
 		ROW_EE_RATE,
@@ -33,12 +35,12 @@ namespace PS4GameMenu
 		ROW_PATCH,
 		ROW_RECOMMENDED,
 		// No tocar (compilation 53, Joseph's name): the labs the games are measured with, apart so nobody takes them for settings.
-		// Compilation 59 (Joseph, 2026-10-19: "eso es por no tocar hasta no haber pulido"): frame skip, frame generation, HD
-		// textures and cheats too, until they are tested and polished; God of War II closed four times that day with them on.
+		// Compilation 59 (Joseph, 2026-10-19: "eso es por no tocar hasta no haber pulido"): frame skip, HD textures and cheats
+		// too, until they are tested and polished; God of War II closed four times that day with them on. (Frame generation
+		// was here too, in 59 and 60.)
 		ROW_VU1_FILTER,
 		ROW_GS_FILTER, // compilation 51
 		ROW_GS_SKIP, // compilation 47
-		ROW_FRAME_GEN,
 		ROW_TEXTURES,
 		ROW_CHEATS, // compilation 58
 		// Sistema
