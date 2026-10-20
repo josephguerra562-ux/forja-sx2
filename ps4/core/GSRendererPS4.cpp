@@ -227,18 +227,26 @@ static void ForjaGsSkipClearAll()
 // its first draws, and stays hidden as before.
 static constexpr u32 FORJA_SKIP_FIRST_DRAWS = 192;
 static u32 s_forja_frame_draws = 0; // draws into la pantalla in this frame of the game
+// Compilation 68: a frame after a light one (under FORJA_SKIP_MIN_PREVIOUS draws into la pantalla: a menu, a loading screen) is
+// never chosen to be left out, so the frames a game draws once and keeps are drawn.
+static constexpr u32 FORJA_SKIP_MIN_PREVIOUS = 400;
+static u32 s_forja_previous_frame_draws = 0;
 
 // Compilation 67: the framebuffers the TV showed at the last vsync (VSync), one a circuit; the second only with both circuits on.
 static u32 s_forja_shown_now[2] = {0xffffffffu, 0xffffffffu};
 
 bool ForjaGsSkipDraw(u32 fbp)
 {
-	// Compilation 67: never into the framebuffer the TV shows now. Dragon Ball's pause menu draws straight into it: what was left
-	// out showed at once (2026-10-20: 48 frames left out in 5 s, 0 of 290 pictures hidden), the menu whole and in pieces by turns.
-	const bool skipping = g_forja_gs_skip_drawing && fbp != s_forja_shown_now[0] && fbp != s_forja_shown_now[1];
-	const bool left_out = skipping && s_forja_frame_draws >= FORJA_SKIP_FIRST_DRAWS;
+	// Compilation 68: a chosen frame's draws into a framebuffer the TV shows now (on either circuit) are all left out, so it keeps
+	// its last whole picture; into any other one, its first FORJA_SKIP_FIRST_DRAWS run. Dragon Ball draws each frame into the
+	// buffer its first circuit shows: compilation 66 drew the first 192 of a chosen frame there and the half-drawn picture showed,
+	// merged (the flickering characters and pause menu of 2026-10-20); compilation 67 left out nothing there, and its fights lost
+	// Saltar cuadros (0 draws left out, 61-78 % speed). Compilation 65 left them all out, and its fights ran at 98-100 %.
+	const bool chosen = g_forja_gs_skip_drawing;
+	const bool on_screen = fbp == s_forja_shown_now[0] || fbp == s_forja_shown_now[1];
+	const bool left_out = chosen && (on_screen || s_forja_frame_draws >= FORJA_SKIP_FIRST_DRAWS);
 	s_forja_frame_draws++;
-	ForjaGsSkipNote(fbp, skipping, left_out); // compilation 67: a chosen frame's buffer hidden from its first draw
+	ForjaGsSkipNote(fbp, chosen, left_out); // compilation 67: a chosen frame's buffer hidden from its first draw
 	return left_out;
 }
 
@@ -995,6 +1003,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				if (g_forja_gs_skip_drawing)
 					ForjaGsSkipFrameEnd(); // compilation 67: the chosen frame just ended; drawn whole, it is shown
 				s_forja_frame++;
+				s_forja_previous_frame_draws = s_forja_frame_draws; // compilation 68
 				s_forja_frame_draws = 0; // compilation 66
 				s_forja_vsyncs_since_frame = 0;
 				s_forja_hidden_frames = s_forja_shown_this_frame ? 0 : s_forja_hidden_frames + 1;
@@ -1004,7 +1013,8 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 					g_forja_gs_skip_stats[3].fetch_add(1, std::memory_order_relaxed);
 				const unsigned every = std::max(g_forja_gs_skip_every.load(std::memory_order_relaxed), 2u);
 				s_forja_skip_count = (s_forja_skip_count + 1) % every;
-				g_forja_gs_skip_drawing = forja_want && !g_forja_gs_skip_drawing && !force && s_forja_skip_count == 0;
+				g_forja_gs_skip_drawing = forja_want && !g_forja_gs_skip_drawing && !force && s_forja_skip_count == 0 &&
+					s_forja_previous_frame_draws >= FORJA_SKIP_MIN_PREVIOUS; // compilation 68: never after a light frame
 				if (g_forja_gs_skip_drawing)
 					g_forja_gs_skipped_frames.fetch_add(1, std::memory_order_relaxed);
 			}
@@ -1016,7 +1026,10 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				g_forja_gs_skip_drawing = false;
 				ForjaGsSkipClearAll(); // compilation 67: and show what the buffers hold
 			}
-			if (ForjaIsStale(shown) || (other != 0xffffffffu && ForjaIsStale(other))) // compilation 67: either circuit
+			// Compilation 68: the main circuit only, as until compilation 66. The first circuit's buffer, the one Dragon Ball draws
+			// into, is stale every other frame at one in 2: hiding for it (compilation 67) would hide nearly every picture. Its
+			// frames left out are left out whole (ForjaGsSkipDraw), so it only ever holds a whole picture.
+			if (ForjaIsStale(shown))
 			{
 				skip_frame = true;
 				g_forja_gs_skip_stats[1].fetch_add(1, std::memory_order_relaxed);

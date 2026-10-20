@@ -233,9 +233,13 @@ static bool s_video_auto = false;
 static int s_video_auto_rate = VIDEO_EE_RATE; // where the game's next movie starts
 // Compilation 65: the highest rate the game's movies may use: a rate found too slow (under 92 %, 90 since 66) lowers it for the rest of the
 // game, so no movie tries it again (each change resets the EE recompiler, a stop of 100-250 ms: Crash Nitro Kart's intro had
-// 8 to 12 in two minutes, 2026-10-20). And one step up a movie at most.
+// 8 to 12 in two minutes, 2026-10-20). And one step up a movie at most (compilation 68: a step a window while the movie is short of
+// pictures, up to the ceiling).
 static int s_video_auto_ceiling = 0;
-static bool s_video_auto_tried_up = false;
+// Compilation 68: the movie's pictures (in the PS2's seconds) before a step up, to see whether the step gave it more, and the
+// windows in a row under the speed floor.
+static double s_video_probe_pictures_before = 0.0;
+static unsigned s_video_slow_windows = 0;
 // Compilation 65: the video meter. The IPU's sampled profile (PS4IPUProfile: one worker call in 128, one register access in
 // 1024; the GS thread writes "IPU profile" and "Video meter:" lines every 5 s) is on while a movie plays, to see how much of
 // the EE thread the decoding takes; vm-profile-ipu keeps it on all the time and vm-no-ipu-profile off.
@@ -275,8 +279,12 @@ static constexpr double VIDEO_PROBE_WINDOW = 3.0;
 static constexpr double VIDEO_DECODES_PER_SECOND = 2000.0; // a movie: tens of thousands; gameplay: ~0
 // Compilation 66: the Auto's speed floor, and "short of pictures": under 92 % of a picture every two PS2 vsyncs (30 at 60 Hz,
 // 25 at 50 Hz, what PS2 movies use), counted in the PS2's own seconds (pictures a second over the speed).
-static constexpr double VIDEO_SPEED_FLOOR = 90.0;
-static constexpr double VIDEO_SHORT_OF_PICTURES = 0.92;
+// Compilation 68: 78 % and 95 %. A movie short of pictures is short of sound too: its player, short of EE cycles, leaves
+// silences (Joseph's recordings of Tales of the Abyss, 2026-10-20: ~1.9 cuts a second at 36 %, ~1.2 at 44 %, "el audio
+// sigue distorsionado"; at 57 % it had all its 30 pictures, and on 2026-10-15 no silences). So the movie gets the EE rate that
+// gives it all its pictures, down to 78 % speed: the time stretching keeps its sound whole at that speed, a little slower.
+static constexpr double VIDEO_SPEED_FLOOR = 78.0;
+static constexpr double VIDEO_SHORT_OF_PICTURES = 0.95;
 extern double GetVerticalFrequency(); // pcsx2/GS.h (Counters.cpp): the PS2's refresh now
 // Forja SX2: the running game's profile (pcsx2/ForjaGameProfile.h): its factory profile under the player's own. Read before
 // the VM boots, from the library's scan of the image, and again if PCSX2 identifies another disc.
@@ -2083,19 +2091,30 @@ static void UpdateVideoMode(double elapsed)
 			const bool short_of_pictures = pictures < full * VIDEO_SHORT_OF_PICTURES;
 			const char* what = short_of_pictures ? "holds, short of pictures" : "holds";
 			int next = rate;
-			if (speed < VIDEO_SPEED_FLOOR && rate > VIDEO_AUTO_LOWEST)
+			// Compilation 68: pictures first (and the sound with them), within the speed floor. A step up stays if the movie
+			// still runs at 78 % or more and got more pictures from it (4 % or more); one that gave none goes back, for good in
+			// this game: the movie had them all (one of 24 or 15 a second) or the EE was not what held it. Out of a step up, a
+			// rate goes down only after two windows in a row under the floor, so one heavy scene does not undo it.
+			const bool probing_up = s_video_probe == VideoProbe::Up;
+			s_video_slow_windows = speed < VIDEO_SPEED_FLOOR ? s_video_slow_windows + 1 : 0;
+			if (speed < VIDEO_SPEED_FLOOR && rate > VIDEO_AUTO_LOWEST && (probing_up || s_video_slow_windows >= 2))
 			{
-				const bool back = s_video_probe == VideoProbe::Up;
-				next = back ? rate - 1 : std::max(rate - (speed < 80.0 ? 2 : 1), VIDEO_AUTO_LOWEST);
+				next = probing_up ? rate - 1 : std::max(rate - (speed < 70.0 ? 2 : 1), VIDEO_AUTO_LOWEST);
 				s_video_auto_ceiling = std::min(s_video_auto_ceiling, rate - 1);
-				what = back ? "the step up was too slow, back" : "slowed down, lower";
+				s_video_slow_windows = 0;
+				what = probing_up ? "the step up was too slow, back" : "slowed down, lower";
 			}
-			else if (short_of_pictures && speed >= 96.0 && !s_video_auto_tried_up &&
-					 rate < std::min(s_video_auto_ceiling, VIDEO_AUTO_HIGHEST))
+			else if (probing_up && pictures < s_video_probe_pictures_before * 1.04)
+			{
+				next = rate - 1;
+				s_video_auto_ceiling = std::min(s_video_auto_ceiling, rate - 1);
+				what = "the step up gave no more pictures, back";
+			}
+			else if (short_of_pictures && speed >= VIDEO_SPEED_FLOOR && rate < std::min(s_video_auto_ceiling, VIDEO_AUTO_HIGHEST))
 			{
 				next = rate + 1;
-				s_video_auto_tried_up = true;
-				what = "short of pictures at full speed, a step up";
+				s_video_probe_pictures_before = pictures;
+				what = "short of pictures (and of sound), a step up";
 			}
 			s_video_probe = next > rate ? VideoProbe::Up : VideoProbe::Measure;
 			ProbeLog("Video mode: auto at %d: %.1f pictures/s (%.1f a PS2 second, of %.0f), speed %.0f %% (ceiling %d): %s -> %d\n",
@@ -2133,7 +2152,7 @@ static void UpdateVideoMode(double elapsed)
 		s_video_saved_rate = EmuConfig.Speedhacks.EECycleRate;
 		s_video_since = elapsed;
 		s_video_probe = VideoProbe::Measure;
-		s_video_auto_tried_up = false; // compilation 65
+		s_video_slow_windows = 0; // compilation 68
 		s_video_probe_since = elapsed;
 		s_video_probe_fps_sum = 0.0;
 		s_video_probe_speed_sum = 0.0;
