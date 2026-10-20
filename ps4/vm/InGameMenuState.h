@@ -30,18 +30,17 @@ namespace PS4GameMenu
 		ROW_CPU_AUTO,
 		ROW_VIDEO_MODE,
 		ROW_CORES,
-		// Compilation 62: back from No tocar, with the skip that follows each framebuffer (GSRendererPS4.cpp).
-		ROW_GS_SKIP, // compilation 47
 		// Extras (compilation 42 "Parches", 44 "Extras"): the game's patch groups one at a time (main.cpp, PublishPatchMenuText)
 		// and where the recommended settings come from
 		ROW_PATCH,
 		ROW_RECOMMENDED,
 		// No tocar (compilation 53, Joseph's name): the labs the games are measured with, apart so nobody takes them for settings.
-		// Compilation 59 (Joseph, 2026-10-19: "eso es por no tocar hasta no haber pulido"): HD textures and cheats too, until
-		// they are tested and polished; God of War II closed four times that day with them on. (Frame generation was here in
-		// 59 and 60, frame skip in 59 to 61.)
+		// Compilation 59 (Joseph, 2026-10-19: "eso es por no tocar hasta no haber pulido"): frame skip, HD textures and cheats
+		// too, until they are tested and polished; God of War II closed four times that day with them on. (Frame generation
+		// was here in 59 and 60.) Compilation 62: frame skip stays here with its new skip (Joseph: "es una opción de no tocar").
 		ROW_VU1_FILTER,
 		ROW_GS_FILTER, // compilation 51
+		ROW_GS_SKIP, // compilation 47
 		ROW_TEXTURES,
 		ROW_CHEATS, // compilation 58
 		// Sistema

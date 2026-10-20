@@ -2504,15 +2504,16 @@ static bool LoadGameState()
 	return loaded;
 }
 
-// Compilation 61: with the game running, after a load. Over 1000 broken PATH1 packets in its first 20 s mean the state does not
-// load well (Crash Nitro Kart's slot 1 said it 25,000 times in ten seconds, then hung; a good load says it none); the VM
-// pauses and VMHostPoll goes back to the moment before (RevertLoadedState). After 20 s the kept moment is deleted.
+// Compilation 61: with the game running, after a load. Over 3000 broken PATH1 packets in its first 20 s mean the state does not
+// load well (Crash Nitro Kart's slot 1 said it 25,000 times in ten seconds, then hung); the VM pauses and VMHostPoll goes
+// back to the moment before (RevertLoadedState). After 20 s the kept moment is deleted. A game that plays well can say it
+// too: God of War II, 911 times in two minutes of play (2026-10-18), ~150 in 20 s, far under 3000.
 static void CheckLoadedState(double elapsed)
 {
 	if (s_state_check_since <= 0.0)
 		return;
 	const u32 broken = g_forja_gif_exceeded.load(std::memory_order_relaxed) - s_state_check_gif;
-	if (broken > 1000)
+	if (broken > 3000)
 	{
 		ProbeLog("Save state: slot %d does not load well (%u broken GS packets in %.1f s); going back to the moment before\n",
 			s_state_check_slot, broken, elapsed - s_state_check_since);
