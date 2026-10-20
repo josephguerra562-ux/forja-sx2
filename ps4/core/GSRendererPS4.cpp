@@ -126,6 +126,32 @@ namespace
 	}
 } // namespace
 
+// Forja SX2 (compilation 65): the frame pacing meter. A game at 30 on a 60 Hz TV should last 2 vsyncs a frame; a 1-3 alternation
+// is the judder the eye sees even at a steady 30, and frame generation needs frames of one length. Saltar cuadros shows in it
+// too. Counted in VSync, logged every 5 s by HostVM.cpp (both on the GS thread).
+extern void ProbeLog(const char* format, ...);
+static u32 s_forja_pace[6] = {}; // frames of the game that lasted 1, 2, 3, 4, 5 and 6+ vsyncs
+static u32 s_forja_pace_logged[6] = {};
+static u32 s_forja_pace_run = 0;
+
+void ForjaLogFramePacing()
+{
+	u32 counts[6];
+	u32 frames = 0;
+	for (unsigned i = 0; i < 6; i++)
+	{
+		counts[i] = s_forja_pace[i] - s_forja_pace_logged[i];
+		s_forja_pace_logged[i] = s_forja_pace[i];
+		frames += counts[i];
+	}
+	if (frames < 10)
+		return;
+	// The share of frames of the most common length: 100 % is even pacing.
+	const u32 top = *std::max_element(counts, counts + 6);
+	ProbeLog("Frame pacing: game frames that lasted 1/2/3/4/5/6+ vsyncs: %u %u %u %u %u %u (even: %.0f %%)\n", counts[0], counts[1],
+		counts[2], counts[3], counts[4], counts[5], 100.0 * top / frames);
+}
+
 // GS thread, GSRendererHW::Draw: whether a draw's framebuffer is one the TV is showing these days (ForjaNoteDisplayed).
 bool ForjaGsSkipIsDisplayBuffer(u32 fbp)
 {
@@ -830,6 +856,28 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 
 	const int fb_sprite_blits = g_perfmon.GetDisplayFramebufferSpriteBlits();
 	const bool fb_sprite_frame = (fb_sprite_blits > 0);
+
+	// Forja SX2 (compilation 65): the frame pacing meter (ForjaLogFramePacing): how many PS2 vsyncs each frame of the game lasted.
+	{
+		bool pace_new_frame = true;
+		switch (PerformanceMetrics::GetInternalFPSMethod())
+		{
+			case PerformanceMetrics::InternalFPSMethod::GSPrivilegedRegister:
+				pace_new_frame = registers_written;
+				break;
+			case PerformanceMetrics::InternalFPSMethod::DISPFBBlit:
+				pace_new_frame = fb_sprite_frame;
+				break;
+			default:
+				break;
+		}
+		s_forja_pace_run = std::min(s_forja_pace_run + 1u, 60u);
+		if (pace_new_frame)
+		{
+			s_forja_pace[std::min(s_forja_pace_run, 6u) - 1u]++;
+			s_forja_pace_run = 0;
+		}
+	}
 
 #endif
 	bool skip_frame = false;

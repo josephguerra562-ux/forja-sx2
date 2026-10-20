@@ -42,6 +42,10 @@ namespace PS4IPUProfile
 
 	void LogInterval(double seconds)
 	{
+		// Forja SX2 (compilation 65): the totals, for the video meter (main.cpp turns the sampling on while a movie plays).
+		// The worker is the decoding itself (IDEC, BDEC, VDEC, CSC...); the accesses are the game's reads and writes of the
+		// IPU's registers and FIFOs, inclusive: a write that starts a command counts the worker's time too.
+		double worker_ms_per_second = 0.0, access_ms_per_second = 0.0, csc_ms_per_second = 0.0;
 		constexpr const char* access_names[] = {"read32", "read64", "write32", "write64", "fifo_read", "fifo_write"};
 		for (unsigned i = 0; i < static_cast<unsigned>(Access::Count); ++i)
 		{
@@ -55,9 +59,12 @@ namespace PS4IPUProfile
 			counter.last_samples = total_samples;
 			counter.last_nanoseconds = total_ns;
 			if (seconds > 0.0 && samples)
+			{
+				const double ms_per_second = ns * static_cast<double>(ACCESS_SAMPLE_WEIGHT) / (seconds * 1e6);
+				access_ms_per_second += ms_per_second;
 				ProbeLog("IPU access profile: kind=%s samples=%llu sampled_ms=%.3f estimated_wall_ms_per_second=%.2f inclusive=yes sample_ratio=1/%u\n",
-					access_names[i], static_cast<unsigned long long>(samples), ns / 1e6,
-					ns * static_cast<double>(ACCESS_SAMPLE_WEIGHT) / (seconds * 1e6), ACCESS_SAMPLE_WEIGHT);
+					access_names[i], static_cast<unsigned long long>(samples), ns / 1e6, ms_per_second, ACCESS_SAMPLE_WEIGHT);
+			}
 		}
 		for (unsigned i = 0; i < 16; i++)
 		{
@@ -79,12 +86,19 @@ namespace PS4IPUProfile
 			const u64 ns = total_ns - counter.last_nanoseconds;
 			counter.last_samples = total_samples;
 			counter.last_nanoseconds = total_ns;
+			const double ms_per_second = static_cast<double>(ns) * SAMPLE_WEIGHT / (seconds * 1000000.0);
+			worker_ms_per_second += ms_per_second;
+			if (i == 7) // CSC
+				csc_ms_per_second = ms_per_second;
 			ProbeLog("IPU profile: command=%s interval_s=%.2f samples=%llu sample_ratio=1/%u "
 					 "sampled_wall_ms=%.3f estimated_wall_ms_per_second=%.2f mean_us=%.3f\n",
 				NAMES[i], seconds, static_cast<unsigned long long>(samples), SAMPLE_WEIGHT,
-				static_cast<double>(ns) / 1000000.0,
-				static_cast<double>(ns) * SAMPLE_WEIGHT / (seconds * 1000000.0),
+				static_cast<double>(ns) / 1000000.0, ms_per_second,
 				static_cast<double>(ns) / (static_cast<double>(samples) * 1000.0));
 		}
+		if (seconds > 0.0 && (worker_ms_per_second > 0.0 || access_ms_per_second > 0.0))
+			ProbeLog("Video meter: IPU decoding %.0f ms a second (%.1f %% of the EE thread; colour conversion %.0f ms), IPU "
+					 "registers and FIFOs %.0f ms a second including it\n",
+				worker_ms_per_second, worker_ms_per_second / 10.0, csc_ms_per_second, access_ms_per_second);
 	}
 } // namespace PS4IPUProfile

@@ -236,6 +236,18 @@ static int s_video_auto_rate = VIDEO_EE_RATE; // where the game's next movie sta
 // 8 to 12 in two minutes, 2026-10-20). And one step up a movie at most.
 static int s_video_auto_ceiling = 0;
 static bool s_video_auto_tried_up = false;
+// Compilation 65: the video meter. The IPU's sampled profile (PS4IPUProfile: one worker call in 128, one register access in
+// 1024; the GS thread writes "IPU profile" and "Video meter:" lines every 5 s) is on while a movie plays, to see how much of
+// the EE thread the decoding takes; vm-profile-ipu keeps it on all the time and vm-no-ipu-profile off.
+static bool s_ipu_profile_marker = false;
+static bool s_ipu_profile_off = false;
+
+static void ForjaVideoMeter(bool movie)
+{
+	const bool on = !s_ipu_profile_off && (s_ipu_profile_marker || movie);
+	PS4IPUProfile::s_sampling.enabled = on;
+	PS4IPUProfile::s_access_sampling.enabled = on;
+}
 static VideoProbe s_video_probe = VideoProbe::Measure;
 static double s_video_probe_since = 0.0; // when the rate being measured was put in place
 static double s_video_probe_fps_sum = 0.0;
@@ -1919,6 +1931,7 @@ static void UpdateVideoMode(double elapsed)
 				Cpu->Reset();
 			}
 			ProbeLog("Video mode: turned off for this game, EE rate back to %d\n", s_video_saved_rate);
+			ForjaVideoMeter(false); // compilation 65
 		}
 		return;
 	}
@@ -2002,6 +2015,7 @@ static void UpdateVideoMode(double elapsed)
 		want = false;
 	if (want == s_video_active)
 		return;
+	ForjaVideoMeter(want); // compilation 65
 
 	if (want)
 	{
@@ -3068,8 +3082,11 @@ static void* RunVM(void*)
 	PS4IPUProfile::s_sampling.enabled = access("/data/ForjaSX2/vm-profile-ipu", F_OK) == 0 &&
 	                                    access("/data/ForjaSX2/vm-no-ipu-profile", F_OK) != 0;
 	PS4IPUProfile::s_access_sampling.enabled = PS4IPUProfile::s_sampling.enabled;
+	s_ipu_profile_marker = PS4IPUProfile::s_sampling.enabled; // compilation 65: ForjaVideoMeter
+	s_ipu_profile_off = access("/data/ForjaSX2/vm-no-ipu-profile", F_OK) == 0;
 	ProbeLog("IPU profiling: %s (sampled duration, nominal ratio 1/%u)\n",
-		PS4IPUProfile::s_sampling.enabled ? "enabled by opt-in marker with inclusive access sampling 1/1024" : "disabled for performance",
+		PS4IPUProfile::s_sampling.enabled ? "enabled by opt-in marker with inclusive access sampling 1/1024" :
+		s_ipu_profile_off ? "off (vm-no-ipu-profile)" : "on while a movie plays (the video meter)",
 		PS4IPUProfile::SAMPLE_WEIGHT);
 	static MemorySettingsInterface settings_storage;
 	static MemorySettingsInterface secrets_storage;

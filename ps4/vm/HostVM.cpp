@@ -58,6 +58,7 @@ void VMHostDrainCPUQueue()
 }
 void VMHostPoll();
 extern void ProbeLog(const char*, ...);
+extern void ForjaLogFramePacing(); // compilation 65: ps4/core/GSRendererPS4.cpp, the frame pacing meter
 
 namespace BuildVersion
 {
@@ -298,6 +299,7 @@ void Host::OnPerformanceMetricsUpdated()
 	PS4EEEventProfile::LogInterval(profile_interval);
 	PS4GSProfile::LogInterval(profile_interval);
 	PS4WorkerProfile::LogInterval(profile_interval);
+	ForjaLogFramePacing(); // compilation 65: ps4/core/GSRendererPS4.cpp
 	ProbeLog("Render configuration: internal_scale=%.2f aspect_mode=%u\n",
 		static_cast<double>(GSConfig.UpscaleMultiplier), static_cast<unsigned>(GSConfig.AspectRatio));
 }
