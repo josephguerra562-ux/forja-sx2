@@ -368,6 +368,15 @@ static void ForjaMovieSettings(bool movie)
 		!g_orbis_fg_wanted ? "off" : g_orbis_fg_fluid ? "fluid" : "steady", fluid_before != g_orbis_fg_fluid ? ", changed" : "",
 		movie ? "paused" : s_gs_skip_mode == 2 ? "one in two again" : s_gs_skip_mode == 1 ? "auto from every frame" : "off");
 }
+
+// Compilation 67: a movie cut short by the menu (a state loaded, the game restarted, its settings reset or recommended): what it
+// had changed besides its EE rate goes back too. Until now only s_video_active did, and the movie's settings (frame generation
+// fluid, Saltar cuadros paused, the meter, the IOP asleep) stayed on in the game until the next movie ended.
+static void ForjaEndMovieSettings()
+{
+	ForjaVideoMeter(false);
+	ForjaMovieSettings(false);
+}
 // Forja SX2 (compilation 37): the TV at 50 Hz for PAL games (UpdateOutputRate); vm-sin-50hz turns it off.
 static bool s_output_50hz_enabled = true;
 static double s_output_last_check = 0.0;
@@ -1877,6 +1886,7 @@ static void SavePlayerProfile(const char* what, Edit&& edit, bool reload_pcsx2)
 		MTGS::ApplySettings();
 		MTGS::WaitGS(false, false, false);
 		s_video_active = false;
+		ForjaEndMovieSettings(); // compilation 67
 		s_cpu_auto_steps = 0;
 		s_game_ee_rate = EmuConfig.Speedhacks.EECycleRate;
 	}
@@ -1903,6 +1913,7 @@ static void ReloadResetGameProfile(const std::string& serial, u32 crc, bool rese
 	MTGS::WaitGS(false, false, false);
 	ReadGameResolution();
 	s_video_active = false;
+	ForjaEndMovieSettings(); // compilation 67
 	s_cpu_auto_steps = 0;
 	s_game_ee_rate = EmuConfig.Speedhacks.EECycleRate;
 	ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
@@ -2540,6 +2551,7 @@ static void EndVideoModeForStateChange()
 	EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(s_video_saved_rate);
 	s_video_active = false;
 	s_video_busy_checks = 0;
+	ForjaEndMovieSettings(); // compilation 67
 }
 
 // Forja SX2: "Guardar estado". The menu has the VM paused, outside VMManager::Execute, so the state is consistent; it is
@@ -3696,6 +3708,11 @@ static void* RunVM(void*)
 		PS4EEEventProfile::s_sampling.gap_pending = false;
 		ProbeLog("STAGE: VMManager::Shutdown\n");
 		PS4Telemetry::Stage("vm-shutdown");
+		if (s_log_direct_boot) // compilation 67: a game closed before its first heartbeat
+		{
+			s_log_direct_boot = false;
+			PS4ProbeLogger::SetDirect(false);
+		}
 		VMManager::Shutdown(false);
 		// Forja SX2 (compilation 37): a normal end: the 50 Hz output worked or was never asked for.
 		PS4Port::g_output_hz_request.store(0, std::memory_order_relaxed);

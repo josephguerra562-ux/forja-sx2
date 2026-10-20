@@ -1069,9 +1069,9 @@ namespace PS4GameMenu
 			else if (why == "forja-audio-2")
 				status = T("Forja se volvió a cerrar al abrir el sonido: en esta consola los juegos irán sin sonido");
 			else
-			status = why.find("BIOS") != std::string::npos ?
-			             T("El juego no pudo iniciar: falta la BIOS de la PS2. Cópiala por FTP a /data/ForjaSX2/bios") :
-			             ForjaLang::F(TF("El juego no pudo iniciar: %s"), why.c_str());
+				status = why.find("BIOS") != std::string::npos ?
+				             T("El juego no pudo iniciar: falta la BIOS de la PS2. Cópiala por FTP a /data/ForjaSX2/bios") :
+				             ForjaLang::F(TF("El juego no pudo iniciar: %s"), why.c_str());
 			ProbeLog("Game menu: the last game could not start: %s\n", why.c_str());
 		}
 		DiscProbe disc_probe;

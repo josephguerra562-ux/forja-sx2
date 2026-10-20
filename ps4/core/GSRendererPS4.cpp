@@ -191,9 +191,10 @@ static void ForjaGsSkipNote(u32 fbp, bool hidden, bool left_out)
 			g_forja_gs_skip_stats[0].fetch_add(1, std::memory_order_relaxed);
 		}
 	}
-	else if (target->stale)
+	else if (target->stale && !(target->cut && target->left_out_frame == s_forja_frame))
 	{
-		// Compilation 67: a draw outside a chosen frame shows the buffer again, also during a load (no new frame since).
+		// Compilation 67: a draw outside a chosen frame shows the buffer again; one with draws left out in this same frame stays
+		// hidden (no half-drawn picture), until a later frame draws into it or a load shows everything (ForjaGsSkipClearAll).
 		target->stale = false;
 		target->cut = false;
 	}

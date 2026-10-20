@@ -67,11 +67,19 @@ namespace
 	}
 } // namespace
 
+// A branch taken whatever the registers hold: J, B (BEQ of a register with itself), BLEZ and BGEZ of $zero. The recompiler
+// fast-forwards any branch to the block's start among nops; a conditional one that falls through leaves the loop with work to do.
+static bool ForjaIopAlwaysBranches(u32 op)
+{
+	const u32 opcode = op >> 26, rs = (op >> 21) & 31, rt = (op >> 16) & 31;
+	return opcode == 2 || (opcode == 4 && rs == rt) || (opcode == 6 && rs == 0) || (opcode == 1 && rs == 0 && rt == 1);
+}
+
 // iR3000A.cpp, when it compiles a block it fast-forwards (from its start to past its delay slot).
 void ForjaNoteIopIdleLoop(u32 pc, u32 end)
 {
 	const u32 words = (end - pc) / 4;
-	if (end <= pc || words > 4)
+	if (end <= pc || words < 2 || words > 4 || !ForjaIopAlwaysBranches(iopMemRead32(end - 8)))
 		return;
 	ForjaIopIdleLoop* slot = nullptr;
 	for (ForjaIopIdleLoop& loop : s_forja_iop_idle)

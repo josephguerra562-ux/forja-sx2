@@ -94,6 +94,7 @@ namespace
 			if (s_output.status.load(std::memory_order_relaxed) == 1)
 				s_output.status.store(0, std::memory_order_relaxed);
 			PS4Audio::LogStatus();
+			unlink(FORJA_AUDIO_TRIAL); // compilation 67: a stream closed before its first block (a start that ended) is no death
 		}
 
 		void SetPaused(bool paused) override
