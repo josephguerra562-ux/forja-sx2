@@ -175,6 +175,12 @@ tr: تعذّر حفظ الإعدادات.
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: تم الحفظ. يُطبَّق عند تشغيل اللعبة التالية.
 
+es: El juego no pudo iniciar: falta la BIOS de la PS2. Cópiala por FTP a /data/ForjaSX2/bios
+tr: تعذّر بدء اللعبة: BIOS الخاص بـ PS2 غير موجود. انسخه عبر FTP إلى /data/ForjaSX2/bios
+
+es: El juego no pudo iniciar: %s
+tr: تعذّر بدء اللعبة: %s
+
 es: Copiando el disco
 tr: جارٍ نسخ القرص
 

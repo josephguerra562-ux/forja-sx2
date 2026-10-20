@@ -175,6 +175,12 @@ tr: The settings could not be saved.
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: Saved. It applies when the next game starts.
 
+es: El juego no pudo iniciar: falta la BIOS de la PS2. Cópiala por FTP a /data/ForjaSX2/bios
+tr: The game could not start: the PS2 BIOS is missing. Copy it by FTP to /data/ForjaSX2/bios
+
+es: El juego no pudo iniciar: %s
+tr: The game could not start: %s
+
 es: Copiando el disco
 tr: Copying the disc
 

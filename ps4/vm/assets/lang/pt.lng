@@ -175,6 +175,12 @@ tr: Não foi possível salvar as configurações.
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: Salvo. Vale a partir do próximo jogo.
 
+es: El juego no pudo iniciar: falta la BIOS de la PS2. Cópiala por FTP a /data/ForjaSX2/bios
+tr: O jogo não pôde iniciar: falta a BIOS do PS2. Copie-a por FTP para /data/ForjaSX2/bios
+
+es: El juego no pudo iniciar: %s
+tr: O jogo não pôde iniciar: %s
+
 es: Copiando el disco
 tr: Copiando o disco
 

@@ -1053,6 +1053,21 @@ namespace PS4GameMenu
 		}
 		if (language_dialog_visible)
 			PublishLanguageDialog(true, language_focus);
+		// Compilation 59: why the last game could not start (main.cpp writes it before the app opens the library again).
+		if (std::FILE* reason = std::fopen("/data/ForjaSX2/ultimo-error.txt", "r"))
+		{
+			char text[512] = {};
+			const size_t length = std::fread(text, 1, sizeof(text) - 1, reason);
+			std::fclose(reason);
+			std::remove("/data/ForjaSX2/ultimo-error.txt");
+			std::string why(text, length);
+			while (!why.empty() && (why.back() == '\n' || why.back() == '\r'))
+				why.pop_back();
+			status = why.find("BIOS") != std::string::npos ?
+			             T("El juego no pudo iniciar: falta la BIOS de la PS2. Cópiala por FTP a /data/ForjaSX2/bios") :
+			             ForjaLang::F(TF("El juego no pudo iniciar: %s"), why.c_str());
+			ProbeLog("Game menu: the last game could not start: %s\n", why.c_str());
+		}
 		DiscProbe disc_probe;
 		DiscCoverDownload disc_cover;
 		DiscCoverDownload library_cover;

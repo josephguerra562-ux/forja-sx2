@@ -175,6 +175,12 @@ tr: 설정을 저장할 수 없습니다.
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: 저장했습니다. 다음 게임을 시작할 때 적용됩니다.
 
+es: El juego no pudo iniciar: falta la BIOS de la PS2. Cópiala por FTP a /data/ForjaSX2/bios
+tr: 게임을 시작할 수 없습니다: PS2 BIOS가 없습니다. FTP로 /data/ForjaSX2/bios에 복사하세요
+
+es: El juego no pudo iniciar: %s
+tr: 게임을 시작할 수 없습니다: %s
+
 es: Copiando el disco
 tr: 디스크 복사 중
 

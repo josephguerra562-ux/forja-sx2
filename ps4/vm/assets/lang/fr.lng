@@ -175,6 +175,12 @@ tr: Impossible d'enregistrer les paramètres.
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: Enregistré. S'applique au lancement du prochain jeu.
 
+es: El juego no pudo iniciar: falta la BIOS de la PS2. Cópiala por FTP a /data/ForjaSX2/bios
+tr: Le jeu n'a pas pu démarrer : le BIOS de la PS2 manque. Copiez-le par FTP dans /data/ForjaSX2/bios
+
+es: El juego no pudo iniciar: %s
+tr: Le jeu n'a pas pu démarrer : %s
+
 es: Copiando el disco
 tr: Copie du disque
 

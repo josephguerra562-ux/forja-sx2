@@ -175,6 +175,12 @@ tr: 无法保存设置。
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: 已保存。下次启动游戏时生效。
 
+es: El juego no pudo iniciar: falta la BIOS de la PS2. Cópiala por FTP a /data/ForjaSX2/bios
+tr: 游戏无法启动：缺少 PS2 BIOS。请用 FTP 复制到 /data/ForjaSX2/bios
+
+es: El juego no pudo iniciar: %s
+tr: 游戏无法启动：%s
+
 es: Copiando el disco
 tr: 正在复制光盘
 

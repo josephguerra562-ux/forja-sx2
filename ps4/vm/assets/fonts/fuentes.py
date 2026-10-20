@@ -88,9 +88,12 @@ def main():
         options.hinting = False
         options.name_IDs = ["*"]
         options.notdef_outline = True
+        options.recalc_timestamp = False
         subsetter = subset.Subsetter(options)
         subsetter.populate(unicodes=sorted(ord(c) for c in chars))
         subsetter.subset(font)
+        # The same letters give the same file: the date of the source font stays (no "modified" of today).
+        font.recalcTimestamp = False
         out = io.BytesIO()
         font.save(out)
         (HERE / name).write_bytes(out.getvalue())

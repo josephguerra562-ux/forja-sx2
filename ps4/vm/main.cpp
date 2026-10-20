@@ -3353,6 +3353,13 @@ static void* RunVM(void*)
 			PS4GameMenu::HideLoading();
 		ProbeLog("VM initialization failed: %s\n", error.GetDescription().c_str());
 		PS4Telemetry::Stage("vm-init-failed");
+		// Compilation 59: the library that opens again (a new process) says why, from this file (GameMenu.cpp). Until now a game
+		// that could not start, most often for want of a PS2 BIOS, just went back to the library without a word.
+		if (std::FILE* reason = std::fopen("/data/ForjaSX2/ultimo-error.txt", "w"))
+		{
+			std::fprintf(reason, "%s\n", error.GetDescription().c_str());
+			std::fclose(reason);
+		}
 		// A failed mount is not an exit request. Reuse the clean-process return
 		// path, since Initialize may already have shut down the shared GS device.
 		s_return_to_main_menu.store(true, std::memory_order_release);
