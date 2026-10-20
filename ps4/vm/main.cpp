@@ -232,6 +232,10 @@ enum class VideoProbe
 };
 static bool s_video_auto = false;
 static int s_video_auto_rate = VIDEO_EE_RATE;
+// Compilation 63: the auto mode measures once a game (until a measure ends in Hold); its later movies start at that rate,
+// with no new trials. Each trial resets the EE recompiler: in Crash Nitro Kart's intro, a run of short movies, the trials and
+// the switches gave ~8 stops of ~230 ms in a minute (2026-10-20, "Hitch: ... ee_rec_resets=1").
+static bool s_video_auto_settled = false;
 static VideoProbe s_video_probe = VideoProbe::Hold;
 static int s_video_probe_best = VIDEO_EE_RATE;
 static double s_video_probe_best_fps = 0.0;
@@ -269,7 +273,11 @@ static unsigned s_cpu_auto_room_checks = 0;
 extern std::atomic<bool> g_forja_gs_skip_active;     // ps4/core/GSRendererPS4.cpp
 extern std::atomic<unsigned> g_forja_gs_skipped_frames;
 extern std::atomic<unsigned> g_forja_gs_skip_stats[4]; // compilation 62: GSRendererPS4.cpp, VSync and ForjaGsSkipNote
+extern std::atomic<unsigned> g_forja_gs_skip_every;    // compilation 63: one frame in N left out
 static int s_gs_skip_mode = 0;
+// Compilation 63: Auto's steps, one frame in N left out (index 0: every frame drawn), and the one it is on.
+static constexpr unsigned GS_SKIP_STEPS[] = {0u, 8u, 6u, 5u, 4u, 3u, 2u};
+static unsigned s_gs_skip_step = 0;
 static double s_gs_skip_last_check = 0.0;
 static double s_gs_skip_last_change = -100.0;
 static double s_gs_skip_last_report = 0.0;
@@ -1721,6 +1729,8 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		{
 			s_gs_skip_mode = gs_skip;
 			s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
+			s_gs_skip_step = 0; // compilation 63: Auto starts drawing every frame; "1 de 2" is one frame in two
+			g_forja_gs_skip_every.store(2u, std::memory_order_relaxed);
 			g_forja_gs_skip_active.store(gs_skip == 2, std::memory_order_relaxed);
 		}
 	}
@@ -2009,6 +2019,8 @@ static void UpdateVideoMode(double elapsed)
 					case VideoProbe::Hold:
 						break;
 				}
+				if (s_video_probe == VideoProbe::Hold && phase != VideoProbe::Hold)
+					s_video_auto_settled = true; // compilation 63
 				static constexpr const char* phase_names[] = {"measure", "up", "down", "hold"};
 				ProbeLog("Video mode: auto %s at %d: %.1f pictures/s (speed %.0f %%), best %d (%.1f) -> %d\n",
 					phase_names[static_cast<int>(phase)], rate, fps, PerformanceMetrics::GetSpeed(), s_video_probe_best,
@@ -2026,12 +2038,13 @@ static void UpdateVideoMode(double elapsed)
 		}
 	}
 
-	// On after two busy checks in a row (~1 s of movie); off 2 s after the last busy check, and never
-	// sooner than 3 s after switching on, so short decode bursts (loading screens) don't flip it back and forth.
+	// On after two busy checks in a row (~1 s of movie); off 4 s after the last busy check (2 s until compilation 62), and never
+	// sooner than 3 s after switching on, so short decode bursts (loading screens) and the gaps between the short movies of an
+	// intro (Crash Nitro Kart's) don't flip it back and forth, each flip a reset of the EE recompiler.
 	bool want = s_video_active;
 	if (!s_video_active && s_video_busy_checks >= 2)
 		want = true;
-	else if (s_video_active && elapsed - s_video_last_busy >= 2.0 && elapsed - s_video_since >= 3.0)
+	else if (s_video_active && elapsed - s_video_last_busy >= 4.0 && elapsed - s_video_since >= 3.0)
 		want = false;
 	if (want == s_video_active)
 		return;
@@ -2041,7 +2054,8 @@ static void UpdateVideoMode(double elapsed)
 		const int video_rate = s_video_auto ? s_video_auto_rate : s_video_ee_rate;
 		s_video_saved_rate = EmuConfig.Speedhacks.EECycleRate;
 		s_video_since = elapsed;
-		s_video_probe = VideoProbe::Measure;
+		// Compilation 63: measured already in this game: its best rate, held (VIDEO_PROBE_HOLD later a long movie measures again).
+		s_video_probe = s_video_auto && s_video_auto_settled ? VideoProbe::Hold : VideoProbe::Measure;
 		s_video_probe_since = elapsed;
 		s_video_probe_fps_sum = 0.0;
 		s_video_probe_samples = 0;
@@ -2118,11 +2132,10 @@ static void SetCpuAutoRate(int rate, const char* why, double speed, double busie
 		busiest, before, rate, s_cpu_auto_base, s_cpu_auto_floor);
 }
 
-// Forja SX2 (compilation 47): "Saltar cuadros" on auto. When the GS thread is what holds the game back (the busiest one, at 90 %
-// or more, with the speed under 92 % for ~3 s), the GS draws every other frame of the game (GSRendererPS4.cpp, VSync): the
-// game keeps its speed, its music and its moves, with half the GS work. It draws them all again after ~8 s at full speed
-// with the GS under 45 % (drawing every frame it would stay under 90 %). Dragon Ball Z Budokai Tenkaichi 4 (2026-10-18):
-// ~2,100 draws a frame in its fights, 25 us each for the PS4's CPU, 31 ms a vsync for the GS, 48 % speed.
+// Forja SX2 (compilation 47): "Saltar cuadros" on auto. When the GS thread is what holds the game back, the GS leaves frames of
+// the game out (GSRendererPS4.cpp, VSync): the game keeps its speed, its music and its moves, with less GS work. Dragon Ball Z
+// Budokai Tenkaichi 4 (2026-10-18): ~2,100 draws a frame in its fights, 25 us each for the PS4's CPU, 31 ms a vsync for the GS,
+// 48 % speed. Compilation 63: Auto goes through GS_SKIP_STEPS.
 static void UpdateGsSkip(double elapsed)
 {
 	if (s_gs_skip_mode == 0)
@@ -2145,28 +2158,45 @@ static void UpdateGsSkip(double elapsed)
 	if (s_gs_skip_mode != 1 || s_video_active || elapsed - s_gs_skip_last_check < 0.5)
 		return;
 	s_gs_skip_last_check = elapsed;
+	// Compilation 63: Auto leaves out as few frames as the game needs to run at full speed, one in 8 up to one in 2
+	// (GS_SKIP_STEPS), a step a second while the GS holds the game back, and back a step after 4 s at full speed when the
+	// GS would still have room drawing more. With the huella, Dragon Ball's fights ran at 81-88 % with the GS at a steady
+	// ~86 % (the old Auto waited for 90 % and never came on) and at 98-103 % with one in two, but showing 15 pictures a
+	// second instead of 25; one in 6 or so keeps ~25 at full speed (2026-10-20).
 	const double speed = PerformanceMetrics::GetSpeed();
 	const double gs = PerformanceMetrics::GetGSThreadUsage();
 	const double others = std::max(PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()));
-	const bool active = g_forja_gs_skip_active.load(std::memory_order_relaxed);
-	if (!active)
-		s_gs_skip_slow_checks = (speed < 92.0 && gs >= 90.0 && gs >= others) ? s_gs_skip_slow_checks + 1 : 0;
-	else
-		s_gs_skip_room_checks = (speed >= 98.0 && gs < 45.0) ? s_gs_skip_room_checks + 1 : 0;
-	if (elapsed - s_gs_skip_last_change < 6.0)
-		return;
-	if (!active && s_gs_skip_slow_checks >= 6)
+	// The GS is what holds the game back: busy, and clearly busier than the EE and the VU1 (God of War II's VU1 limit is not).
+	const bool gs_bound = gs >= 70.0 && gs >= others + 10.0;
+	const unsigned drawn_now = s_gs_skip_step > 0 ? GS_SKIP_STEPS[s_gs_skip_step] - 1u : 1u;
+	const unsigned of_now = s_gs_skip_step > 0 ? GS_SKIP_STEPS[s_gs_skip_step] : 1u;
+	// The GS's use one step lighter, from the share of frames each step draws.
+	double lighter_gs = gs;
+	if (s_gs_skip_step > 0)
 	{
-		g_forja_gs_skip_active.store(true, std::memory_order_relaxed);
-		ProbeLog("GS skip: on at %.0f %% speed (GS %.0f %%, EE/VU1 %.0f %%): one frame in two\n", speed, gs, others);
+		const unsigned every = s_gs_skip_step > 1 ? GS_SKIP_STEPS[s_gs_skip_step - 1] : 0u;
+		const double share_lighter = every ? static_cast<double>(every - 1) / every : 1.0;
+		lighter_gs = gs * share_lighter / (static_cast<double>(drawn_now) / of_now);
 	}
-	else if (active && s_gs_skip_room_checks >= 16)
-	{
-		g_forja_gs_skip_active.store(false, std::memory_order_relaxed);
-		ProbeLog("GS skip: off at %.0f %% speed (GS %.0f %% drawing half): every frame again\n", speed, gs);
-	}
+	s_gs_skip_slow_checks = (speed < 97.0 && gs_bound) ? s_gs_skip_slow_checks + 1 : 0;
+	s_gs_skip_room_checks = (s_gs_skip_step > 0 && speed >= 99.0 && lighter_gs < 85.0) ? s_gs_skip_room_checks + 1 : 0;
+	if (elapsed - s_gs_skip_last_change < 2.0)
+		return;
+	const unsigned last_step = static_cast<unsigned>(std::size(GS_SKIP_STEPS)) - 1u;
+	unsigned step = s_gs_skip_step;
+	if (s_gs_skip_slow_checks >= 2 && step < last_step)
+		step++;
+	else if (s_gs_skip_room_checks >= 8 && step > 0)
+		step--;
 	else
 		return;
+	s_gs_skip_step = step;
+	g_forja_gs_skip_every.store(step > 0 ? GS_SKIP_STEPS[step] : 2u, std::memory_order_relaxed);
+	g_forja_gs_skip_active.store(step > 0, std::memory_order_relaxed);
+	if (step > 0)
+		ProbeLog("GS skip: auto one frame in %u (speed %.0f %%, GS %.0f %%, EE/VU1 %.0f %%)\n", GS_SKIP_STEPS[step], speed, gs, others);
+	else
+		ProbeLog("GS skip: auto off, every frame again (speed %.0f %%, GS %.0f %% drawing all but one in %u)\n", speed, gs, of_now);
 	s_gs_skip_last_change = elapsed;
 	s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
 	PublishGameMenu();
@@ -3354,6 +3384,7 @@ static void* RunVM(void*)
 				crc, Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - scan_start));
 			s_cpu_auto_steps = 0;
 			s_gs_skip_mode = -1; // compilation 47: a new game starts drawing every frame (ApplyGameProfile sets it again)
+			s_video_auto_settled = false; // compilation 63: a new game's movies are measured again
 			ResetGsFilterList(); // compilation 54: a new game's list starts empty
 			LoadRules(); // compilation 55: huellas.ini, before the profile turns its rules on
 			s_fast_forward = false; // compilation 58: a game starts at its own speed

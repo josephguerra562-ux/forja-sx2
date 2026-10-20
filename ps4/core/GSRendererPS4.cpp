@@ -52,6 +52,10 @@ static unsigned s_forja_vsyncs_since_frame = 0;
 // GSRendererHW::Draw leaves out only the draws into "la pantalla" (the last two framebuffers shown) of every other frame,
 // and notes here which framebuffer holds a frame left out (ForjaGsSkipNote); VSync hides those and nothing else.
 bool g_forja_gs_skip_tracking = false; // GS thread only: Draw notes the draws into la pantalla
+// Compilation 63: one frame in g_forja_gs_skip_every is left out (2: "1 de 2"; Auto in main.cpp, UpdateGsSkip, picks 2 to 8,
+// as few as the game needs to run at full speed). The pictures shown drop by as much: one in 6 keeps 25 of 30.
+std::atomic<unsigned> g_forja_gs_skip_every{2};
+static unsigned s_forja_skip_count = 0;
 std::atomic<unsigned> g_forja_gs_skip_stats[4]; // draws left out, pictures hidden, pictures shown, frames drawn whole by force
 namespace
 {
@@ -881,7 +885,9 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				const bool force = s_forja_hidden_frames >= 2;
 				if (force && forja_want)
 					g_forja_gs_skip_stats[3].fetch_add(1, std::memory_order_relaxed);
-				g_forja_gs_skip_drawing = forja_want && !g_forja_gs_skip_drawing && !force;
+				const unsigned every = std::max(g_forja_gs_skip_every.load(std::memory_order_relaxed), 2u);
+				s_forja_skip_count = (s_forja_skip_count + 1) % every;
+				g_forja_gs_skip_drawing = forja_want && !g_forja_gs_skip_drawing && !force && s_forja_skip_count == 0;
 				if (g_forja_gs_skip_drawing)
 					g_forja_gs_skipped_frames.fetch_add(1, std::memory_order_relaxed);
 			}
