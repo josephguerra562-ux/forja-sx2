@@ -241,6 +241,10 @@ static int s_video_probe_best = VIDEO_EE_RATE;
 static double s_video_probe_best_fps = 0.0;
 static double s_video_probe_since = 0.0; // when the rate being measured was put in place (or the hold began)
 static double s_video_probe_fps_sum = 0.0;
+// Compilation 64: the speed over the same window, and the best rate's. A movie the PS4's EE thread cannot keep up with plays
+// slowed down (Crash Nitro Kart's intro from 100 %: 68-78 % speed, the thread at 100-120 %, 2026-10-20).
+static double s_video_probe_speed_sum = 0.0;
+static double s_video_probe_best_speed = 0.0;
 static unsigned s_video_probe_samples = 0;
 static bool s_video_probe_went_up = false;
 static constexpr int VIDEO_AUTO_LOWEST = -5; // 31 %
@@ -278,6 +282,9 @@ static int s_gs_skip_mode = 0;
 // Compilation 63: Auto's steps, one frame in N left out (index 0: every frame drawn), and the one it is on.
 static constexpr unsigned GS_SKIP_STEPS[] = {0u, 8u, 6u, 5u, 4u, 3u, 2u};
 static unsigned s_gs_skip_step = 0;
+// Compilation 64: Auto's samples (every 0.5 s) since its last decision.
+static double s_gs_skip_speed_sum = 0.0, s_gs_skip_gs_sum = 0.0, s_gs_skip_others_sum = 0.0;
+static unsigned s_gs_skip_samples = 0;
 static double s_gs_skip_last_check = 0.0;
 static double s_gs_skip_last_change = -100.0;
 static double s_gs_skip_last_report = 0.0;
@@ -1730,6 +1737,8 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 			s_gs_skip_mode = gs_skip;
 			s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
 			s_gs_skip_step = 0; // compilation 63: Auto starts drawing every frame; "1 de 2" is one frame in two
+			s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
+			s_gs_skip_samples = 0;
 			g_forja_gs_skip_every.store(2u, std::memory_order_relaxed);
 			g_forja_gs_skip_active.store(gs_skip == 2, std::memory_order_relaxed);
 		}
@@ -1943,18 +1952,24 @@ static void UpdateVideoMode(double elapsed)
 				s_video_probe = VideoProbe::Measure;
 				s_video_probe_since = elapsed - VIDEO_PROBE_SETTLE; // same rate: nothing to settle
 				s_video_probe_fps_sum = 0.0;
+				s_video_probe_speed_sum = 0.0;
 				s_video_probe_samples = 0;
 			}
 		}
 		else if (elapsed - s_video_probe_since >= VIDEO_PROBE_SETTLE)
 		{
 			s_video_probe_fps_sum += PerformanceMetrics::GetInternalFPS();
+			s_video_probe_speed_sum += PerformanceMetrics::GetSpeed();
 			s_video_probe_samples++;
 			if (elapsed - s_video_probe_since >= VIDEO_PROBE_SETTLE + VIDEO_PROBE_WINDOW)
 			{
 				const int rate = EmuConfig.Speedhacks.EECycleRate;
 				const double fps = s_video_probe_fps_sum / s_video_probe_samples;
+				const double speed = s_video_probe_speed_sum / s_video_probe_samples;
 				const bool better = fps > s_video_probe_best_fps * VIDEO_PROBE_GAIN;
+				// Compilation 64: the EE thread is what holds the movie back: slow, with that thread full. Then fewer EE cycles a
+				// second is the way, even with as many pictures (a slowed movie has its sound cut too).
+				const bool ee_bound = speed < 90.0 && PerformanceMetrics::GetCPUThreadUsage() >= 95.0;
 				const VideoProbe phase = s_video_probe;
 				int next = rate;
 				switch (phase)
@@ -1962,8 +1977,15 @@ static void UpdateVideoMode(double elapsed)
 					case VideoProbe::Measure:
 						s_video_probe_best = rate;
 						s_video_probe_best_fps = fps;
+						s_video_probe_best_speed = speed;
 						s_video_probe_went_up = false;
-						if (rate < VIDEO_AUTO_HIGHEST)
+						if (ee_bound && rate > VIDEO_AUTO_LOWEST)
+						{
+							// Two steps down at once: from 100 % to 60 % (one step, 75 %, gave Crash 68 -> 76 % speed).
+							next = std::max(rate - 2, VIDEO_AUTO_LOWEST);
+							s_video_probe = VideoProbe::Down;
+						}
+						else if (rate < VIDEO_AUTO_HIGHEST)
 						{
 							next = rate + 1;
 							s_video_probe = VideoProbe::Up;
@@ -1983,6 +2005,7 @@ static void UpdateVideoMode(double elapsed)
 						{
 							s_video_probe_best = rate;
 							s_video_probe_best_fps = fps;
+							s_video_probe_best_speed = speed;
 							s_video_probe_went_up = true;
 							if (rate < VIDEO_AUTO_HIGHEST)
 								next = rate + 1;
@@ -2001,11 +2024,13 @@ static void UpdateVideoMode(double elapsed)
 						}
 						break;
 					case VideoProbe::Down:
-						if (better)
+						// Compilation 64: going down, faster at about as many pictures is better too.
+						if (better || (speed > s_video_probe_best_speed + 5.0 && fps >= s_video_probe_best_fps * 0.97))
 						{
 							s_video_probe_best = rate;
 							s_video_probe_best_fps = fps;
-							if (rate > VIDEO_AUTO_LOWEST)
+							s_video_probe_best_speed = speed;
+							if (rate > VIDEO_AUTO_LOWEST && (ee_bound || better))
 								next = rate - 1;
 							else
 								s_video_probe = VideoProbe::Hold;
@@ -2019,15 +2044,18 @@ static void UpdateVideoMode(double elapsed)
 					case VideoProbe::Hold:
 						break;
 				}
-				if (s_video_probe == VideoProbe::Hold && phase != VideoProbe::Hold)
-					s_video_auto_settled = true; // compilation 63
+				// Compilation 63: measured; compilation 64: only on a rate that plays the movie at about full speed, so one bad
+				// first measure (a light opening, a loading pause) doesn't hold a whole game's movies at a slow rate.
+				if (s_video_probe == VideoProbe::Hold && phase != VideoProbe::Hold && s_video_probe_best_speed >= 90.0)
+					s_video_auto_settled = true;
 				static constexpr const char* phase_names[] = {"measure", "up", "down", "hold"};
-				ProbeLog("Video mode: auto %s at %d: %.1f pictures/s (speed %.0f %%), best %d (%.1f) -> %d\n",
-					phase_names[static_cast<int>(phase)], rate, fps, PerformanceMetrics::GetSpeed(), s_video_probe_best,
+				ProbeLog("Video mode: auto %s at %d: %.1f pictures/s (speed %.0f %%%s), best %d (%.1f) -> %d\n",
+					phase_names[static_cast<int>(phase)], rate, fps, speed, ee_bound ? ", EE thread full" : "", s_video_probe_best,
 					s_video_probe_best_fps, next);
 				s_video_auto_rate = s_video_probe_best;
 				s_video_probe_since = elapsed;
 				s_video_probe_fps_sum = 0.0;
+				s_video_probe_speed_sum = 0.0;
 				s_video_probe_samples = 0;
 				if (next != rate)
 				{
@@ -2058,6 +2086,7 @@ static void UpdateVideoMode(double elapsed)
 		s_video_probe = s_video_auto && s_video_auto_settled ? VideoProbe::Hold : VideoProbe::Measure;
 		s_video_probe_since = elapsed;
 		s_video_probe_fps_sum = 0.0;
+		s_video_probe_speed_sum = 0.0;
 		s_video_probe_samples = 0;
 		s_video_probe_best = video_rate;
 		s_video_probe_best_fps = 0.0;
@@ -2159,13 +2188,24 @@ static void UpdateGsSkip(double elapsed)
 		return;
 	s_gs_skip_last_check = elapsed;
 	// Compilation 63: Auto leaves out as few frames as the game needs to run at full speed, one in 8 up to one in 2
-	// (GS_SKIP_STEPS), a step a second while the GS holds the game back, and back a step after 4 s at full speed when the
+	// (GS_SKIP_STEPS), a step at a time while the GS holds the game back, and back a step after 4 s at full speed when the
 	// GS would still have room drawing more. With the huella, Dragon Ball's fights ran at 81-88 % with the GS at a steady
 	// ~86 % (the old Auto waited for 90 % and never came on) and at 98-103 % with one in two, but showing 15 pictures a
 	// second instead of 25; one in 6 or so keeps ~25 at full speed (2026-10-20).
-	const double speed = PerformanceMetrics::GetSpeed();
-	const double gs = PerformanceMetrics::GetGSThreadUsage();
-	const double others = std::max(PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()));
+	// Compilation 64: on the averages of 2 s, measured from 1 s after a change. On single samples, a moment at 96 % right after
+	// reaching one in 3 (which ran Dragon Ball at 96-107 %) took it to one in 2 in ~10 s, and 15 pictures a second again.
+	if (elapsed - s_gs_skip_last_change < 1.0)
+		return;
+	s_gs_skip_speed_sum += PerformanceMetrics::GetSpeed();
+	s_gs_skip_gs_sum += PerformanceMetrics::GetGSThreadUsage();
+	s_gs_skip_others_sum += std::max(PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()));
+	if (++s_gs_skip_samples < 4)
+		return;
+	const double speed = s_gs_skip_speed_sum / s_gs_skip_samples;
+	const double gs = s_gs_skip_gs_sum / s_gs_skip_samples;
+	const double others = s_gs_skip_others_sum / s_gs_skip_samples;
+	s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
+	s_gs_skip_samples = 0;
 	// The GS is what holds the game back: busy, and clearly busier than the EE and the VU1 (God of War II's VU1 limit is not).
 	const bool gs_bound = gs >= 70.0 && gs >= others + 10.0;
 	const unsigned drawn_now = s_gs_skip_step > 0 ? GS_SKIP_STEPS[s_gs_skip_step] - 1u : 1u;
@@ -2178,15 +2218,14 @@ static void UpdateGsSkip(double elapsed)
 		const double share_lighter = every ? static_cast<double>(every - 1) / every : 1.0;
 		lighter_gs = gs * share_lighter / (static_cast<double>(drawn_now) / of_now);
 	}
-	s_gs_skip_slow_checks = (speed < 97.0 && gs_bound) ? s_gs_skip_slow_checks + 1 : 0;
+	// One more frame out after a 2 s average under 95 % with the GS the limit; one fewer after two in a row (4 s) at 99 % with
+	// room for the GS drawing more.
 	s_gs_skip_room_checks = (s_gs_skip_step > 0 && speed >= 99.0 && lighter_gs < 85.0) ? s_gs_skip_room_checks + 1 : 0;
-	if (elapsed - s_gs_skip_last_change < 2.0)
-		return;
 	const unsigned last_step = static_cast<unsigned>(std::size(GS_SKIP_STEPS)) - 1u;
 	unsigned step = s_gs_skip_step;
-	if (s_gs_skip_slow_checks >= 2 && step < last_step)
+	if (speed < 95.0 && gs_bound && step < last_step)
 		step++;
-	else if (s_gs_skip_room_checks >= 8 && step > 0)
+	else if (s_gs_skip_room_checks >= 2 && step > 0)
 		step--;
 	else
 		return;
@@ -2199,6 +2238,8 @@ static void UpdateGsSkip(double elapsed)
 		ProbeLog("GS skip: auto off, every frame again (speed %.0f %%, GS %.0f %% drawing all but one in %u)\n", speed, gs, of_now);
 	s_gs_skip_last_change = elapsed;
 	s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
+	s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
+	s_gs_skip_samples = 0;
 	PublishGameMenu();
 }
 
