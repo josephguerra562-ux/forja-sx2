@@ -106,6 +106,9 @@ namespace orbis_fg
 			m_reset = true;
 		}
 		bool Fluid() const { return m_fluid; }
+		// Forja SX2 (compilation 66): a movie playing (main.cpp, ForjaMovieSettings): the safety net makes no pauses, and one
+		// under way ends; the EE's core is a movie's limit, not the generated frames.
+		void SetMovie(bool movie) { m_movie = movie; }
 
 		// One new frame of the game: `vsyncs` since the last new frame (1 at 60 fps, 2 at 30), `already` the presents made since
 		// the last one was given here (its own game frame and any repeat presented after it), the PS2's and the display's rates
@@ -271,6 +274,20 @@ namespace orbis_fg
 			const bool generated = m_generated_this_second;
 			m_generated_this_second = false;
 
+			if (m_movie) // compilation 66
+			{
+				if (Paused())
+				{
+					m_paused_until = 0.0;
+					m_nofg_sum = 0.0;
+					m_nofg_n = 0;
+					m_reset = true;
+				}
+				m_slow = 0;
+				m_slow_sum = 0.0;
+				return;
+			}
+
 			if (Paused())
 			{
 				if (now >= m_pause_start + kSettle)
@@ -333,6 +350,7 @@ namespace orbis_fg
 		double m_median = 0.0;
 		uint32_t m_steady = 0; // vk-285-135
 		bool m_fluid = false;  // Forja SX2 (compilation 40)
+		bool m_movie = false;  // Forja SX2 (compilation 66)
 		double m_credit = 0.0; // the fluid mode's refreshes not yet presented
 		double m_refreshes = 0.0;
 		uint32_t m_repeats = 1;

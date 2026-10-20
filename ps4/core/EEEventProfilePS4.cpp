@@ -13,6 +13,7 @@ extern void ProbeLog(const char*, ...);
 namespace PS4EEEventProfile
 {
 	SamplingState s_sampling;
+	std::atomic<bool> s_compact{false};
 	namespace
 	{
 		struct Counter
@@ -57,8 +58,8 @@ namespace PS4EEEventProfile
 
 	void LogGaps(double seconds)
 	{
-		if (!s_sampling.enabled || seconds <= 0.0)
-			return;
+		if (!s_sampling.enabled || seconds <= 0.0 || !s_sampling.gap_observer)
+			return; // compilation 66: no table without its observer (the video meter's split)
 		std::array<Gap, 8> top{};
 		u64 total_ns = s_dropped_ns;
 		for (const auto& gap : s_gaps)
@@ -103,6 +104,31 @@ namespace PS4EEEventProfile
 
 	void LogInterval(double seconds)
 	{
+		// Forja SX2 (compilation 66): the video meter's line, the EE thread's second split as the game's code (between events,
+		// with the memory handlers it calls: IPU registers, the decoder started by them) and each phase of the events.
+		if (s_compact.load(std::memory_order_relaxed))
+		{
+			double ms[static_cast<unsigned>(Phase::Count)] = {};
+			bool any = false;
+			for (unsigned i = 0; i < static_cast<unsigned>(Phase::Count); ++i)
+			{
+				auto& counter = s_counters[i];
+				const auto samples = counter.samples.load(std::memory_order_acquire);
+				const auto ns = counter.nanoseconds.load(std::memory_order_relaxed);
+				const auto delta_ns = ns - counter.last_nanoseconds;
+				any |= samples != counter.last_samples;
+				counter.last_samples = samples;
+				counter.last_nanoseconds = ns;
+				ms[i] = seconds > 0.0 ? static_cast<double>(delta_ns) * SAMPLE_WEIGHT / (seconds * 1000000.0) : 0.0;
+			}
+			if (any && seconds > 0.0)
+				ProbeLog("Video meter: EE thread a second: game code %.0f ms, IOP %.0f, DMA and IPU %.0f, timers %.0f, VU %.0f, "
+						 "interrupts %.0f, scheduling %.0f (one event in %u)\n",
+					ms[static_cast<unsigned>(Phase::BetweenEvents)], ms[static_cast<unsigned>(Phase::IOP)],
+					ms[static_cast<unsigned>(Phase::DMA)], ms[static_cast<unsigned>(Phase::Timers)], ms[static_cast<unsigned>(Phase::VU)],
+					ms[static_cast<unsigned>(Phase::Exceptions)], ms[static_cast<unsigned>(Phase::Schedule)], SAMPLE_WEIGHT);
+			return;
+		}
 		for (unsigned i = 0; i < static_cast<unsigned>(Phase::Count); ++i)
 		{
 			auto& counter = s_counters[i];

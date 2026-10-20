@@ -163,7 +163,7 @@ bool ForjaGsSkipIsDisplayBuffer(u32 fbp)
 
 // GS thread, GSRendererHW::Draw: a draw into one of those framebuffers, left out or drawn. A framebuffer is stale from its first draw left
 // out until a later frame draws into it again; a frame that has both stays stale, so no half-drawn picture is shown.
-void ForjaGsSkipNote(u32 fbp, bool left_out)
+static void ForjaGsSkipNote(u32 fbp, bool left_out)
 {
 	ForjaSkipTarget* target = ForjaFindTarget(fbp);
 	if (!target)
@@ -181,6 +181,22 @@ void ForjaGsSkipNote(u32 fbp, bool left_out)
 	}
 	else if (target->stale && target->left_out_frame != s_forja_frame)
 		target->stale = false;
+}
+
+// Forja SX2 (compilation 66): the first FORJA_SKIP_FIRST_DRAWS draws of every frame into la pantalla always run, so a light
+// frame (a loading screen, a menu, a result's message) is never left out. Dragon Ball Z Budokai Tenkaichi 4 (2026-10-20, one
+// in 2): its fights draw ~2,300 a frame, but its "DERROTADO" and the pause box after it draw once, or a part a frame, and then
+// stay; a skipped one was lost for good: a black screen, the last picture, the box in pieces. A heavy frame left out keeps
+// its first draws, and stays hidden as before.
+static constexpr u32 FORJA_SKIP_FIRST_DRAWS = 192;
+static u32 s_forja_frame_draws = 0; // draws into la pantalla in this frame of the game
+
+bool ForjaGsSkipDraw(u32 fbp)
+{
+	const bool left_out = g_forja_gs_skip_drawing && s_forja_frame_draws >= FORJA_SKIP_FIRST_DRAWS;
+	s_forja_frame_draws++;
+	ForjaGsSkipNote(fbp, left_out);
+	return left_out;
 }
 
 static constexpr std::array<PresentShader, 8> s_tv_shader_indices = {
@@ -927,6 +943,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 			if (registers_written)
 			{
 				s_forja_frame++;
+				s_forja_frame_draws = 0; // compilation 66
 				s_forja_vsyncs_since_frame = 0;
 				s_forja_hidden_frames = s_forja_shown_this_frame ? 0 : s_forja_hidden_frames + 1;
 				s_forja_shown_this_frame = false;

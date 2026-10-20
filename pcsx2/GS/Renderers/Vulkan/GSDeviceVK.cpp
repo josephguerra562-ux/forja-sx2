@@ -4690,6 +4690,7 @@ bool g_orbis_fg_wanted = false; // main-boot.cpp sets it from PS5SX2/FrameGenera
 std::atomic<bool> g_orbis_fg_active{false}; // frames are being generated (the FPS box says "FG")
 bool g_orbis_fg_engaged = false; // vk-285-133: the pacing has room for generated frames (GSRenderer.cpp skips the repeats then)
 bool g_orbis_fg_fluid = false; // Forja SX2 (compilation 40): main.cpp, [Forja] FrameGen = 2 (OrbisFrameGenPacing.h's fluid mode)
+bool g_orbis_fg_movie = false; // Forja SX2 (compilation 66): main.cpp, a movie playing (no pauses for the speed)
 
 // The driver's measured refresh of the output its swapchain presents to (ps5vk's high-frame-rate output, 2026-10-08); a driver
 // without it presents at 59.94 Hz.
@@ -4951,6 +4952,7 @@ u32 GSDeviceVK::OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv,
 	const double now_s = std::chrono::duration<double>(now.time_since_epoch()).count();
 	s.hz = OrbisFrameGenDisplayHz(); // the driver's, each frame: the output goes back to 60 Hz before the process ends
 	s.pacing.SetFluid(g_orbis_fg_fluid);
+	s.pacing.SetMovie(g_orbis_fg_movie); // compilation 66
 	const orbis_fg::Decision decision = s.pacing.Frame(vsyncs, already, ps2_hz, s.hz, now_s, speed, nominal);
 	OrbisFrameGenLogEvent(s, s.pacing.TakeEvent());
 	OrbisFrameGenLogState(s, now, ps2_hz);

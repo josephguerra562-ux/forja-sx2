@@ -288,6 +288,13 @@ extern bool EnableFMV;
 extern bool g_ps4_ipu_csc_reuse;
 // (AI-assisted) IPU0dma drains several output FIFO fills per DMA event (IPUdma.cpp).
 extern bool g_ps4_ipu0_burst;
+// Forja SX2 (compilation 66): the decoder fed from its toIPU DMA at once while that is all it waits for (IPUdma.cpp,
+// ForjaIPUFeed). /data/ForjaSX2/vm-no-ipu-feed turns it off.
+extern bool g_ps4_ipu_feed;
+// Compilation 66, the video meter's counts (EE thread): the IPU's events (decoder, toIPU, fromIPU) and the FIFO fills moved
+// at once (out of the IPU by the burst, into it by the feed).
+extern u64 g_forja_ipu_events[3];
+extern u64 g_forja_ipu_inline_fills[2];
 #endif
 
 alignas(16) extern tIPU_cmd ipu_cmd;

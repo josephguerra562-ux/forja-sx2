@@ -4,6 +4,8 @@
 
 #include "common/Timer.h"
 
+#include <atomic>
+
 namespace PS4EEEventProfile
 {
 	constexpr std::uint32_t SAMPLE_WEIGHT = 1024;
@@ -29,6 +31,8 @@ namespace PS4EEEventProfile
 		Common::Timer::Value gap_start = 0;
 	};
 	extern SamplingState s_sampling; // EE owner only; configure before executing.
+	// Forja SX2 (compilation 66): LogInterval writes one line, the video meter's (main.cpp, ForjaVideoMeter, during movies).
+	extern std::atomic<bool> s_compact;
 	void Record(Phase phase, std::uint64_t nanoseconds);
 	void LogInterval(double seconds); // GS consumer only.
 	void RecordGap(std::uint32_t start_pc, std::uint32_t end_pc, std::uint64_t nanoseconds);

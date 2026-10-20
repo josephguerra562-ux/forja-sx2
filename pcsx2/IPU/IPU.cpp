@@ -27,6 +27,7 @@ static void (*IPUWorker)();
 #if defined(PCSX2_PS4_VM_BOOT)
 bool g_ps4_ipu_csc_reuse = false;
 bool g_ps4_ipu0_burst = false;
+bool g_ps4_ipu_feed = false; // compilation 66
 
 // (AI-assisted) Invoke the original worker exactly once, preserving command,
 // interrupt and FIFO behavior. Only selected calls receive timestamps.

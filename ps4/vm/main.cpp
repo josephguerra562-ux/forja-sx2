@@ -231,7 +231,7 @@ enum class VideoProbe
 };
 static bool s_video_auto = false;
 static int s_video_auto_rate = VIDEO_EE_RATE; // where the game's next movie starts
-// Compilation 65: the highest rate the game's movies may use: a rate found too slow (under 92 %) lowers it for the rest of the
+// Compilation 65: the highest rate the game's movies may use: a rate found too slow (under 92 %, 90 since 66) lowers it for the rest of the
 // game, so no movie tries it again (each change resets the EE recompiler, a stop of 100-250 ms: Crash Nitro Kart's intro had
 // 8 to 12 in two minutes, 2026-10-20). And one step up a movie at most.
 static int s_video_auto_ceiling = 0;
@@ -245,11 +245,22 @@ static bool s_ipu_profile_off = false;
 // between two movies) decides nothing: its speed says nothing about the movie, and a low one would lower the game's ceiling.
 static unsigned s_video_probe_busy_samples = 0;
 
+// Compilation 66: the EE thread's split as well (PS4EEEventProfile: one event in 1024, its phases and the game's code after it),
+// in one line, "Video meter: EE thread"; vm-profile-ee / vm-profile-perf keep the full profile on all the time.
+static bool s_ee_profile_marker = false;
+
 static void ForjaVideoMeter(bool movie)
 {
 	const bool on = !s_ipu_profile_off && (s_ipu_profile_marker || movie);
 	PS4IPUProfile::s_sampling.enabled = on;
 	PS4IPUProfile::s_access_sampling.enabled = on;
+	if (!s_ee_profile_marker)
+	{
+		PS4EEEventProfile::s_sampling.enabled = on;
+		PS4EEEventProfile::s_sampling.gap_pending = false; // no gap from before the switch
+		PS4EEEventProfile::s_sampling.gap_observer = nullptr; // no table of gaps, only the split
+		PS4EEEventProfile::s_compact.store(on, std::memory_order_relaxed);
+	}
 }
 
 static VideoProbe s_video_probe = VideoProbe::Measure;
@@ -262,10 +273,16 @@ static constexpr int VIDEO_AUTO_HIGHEST = 0; // 100 %
 static constexpr double VIDEO_PROBE_SETTLE = 1.5;
 static constexpr double VIDEO_PROBE_WINDOW = 3.0;
 static constexpr double VIDEO_DECODES_PER_SECOND = 2000.0; // a movie: tens of thousands; gameplay: ~0
+// Compilation 66: the Auto's speed floor, and "short of pictures": under 92 % of a picture every two PS2 vsyncs (30 at 60 Hz,
+// 25 at 50 Hz, what PS2 movies use), counted in the PS2's own seconds (pictures a second over the speed).
+static constexpr double VIDEO_SPEED_FLOOR = 90.0;
+static constexpr double VIDEO_SHORT_OF_PICTURES = 0.92;
+extern double GetVerticalFrequency(); // pcsx2/GS.h (Counters.cpp): the PS2's refresh now
 // Forja SX2: the running game's profile (pcsx2/ForjaGameProfile.h): its factory profile under the player's own. Read before
 // the VM boots, from the library's scan of the image, and again if PCSX2 identifies another disc.
 extern bool g_orbis_fg_wanted; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp: frame generation, read by the GS at every frame
 extern bool g_orbis_fg_fluid;  // ...and its fluid mode (compilation 40: [Forja] FrameGen = 2)
+extern bool g_orbis_fg_movie;  // ...and a movie playing (compilation 66: no pauses for the speed, OrbisFrameGenPacing.h)
 static ForjaGameProfile::Values s_profile;
 static bool s_global_video_mode = true; // ajustes.ini
 static bool s_global_frame_gen = false; // ajustes.ini
@@ -322,6 +339,10 @@ static void ForjaMovieSettings(bool movie)
 	s_movie_settings = movie;
 	const bool fluid_before = g_orbis_fg_fluid;
 	ForjaApplyFgFluid();
+	// Compilation 66: in a movie the EE's core is the limit and frame generation runs on the GPU and the GS thread, so its
+	// safety net (a pause after 3 s under 95 %) only took the generated frames away: Tales of the Abyss's movies at 91-93 %,
+	// 2026-10-20 ("about as with them"), 10 s of the game's own uneven frames each time.
+	g_orbis_fg_movie = movie;
 	if (movie)
 	{
 		g_forja_gs_skip_active.store(false, std::memory_order_relaxed);
@@ -2009,8 +2030,14 @@ static void UpdateVideoMode(double elapsed)
 	// 100 % in a light scene, 21 in a heavy one), so comparing them across windows chased the scenes. Each window (3 s, after
 	// 1.5 s to settle a change): under 92 % the rate goes a step down (two under 80 %) and that rate becomes the game's
 	// ceiling; at 98 % or more it tries a step up, once a movie and never to the ceiling, and keeps it only at 95 % or more.
-	// So it ends on the highest rate the PS4 plays the game's movies at in real time, without trials every few seconds.
 	// Tales of the Abyss (2026-10-20): 98-104 % at 36 %, 89-93 % at 50 %, 77-85 % at 60 %, 81 % at 100 %.
+	// Compilation 66: real time alone was not enough. At 36 % Tales's movies played at 100 % with 19-22 pictures a second of
+	// their 30, and the player heard its sound fail with them ("se va el audio, se va el video"): its player, short of EE
+	// cycles, drops pictures and leaves silences (as at 50 % on 2026-10-15); God of War II's at 25 of their 25 were fine. Now
+	// the pictures count too, in the PS2's seconds (over the speed): a movie short of them (under 92 % of one every two
+	// vsyncs) at 96 % speed or more tries a step up, once a movie and never to the ceiling, and keeps it down to 90 %; the
+	// floor is 90 % (it was 92) whatever the pictures, and the step up that falls under it goes back one step. A movie with
+	// all its pictures never tries more, so God of War II stays where it is without a trial and its stop.
 	if (s_video_active && s_video_auto && elapsed - s_video_probe_since >= VIDEO_PROBE_SETTLE)
 	{
 		s_video_probe_fps_sum += PerformanceMetrics::GetInternalFPS();
@@ -2034,29 +2061,30 @@ static void UpdateVideoMode(double elapsed)
 			const int rate = EmuConfig.Speedhacks.EECycleRate;
 			const double fps = s_video_probe_fps_sum / s_video_probe_samples;
 			const double speed = s_video_probe_speed_sum / s_video_probe_samples;
-			const char* what = "holds";
+			// Compilation 66: the movie's pictures in the PS2's seconds, against one every two of its vsyncs.
+			const double hz = GetVerticalFrequency();
+			const double full = (hz > 40.0 && hz < 70.0 ? hz : 59.94) / 2.0;
+			const double pictures = speed > 1.0 ? fps * 100.0 / speed : fps;
+			const bool short_of_pictures = pictures < full * VIDEO_SHORT_OF_PICTURES;
+			const char* what = short_of_pictures ? "holds, short of pictures" : "holds";
 			int next = rate;
-			if (speed < 92.0 && rate > VIDEO_AUTO_LOWEST)
+			if (speed < VIDEO_SPEED_FLOOR && rate > VIDEO_AUTO_LOWEST)
 			{
-				next = std::max(rate - (speed < 80.0 ? 2 : 1), VIDEO_AUTO_LOWEST);
+				const bool back = s_video_probe == VideoProbe::Up;
+				next = back ? rate - 1 : std::max(rate - (speed < 80.0 ? 2 : 1), VIDEO_AUTO_LOWEST);
 				s_video_auto_ceiling = std::min(s_video_auto_ceiling, rate - 1);
-				what = "slowed down, lower";
+				what = back ? "the step up was too slow, back" : "slowed down, lower";
 			}
-			else if (s_video_probe == VideoProbe::Up && speed < 95.0)
-			{
-				next = rate - 1;
-				s_video_auto_ceiling = std::min(s_video_auto_ceiling, rate - 1);
-				what = "the step up was slower, back";
-			}
-			else if (speed >= 98.0 && !s_video_auto_tried_up && rate < std::min(s_video_auto_ceiling, VIDEO_AUTO_HIGHEST))
+			else if (short_of_pictures && speed >= 96.0 && !s_video_auto_tried_up &&
+					 rate < std::min(s_video_auto_ceiling, VIDEO_AUTO_HIGHEST))
 			{
 				next = rate + 1;
 				s_video_auto_tried_up = true;
-				what = "real time, a step up";
+				what = "short of pictures at full speed, a step up";
 			}
 			s_video_probe = next > rate ? VideoProbe::Up : VideoProbe::Measure;
-			ProbeLog("Video mode: auto at %d: %.1f pictures/s, speed %.0f %% (ceiling %d): %s -> %d\n", rate, fps, speed,
-				s_video_auto_ceiling, what, next);
+			ProbeLog("Video mode: auto at %d: %.1f pictures/s (%.1f a PS2 second, of %.0f), speed %.0f %% (ceiling %d): %s -> %d\n",
+				rate, fps, pictures, full, speed, s_video_auto_ceiling, what, next);
 			s_video_auto_rate = next;
 			s_video_probe_since = elapsed;
 			s_video_probe_fps_sum = 0.0;
@@ -2121,8 +2149,6 @@ static void UpdateVideoMode(double elapsed)
 	ProbeLog("Video mode: %s (%.0f decodes/s), EE rate now %d (game's own %d)\n", want ? "ON" : "OFF", per_second,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), s_video_saved_rate);
 }
-
-extern double GetVerticalFrequency(); // pcsx2/GS.h (Counters.cpp): the PS2's refresh now
 
 // Forja SX2 (compilation 37): the TV at 50 Hz while a PAL game runs (VulkanVideoOut.h has why). The PS2's own rate is checked
 // once a second, and it takes 3 s at ~50 Hz, so the BIOS's NTSC logo or a game's own 50/60 Hz question don't switch the TV
@@ -2772,6 +2798,28 @@ void VMHostPoll()
 					access("/data/ForjaSX2/vm-ipu-exacto", F_OK) != 0 ? 1 : 0);
 				g_forja_ipu_polls = g_forja_ipu_busy_polls = g_forja_ipu_spin_polls = 0;
 			}
+			// Compilation 66: the EE's events a second while a movie plays, the IPU's among them (pcsx2/IPU/IPUdma.cpp), and the
+			// FIFO fills moved at once by the burst and the feed instead of an event each.
+			{
+				static u64 s_last_ipu_events[3] = {}, s_last_ipu_fills[2] = {};
+				u64 events[3], fills[2];
+				for (unsigned i = 0; i < 3; i++)
+				{
+					events[i] = g_forja_ipu_events[i] - s_last_ipu_events[i];
+					s_last_ipu_events[i] = g_forja_ipu_events[i];
+				}
+				for (unsigned i = 0; i < 2; i++)
+				{
+					fills[i] = g_forja_ipu_inline_fills[i] - s_last_ipu_fills[i];
+					s_last_ipu_fills[i] = g_forja_ipu_inline_fills[i];
+				}
+				if (s_video_active)
+					ProbeLog("Video meter: EE events %.0f a second, the IPU's %.0f (decoder %.0f, toIPU %.0f, fromIPU %.0f); FIFO "
+							 "fills moved at once %.0f out, %.0f in (the feed %s)\n",
+						host_polls_per_second, (events[0] + events[1] + events[2]) / interval, events[0] / interval,
+						events[1] / interval, events[2] / interval, fills[0] / interval, fills[1] / interval,
+						g_ps4_ipu_feed ? "on" : "off");
+			}
 			g_forja_spu2_split_voices = g_forja_spu2_split_mix = g_forja_spu2_split_output = 0;
 			g_forja_spu2_split_samples = g_forja_spu2_split_active = g_forja_spu2_split_irq = 0;
 		}
@@ -3330,8 +3378,11 @@ static void* RunVM(void*)
 	ProbeLog("IPU CSC output reuse: %s (partial FIFO drain; timing unchanged)\n",
 		g_ps4_ipu_csc_reuse ? "enabled" : "disabled by marker");
 	g_ps4_ipu0_burst = access("/data/ForjaSX2/vm-no-ipu-burst", F_OK) != 0;
-	ProbeLog("IPU output burst: %s (up to 32 FIFO fills per DMA event, cycles preserved; disable with /data/ForjaSX2/vm-no-ipu-burst)\n",
+	ProbeLog("IPU output burst: %s (up to 64 FIFO fills per DMA event, cycles preserved; disable with /data/ForjaSX2/vm-no-ipu-burst)\n",
 		g_ps4_ipu0_burst ? "enabled" : "disabled by marker");
+	g_ps4_ipu_feed = access("/data/ForjaSX2/vm-no-ipu-feed", F_OK) != 0; // compilation 66
+	ProbeLog("IPU input feed: %s (the decoder fed from its toIPU DMA while that is all it waits for; disable with "
+			 "/data/ForjaSX2/vm-no-ipu-feed)\n", g_ps4_ipu_feed ? "enabled" : "disabled by marker");
 #if defined(PCSX2_PS4_VM_BOOT_JIT)
 	g_ps4_vtlb_register_cache = access("/data/ForjaSX2/vm-no-vtlb-register-cache", F_OK) != 0;
 	ProbeLog("VTLB scalar read register cache: %s (device handlers retained; Fastmem unchanged)\n",
@@ -3436,6 +3487,7 @@ static void* RunVM(void*)
 			s_gs_skip_mode = -1; // compilation 47: a new game starts drawing every frame (ApplyGameProfile sets it again)
 			s_video_auto_ceiling = VIDEO_AUTO_HIGHEST; // compilation 65: a new game's movies find their own ceiling
 			s_movie_settings = false; // compilation 65
+			g_orbis_fg_movie = false; // compilation 66
 			ResetGsFilterList(); // compilation 54: a new game's list starts empty
 			LoadRules(); // compilation 55: huellas.ini, before the profile turns its rules on
 			s_fast_forward = false; // compilation 58: a game starts at its own speed
@@ -3566,6 +3618,8 @@ static void* RunVM(void*)
 		                                 access("/data/ForjaSX2/vm-no-perf-profile", F_OK) != 0;
 		PS4WorkerProfile::enabled.store(performance_profile, std::memory_order_relaxed);
 		PS4EEEventProfile::s_sampling.enabled = ((performance_profile || access("/data/ForjaSX2/vm-profile-ee", F_OK) == 0) && access("/data/ForjaSX2/vm-no-ee-profile", F_OK) != 0) || s_verbose_diag;
+		s_ee_profile_marker = PS4EEEventProfile::s_sampling.enabled; // compilation 66: otherwise on only in movies (ForjaVideoMeter)
+		PS4EEEventProfile::s_compact.store(false, std::memory_order_relaxed);
 		PS4EEEventProfile::s_sampling.gaps_only = false;
 		PS4EEEventProfile::s_sampling.gap_observer = PS4EEEventProfile::RecordGap;
 		ProbeLog("Performance diagnosis: workers=%d EE_phases=%d sample_ratio=1/1024; opt-in with /data/ForjaSX2/vm-profile-perf\n",
