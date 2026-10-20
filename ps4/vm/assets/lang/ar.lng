@@ -454,6 +454,9 @@ tr: الخانة %u فارغة.
 es: No se pudo cargar la ranura %u.
 tr: تعذّر تحميل الخانة %u.
 
+es: La ranura %u está dañada: rompía el juego y volviste a donde estabas. Guarda en otra ranura
+tr: الخانة %u تالفة: كانت تُفسد اللعبة فعدتَ إلى حيث كنت. احفظ في خانة أخرى
+
 es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
 tr: حُفظت في %s  ·  X: العودة إلى تلك اللحظة ومتابعة اللعب
 

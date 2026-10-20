@@ -454,6 +454,9 @@ tr: L'emplacement %u est vide.
 es: No se pudo cargar la ranura %u.
 tr: Impossible de charger l'emplacement %u.
 
+es: La ranura %u está dañada: rompía el juego y volviste a donde estabas. Guarda en otra ranura
+tr: L'emplacement %u est endommagé : il cassait le jeu et vous êtes revenu où vous étiez. Sauvegardez dans un autre emplacement
+
 es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
 tr: Sauvegardé le %s  ·  X : revenir à ce moment et continuer
 

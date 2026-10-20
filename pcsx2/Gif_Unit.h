@@ -16,6 +16,9 @@
 // FIXME common path ?
 #include "common/boost_spsc_queue.hpp"
 
+// Forja SX2 (compilation 61): how many times a PATH1 packet came out bigger than VU memory (GetGSPacketSize), in Gif_Unit.cpp.
+extern std::atomic<u32> g_forja_gif_exceeded;
+
 struct GS_Packet;
 extern void Gif_MTGS_Wait(bool isMTVU);
 // vk-285-124 (PS5 port): waits until a path's readAmount + extra is at most target (MTGS.cpp); false: wait the old way.
@@ -636,10 +639,10 @@ struct Gif_Unit
 			if (pathIdx == GIF_PATH_1 && curSize >= 0x4000)
 			{
 				// Forja SX2 (compilation 61): said 16 times, then once every 16384. Crash Nitro Kart said it ~200,000 times in
-				// three minutes (2026-10-20, a save state loaded with another patch than it was saved with), and writing the log
-				// held the emulator back on top of the broken picture.
-				static std::atomic<u32> s_exceeded{0};
-				const u32 times = s_exceeded.fetch_add(1, std::memory_order_relaxed) + 1;
+				// three minutes and 8 million in another try (2026-10-20, a damaged save state): writing the log held the
+				// emulator back on top of the broken picture, and the L3+R3 menu no longer opened. The count tells main.cpp
+				// (CheckLoadedState) that a state did not load well.
+				const u32 times = g_forja_gif_exceeded.fetch_add(1, std::memory_order_relaxed) + 1;
 				if (times <= 16 || (times & 0x3fffu) == 0)
 					DevCon.Warning("Gif Unit - GS packet size exceeded VU memory size! (%u times)", times);
 				return 0; // Bios does this... (Fixed if you delay vu1's xgkick by 103 vu cycles)

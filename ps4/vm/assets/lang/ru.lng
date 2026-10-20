@@ -454,6 +454,9 @@ tr: Слот %u пуст.
 es: No se pudo cargar la ranura %u.
 tr: Не удалось загрузить слот %u.
 
+es: La ranura %u está dañada: rompía el juego y volviste a donde estabas. Guarda en otra ranura
+tr: Ячейка %u повреждена: она ломала игру, и вы вернулись туда, где были. Сохраните в другую ячейку
+
 es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
 tr: Сохранено %s  ·  X: вернуться в тот момент и играть дальше
 

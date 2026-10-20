@@ -2443,6 +2443,16 @@ static void SaveGameState()
 		Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - t0), failure.c_str());
 }
 
+// Compilation 61: a save state that does not load well (Crash Nitro Kart's slot 1, saved with build 46, 2026-10-20: the VU1
+// sent the GS broken packets and the game hung, every try). Before a load the moment the player is in goes to
+// sstates/<serial> (<crc>).deshacer.p2s; CheckLoadedState watches the first 20 s and RevertLoadedState goes back there.
+extern std::atomic<u32> g_forja_gif_exceeded;
+static std::string s_state_undo_path;
+static double s_state_check_since = 0.0; // 0: no load being watched
+static u32 s_state_check_gif = 0;
+static s32 s_state_check_slot = 0;
+static bool s_state_revert_pending = false;
+
 // Forja SX2: "Cargar estado". True when the game goes on from the loaded moment (the menu then closes).
 static bool LoadGameState()
 {
@@ -2453,14 +2463,75 @@ static bool LoadGameState()
 		return false;
 	}
 	EndVideoModeForStateChange();
-	Error error;
 	const auto t0 = Common::Timer::GetCurrentValue();
+	// Compilation 61: the moment the player is in, kept in case the slot does not load well (CheckLoadedState).
+	s_state_undo_path = Path::Combine(EmuFolders::Savestates,
+		fmt::format("{} ({:08X}).deshacer.p2s", VMManager::GetDiscSerial(), VMManager::GetDiscCRC()));
+	bool undo = true;
+	VMManager::SaveState(s_state_undo_path.c_str(), false, false, [&undo](const std::string& why) {
+		undo = false;
+		ProbeLog("Save state: the moment before the load could not be kept (%s)\n", why.c_str());
+	});
+	const double undo_ms = Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - t0);
+	Error error;
 	const bool loaded = VMManager::LoadStateFromSlot(slot, false, &error);
 	if (!loaded)
 		s_state_action = PS4GameMenu::STATE_LOAD_FAILED;
-	ProbeLog("Save state: slot %d %s in %.0f ms %s\n", slot, loaded ? "loaded" : "LOAD FAILED",
-		Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - t0), loaded ? "" : error.GetDescription().c_str());
+	ProbeLog("Save state: slot %d %s in %.0f ms (the moment before kept in %.0f ms: %d) %s\n", slot, loaded ? "loaded" : "LOAD FAILED",
+		Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - t0), undo_ms, undo ? 1 : 0,
+		loaded ? "" : error.GetDescription().c_str());
+	if (loaded && undo)
+	{
+		s_state_check_since = s_run_timer.GetTimeSeconds();
+		s_state_check_gif = g_forja_gif_exceeded.load(std::memory_order_relaxed);
+		s_state_check_slot = slot;
+	}
+	else
+	{
+		s_state_check_since = 0.0;
+		unlink(s_state_undo_path.c_str());
+	}
 	return loaded;
+}
+
+// Compilation 61: with the game running, after a load. Over 1000 broken PATH1 packets in its first 20 s mean the state does not
+// load well (Crash Nitro Kart's slot 1 said it 25,000 times in ten seconds, then hung; a good load says it none); the VM
+// pauses and VMHostPoll goes back to the moment before (RevertLoadedState). After 20 s the kept moment is deleted.
+static void CheckLoadedState(double elapsed)
+{
+	if (s_state_check_since <= 0.0)
+		return;
+	const u32 broken = g_forja_gif_exceeded.load(std::memory_order_relaxed) - s_state_check_gif;
+	if (broken > 1000)
+	{
+		ProbeLog("Save state: slot %d does not load well (%u broken GS packets in %.1f s); going back to the moment before\n",
+			s_state_check_slot, broken, elapsed - s_state_check_since);
+		s_state_check_since = 0.0;
+		s_state_revert_pending = true;
+		VMManager::SetPaused(true);
+	}
+	else if (elapsed - s_state_check_since > 20.0)
+	{
+		ProbeLog("Save state: slot %d loaded well (%u broken GS packets in 20 s)\n", s_state_check_slot, broken);
+		s_state_check_since = 0.0;
+		unlink(s_state_undo_path.c_str());
+	}
+}
+
+// Compilation 61: with the VM paused by CheckLoadedState. The game goes on from where the player was before the load, and the
+// Cargar estado row says the slot is damaged (the file stays: nothing of the player's is deleted).
+static void RevertLoadedState()
+{
+	s_state_revert_pending = false;
+	EndVideoModeForStateChange();
+	Error error;
+	const bool back = VMManager::LoadState(s_state_undo_path.c_str(), &error);
+	unlink(s_state_undo_path.c_str());
+	s_state_action = PS4GameMenu::STATE_LOAD_DAMAGED;
+	ProbeLog("Save state: back to the moment before slot %d: %s %s\n", s_state_check_slot, back ? "done" : "FAILED",
+		back ? "" : error.GetDescription().c_str());
+	if (!s_game_menu_open)
+		VMManager::SetPaused(false);
 }
 
 // Forja SX2: "Reiniciar juego". Paused, VMManager::Reset is immediate (outside a running VM it never has to wait for a
@@ -2518,6 +2589,9 @@ void VMHostPoll()
 		return;
 	s_last_input = elapsed;
 	PS4ThreadCPUMetrics::Sample(PS4ThreadCPUMetrics::Role::EE);
+	// Compilation 61: a load that broke the game goes back once the VM has paused (the paused loop, outside the EE's run).
+	if (s_state_revert_pending && vm_state == VMState::Paused)
+		RevertLoadedState();
 	if (!is_paused_menu)
 	{
 		UpdateGameProfile(elapsed);
@@ -2526,6 +2600,7 @@ void VMHostPoll()
 		UpdateCpuAuto(elapsed);
 		UpdateGsSkip(elapsed);
 		UpdateOutputRate(elapsed);
+		CheckLoadedState(elapsed); // compilation 61
 	}
 	// (AI-assisted) Verbose 1s heartbeat when paused/menu open, 5s otherwise. Needs proper testing.
 	const bool should_log_heartbeat = s_verbose_diag ?

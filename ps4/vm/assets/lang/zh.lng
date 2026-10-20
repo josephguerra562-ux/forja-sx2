@@ -454,6 +454,9 @@ tr: 存档位 %u 是空的。
 es: No se pudo cargar la ranura %u.
 tr: 无法读取存档位 %u。
 
+es: La ranura %u está dañada: rompía el juego y volviste a donde estabas. Guarda en otra ranura
+tr: 存档位 %u 已损坏：它会让游戏出错，已回到你之前的位置。请保存到其他存档位
+
 es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
 tr: 保存于 %s  ·  X：回到那一刻继续游玩
 

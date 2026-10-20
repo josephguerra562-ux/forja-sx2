@@ -454,6 +454,9 @@ tr: %u. yuva boş.
 es: No se pudo cargar la ranura %u.
 tr: %u. yuva yüklenemedi.
 
+es: La ranura %u está dañada: rompía el juego y volviste a donde estabas. Guarda en otra ranura
+tr: %u numaralı yuva bozuk: oyunu bozuyordu, olduğun yere geri döndün. Başka bir yuvaya kaydet
+
 es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
 tr: Kayıt: %s  ·  X: o ana dön ve oynamaya devam et
 

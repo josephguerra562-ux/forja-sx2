@@ -454,6 +454,9 @@ tr: Platz %u ist leer.
 es: No se pudo cargar la ranura %u.
 tr: Platz %u konnte nicht geladen werden.
 
+es: La ranura %u está dañada: rompía el juego y volviste a donde estabas. Guarda en otra ranura
+tr: Platz %u ist beschädigt: Er hat das Spiel kaputt gemacht, du bist zurück, wo du warst. Speichere in einem anderen Platz
+
 es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
 tr: Gespeichert am %s  ·  X: zurück zu diesem Moment und weiterspielen
 

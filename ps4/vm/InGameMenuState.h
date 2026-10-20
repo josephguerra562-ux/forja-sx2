@@ -110,6 +110,7 @@ namespace PS4GameMenu
 		STATE_SAVE_FAILED,
 		STATE_LOAD_FAILED,
 		STATE_EMPTY,
+		STATE_LOAD_DAMAGED, // compilation 61: it loaded, broke the game, and Forja went back to the moment before
 	};
 
 	constexpr std::uint64_t PackInGameMenuState(InGameMenuState value)

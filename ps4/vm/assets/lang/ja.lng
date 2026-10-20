@@ -454,6 +454,9 @@ tr: スロット %u は空です。
 es: No se pudo cargar la ranura %u.
 tr: スロット %u をロードできませんでした。
 
+es: La ranura %u está dañada: rompía el juego y volviste a donde estabas. Guarda en otra ranura
+tr: スロット%uは壊れています：ゲームがおかしくなるため、元の場所に戻りました。別のスロットに保存してください
+
 es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
 tr: セーブ日時 %s  ·  X：その時点に戻って続きをプレイ
 

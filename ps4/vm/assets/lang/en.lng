@@ -454,6 +454,9 @@ tr: Slot %u is empty.
 es: No se pudo cargar la ranura %u.
 tr: Could not load slot %u.
 
+es: La ranura %u está dañada: rompía el juego y volviste a donde estabas. Guarda en otra ranura
+tr: Slot %u is damaged: it broke the game, so you are back where you were. Save in another slot
+
 es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
 tr: Saved %s  ·  X: go back to that moment and keep playing
 

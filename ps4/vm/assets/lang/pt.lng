@@ -454,6 +454,9 @@ tr: O slot %u está vazio.
 es: No se pudo cargar la ranura %u.
 tr: Não foi possível carregar o slot %u.
 
+es: La ranura %u está dañada: rompía el juego y volviste a donde estabas. Guarda en otra ranura
+tr: O slot %u está danificado: quebrava o jogo e você voltou para onde estava. Salve em outro slot
+
 es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
 tr: Salvo em %s  ·  X: volta àquele momento e continua jogando
 

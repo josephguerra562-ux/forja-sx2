@@ -454,6 +454,9 @@ tr: Slot %u jest pusty.
 es: No se pudo cargar la ranura %u.
 tr: Nie udało się wczytać slotu %u.
 
+es: La ranura %u está dañada: rompía el juego y volviste a donde estabas. Guarda en otra ranura
+tr: Slot %u jest uszkodzony: psuł grę, więc wróciłeś tam, gdzie byłeś. Zapisz w innym slocie
+
 es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
 tr: Zapisano %s  ·  X: wróć do tej chwili i graj dalej
 

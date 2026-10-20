@@ -1878,6 +1878,9 @@ namespace PS4GameMenu
 				std::snprintf(load_description, sizeof(load_description), TF("La ranura %u está vacía."), slot);
 			else if (menu_state.action == STATE_LOAD_FAILED)
 				std::snprintf(load_description, sizeof(load_description), TF("No se pudo cargar la ranura %u."), slot);
+			else if (menu_state.action == STATE_LOAD_DAMAGED) // compilation 61
+				std::snprintf(load_description, sizeof(load_description),
+					TF("La ranura %u está dañada: rompía el juego y volviste a donde estabas. Guarda en otra ranura"), slot);
 			else if (menu_state.slot_used && !state_date.empty())
 				std::snprintf(load_description, sizeof(load_description), TF("Guardado el %s  ·  X: vuelve a ese momento y sigue jugando"),
 					state_date.c_str());

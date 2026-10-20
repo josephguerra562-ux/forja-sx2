@@ -9,6 +9,7 @@
 
 OrbisGifFakeCounts g_orbis_gif_fake; // vk-285-90 (Gif_Unit.h); before gifUnit, whose paths' Reset writes it
 Gif_Unit gifUnit;
+std::atomic<u32> g_forja_gif_exceeded{0}; // Forja SX2 (compilation 61): Gif_Unit.h, GetGSPacketSize
 
 // Returns true on stalling SIGNAL
 bool Gif_HandlerAD(u8* pMem)

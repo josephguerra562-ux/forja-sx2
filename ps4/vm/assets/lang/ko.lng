@@ -454,6 +454,9 @@ tr: 슬롯 %u은(는) 비어 있습니다.
 es: No se pudo cargar la ranura %u.
 tr: 슬롯 %u을(를) 불러올 수 없습니다.
 
+es: La ranura %u está dañada: rompía el juego y volviste a donde estabas. Guarda en otra ranura
+tr: 슬롯 %u이(가) 손상되었습니다: 게임이 망가져서 원래 있던 곳으로 돌아왔습니다. 다른 슬롯에 저장하세요
+
 es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
 tr: 저장 시각 %s  ·  X: 그 순간으로 돌아가 계속 플레이
 
