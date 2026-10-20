@@ -700,6 +700,11 @@ void VMManager::LoadCoreSettings(SettingsInterface& si)
 		EmuConfig.Speedhacks.vuThread = false;
 
 #if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2 (compilation 59): a slow console (a PS4 or a Slim, or a Pro without Boost Mode: ps4/vm/main.cpp measures the
+	// CPU) keeps the internal resolution at 2x at most, whatever a profile says; 3x and 4x are for a PS4 Pro with Boost Mode.
+	extern bool g_forja_console_fast_cpu;
+	if (!g_forja_console_fast_cpu && EmuConfig.GS.UpscaleMultiplier > 2.0f)
+		EmuConfig.GS.UpscaleMultiplier = 2.0f;
 	// Forja SX2 (compilation 59): HD textures only when this game has a pack (textures/<serial>/replacements). Turned on, PCSX2
 	// starts its loader thread and its lookups even with nothing to load: God of War II's profile had it on with an empty
 	// textures folder when it closed four times on 2026-10-19.

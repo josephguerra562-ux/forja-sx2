@@ -745,7 +745,7 @@ static void recReserveRAM()
 {
 	// One entry per possible call target
 	recLutEntries = (Ps2MemSize::ExposedRam + Ps2MemSize::Rom + Ps2MemSize::Rom1 + Ps2MemSize::Rom2) / 4;
-	printf("[dbg] recReserveRAM: entries=%u\n", recLutEntries);
+	printf("[dbg] recReserveRAM: entries=%zu\n", static_cast<size_t>(recLutEntries));
 	fflush(stdout);
 
 	if (recRAMCopy.size() != Ps2MemSize::ExposedRam)

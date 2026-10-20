@@ -435,6 +435,40 @@ namespace PS4GameMenu
 			return cover;
 		}
 
+		// Forja SX2 (compilation 59): a cover at the size it is drawn. Every game's cover stays decoded while the library is open,
+		// and one of 512x736 takes 1.4 MB: 200 games would take ~290 MB, about all the memory the app has free (337 MB when the VM
+		// starts). Shrunk to fit 300x424 (the card is 270x382, the Disc panel's 340x480), with each pixel the average of the ones
+		// it covers, it takes ~0.5 MB.
+		std::shared_ptr<CoverImage> ShrinkCover(std::shared_ptr<CoverImage> cover)
+		{
+			constexpr int max_w = 300, max_h = 424;
+			if (!cover || (cover->width <= max_w && cover->height <= max_h))
+				return cover;
+			const float fit = std::min(static_cast<float>(max_w) / cover->width, static_cast<float>(max_h) / cover->height);
+			const int w = std::max(1, static_cast<int>(cover->width * fit)), h = std::max(1, static_cast<int>(cover->height * fit));
+			std::vector<unsigned char> pixels(static_cast<size_t>(w) * h * 4);
+			for (int y = 0; y < h; y++)
+			{
+				const int y0 = y * cover->height / h, y1 = std::max(y0 + 1, (y + 1) * cover->height / h);
+				for (int x = 0; x < w; x++)
+				{
+					const int x0 = x * cover->width / w, x1 = std::max(x0 + 1, (x + 1) * cover->width / w);
+					unsigned sum[4] = {};
+					for (int sy = y0; sy < y1; sy++)
+						for (int sx = x0; sx < x1; sx++)
+							for (int c = 0; c < 4; c++)
+								sum[c] += cover->pixels[(static_cast<size_t>(sy) * cover->width + sx) * 4 + c];
+					const unsigned count = static_cast<unsigned>((y1 - y0) * (x1 - x0));
+					for (int c = 0; c < 4; c++)
+						pixels[(static_cast<size_t>(y) * w + x) * 4 + c] = static_cast<unsigned char>(sum[c] / count);
+				}
+			}
+			cover->width = w;
+			cover->height = h;
+			cover->pixels = std::move(pixels);
+			return cover;
+		}
+
 		std::shared_ptr<CoverImage> LoadCover(const std::string& name)
 		{
 			const size_t dot = name.find_last_of('.');
@@ -447,7 +481,7 @@ namespace PS4GameMenu
 				const std::string candidate = std::string(CoversDirectory) + "/" + stem + extension;
 				struct stat info{};
 				if (stat(candidate.c_str(), &info) == 0 && S_ISREG(info.st_mode) && info.st_size > 0)
-					return LoadImageFile(candidate, "cover");
+					return ShrinkCover(LoadImageFile(candidate, "cover"));
 			}
 			return {};
 		}

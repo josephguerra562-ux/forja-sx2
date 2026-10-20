@@ -185,6 +185,8 @@ static int s_game_ee_rate = -1;
 // clock. ~40 ms, once, on the EE's own core before the VM starts.
 static double s_console_cpu_ghz = 0.0;
 static bool s_console_fast_cpu = false;
+// Compilation 59: for VMManager.cpp (LoadCoreSettings), which keeps a slow console at 2x at most. True until measured.
+bool g_forja_console_fast_cpu = true;
 
 static void MeasureConsoleCpu()
 {
@@ -196,6 +198,7 @@ static void MeasureConsoleCpu()
 	const double seconds = Common::Timer::ConvertValueToSeconds(Common::Timer::GetCurrentValue() - start);
 	s_console_cpu_ghz = seconds > 0.0 ? (static_cast<double>(iterations) * 4.0) / seconds / 1e9 : 0.0;
 	s_console_fast_cpu = s_console_cpu_ghz >= 1.9;
+	g_forja_console_fast_cpu = s_console_fast_cpu;
 	ProbeLog("Console CPU: ~%.2f GHz (%s)\n", s_console_cpu_ghz,
 		s_console_fast_cpu ? "PS4 Pro with Pro mode or Boost Mode" : "base PS4/Slim, or a Pro without Boost Mode");
 }
@@ -422,8 +425,10 @@ static void UpdateSecondPad(double elapsed)
 static void ReadGameResolution()
 {
 	MTGS::RunOnGSThread([]() {
+		// Compilation 59: 3x and 4x only on a fast console (a PS4 Pro with Boost Mode). A PS4 or a Slim (or a Pro without Boost
+		// Mode) has ~25 % less CPU and half the GPU, and those resolutions are what the hint already called "solo para PS4 Pro".
 		s_max_game_upscale = (g_gs_device && GSIsHardwareRenderer()) ?
-			std::clamp(GSGetMaxUpscaleMultiplier(g_gs_device->GetMaxTextureSize()), 1u, 4u) : 1u;
+			std::clamp(GSGetMaxUpscaleMultiplier(g_gs_device->GetMaxTextureSize()), 1u, s_console_fast_cpu ? 4u : 2u) : 1u;
 		const float configured = GSConfig.UpscaleMultiplier;
 		// A corrupted/uninitialized value must never be exposed as a 68x or 20x
 		// menu choice. The launcher intentionally exposes only 1x..4x.
