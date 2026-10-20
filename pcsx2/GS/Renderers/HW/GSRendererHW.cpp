@@ -2922,7 +2922,11 @@ struct OrbisHwDrawTimer
 };
 
 // Forja SX2 (compilation 47): set while "Saltar cuadros" leaves a frame of the game out (ps4/core/GSRendererPS4.cpp, VSync).
+// Compilation 62: g_forja_gs_skip_tracking while VSync follows what each framebuffer holds, through ForjaGsSkipNote.
 extern bool g_forja_gs_skip_drawing;
+extern bool g_forja_gs_skip_tracking;
+extern void ForjaGsSkipNote(u32 fbp, bool left_out);
+extern bool ForjaGsSkipIsDisplayBuffer(u32 fbp);
 
 // Forja SX2 (compilation 51): the GS filter, the VU1 filter's twin for the games the GS holds back (L3+R3 > Extras, main.cpp).
 // Draws are grouped by what they draw into and with: the framebuffer, the texture (or none), points, lines, triangles or
@@ -3173,16 +3177,6 @@ namespace
 
 void GSRendererHW::Draw()
 {
-	if (g_forja_gs_skip_drawing) [[unlikely]]
-	{
-		// Forja SX2 (compilation 48): the draws into the framebuffer the TV shows still run. Dragon Ball Z Budokai Tenkaichi
-		// 4 builds its picture elsewhere and copies it there during the next frame, so with every other frame skipped those
-		// copies all fell in skipped frames and the screen stayed on its last picture while the game went on (2026-10-18).
-		// The same check as the sprite-blit frame counter in GSState::FlushPrim.
-		const u32 fbp = m_context->FRAME.FBP;
-		if (!((m_regs->DISP[0].DISPFB.FBP == fbp && m_regs->PMODE.EN1) || (m_regs->DISP[1].DISPFB.FBP == fbp && m_regs->PMODE.EN2)))
-			return;
-	}
 	// Forja SX2 (compilation 51): the GS filter: a group the player left out isn't drawn. Compilation 52: the last two
 	// framebuffers the TV showed (a double buffer) count as one, "la pantalla".
 	static u32 s_forja_shown[2] = {0xffffu, 0xffffu};
@@ -3197,6 +3191,17 @@ void GSRendererHW::Draw()
 	const u32 forja_fbp = static_cast<u32>(m_context->FRAME.FBP);
 	const bool forja_tex = PRIM->TME != 0;
 	const bool forja_shown = forja_fbp == s_forja_shown[0] || forja_fbp == s_forja_shown[1];
+	// Forja SX2 (compilation 62): "Saltar cuadros" leaves out the draws of every other frame into the framebuffers the TV is
+	// showing (up to four, shown in the last 12 vsyncs: ForjaGsSkipIsDisplayBuffer), the bulk of a game's picture (Dragon
+	// Ball Z Budokai Tenkaichi 4 draws ~100 % of its fights into la pantalla). Draws into anything else (its textures,
+	// palettes and other targets) always run, so nothing a later frame reads goes missing: compilation 48 did the opposite
+	// and the fights came out white and pixelated. Compilation 47 left out every draw.
+	if (g_forja_gs_skip_tracking && ForjaGsSkipIsDisplayBuffer(forja_fbp)) [[unlikely]]
+	{
+		ForjaGsSkipNote(forja_fbp, g_forja_gs_skip_drawing);
+		if (g_forja_gs_skip_drawing)
+			return;
+	}
 	// Compilation 55: the draw's fingerprint descriptor (g_forja_gs_rules has the layout) and the rules it matches.
 	const u64 forja_desc = (forja_shown ? u64{1} : u64{0}) | (forja_tex ? u64{2} : u64{0}) |
 		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.PSM) & 0x3fu) : 0x3fu) << 2) |

@@ -43,8 +43,115 @@ static void DumpGSPrivRegs(const GSPrivRegSet& r, const std::string& filename);
 std::atomic<bool> g_forja_gs_skip_active{false};
 std::atomic<unsigned> g_forja_gs_skipped_frames{0};
 bool g_forja_gs_skip_drawing = false; // GS thread only
-static bool s_forja_showing_skipped = false;
 static unsigned s_forja_vsyncs_since_frame = 0;
+
+// Forja SX2 (compilation 62): what the TV is shown follows what each framebuffer holds, not the frames' order. Compilation 47
+// hid the picture at the end of every skipped frame; Dragon Ball Z Budokai Tenkaichi 4 shows a buffer a frame after drawing
+// it, so the frames hidden were the drawn ones and the TV stayed on a buffer that was never drawn: the frozen screen of
+// 2026-10-18. Compilation 48 then left out only the draws elsewhere (its textures and palettes): white pixels. Now
+// GSRendererHW::Draw leaves out only the draws into "la pantalla" (the last two framebuffers shown) of every other frame,
+// and notes here which framebuffer holds a frame left out (ForjaGsSkipNote); VSync hides those and nothing else.
+bool g_forja_gs_skip_tracking = false; // GS thread only: Draw notes the draws into la pantalla
+std::atomic<unsigned> g_forja_gs_skip_stats[4]; // draws left out, pictures hidden, pictures shown, frames drawn whole by force
+namespace
+{
+	struct ForjaSkipTarget
+	{
+		u32 fbp = 0xffffffffu;
+		u32 left_out_frame = 0; // the frame (s_forja_frame) its draws were last left out in
+		bool stale = false; // it holds a frame whose draws were left out
+	};
+	ForjaSkipTarget s_forja_targets[4];
+	unsigned s_forja_next_target = 0;
+	// The framebuffers the TV showed in the last FORJA_DISPLAYED_VSYNCS vsyncs: the ones whose draws may be left out. Up to
+	// four, so a triple buffer counts too; one shown longer ago (a menu's, whose memory a game may reuse for its textures)
+	// is not, so its draws always run.
+	struct ForjaDisplayed
+	{
+		u32 fbp = 0xffffffffu;
+		u32 vsync = 0;
+	};
+	ForjaDisplayed s_forja_displayed[4];
+	u32 s_forja_vsync = 0;
+	constexpr u32 FORJA_DISPLAYED_VSYNCS = 12;
+
+	void ForjaNoteDisplayed(u32 fbp)
+	{
+		s_forja_vsync++;
+		ForjaDisplayed* slot = &s_forja_displayed[0];
+		for (ForjaDisplayed& entry : s_forja_displayed)
+		{
+			if (entry.fbp == fbp)
+			{
+				slot = &entry;
+				break;
+			}
+			if (entry.vsync < slot->vsync)
+				slot = &entry;
+		}
+		slot->fbp = fbp;
+		slot->vsync = s_forja_vsync;
+	}
+	u32 s_forja_frame = 0; // the game's frames, one per write of the privileged registers
+	bool s_forja_shown_this_frame = false;
+	unsigned s_forja_hidden_frames = 0; // frames in a row whose pictures were all hidden
+	// A framebuffer left out longer than this many frames is no longer hidden, whatever happens to it (a game that stops
+	// drawing into it mid-skip must not leave the TV frozen).
+	constexpr u32 FORJA_STALE_FRAMES = 3;
+
+	ForjaSkipTarget* ForjaFindTarget(u32 fbp)
+	{
+		for (ForjaSkipTarget& target : s_forja_targets)
+			if (target.fbp == fbp)
+				return &target;
+		return nullptr;
+	}
+
+	bool ForjaIsStale(u32 fbp)
+	{
+		const ForjaSkipTarget* target = ForjaFindTarget(fbp);
+		return target && target->stale && s_forja_frame - target->left_out_frame <= FORJA_STALE_FRAMES;
+	}
+
+	bool ForjaAnyStale()
+	{
+		for (const ForjaSkipTarget& target : s_forja_targets)
+			if (target.stale && s_forja_frame - target.left_out_frame <= FORJA_STALE_FRAMES)
+				return true;
+		return false;
+	}
+} // namespace
+
+// GS thread, GSRendererHW::Draw: whether a draw's framebuffer is one the TV is showing these days (ForjaNoteDisplayed).
+bool ForjaGsSkipIsDisplayBuffer(u32 fbp)
+{
+	for (const ForjaDisplayed& entry : s_forja_displayed)
+		if (entry.fbp == fbp && s_forja_vsync - entry.vsync <= FORJA_DISPLAYED_VSYNCS)
+			return true;
+	return false;
+}
+
+// GS thread, GSRendererHW::Draw: a draw into one of those framebuffers, left out or drawn. A framebuffer is stale from its first draw left
+// out until a later frame draws into it again; a frame that has both stays stale, so no half-drawn picture is shown.
+void ForjaGsSkipNote(u32 fbp, bool left_out)
+{
+	ForjaSkipTarget* target = ForjaFindTarget(fbp);
+	if (!target)
+	{
+		target = &s_forja_targets[s_forja_next_target];
+		s_forja_next_target = (s_forja_next_target + 1) % std::size(s_forja_targets);
+		*target = ForjaSkipTarget{};
+		target->fbp = fbp;
+	}
+	if (left_out)
+	{
+		target->stale = true;
+		target->left_out_frame = s_forja_frame;
+		g_forja_gs_skip_stats[0].fetch_add(1, std::memory_order_relaxed);
+	}
+	else if (target->stale && target->left_out_frame != s_forja_frame)
+		target->stale = false;
+}
 
 static constexpr std::array<PresentShader, 8> s_tv_shader_indices = {
 	PresentShader::COPY, PresentShader::SCANLINE,
@@ -752,31 +859,50 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 
 #endif
 	// Forja SX2 (compilation 47): "Saltar cuadros". A new frame of the game is a write of the privileged registers (GS-reg, the
-	// way God of War II and Dragon Ball announce theirs); a game that announces them with a blit draws everything. At each new
-	// frame, the one just shown is hidden if its draws were skipped, and the next one is drawn or skipped in turn. When it is
-	// turned off, the frame being skipped is still hidden at its turn, so no half-drawn frame reaches the TV.
+	// way God of War II and Dragon Ball announce theirs); a game that announces them with a blit draws everything. Every
+	// other frame is left out (GSRendererHW::Draw). Compilation 62: the TV is not shown a framebuffer that holds a frame left
+	// out (ForjaGsSkipNote, above), whichever buffer the game shows when; and when the pictures of two frames in a row were
+	// all hidden, the next frame is drawn whole, so the TV can never stay on one picture.
 	{
 		const bool forja_want = g_forja_gs_skip_active.load(std::memory_order_relaxed) &&
 			PerformanceMetrics::GetInternalFPSMethod() == PerformanceMetrics::InternalFPSMethod::GSPrivilegedRegister;
-		if (forja_want || g_forja_gs_skip_drawing || s_forja_showing_skipped)
+		const u32 shown = static_cast<u32>(m_regs->PMODE.EN2 ? m_regs->DISP[1].DISPFB.FBP : m_regs->DISP[0].DISPFB.FBP);
+		ForjaNoteDisplayed(shown); // every vsync, so the list is ready when the skip starts
+		// Turned off, the notes go on until no framebuffer holds a frame left out.
+		g_forja_gs_skip_tracking = forja_want || g_forja_gs_skip_drawing || ForjaAnyStale();
+		if (g_forja_gs_skip_tracking)
 		{
 			if (registers_written)
 			{
-				s_forja_showing_skipped = g_forja_gs_skip_drawing;
-				g_forja_gs_skip_drawing = forja_want && !g_forja_gs_skip_drawing;
+				s_forja_frame++;
 				s_forja_vsyncs_since_frame = 0;
-				if (s_forja_showing_skipped)
+				s_forja_hidden_frames = s_forja_shown_this_frame ? 0 : s_forja_hidden_frames + 1;
+				s_forja_shown_this_frame = false;
+				const bool force = s_forja_hidden_frames >= 2;
+				if (force && forja_want)
+					g_forja_gs_skip_stats[3].fetch_add(1, std::memory_order_relaxed);
+				g_forja_gs_skip_drawing = forja_want && !g_forja_gs_skip_drawing && !force;
+				if (g_forja_gs_skip_drawing)
 					g_forja_gs_skipped_frames.fetch_add(1, std::memory_order_relaxed);
 			}
 			else if (++s_forja_vsyncs_since_frame > 8)
 			{
 				// No new frame for a while (loading, a pause, a movie): draw everything until the next one.
 				g_forja_gs_skip_drawing = false;
-				s_forja_showing_skipped = false;
 			}
-			if (s_forja_showing_skipped)
+			if (ForjaIsStale(shown))
+			{
 				skip_frame = true;
+				g_forja_gs_skip_stats[1].fetch_add(1, std::memory_order_relaxed);
+			}
+			else
+			{
+				s_forja_shown_this_frame = true;
+				g_forja_gs_skip_stats[2].fetch_add(1, std::memory_order_relaxed);
+			}
 		}
+		else
+			s_forja_hidden_frames = 0;
 	}
 
 	const bool blank_frame = !Merge(field);

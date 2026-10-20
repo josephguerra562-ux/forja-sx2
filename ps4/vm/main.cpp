@@ -268,6 +268,7 @@ static unsigned s_cpu_auto_room_checks = 0;
 // Forja SX2 (compilation 47): "Saltar cuadros" (UpdateGsSkip). mode: 0 off, 1 auto, 2 always; the GS reads the atomic.
 extern std::atomic<bool> g_forja_gs_skip_active;     // ps4/core/GSRendererPS4.cpp
 extern std::atomic<unsigned> g_forja_gs_skipped_frames;
+extern std::atomic<unsigned> g_forja_gs_skip_stats[4]; // compilation 62: GSRendererPS4.cpp, VSync and ForjaGsSkipNote
 static int s_gs_skip_mode = 0;
 static double s_gs_skip_last_check = 0.0;
 static double s_gs_skip_last_change = -100.0;
@@ -2128,8 +2129,17 @@ static void UpdateGsSkip(double elapsed)
 		return;
 	if (elapsed - s_gs_skip_last_report >= 5.0)
 	{
-		if (const unsigned skipped = g_forja_gs_skipped_frames.exchange(0, std::memory_order_relaxed))
-			ProbeLog("GS skip: %u frames of the game not drawn in the last %.0f s\n", skipped, elapsed - s_gs_skip_last_report);
+		// Compilation 62: with what VSync did with them: the draws into la pantalla left out, the TV's pictures hidden (a
+		// framebuffer holding a frame left out) and shown, and the frames drawn whole because two in a row were all hidden.
+		const unsigned skipped = g_forja_gs_skipped_frames.exchange(0, std::memory_order_relaxed);
+		const unsigned draws = g_forja_gs_skip_stats[0].exchange(0, std::memory_order_relaxed);
+		const unsigned hidden = g_forja_gs_skip_stats[1].exchange(0, std::memory_order_relaxed);
+		const unsigned shown = g_forja_gs_skip_stats[2].exchange(0, std::memory_order_relaxed);
+		const unsigned forced = g_forja_gs_skip_stats[3].exchange(0, std::memory_order_relaxed);
+		if (skipped || draws || hidden)
+			ProbeLog("GS skip: %u frames of the game not drawn in the last %.0f s (%u draws into la pantalla left out; TV "
+					 "pictures %u hidden, %u shown; %u frames drawn whole by force)\n",
+				skipped, elapsed - s_gs_skip_last_report, draws, hidden, shown, forced);
 		s_gs_skip_last_report = elapsed;
 	}
 	if (s_gs_skip_mode != 1 || s_video_active || elapsed - s_gs_skip_last_check < 0.5)
