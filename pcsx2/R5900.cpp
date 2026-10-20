@@ -458,9 +458,30 @@ __fi void _cpuEventTest_Shared()
 	EEsCycle += cpuRegs.cycle - EEoCycle;
 	EEoCycle = cpuRegs.cycle;
 
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2 (compilation 67): set before this event by the EE (an interrupt or an event for the IOP) or by the IOP's last turn.
+	const bool forja_iop_called = iopEventAction;
+#endif
 	if (EEsCycle > 0)
 		iopEventAction = true;
 
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Compilation 67: the IOP waits in its idle loop with nothing due before the EE's time: it stays asleep, its turn and its event
+	// test at the event it needs (R3000A.cpp, ForjaIopMaySleep). EEsCycle keeps what it owes, and the next event below is set
+	// from it, as always.
+	if (!forja_iop_called && iopEventAction && ForjaIopMaySleep(EEsCycle))
+	{
+		iopEventAction = false;
+		g_forja_iop_sleep_lag = static_cast<u32>((EEsCycle + 7) / 8);
+		g_forja_iop_sleeps++;
+	}
+	else
+#endif
+	{
+#if defined(PCSX2_PS4_VM_BOOT)
+		g_forja_iop_sleep_lag = 0;
+		g_forja_iop_runs++;
+#endif
 	if (iopEventAction)
 	{
 		//if( EEsCycle < -450 )
@@ -472,6 +493,7 @@ __fi void _cpuEventTest_Shared()
 	}
 
 	iopEventTest();
+	}
 #if defined(PCSX2_PS4_VM_BOOT)
 	event_profile.Checkpoint(PS4EEEventProfile::Phase::IOP);
 #endif

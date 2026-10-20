@@ -28,6 +28,89 @@ u32 g_psxHasConstReg, g_psxFlushedConstReg;
 // is true, even if it's already running ahead a bit.
 bool iopEventAction = false;
 
+#if defined(PCSX2_PS4_VM_BOOT)
+// Forja SX2 (compilation 67): in a movie the EE stops for ~430,000 events a second (Tales of the Abyss, 2026-10-20), and at every
+// one it ran the IOP to catch up and its event test, while the IOP sat in its idle loop at almost every look (41 of 45 heartbeats
+// at 0xbe9c; Crash Nitro Kart's 34 of 43 at 0xb99c): the video meter put "IOP" at ~300 ms of the EE thread's second. Waiting
+// there with nothing due, the IOP would only move its clock on, so it can wait: until its next event (its counters, its DMA,
+// the CD; iopNextEventCycle, 384 cycles at most), an interrupt the EE raises (iopTestIntc, iopEventAction) or an event the EE
+// schedules (PSX_INT, which then counts from the EE's time and wakes it). Its idle loop is one the recompiler fast-forwards
+// (a branch to itself and nops, compiled with the wait loop speedhack), checked against memory each time. PS2 mode only, and
+// while a movie plays (main.cpp, ForjaMovieSettings; vm-no-iop-sleep turns it off).
+bool g_forja_iop_sleep = false;
+u32 g_forja_iop_sleep_lag = 0;
+u64 g_forja_iop_sleeps = 0, g_forja_iop_runs = 0;
+
+namespace
+{
+	struct ForjaIopIdleLoop
+	{
+		u32 pc = 0;
+		u32 words = 0;
+		u32 code[4] = {};
+	};
+	ForjaIopIdleLoop s_forja_iop_idle[4];
+	u32 s_forja_iop_idle_next = 0;
+
+	bool ForjaIopIdleAt(u32 pc)
+	{
+		for (const ForjaIopIdleLoop& loop : s_forja_iop_idle)
+		{
+			if (loop.words == 0 || loop.pc != pc)
+				continue;
+			for (u32 i = 0; i < loop.words; i++)
+				if (iopMemRead32(pc + i * 4) != loop.code[i])
+					return false;
+			return true;
+		}
+		return false;
+	}
+} // namespace
+
+// iR3000A.cpp, when it compiles a block it fast-forwards (from its start to past its delay slot).
+void ForjaNoteIopIdleLoop(u32 pc, u32 end)
+{
+	const u32 words = (end - pc) / 4;
+	if (end <= pc || words > 4)
+		return;
+	ForjaIopIdleLoop* slot = nullptr;
+	for (ForjaIopIdleLoop& loop : s_forja_iop_idle)
+		if (loop.words != 0 && loop.pc == pc)
+			slot = &loop;
+	if (!slot)
+	{
+		slot = &s_forja_iop_idle[s_forja_iop_idle_next];
+		s_forja_iop_idle_next = (s_forja_iop_idle_next + 1) % std::size(s_forja_iop_idle);
+	}
+	slot->pc = pc;
+	slot->words = words;
+	for (u32 i = 0; i < words; i++)
+		slot->code[i] = iopMemRead32(pc + i * 4);
+}
+
+// recResetIOP (also a state load): no loop known, and no IOP behind.
+void ForjaForgetIopIdleLoops()
+{
+	for (ForjaIopIdleLoop& loop : s_forja_iop_idle)
+		loop = ForjaIopIdleLoop{};
+	g_forja_iop_sleep_lag = 0;
+}
+
+bool ForjaIopMaySleep(s32 ee_behind)
+{
+	if (!g_forja_iop_sleep || ee_behind <= 0 || ee_behind > 3072 || PSXCLK != 36864000 || (psxHu32(HW_ICFG) & (1 << 3)))
+		return false;
+	// An interrupt waiting for it: the event test would take it.
+	if (psxHu32(HW_ICTRL) != 0 && (psxHu32(HW_ISTAT) & psxHu32(HW_IMASK)) != 0)
+		return false;
+	// Its next event within the time it would catch up.
+	const u64 behind = (static_cast<u64>(ee_behind) + 7) / 8;
+	if (psxRegs.cycle + behind + 8 >= psxRegs.iopNextEventCycle)
+		return false;
+	return ForjaIopIdleAt(psxRegs.pc);
+}
+#endif
+
 static constexpr uint iopWaitCycles = 384; // Keep inline with EE wait cycle max.
 
 bool iopEventTestIsActive = false;
@@ -126,6 +209,16 @@ __fi int psxRemainingCycles(IopEventId n)
 
 __fi void PSX_INT( IopEventId n, s32 ecycle )
 {
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2 (compilation 67): scheduled by the EE while the IOP sleeps behind it: from the EE's time, as with the IOP in step,
+	// and the IOP catches up at the EE's next event, soon.
+	if (g_forja_iop_sleep_lag != 0)
+	{
+		ecycle += static_cast<s32>(g_forja_iop_sleep_lag);
+		iopEventAction = true;
+		cpuSetNextEventDelta(16);
+	}
+#endif
 	// 19 is CDVD read int, it's supposed to be high.
 	//if (ecycle > 8192 && n != 19)
 	//	DevCon.Warning( "IOP cycles high: %d, n %d", ecycle, n );

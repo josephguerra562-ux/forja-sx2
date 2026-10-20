@@ -43,6 +43,9 @@ namespace
 	pthread_cond_t s_ready = PTHREAD_COND_INITIALIZER;
 	pthread_t s_thread;
 	bool s_async = false, s_stopping = false;
+	// Forja SX2 (compilation 67): SetDirect's mode, and the worker writing an entry it took from the queue (outside the lock).
+	bool s_direct = false, s_worker_busy = false;
+	pthread_cond_t s_drained = PTHREAD_COND_INITIALIZER;
 	bool s_kernel_mirror = true; // Before Start, no file is available.
 	std::size_t s_head = 0, s_count = 0;
 	int s_fd = -1;
@@ -128,6 +131,7 @@ namespace
 			entry = s_queue[s_head];
 			s_head = (s_head + 1) % CAPACITY;
 			--s_count;
+			s_worker_busy = true; // compilation 67
 			pthread_mutex_unlock(&s_mutex);
 
 			const auto start = Common::Timer::GetCurrentValue();
@@ -135,11 +139,20 @@ namespace
 			const double elapsed_ms = Common::Timer::ConvertValueToSeconds(Common::Timer::GetCurrentValue() - start) * 1000.0;
 			pthread_mutex_lock(&s_mutex);
 			RecordSink(result, elapsed_ms);
+			s_worker_busy = false; // compilation 67
+			pthread_cond_broadcast(&s_drained);
 			pthread_mutex_unlock(&s_mutex);
 		}
 		return nullptr;
 	}
 } // namespace
+
+void PS4ProbeLogger::SetDirect(bool direct)
+{
+	pthread_mutex_lock(&s_mutex);
+	s_direct = direct;
+	pthread_mutex_unlock(&s_mutex);
+}
 
 int PS4ProbeLogger::Start(int fd, bool synchronous, bool kernel_mirror)
 {
@@ -167,7 +180,10 @@ void PS4ProbeLogger::Write(const char* text, std::size_t length)
 	PS4Telemetry::Write(text, length);
 
 	pthread_mutex_lock(&s_mutex);
-	if (s_async)
+	// Compilation 67: in direct mode the line waits for the queue to empty, then is written here, in order.
+	while (s_async && s_direct && !s_stopping && (s_count > 0 || s_worker_busy))
+		pthread_cond_wait(&s_drained, &s_mutex);
+	if (s_async && !s_direct)
 	{
 		if (s_count == CAPACITY || s_stopping)
 			++s_counters.dropped;

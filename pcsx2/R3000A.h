@@ -169,6 +169,16 @@ alignas(16) extern psxRegisters psxRegs;
 extern s32 psxNextDeltaCounter;
 extern u64 psxNextStartCounter;
 extern bool iopEventAction;
+#if defined(PCSX2_PS4_VM_BOOT)
+// Forja SX2 (compilation 67): the IOP left asleep at an EE event while it waits in its idle loop with nothing due (R3000A.cpp,
+// ForjaIopMaySleep; R5900.cpp, _cpuEventTest_Shared). g_forja_iop_sleep_lag: how far behind the EE it sleeps, in IOP cycles.
+extern bool g_forja_iop_sleep;
+extern u32 g_forja_iop_sleep_lag;
+extern u64 g_forja_iop_sleeps, g_forja_iop_runs;
+extern void ForjaNoteIopIdleLoop(u32 pc, u32 end);
+extern void ForjaForgetIopIdleLoops();
+extern bool ForjaIopMaySleep(s32 ee_behind);
+#endif
 extern bool iopEventTestIsActive;
 
 // Branching status used when throwing exceptions.

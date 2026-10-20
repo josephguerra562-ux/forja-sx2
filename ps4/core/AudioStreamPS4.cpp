@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <mutex>
 #include <pthread.h>
@@ -18,6 +19,30 @@
 #include <orbis/Sysmodule.h>
 
 extern void ProbeLog(const char* format, ...);
+
+// Forja SX2 (compilation 67): a friend's PS4 (a base or Slim one, 2026-10-20) closed Forja at every game's start, four times out
+// of four, between "Creating Cubeb audio stream" and the audio thread's first line, with no crash.log: the system ended the app.
+// The library's intro, which opens the same port with fewer calls, played its sound. So the opening is marked: Open writes
+// FORJA_AUDIO_TRIAL (with the mode it uses) and the thread removes it after its first block is out. If the app finds it at its
+// next start (main.cpp, ForjaCheckAudioTrial), the opening killed it: /data/ForjaSX2/audio-modo goes to 1, the simple mode (the
+// intro's calls only: no port state), and after a second death to 2, games without sound (main.cpp, the Null backend).
+static constexpr const char* FORJA_AUDIO_TRIAL = "/data/ForjaSX2/audio-en-prueba";
+
+int ForjaAudioMode()
+{
+	static int s_mode = -1;
+	if (s_mode < 0)
+	{
+		s_mode = 0;
+		if (std::FILE* file = std::fopen("/data/ForjaSX2/audio-modo", "r"))
+		{
+			if (std::fscanf(file, "%d", &s_mode) != 1 || s_mode < 0 || s_mode > 2)
+				s_mode = 0;
+			std::fclose(file);
+		}
+	}
+	return s_mode;
+}
 
 namespace
 {
@@ -126,6 +151,14 @@ namespace
 					return Fail("audio resampler creation", result ? result : -1, error);
 			}
 
+			// Compilation 67: the mark of an opening under way (see FORJA_AUDIO_TRIAL), with the mode in use.
+			m_simple = ForjaAudioMode() >= 1;
+			if (std::FILE* trial = std::fopen(FORJA_AUDIO_TRIAL, "w"))
+			{
+				std::fprintf(trial, "%d\n", m_simple ? 1 : 0);
+				std::fclose(trial);
+			}
+			ProbeLog("PS4 audio: opening in the %s mode (/data/ForjaSX2/audio-modo)\n", m_simple ? "simple" : "normal");
 			const int module_result = sceSysmoduleLoadModuleInternal(ORBIS_SYSMODULE_INTERNAL_AUDIOOUT);
 			const int init_result = sceAudioOutInit();
 			ProbeLog("PS4 audio: module=%#x init=%#x\n", module_result, init_result);
@@ -141,7 +174,8 @@ namespace
 
 			// (AI-assisted) Match DolphinPS4's main-port PCM16 and explicit 0 dB
 			// gain. The upstream queue already applies the user's volume/mute.
-			RefreshPortState();
+			if (!m_simple) // compilation 67: the simple mode does only what the library's intro does
+				RefreshPortState();
 			ProbeLog("PS4 audio port before gain: result=%#x output=%#x channels=%u volume_raw=%d flags=%#llx\n",
 				s_output.port_result.load(), s_output.port_output.load(), s_output.port_channels.load(),
 				s_output.port_volume.load(), static_cast<unsigned long long>(s_output.port_flags.load()));
@@ -150,7 +184,8 @@ namespace
 			ProbeLog("PS4 audio: set_volume=%#x left=32768 right=32768 (0 dB)\n", volume_result);
 			if (volume_result < 0)
 				return Fail("sceAudioOutSetVolume", volume_result, error);
-			RefreshPortState();
+			if (!m_simple)
+				RefreshPortState();
 
 			BaseInitialize(&StereoSampleReaderImpl, stretch_enabled);
 			ProbeLog("PS4 audio stretch: sequence_ms=%u seek_ms=%u overlap_ms=%u quick_seek=%u target_ms=%u\n",
@@ -283,6 +318,7 @@ namespace
 
 		static bool Fail(const char* operation, int result, Error* error)
 		{
+			unlink(FORJA_AUDIO_TRIAL); // compilation 67: a failure that Forja survives (the Null stream follows) is no death
 			Error::SetStringFmt(error, "{} failed: {:#x}", operation, static_cast<u32>(result));
 			ProbeLog("PS4 audio: %s failed=%#x\n", operation, result);
 			s_output.status.store(result < 0 ? result : -result, std::memory_order_relaxed);
@@ -352,6 +388,11 @@ namespace
 				}
 				current_buffer ^= 1;
 				buffers++;
+				if (buffers == 1)
+				{
+					unlink(FORJA_AUDIO_TRIAL); // compilation 67: the sound is out, the opening went well
+					ProbeLog("PS4 audio: the first block is out (%s mode)\n", m_simple ? "simple" : "normal");
+				}
 				if (buffers == STARTUP_BLOCKS)
 					m_forja_count_underruns = true; // ReadFrames, the one that counts them, runs on this thread too
 				if (peak > 0.00001f)
@@ -377,7 +418,8 @@ namespace
 						std::memory_order_relaxed);
 					s_output.invalid_samples.store(invalid_samples, std::memory_order_relaxed);
 					s_output.clipped_samples.store(clipped_samples, std::memory_order_relaxed);
-					RefreshPortState();
+					if (!m_simple)
+						RefreshPortState();
 					window_frames = 0;
 					window_peak = window_energy = 0.0f;
 				}
@@ -390,6 +432,7 @@ namespace
 		int m_handle = -1;
 		pthread_t m_thread{};
 		bool m_thread_started = false;
+		bool m_simple = false; // compilation 67: ForjaAudioMode() 1
 		std::atomic<bool> m_quit{false};
 		std::mutex m_read_mutex;
 		SpeexResamplerState* m_resampler = nullptr;

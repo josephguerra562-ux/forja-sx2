@@ -175,6 +175,12 @@ tr: 설정을 저장할 수 없습니다.
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: 저장했습니다. 다음 게임을 시작할 때 적용됩니다.
 
+es: Forja se cerró al abrir el sonido del último juego. Ahora el sonido se abrirá en modo sencillo
+tr: 마지막 게임의 소리를 여는 중에 Forja가 종료되었습니다. 이제 소리를 간단 모드로 엽니다
+
+es: Forja se volvió a cerrar al abrir el sonido: en esta consola los juegos irán sin sonido
+tr: 소리를 여는 중에 Forja가 다시 종료되었습니다. 이 콘솔에서는 게임이 소리 없이 실행됩니다
+
 es: El juego no pudo iniciar: falta la BIOS de la PS2. Cópiala por FTP a /data/ForjaSX2/bios
 tr: 게임을 시작할 수 없습니다: PS2 BIOS가 없습니다. FTP로 /data/ForjaSX2/bios에 복사하세요
 

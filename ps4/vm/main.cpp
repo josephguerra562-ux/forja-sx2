@@ -325,6 +325,7 @@ static unsigned s_gs_skip_room_checks = 0;
 // - Saltar cuadros paused: a movie's frames are cheap for the GS, and each one left out is a picture of the movie lost. Auto
 //   had kept the step the game was on when the movie began (UpdateGsSkip doesn't run in a movie).
 static bool s_fg_fluid_profile = false; // the game's own fluid mode (FrameGen = 2), ApplyGameProfile
+static bool s_iop_sleep_allowed = true; // compilation 67: vm-no-iop-sleep
 static bool s_movie_settings = false;
 
 static void ForjaApplyFgFluid()
@@ -343,6 +344,8 @@ static void ForjaMovieSettings(bool movie)
 	// safety net (a pause after 3 s under 95 %) only took the generated frames away: Tales of the Abyss's movies at 91-93 %,
 	// 2026-10-20 ("about as with them"), 10 s of the game's own uneven frames each time.
 	g_orbis_fg_movie = movie;
+	// Compilation 67: the IOP asleep in its idle loop between the events it needs (pcsx2/R3000A.cpp, ForjaIopMaySleep).
+	g_forja_iop_sleep = movie && s_iop_sleep_allowed;
 	if (movie)
 	{
 		g_forja_gs_skip_active.store(false, std::memory_order_relaxed);
@@ -379,6 +382,7 @@ static double s_last_input = -1.0;
 static double s_last_pause_log = -5.0;
 static u32 s_last_ee_cycle = 0;
 static u64 s_host_poll_calls = 0;
+static bool s_log_direct_boot = false; // compilation 67: the log line by line while a game starts (PS4ProbeLogger::SetDirect)
 static u64 s_last_host_poll_calls = 0;
 static HostPollGate s_host_poll_gate;
 static u64 s_host_clock_checks = 0;
@@ -2725,6 +2729,12 @@ void VMHostPoll()
 		// Late loader logs still need migration, but never at EE event frequency.
 		// Filesystem calls here are bounded by the heartbeat (normally 5 seconds).
 		MigrateLegacyLogs();
+		if (s_log_direct_boot) // compilation 67: the game is running; the log goes back to its queue
+		{
+			s_log_direct_boot = false;
+			PS4ProbeLogger::SetDirect(false);
+			ProbeLog("PS4 log: back to its queue (the game started)\n");
+		}
 		const double interval = elapsed - s_last_log;
 		const double ee_mcycles = static_cast<u32>(cpuRegs.cycle - s_last_ee_cycle) / (interval * 1000000.0);
 		const double host_polls_per_second = (s_host_poll_calls - s_last_host_poll_calls) / interval;
@@ -2802,6 +2812,10 @@ void VMHostPoll()
 			// FIFO fills moved at once by the burst and the feed instead of an event each.
 			{
 				static u64 s_last_ipu_events[3] = {}, s_last_ipu_fills[2] = {};
+				static u64 s_last_iop_sleeps = 0, s_last_iop_runs = 0; // compilation 67
+				const u64 iop_sleeps = g_forja_iop_sleeps - s_last_iop_sleeps, iop_runs = g_forja_iop_runs - s_last_iop_runs;
+				s_last_iop_sleeps = g_forja_iop_sleeps;
+				s_last_iop_runs = g_forja_iop_runs;
 				u64 events[3], fills[2];
 				for (unsigned i = 0; i < 3; i++)
 				{
@@ -2815,10 +2829,11 @@ void VMHostPoll()
 				}
 				if (s_video_active)
 					ProbeLog("Video meter: EE events %.0f a second, the IPU's %.0f (decoder %.0f, toIPU %.0f, fromIPU %.0f); FIFO "
-							 "fills moved at once %.0f out, %.0f in (the feed %s)\n",
+							 "fills moved at once %.0f out, %.0f in (the feed %s); the IOP asleep at %.0f, run at %.0f (%s)\n",
 						host_polls_per_second, (events[0] + events[1] + events[2]) / interval, events[0] / interval,
 						events[1] / interval, events[2] / interval, fills[0] / interval, fills[1] / interval,
-						g_ps4_ipu_feed ? "on" : "off");
+						g_ps4_ipu_feed ? "on" : "off", iop_sleeps / interval, iop_runs / interval,
+						g_forja_iop_sleep ? "sleep on" : "sleep off");
 			}
 			g_forja_spu2_split_voices = g_forja_spu2_split_mix = g_forja_spu2_split_output = 0;
 			g_forja_spu2_split_samples = g_forja_spu2_split_active = g_forja_spu2_split_irq = 0;
@@ -3314,7 +3329,8 @@ static void* RunVM(void*)
 	// (AI-assisted) Both library and VM poll scePad directly on PS4.
 	settings->SetBoolValue("InputSources", "SDL", false);
 	// (AI-assisted) The Orbis Cubeb slot routes to native PS4 AudioOut.
-	const bool audio_enabled = access("/data/ForjaSX2/vm-no-audio", F_OK) != 0;
+	extern int ForjaAudioMode(); // compilation 67: ps4/core/AudioStreamPS4.cpp; 2 after two deaths opening the sound
+	const bool audio_enabled = access("/data/ForjaSX2/vm-no-audio", F_OK) != 0 && ForjaAudioMode() < 2;
 	settings->SetStringValue("SPU2/Output", "Backend", audio_enabled ? "Cubeb" : "Null");
 	settings->SetStringValue("SPU2/Output", "SyncMode", "TimeStretch");
 	// (AI-assisted) Longer sequences suit slowed audio and need fewer overlap
@@ -3381,6 +3397,9 @@ static void* RunVM(void*)
 	ProbeLog("IPU output burst: %s (up to 64 FIFO fills per DMA event, cycles preserved; disable with /data/ForjaSX2/vm-no-ipu-burst)\n",
 		g_ps4_ipu0_burst ? "enabled" : "disabled by marker");
 	g_ps4_ipu_feed = access("/data/ForjaSX2/vm-no-ipu-feed", F_OK) != 0; // compilation 66
+	s_iop_sleep_allowed = access("/data/ForjaSX2/vm-no-iop-sleep", F_OK) != 0; // compilation 67
+	ProbeLog("IOP sleep in movies: %s (the IOP waits in its idle loop between the events it needs; disable with "
+			 "/data/ForjaSX2/vm-no-iop-sleep)\n", s_iop_sleep_allowed ? "enabled" : "disabled by marker");
 	ProbeLog("IPU input feed: %s (the decoder fed from its toIPU DMA while that is all it waits for; disable with "
 			 "/data/ForjaSX2/vm-no-ipu-feed)\n", g_ps4_ipu_feed ? "enabled" : "disabled by marker");
 #if defined(PCSX2_PS4_VM_BOOT_JIT)
@@ -3488,6 +3507,7 @@ static void* RunVM(void*)
 			s_video_auto_ceiling = VIDEO_AUTO_HIGHEST; // compilation 65: a new game's movies find their own ceiling
 			s_movie_settings = false; // compilation 65
 			g_orbis_fg_movie = false; // compilation 66
+			g_forja_iop_sleep = false; // compilation 67
 			ResetGsFilterList(); // compilation 54: a new game's list starts empty
 			LoadRules(); // compilation 55: huellas.ini, before the profile turns its rules on
 			s_fast_forward = false; // compilation 58: a game starts at its own speed
@@ -3555,6 +3575,11 @@ static void* RunVM(void*)
 	Error error;
 	if (s_use_vulkan_selector)
 		PS4GameMenu::ShowLoading(45, ForjaLang::T("Iniciando la máquina virtual..."));
+	// Compilation 67: line by line until the game's first heartbeat, so a start that dies keeps its last step (a friend's PS4:
+	// the lines of its audio's opening stayed in the queue).
+	PS4ProbeLogger::SetDirect(true);
+	s_log_direct_boot = true;
+	ProbeLog("PS4 log: line by line while the game starts\n");
 	ProbeLog("STAGE: VMManager::Initialize\n");
 	PS4Telemetry::Stage("vm-init");
 	const auto result = VMManager::Initialize(boot, &error);
@@ -3681,6 +3706,8 @@ static void* RunVM(void*)
 		if (s_use_vulkan_selector)
 			PS4GameMenu::HideLoading();
 		ProbeLog("VM initialization failed: %s\n", error.GetDescription().c_str());
+		s_log_direct_boot = false; // compilation 67
+		PS4ProbeLogger::SetDirect(false);
 		PS4Telemetry::Stage("vm-init-failed");
 		// Compilation 59: the library that opens again (a new process) says why, from this file (GameMenu.cpp). Until now a game
 		// that could not start, most often for want of a PS2 BIOS, just went back to the library without a word.
@@ -3713,6 +3740,33 @@ std::atomic<bool> g_forja_menu_active{false};
 #define FORJA_VERSION_MINOR 0
 #endif
 extern std::atomic<u64> g_forja_gs_vsyncs; // ps4/core/GSRendererPS4.cpp
+
+// Forja SX2 (compilation 67): the last game's start died while its sound opened (ps4/core/AudioStreamPS4.cpp,
+// FORJA_AUDIO_TRIAL): the next mode, and the library says so (GameMenu.cpp reads ultimo-error.txt).
+static void ForjaCheckAudioTrial()
+{
+	std::FILE* trial = std::fopen("/data/ForjaSX2/audio-en-prueba", "r");
+	if (!trial)
+		return;
+	int mode = 0;
+	if (std::fscanf(trial, "%d", &mode) != 1)
+		mode = 0;
+	std::fclose(trial);
+	unlink("/data/ForjaSX2/audio-en-prueba");
+	const int next = std::clamp(mode + 1, 1, 2);
+	if (std::FILE* file = std::fopen("/data/ForjaSX2/audio-modo", "w"))
+	{
+		std::fprintf(file, "%d\n", next);
+		std::fclose(file);
+	}
+	if (std::FILE* reason = std::fopen("/data/ForjaSX2/ultimo-error.txt", "w"))
+	{
+		std::fprintf(reason, "forja-audio-%d\n", next);
+		std::fclose(reason);
+	}
+	ProbeLog("Audio trial: the last start died opening the sound in mode %d; audio-modo is now %d (%s)\n", mode, next,
+		next == 1 ? "the simple opening" : "games without sound");
+}
 
 static void* ForjaWatchdog(void*)
 {
@@ -3817,6 +3871,7 @@ int main()
 	ProbeLog("PS4 log startup: fd=%d synchronous_marker=%d kernel_mirror=%d thread_result=%d verbose=%d\n", s_log, synchronous_log, kernel_log, log_thread_result, s_verbose_diag ? 1 : 0);
 	PS4ProbeLogger::LogStatus();
 	StartForjaWatchdog();
+	ForjaCheckAudioTrial(); // compilation 67
 	PS4Telemetry::Stage("loading-modules");
 	ProbeLog("STAGE: loading system modules\n");
 	const int system_service_result = sceSysmoduleLoadModuleInternal(ORBIS_SYSMODULE_INTERNAL_SYSTEM_SERVICE);

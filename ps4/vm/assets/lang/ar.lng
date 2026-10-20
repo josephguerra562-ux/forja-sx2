@@ -175,6 +175,12 @@ tr: تعذّر حفظ الإعدادات.
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: تم الحفظ. يُطبَّق عند تشغيل اللعبة التالية.
 
+es: Forja se cerró al abrir el sonido del último juego. Ahora el sonido se abrirá en modo sencillo
+tr: أُغلق Forja أثناء فتح صوت آخر لعبة. سيُفتح الصوت الآن في الوضع البسيط
+
+es: Forja se volvió a cerrar al abrir el sonido: en esta consola los juegos irán sin sonido
+tr: أُغلق Forja مرة أخرى أثناء فتح الصوت: ستعمل الألعاب على هذا الجهاز بدون صوت
+
 es: El juego no pudo iniciar: falta la BIOS de la PS2. Cópiala por FTP a /data/ForjaSX2/bios
 tr: تعذّر بدء اللعبة: BIOS الخاص بـ PS2 غير موجود. انسخه عبر FTP إلى /data/ForjaSX2/bios
 

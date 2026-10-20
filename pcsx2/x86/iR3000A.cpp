@@ -986,6 +986,9 @@ static void recReserve()
 void recResetIOP()
 {
 	DevCon.WriteLn("iR3000A Recompiler reset.");
+#if defined(PCSX2_PS4_VM_BOOT)
+	ForjaForgetIopIdleLoops(); // Forja SX2 (compilation 67)
+#endif
 
 	if (CHECK_EXTRAMEM != extraRam)
 	{
@@ -1814,6 +1817,10 @@ StartRecomp:
 			}
 		}
 	}
+#if defined(PCSX2_PS4_VM_BOOT)
+	if (s_nBlockFF && EmuConfig.Speedhacks.WaitLoop)
+		ForjaNoteIopIdleLoop(startpc, s_nEndBlock); // Forja SX2 (compilation 67): where the IOP may sleep (R3000A.cpp)
+#endif
 
 	// rec info //
 	{

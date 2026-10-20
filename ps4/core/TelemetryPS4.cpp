@@ -66,13 +66,15 @@ namespace
 
 	// ---- Config ----
 
-	void LoadConfig()
+	// Forja SX2 (compilation 67): false without the file. Until now every console, a player's too, sent its log to
+	// 192.168.0.8:19423 of its own network (kDefaultHost), the developer's PC; a player's has no PC there.
+	bool LoadConfig()
 	{
 		// Format: lines "host=192.168.0.9" and "port=19423"
 		// Also accepts single-line "192.168.0.9:19423"
 		FILE* f = fopen(kConfigPath, "r");
 		if (!f)
-			return; // use defaults
+			return false;
 		char line[256];
 		while (fgets(line, sizeof(line), f))
 		{
@@ -116,6 +118,7 @@ namespace
 			}
 		}
 		fclose(f);
+		return true;
 	}
 
 	// ---- Network helpers ----
@@ -461,7 +464,11 @@ namespace PS4Telemetry
 
 	bool Start()
 	{
-		LoadConfig();
+		if (!LoadConfig())
+		{
+			ProbeLog("Telemetry: off (no %s; create it with 'host=PC_IP port=19423' to send this log to a PC)\n", kConfigPath);
+			return false;
+		}
 		s_boot_tick = Common::Timer::GetCurrentValue();
 		s_boot_tick_valid = true;
 		s_stopping = false;

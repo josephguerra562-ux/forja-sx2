@@ -175,6 +175,12 @@ tr: Не удалось сохранить настройки.
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: Сохранено. Применится при запуске следующей игры.
 
+es: Forja se cerró al abrir el sonido del último juego. Ahora el sonido se abrirá en modo sencillo
+tr: Forja закрылась при открытии звука последней игры. Теперь звук будет открываться в простом режиме
+
+es: Forja se volvió a cerrar al abrir el sonido: en esta consola los juegos irán sin sonido
+tr: Forja снова закрылась при открытии звука: на этой консоли игры будут идти без звука
+
 es: El juego no pudo iniciar: falta la BIOS de la PS2. Cópiala por FTP a /data/ForjaSX2/bios
 tr: Игра не запустилась: нет BIOS PS2. Скопируйте его по FTP в /data/ForjaSX2/bios
 
