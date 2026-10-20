@@ -14,4 +14,6 @@ namespace ForjaPatches
 	void FetchCommunity(const std::string& serial, uint32_t crc, bool force = false);
 	// True once after a new file arrived: the CPU thread reloads the patches.
 	bool TakeArrived();
+	// Compilation 61: true while a download runs (main.cpp waits for it before using the recommended settings).
+	bool Busy();
 } // namespace ForjaPatches

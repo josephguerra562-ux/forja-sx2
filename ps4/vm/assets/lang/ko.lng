@@ -790,6 +790,9 @@ tr: 팩 없음: FTP로 /data/ForjaSX2/textures/%s/replacements에 복사하세�
 es: Ajustes recomendados:  buscando en GitHub...
 tr: 추천 설정:  GitHub에서 찾는 중...
 
+es: Ajustes recomendados:  aplicados ahora
+tr: 추천 설정:  적용됨
+
 es: Ajustes recomendados:  del centro (GitHub), %s
 tr: 추천 설정:  센터 (GitHub)에서, %s
 
@@ -799,8 +802,8 @@ tr: 추천 설정:  PKG에서
 es: Ajustes recomendados:  ninguno para este juego
 tr: 추천 설정:  이 게임에는 없음
 
-es: X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos
-tr: X: GitHub에서 다시 받기 (인터넷 필요). 다음 시작부터 적용됩니다. 시스템 > 초기화로 이 설정으로 돌아갑니다
+es: X: traer de GitHub los mejores ajustes probados y usarlos ya. Los tuyos quedan en una copia; la resolución no cambia
+tr: X: GitHub에서 테스트된 최적의 설정을 받아 바로 적용. 현재 설정은 사본으로 남고, 해상도는 그대로입니다
 
 es: Cambiar disco:  este juego tiene un solo disco
 tr: 디스크 교체:  이 게임은 디스크가 하나뿐입니다

@@ -790,6 +790,9 @@ tr: Nessun pacchetto: copialo via FTP in /data/ForjaSX2/textures/%s/replacements
 es: Ajustes recomendados:  buscando en GitHub...
 tr: Impostazioni consigliate:  ricerca su GitHub...
 
+es: Ajustes recomendados:  aplicados ahora
+tr: Impostazioni consigliate:  applicate ora
+
 es: Ajustes recomendados:  del centro (GitHub), %s
 tr: Impostazioni consigliate:  dal centro (GitHub), %s
 
@@ -799,8 +802,8 @@ tr: Impostazioni consigliate:  dal PKG
 es: Ajustes recomendados:  ninguno para este juego
 tr: Impostazioni consigliate:  nessuna per questo gioco
 
-es: X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos
-tr: X: riscaricale da GitHub (con internet). Valgono dal prossimo avvio. Sistema > Ripristina torna a esse
+es: X: traer de GitHub los mejores ajustes probados y usarlos ya. Los tuyos quedan en una copia; la resolución no cambia
+tr: X: prendi da GitHub le migliori impostazioni provate e usale subito. Le tue restano in una copia; la risoluzione non cambia
 
 es: Cambiar disco:  este juego tiene un solo disco
 tr: Cambia disco:  questo gioco ha un solo disco

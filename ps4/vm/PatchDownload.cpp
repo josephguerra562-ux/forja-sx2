@@ -18,6 +18,8 @@
 // all day: Dragon Ball's from build 47 (SaltarCuadros = 1) kept coming back after GitHub's said 0 since build 49, and once
 // the player's own profile was reset the frame skip went on by itself in the fights (the picture white and pixelated,
 // 2026-10-18).
+// Compilation 61: X on L3+R3 > Extras > Ajustes recomendados fetches the profile and main.cpp uses it as soon as the download
+// ends (ForjaPatches::Busy), the player's own file set aside, instead of from the next start under the player's settings.
 #include "PatchDownload.h"
 #include "CoverDownload.h"
 
@@ -137,7 +139,8 @@ namespace
 				continue;
 			}
 			ProbeLog("%s: %s saved (%zu bytes)%s\n", KindName(job.kind), job.path.c_str(), text.size(),
-				job.kind == Kind::CenterProfile || job.kind == Kind::CenterRules ? "; used from the game's next start" : "");
+				job.kind == Kind::CenterRules ? "; used from the game's next start" :
+				job.kind == Kind::CenterProfile ? "; used from the game's next start, or at once by Ajustes recomendados" : "");
 			if (job.kind != Kind::CenterProfile && job.kind != Kind::CenterRules)
 				s_arrived.store(true, std::memory_order_release);
 		}
@@ -214,5 +217,10 @@ namespace ForjaPatches
 	bool TakeArrived()
 	{
 		return s_arrived.exchange(false, std::memory_order_acq_rel);
+	}
+
+	bool Busy()
+	{
+		return s_busy.load(std::memory_order_acquire);
 	}
 } // namespace ForjaPatches

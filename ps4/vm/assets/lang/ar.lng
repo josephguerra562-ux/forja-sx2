@@ -790,6 +790,9 @@ tr: لا توجد حزمة: انسخها عبر FTP إلى /data/ForjaSX2/textur
 es: Ajustes recomendados:  buscando en GitHub...
 tr: الإعدادات المقترحة:  جارٍ البحث في GitHub...
 
+es: Ajustes recomendados:  aplicados ahora
+tr: الإعدادات المقترحة:  طُبّقت الآن
+
 es: Ajustes recomendados:  del centro (GitHub), %s
 tr: الإعدادات المقترحة:  من المركز (GitHub)، %s
 
@@ -799,8 +802,8 @@ tr: الإعدادات المقترحة:  من حزمة PKG
 es: Ajustes recomendados:  ninguno para este juego
 tr: الإعدادات المقترحة:  لا شيء لهذه اللعبة
 
-es: X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos
-tr: X: جلبها مجددًا من GitHub (مع الإنترنت). تسري من التشغيل التالي. النظام > إعادة الضبط يعود إليها
+es: X: traer de GitHub los mejores ajustes probados y usarlos ya. Los tuyos quedan en una copia; la resolución no cambia
+tr: X: جلب أفضل الإعدادات المُجرّبة من GitHub واستخدامها فورًا. تبقى إعداداتك في نسخة؛ ولا تتغير الدقة
 
 es: Cambiar disco:  este juego tiene un solo disco
 tr: تغيير القرص:  لهذه اللعبة قرص واحد فقط

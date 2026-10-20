@@ -790,6 +790,9 @@ tr: Paket yok: FTP ile /data/ForjaSX2/textures/%s/replacements içine kopyala
 es: Ajustes recomendados:  buscando en GitHub...
 tr: Önerilen ayarlar:  GitHub'da aranıyor...
 
+es: Ajustes recomendados:  aplicados ahora
+tr: Önerilen ayarlar:  şimdi uygulandı
+
 es: Ajustes recomendados:  del centro (GitHub), %s
 tr: Önerilen ayarlar:  merkezden (GitHub), %s
 
@@ -799,8 +802,8 @@ tr: Önerilen ayarlar:  PKG'den
 es: Ajustes recomendados:  ninguno para este juego
 tr: Önerilen ayarlar:  bu oyun için yok
 
-es: X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos
-tr: X: GitHub'dan yeniden al (internetle). Bir sonraki açılıştan itibaren geçerli. Sistem > Sıfırla onlara döner
+es: X: traer de GitHub los mejores ajustes probados y usarlos ya. Los tuyos quedan en una copia; la resolución no cambia
+tr: X: en iyi denenmiş ayarları GitHub'dan al ve hemen kullan. Seninkiler bir kopyada kalır; çözünürlük değişmez
 
 es: Cambiar disco:  este juego tiene un solo disco
 tr: Disk değiştir:  bu oyunun tek diski var

@@ -790,6 +790,9 @@ tr: 没有纹理包：用 FTP 复制到 /data/ForjaSX2/textures/%s/replacements
 es: Ajustes recomendados:  buscando en GitHub...
 tr: 推荐设置：  正在 GitHub 上查找...
 
+es: Ajustes recomendados:  aplicados ahora
+tr: 推荐设置：  已应用
+
 es: Ajustes recomendados:  del centro (GitHub), %s
 tr: 推荐设置：  来自中心（GitHub），%s
 
@@ -799,8 +802,8 @@ tr: 推荐设置：  来自 PKG
 es: Ajustes recomendados:  ninguno para este juego
 tr: 推荐设置：  此游戏没有
 
-es: X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos
-tr: X：重新从 GitHub 获取（需联网）。下次启动起生效。“系统 > 重置”会回到这些设置
+es: X: traer de GitHub los mejores ajustes probados y usarlos ya. Los tuyos quedan en una copia; la resolución no cambia
+tr: X：从 GitHub 获取测试过的最佳设置并立即使用。当前设置会保留一份副本；分辨率不变
 
 es: Cambiar disco:  este juego tiene un solo disco
 tr: 更换光盘：  此游戏只有一张光盘

@@ -790,6 +790,9 @@ tr: Пака нет: скопируйте его по FTP в /data/ForjaSX2/text
 es: Ajustes recomendados:  buscando en GitHub...
 tr: Рекомендуемые настройки:  поиск на GitHub...
 
+es: Ajustes recomendados:  aplicados ahora
+tr: Рекомендуемые настройки:  применены
+
 es: Ajustes recomendados:  del centro (GitHub), %s
 tr: Рекомендуемые настройки:  из центра (GitHub), %s
 
@@ -799,8 +802,8 @@ tr: Рекомендуемые настройки:  из PKG
 es: Ajustes recomendados:  ninguno para este juego
 tr: Рекомендуемые настройки:  для этой игры нет
 
-es: X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos
-tr: X: снова загрузить с GitHub (нужен интернет). Действуют со следующего запуска. Система > Сбросить возвращает к ним
+es: X: traer de GitHub los mejores ajustes probados y usarlos ya. Los tuyos quedan en una copia; la resolución no cambia
+tr: X: загрузить с GitHub лучшие проверенные настройки и применить сразу. Ваши сохранятся в копии; разрешение не меняется
 
 es: Cambiar disco:  este juego tiene un solo disco
 tr: Сменить диск:  у этой игры один диск

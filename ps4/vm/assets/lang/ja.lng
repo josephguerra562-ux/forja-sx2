@@ -790,6 +790,9 @@ tr: パックなし：FTPで /data/ForjaSX2/textures/%s/replacements にコピ�
 es: Ajustes recomendados:  buscando en GitHub...
 tr: おすすめ設定：  GitHubで検索中...
 
+es: Ajustes recomendados:  aplicados ahora
+tr: おすすめ設定：  適用しました
+
 es: Ajustes recomendados:  del centro (GitHub), %s
 tr: おすすめ設定：  センター（GitHub）から、%s
 
@@ -799,8 +802,8 @@ tr: おすすめ設定：  PKGから
 es: Ajustes recomendados:  ninguno para este juego
 tr: おすすめ設定：  このゲームにはありません
 
-es: X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos
-tr: X：GitHubから再取得（要ネット接続）。次の起動から有効。「システム > リセット」でこの設定に戻ります
+es: X: traer de GitHub los mejores ajustes probados y usarlos ya. Los tuyos quedan en una copia; la resolución no cambia
+tr: X：GitHubからテスト済みの最適な設定を取得してすぐに使用。今の設定はコピーとして残ります。解像度は変わりません
 
 es: Cambiar disco:  este juego tiene un solo disco
 tr: ディスク交換：  このゲームはディスク1枚です

@@ -1471,6 +1471,13 @@ static void ApplyGameTextures(unsigned value)
 	PublishTexturesText();
 }
 
+// Compilation 61: X on "Ajustes recomendados" fetches them and uses them at once (Joseph, 2026-10-20: "yo aplasto eso y me
+// configuro a la mejor versión que hemos probado"). Until 60 it only fetched them, for the next start, under the player's own
+// file, which won key by key: nothing changed. s_recommended_wait_since: when X asked (0 = not waiting); VMHostPoll uses them
+// once the download ends. s_recommended_applied: the row says so until the menu opens again.
+static double s_recommended_wait_since = 0.0;
+static bool s_recommended_applied = false;
+
 // Forja SX2 (compilation 44): where the game's recommended settings come from: the settings center (fetched from GitHub,
 // PatchDownload.cpp), the package, or none. X fetches them again now.
 static void PublishRecommendedText(bool fetching = false)
@@ -1483,6 +1490,8 @@ static void PublishRecommendedText(bool fetching = false)
 	char label[512];
 	if (fetching)
 		std::snprintf(label, sizeof(label), "%s", T("Ajustes recomendados:  buscando en GitHub..."));
+	else if (s_recommended_applied)
+		std::snprintf(label, sizeof(label), "%s", T("Ajustes recomendados:  aplicados ahora"));
 	else if (!serial.empty() && stat(center.c_str(), &info) == 0)
 	{
 		char date[32] = "?";
@@ -1496,7 +1505,7 @@ static void PublishRecommendedText(bool fetching = false)
 	else
 		std::snprintf(label, sizeof(label), "%s", T("Ajustes recomendados:  ninguno para este juego"));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_RECOMMENDED, label,
-		T("X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos"));
+		T("X: traer de GitHub los mejores ajustes probados y usarlos ya. Los tuyos quedan en una copia; la resolución no cambia"));
 }
 
 // Forja SX2 (compilation 44): the other discs of a game of several, as Dolphin for PS4 changes them (v04.13). Its files sit
@@ -1779,12 +1788,10 @@ static void ApplyGameEECycleRate(int rate)
 	ProbeLog("EE cycle rate: requested=%d active=%d\n", rate, s_game_ee_rate);
 }
 
-// Forja SX2: "Restablecer este juego". The player's profile becomes a .bak; the factory profile and the global settings stay.
-static void ResetGameProfile()
+// Forja SX2: after the player's profile changed under the running game (Restablecer, Ajustes recomendados): PCSX2's layers
+// and Forja's profile are read again, and the menu's values with them.
+static void ReloadResetGameProfile(const std::string& serial, u32 crc, bool reset)
 {
-	const std::string serial = VMManager::GetDiscSerial();
-	const u32 crc = VMManager::GetDiscCRC();
-	const bool reset = ForjaGameProfile::ResetPlayer(serial, crc);
 	const bool reloaded = VMManager::ReloadGameSettings();
 	MTGS::ApplySettings();
 	MTGS::WaitGS(false, false, false);
@@ -1796,6 +1803,76 @@ static void ResetGameProfile()
 	RepinWorkersForProfile();
 	ProbeLog("Game profile: reset=%d reloaded=%d upscale=%ux aspect=%u ee_rate=%d\n", reset ? 1 : 0, reloaded ? 1 : 0,
 		s_game_upscale, s_game_aspect, s_game_ee_rate);
+}
+
+// Forja SX2: "Restablecer este juego". The player's profile becomes a .bak; the factory profile and the global settings stay.
+static void ResetGameProfile()
+{
+	const std::string serial = VMManager::GetDiscSerial();
+	const u32 crc = VMManager::GetDiscCRC();
+	const bool reset = ForjaGameProfile::ResetPlayer(serial, crc);
+	ReloadResetGameProfile(serial, crc, reset);
+}
+
+// Compilation 61: true when the player's file sets something besides the picture, the two keys Ajustes recomendados keeps.
+static bool PlayerFileHasOwnSettings(const std::string& path)
+{
+	std::FILE* file = path.empty() ? nullptr : std::fopen(path.c_str(), "r");
+	if (!file)
+		return false;
+	char line[512];
+	bool own = false;
+	while (!own && std::fgets(line, sizeof(line), file))
+	{
+		const std::string_view text = ForjaGameProfile::Trim(line);
+		if (text.empty() || text.front() == ';' || text.front() == '#' || text.front() == '[')
+			continue;
+		const std::string_view key = ForjaGameProfile::Trim(text.substr(0, text.find('=')));
+		own = key != "upscale_multiplier" && key != "AspectRatio";
+	}
+	std::fclose(file);
+	return own;
+}
+
+// Compilation 61: "Ajustes recomendados" used at once, with the VM paused (the L3+R3 menu). As Restablecer, but the picture
+// the player chose stays (resolution and aspect: the profiles leave them to the console, 2x on a PS4, up to 4x on a Pro).
+// False when the game has no recommended settings: then the player's own stay as they are.
+static bool ApplyRecommendedProfile()
+{
+	const std::string serial = VMManager::GetDiscSerial();
+	const u32 crc = VMManager::GetDiscCRC();
+	if (serial.empty() || crc == 0 || !FileSystem::FileExists(ForjaGameProfile::FactoryPath(serial).c_str()))
+	{
+		ProbeLog("Recommended settings: none for %s, the player's stay\n", serial.empty() ? "(no serial)" : serial.c_str());
+		return false;
+	}
+	float upscale = 0.0f;
+	std::string aspect;
+	const std::string path = ForjaGameProfile::PlayerPath(serial, crc);
+	{
+		INISettingsInterface player(path);
+		if (player.Load())
+		{
+			player.GetFloatValue("EmuCore/GS", "upscale_multiplier", &upscale);
+			player.GetStringValue("EmuCore/GS", "AspectRatio", &aspect);
+		}
+	}
+	// Pressed a second time the file holds only the kept picture: it does not go over the .bak with the player's own settings.
+	const bool reset = PlayerFileHasOwnSettings(path) && ForjaGameProfile::ResetPlayer(serial, crc);
+	if (upscale > 0.0f || !aspect.empty())
+	{
+		ForjaGameProfile::EditPlayer(serial, crc, [upscale, &aspect](INISettingsInterface& ini) {
+			if (upscale > 0.0f)
+				ini.SetFloatValue("EmuCore/GS", "upscale_multiplier", upscale);
+			if (!aspect.empty())
+				ini.SetStringValue("EmuCore/GS", "AspectRatio", aspect.c_str());
+		});
+	}
+	ProbeLog("Recommended settings: %s from %s; the player's file %s (kept: upscale %.0f, aspect '%s')\n", serial.c_str(),
+		ForjaGameProfile::FactoryPath(serial).c_str(), reset ? "is now its .bak" : "had nothing of the player's own", upscale,
+		aspect.c_str());
+	ReloadResetGameProfile(serial, crc, reset);
+	return true;
 }
 
 // Forja SX2: automatic video mode. Measured on a PS4 Pro with Mega Man X Command Mission: during a movie
@@ -2401,6 +2478,13 @@ static void ResumeFromGameMenu(u32 raw)
 	s_blocked_pad_buttons |= raw;
 	PS4GameMenu::SetInGameMenu({});
 	ProbeLog("Emulator menu: resume\n");
+	// Compilation 61: recommended settings still downloading are not used with the game running (VMHostPoll uses them only
+	// with the menu open); the downloaded copy stays for X next time.
+	if (s_recommended_wait_since > 0.0)
+	{
+		s_recommended_wait_since = 0.0;
+		ProbeLog("Recommended settings: the menu closed before the download ended, not used\n");
+	}
 	// Forja SX2: the GS's hitch detector (GSRendererPS4.cpp) does not count the time the menu was open as a hitch.
 	g_forja_resumes.fetch_add(1, std::memory_order_relaxed);
 	VMManager::SetPaused(false);
@@ -2619,6 +2703,7 @@ void VMHostPoll()
 		ReloadVu1Filter();
 		ReloadGsFilter(); // compilation 51
 		PublishTexturesText();
+		s_recommended_applied = false; // compilation 61
 		PublishRecommendedText();
 		ReloadDiscList();
 		// The game's own rate, not the one a movie (video mode) or the automatic speed lowered it to.
@@ -2694,6 +2779,23 @@ void VMHostPoll()
 	if (!s_game_menu_open)
 		return;
 
+	// Compilation 61: the recommended settings X asked for, used as soon as their download ends (or after 20 s, offline or a
+	// slow line: then with the copy already on the console). Here, with the VM paused, as Restablecer.
+	if (s_recommended_wait_since > 0.0 && (!ForjaPatches::Busy() || elapsed - s_recommended_wait_since > 20.0))
+	{
+		ProbeLog("Recommended settings: download %s after %.1f s\n", ForjaPatches::Busy() ? "still running" : "done",
+			elapsed - s_recommended_wait_since);
+		s_recommended_wait_since = 0.0;
+		s_recommended_applied = ApplyRecommendedProfile();
+		ReloadPatchMenu();
+		ReloadCheats();
+		ReloadVu1Filter();
+		ReloadGsFilter();
+		PublishTexturesText();
+		PublishRecommendedText();
+		PublishGameMenu();
+	}
+
 	const bool cancel = (pressed & ORBIS_PAD_BUTTON_CIRCLE) != 0 || chord_edge;
 	const bool confirm = (pressed & ORBIS_PAD_BUTTON_CROSS) != 0;
 	const unsigned row = s_game_menu_selection;
@@ -2768,8 +2870,13 @@ void VMHostPoll()
 				ToggleGsGroup();
 			else if (row == PS4GameMenu::ROW_RECOMMENDED)
 			{
-				PublishRecommendedText(true);
-				ForjaPatches::FetchCommunity(VMManager::GetDiscSerial(), VMManager::GetDiscCRC(), true);
+				if (s_recommended_wait_since <= 0.0) // compilation 61: used once the download ends (above)
+				{
+					s_recommended_applied = false;
+					PublishRecommendedText(true);
+					ForjaPatches::FetchCommunity(VMManager::GetDiscSerial(), VMManager::GetDiscCRC(), true);
+					s_recommended_wait_since = std::max(elapsed, 0.001);
+				}
 			}
 			else if (row == PS4GameMenu::ROW_CHANGE_DISC)
 				ChangeToSelectedDisc();
