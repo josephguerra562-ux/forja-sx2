@@ -78,6 +78,11 @@
 #include <sstream>
 #include <common/RedtapeWilCom.h>
 extern "C" void orbis_stage(const char* stage) __attribute__((weak));
+#if defined(PCSX2_PS4_VM_BOOT)
+// Forja SX2 (compilation 59): ps4/vm/main.cpp measures the console's CPU; LoadCoreSettings reads it. Declared here, at file
+// scope: inside VMManager::LoadCoreSettings it would name VMManager::g_forja_console_fast_cpu, which nothing defines.
+extern bool g_forja_console_fast_cpu;
+#endif
 
 #ifdef _WIN32
 #include "common/RedtapeWindows.h"
@@ -702,7 +707,6 @@ void VMManager::LoadCoreSettings(SettingsInterface& si)
 #if defined(PCSX2_PS4_VM_BOOT)
 	// Forja SX2 (compilation 59): a slow console (a PS4 or a Slim, or a Pro without Boost Mode: ps4/vm/main.cpp measures the
 	// CPU) keeps the internal resolution at 2x at most, whatever a profile says; 3x and 4x are for a PS4 Pro with Boost Mode.
-	extern bool g_forja_console_fast_cpu;
 	if (!g_forja_console_fast_cpu && EmuConfig.GS.UpscaleMultiplier > 2.0f)
 		EmuConfig.GS.UpscaleMultiplier = 2.0f;
 	// Forja SX2 (compilation 59): HD textures only when this game has a pack (textures/<serial>/replacements). Turned on, PCSX2
