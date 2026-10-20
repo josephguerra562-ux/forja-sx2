@@ -241,6 +241,9 @@ static bool s_video_auto_tried_up = false;
 // the EE thread the decoding takes; vm-profile-ipu keeps it on all the time and vm-no-ipu-profile off.
 static bool s_ipu_profile_marker = false;
 static bool s_ipu_profile_off = false;
+// Compilation 65: the window's samples taken while the IPU decoded at a movie's pace. A window mostly without (a load, the gap
+// between two movies) decides nothing: its speed says nothing about the movie, and a low one would lower the game's ceiling.
+static unsigned s_video_probe_busy_samples = 0;
 
 static void ForjaVideoMeter(bool movie)
 {
@@ -248,6 +251,7 @@ static void ForjaVideoMeter(bool movie)
 	PS4IPUProfile::s_sampling.enabled = on;
 	PS4IPUProfile::s_access_sampling.enabled = on;
 }
+
 static VideoProbe s_video_probe = VideoProbe::Measure;
 static double s_video_probe_since = 0.0; // when the rate being measured was put in place
 static double s_video_probe_fps_sum = 0.0;
@@ -294,6 +298,52 @@ static double s_gs_skip_last_change = -100.0;
 static double s_gs_skip_last_report = 0.0;
 static unsigned s_gs_skip_slow_checks = 0;
 static unsigned s_gs_skip_room_checks = 0;
+
+// Compilation 65: what a movie gets besides its EE rate, the game's own settings back when it ends. Both use other parts of the
+// PS4 than the EE's core, the one a movie fills:
+// - frame generation, when the game has it on ("Sí" or "Fluida"), in its fluid mode: at the rate that plays a movie in real
+//   time its decoder drops some pictures, so the movie's frames are of uneven lengths, which "Sí" waits out (Tales of the
+//   Abyss, 2026-10-20: "the game's frames aren't of one length" through most of its movies); the fluid mode fills each
+//   refresh the TV would repeat, on the GPU and the GS thread, both nearly idle in a movie (GS 7 %).
+// - Saltar cuadros paused: a movie's frames are cheap for the GS, and each one left out is a picture of the movie lost. Auto
+//   had kept the step the game was on when the movie began (UpdateGsSkip doesn't run in a movie).
+static bool s_fg_fluid_profile = false; // the game's own fluid mode (FrameGen = 2), ApplyGameProfile
+static bool s_movie_settings = false;
+
+static void ForjaApplyFgFluid()
+{
+	g_orbis_fg_fluid = s_fg_fluid_profile || (s_movie_settings && g_orbis_fg_wanted);
+}
+
+static void ForjaMovieSettings(bool movie)
+{
+	if (movie == s_movie_settings)
+		return;
+	s_movie_settings = movie;
+	const bool fluid_before = g_orbis_fg_fluid;
+	ForjaApplyFgFluid();
+	if (movie)
+	{
+		g_forja_gs_skip_active.store(false, std::memory_order_relaxed);
+	}
+	else if (s_gs_skip_mode == 2)
+	{
+		g_forja_gs_skip_active.store(true, std::memory_order_relaxed);
+	}
+	else if (s_gs_skip_mode == 1)
+	{
+		// Auto starts over from drawing every frame, as after the game's start.
+		s_gs_skip_step = 0;
+		s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
+		s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
+		s_gs_skip_samples = 0;
+		g_forja_gs_skip_every.store(2u, std::memory_order_relaxed);
+		g_forja_gs_skip_active.store(false, std::memory_order_relaxed);
+	}
+	ProbeLog("Movie settings: %s (frame generation %s%s; Saltar cuadros %s)\n", movie ? "on" : "off",
+		!g_orbis_fg_wanted ? "off" : g_orbis_fg_fluid ? "fluid" : "steady", fluid_before != g_orbis_fg_fluid ? ", changed" : "",
+		movie ? "paused" : s_gs_skip_mode == 2 ? "one in two again" : s_gs_skip_mode == 1 ? "auto from every frame" : "off");
+}
 // Forja SX2 (compilation 37): the TV at 50 Hz for PAL games (UpdateOutputRate); vm-sin-50hz turns it off.
 static bool s_output_50hz_enabled = true;
 static double s_output_last_check = 0.0;
@@ -1736,7 +1786,8 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	}
 	const int frame_gen = s_profile.frame_gen >= 0 ? s_profile.frame_gen : (s_global_frame_gen ? 1 : 0);
 	g_orbis_fg_wanted = !s_frame_gen_blocked && frame_gen != 0;
-	g_orbis_fg_fluid = frame_gen == 2;
+	s_fg_fluid_profile = frame_gen == 2;
+	ForjaApplyFgFluid(); // compilation 65: fluid in a movie too
 	// Compilation 45: a game without its own CpuAuto (player or factory) takes the Settings page's.
 	s_cpu_auto_floor = s_profile.cpu_auto_origin == ForjaGameProfile::Origin::Global ? s_global_cpu_auto : s_profile.cpu_auto;
 	// Compilation 47: "Saltar cuadros". Always on at 2; auto (1) starts off and UpdateGsSkip turns it on when the GS holds the game back.
@@ -1750,7 +1801,7 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 			s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
 			s_gs_skip_samples = 0;
 			g_forja_gs_skip_every.store(2u, std::memory_order_relaxed);
-			g_forja_gs_skip_active.store(gs_skip == 2, std::memory_order_relaxed);
+			g_forja_gs_skip_active.store(gs_skip == 2 && !s_movie_settings, std::memory_order_relaxed); // compilation 65
 		}
 	}
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
@@ -1932,6 +1983,7 @@ static void UpdateVideoMode(double elapsed)
 			}
 			ProbeLog("Video mode: turned off for this game, EE rate back to %d\n", s_video_saved_rate);
 			ForjaVideoMeter(false); // compilation 65
+			ForjaMovieSettings(false); // compilation 65
 		}
 		return;
 	}
@@ -1964,7 +2016,20 @@ static void UpdateVideoMode(double elapsed)
 		s_video_probe_fps_sum += PerformanceMetrics::GetInternalFPS();
 		s_video_probe_speed_sum += PerformanceMetrics::GetSpeed();
 		s_video_probe_samples++;
-		if (elapsed - s_video_probe_since >= VIDEO_PROBE_SETTLE + VIDEO_PROBE_WINDOW)
+		if (per_second >= VIDEO_DECODES_PER_SECOND)
+			s_video_probe_busy_samples++;
+		if (elapsed - s_video_probe_since >= VIDEO_PROBE_SETTLE + VIDEO_PROBE_WINDOW &&
+			s_video_probe_busy_samples * 2 < s_video_probe_samples)
+		{
+			ProbeLog("Video mode: auto window with %u of %u samples decoding a movie: no decision" "\n", s_video_probe_busy_samples,
+				s_video_probe_samples);
+			s_video_probe_since = elapsed;
+			s_video_probe_fps_sum = 0.0;
+			s_video_probe_speed_sum = 0.0;
+			s_video_probe_samples = 0;
+			s_video_probe_busy_samples = 0;
+		}
+		else if (elapsed - s_video_probe_since >= VIDEO_PROBE_SETTLE + VIDEO_PROBE_WINDOW)
 		{
 			const int rate = EmuConfig.Speedhacks.EECycleRate;
 			const double fps = s_video_probe_fps_sum / s_video_probe_samples;
@@ -1997,6 +2062,7 @@ static void UpdateVideoMode(double elapsed)
 			s_video_probe_fps_sum = 0.0;
 			s_video_probe_speed_sum = 0.0;
 			s_video_probe_samples = 0;
+			s_video_probe_busy_samples = 0;
 			if (next != rate)
 			{
 				EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(next);
@@ -2016,6 +2082,7 @@ static void UpdateVideoMode(double elapsed)
 	if (want == s_video_active)
 		return;
 	ForjaVideoMeter(want); // compilation 65
+	ForjaMovieSettings(want); // compilation 65
 
 	if (want)
 	{
@@ -2028,6 +2095,7 @@ static void UpdateVideoMode(double elapsed)
 		s_video_probe_fps_sum = 0.0;
 		s_video_probe_speed_sum = 0.0;
 		s_video_probe_samples = 0;
+		s_video_probe_busy_samples = 0;
 		s_video_active = true;
 		// Compilation 48: up as well as down. It was made to lower a game at 100 % to 50-60 % during its movies; since the
 		// games start at 27 % (compilation 45) the movie's rate is above theirs, and "already lower" left God of War II's
@@ -3367,6 +3435,7 @@ static void* RunVM(void*)
 			s_cpu_auto_steps = 0;
 			s_gs_skip_mode = -1; // compilation 47: a new game starts drawing every frame (ApplyGameProfile sets it again)
 			s_video_auto_ceiling = VIDEO_AUTO_HIGHEST; // compilation 65: a new game's movies find their own ceiling
+			s_movie_settings = false; // compilation 65
 			ResetGsFilterList(); // compilation 54: a new game's list starts empty
 			LoadRules(); // compilation 55: huellas.ini, before the profile turns its rules on
 			s_fast_forward = false; // compilation 58: a game starts at its own speed
