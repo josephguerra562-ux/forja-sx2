@@ -219,40 +219,32 @@ static constexpr int VIDEO_EE_RATE = -3;
 // from the game's decoder, which needs EE cycles (too low a rate: fewer pictures, at full speed), while the PS4 runs the EE
 // more slowly the higher the rate (too high: the whole movie slows down). Tales of the Abyss (2026-10-18): 17-20 pictures a
 // second at 36 % (99 % speed), 21 at 50 % (94 %), 23 at 60 % (85 %) and 14 at 100 % (38 %); God of War II: 17-21 at 27 %,
-// 23 at 60 % (92 %). The best rate differs by game and by movie, so it measures: the rate in place for 3 s (after 1.5 s to
-// settle), then a step up, kept while it shows over 4 % more pictures; when the first step up does not, a step down. Then
-// it stays, and measures again every 40 s. The best rate found is where the game's next movie starts. Builds 49-50 stepped
-// on the speed alone, between 31 and 60 %: never above 60 %, and down for movies whose decoder was short of EE cycles.
+// 23 at 60 % (92 %). The best rate differs by game and by movie, so it measures. Builds 51-64 compared the pictures a second
+// between windows, which change with each scene; compilation 65 keeps the highest rate that plays the movie in real time
+// (UpdateVideoMode). Builds 49-50 stepped on the speed alone, between 31 and 60 %: never above 60 %, and down for movies whose
+// decoder was short of EE cycles; 65 also goes up, a step a movie, while the speed holds. The rate in use is where the game's
+// next movie starts.
 enum class VideoProbe
 {
-	Measure, // the rate in place, before trying its neighbours
-	Up,
-	Down,
-	Hold,
+	Measure, // the rate in place
+	Up,      // one step up, kept only if the movie still plays in real time
 };
 static bool s_video_auto = false;
-static int s_video_auto_rate = VIDEO_EE_RATE;
-// Compilation 63: the auto mode measures once a game (until a measure ends in Hold); its later movies start at that rate,
-// with no new trials. Each trial resets the EE recompiler: in Crash Nitro Kart's intro, a run of short movies, the trials and
-// the switches gave ~8 stops of ~230 ms in a minute (2026-10-20, "Hitch: ... ee_rec_resets=1").
-static bool s_video_auto_settled = false;
-static VideoProbe s_video_probe = VideoProbe::Hold;
-static int s_video_probe_best = VIDEO_EE_RATE;
-static double s_video_probe_best_fps = 0.0;
-static double s_video_probe_since = 0.0; // when the rate being measured was put in place (or the hold began)
+static int s_video_auto_rate = VIDEO_EE_RATE; // where the game's next movie starts
+// Compilation 65: the highest rate the game's movies may use: a rate found too slow (under 92 %) lowers it for the rest of the
+// game, so no movie tries it again (each change resets the EE recompiler, a stop of 100-250 ms: Crash Nitro Kart's intro had
+// 8 to 12 in two minutes, 2026-10-20). And one step up a movie at most.
+static int s_video_auto_ceiling = 0;
+static bool s_video_auto_tried_up = false;
+static VideoProbe s_video_probe = VideoProbe::Measure;
+static double s_video_probe_since = 0.0; // when the rate being measured was put in place
 static double s_video_probe_fps_sum = 0.0;
-// Compilation 64: the speed over the same window, and the best rate's. A movie the PS4's EE thread cannot keep up with plays
-// slowed down (Crash Nitro Kart's intro from 100 %: 68-78 % speed, the thread at 100-120 %, 2026-10-20).
-static double s_video_probe_speed_sum = 0.0;
-static double s_video_probe_best_speed = 0.0;
+static double s_video_probe_speed_sum = 0.0; // compilation 64: the speed over the same window
 static unsigned s_video_probe_samples = 0;
-static bool s_video_probe_went_up = false;
 static constexpr int VIDEO_AUTO_LOWEST = -5; // 31 %
 static constexpr int VIDEO_AUTO_HIGHEST = 0; // 100 %
 static constexpr double VIDEO_PROBE_SETTLE = 1.5;
 static constexpr double VIDEO_PROBE_WINDOW = 3.0;
-static constexpr double VIDEO_PROBE_GAIN = 1.04;
-static constexpr double VIDEO_PROBE_HOLD = 40.0;
 static constexpr double VIDEO_DECODES_PER_SECOND = 2000.0; // a movie: tens of thousands; gameplay: ~0
 // Forja SX2: the running game's profile (pcsx2/ForjaGameProfile.h): its factory profile under the player's own. Read before
 // the VM boots, from the library's scan of the image, and again if PCSX2 identifies another disc.
@@ -1714,14 +1706,20 @@ static const char* ProfileOriginName(ForjaGameProfile::Origin origin)
 static void ApplyGameProfile(ForjaGameProfile::Values profile)
 {
 	s_profile = std::move(profile);
+	const int previous_video_ee_rate = s_video_ee_rate;
 	s_video_mode_enabled = s_profile.video_mode >= 0 ? s_profile.video_mode != 0 : s_global_video_mode;
 	s_video_ee_rate = s_profile.video_ee_rate <= 0 ? s_profile.video_ee_rate : VIDEO_EE_RATE;
 	// Compilation 49: auto when the profile says 2, or when it leaves the video mode to the Settings page's "Sí".
 	{
 		const bool video_auto = s_video_mode_enabled && (s_profile.video_mode == 2 || s_profile.video_mode < 0);
 		// Compilation 51: it starts from the fixed rate last chosen for the game (its VideoEECycleRate), 31 to 100 %.
-		if (video_auto && !s_video_auto)
+		// Compilation 65: also when a new profile brings another one. Until 64 a game already on auto kept the old start:
+		// Crash Nitro Kart's Ajustes recomendados left its movies starting at the player's 100 % (2026-10-20).
+		if (video_auto && (!s_video_auto || s_video_ee_rate != previous_video_ee_rate))
+		{
 			s_video_auto_rate = std::clamp(s_video_ee_rate, VIDEO_AUTO_LOWEST, VIDEO_AUTO_HIGHEST);
+			s_video_auto_ceiling = VIDEO_AUTO_HIGHEST;
+		}
 		s_video_auto = video_auto;
 	}
 	const int frame_gen = s_profile.frame_gen >= 0 ? s_profile.frame_gen : (s_global_frame_gen ? 1 : 0);
@@ -1941,127 +1939,55 @@ static void UpdateVideoMode(double elapsed)
 		s_video_busy_checks = 0;
 	}
 
-	// Compilation 51: the auto mode's measuring (VideoProbe), while a movie plays. The pictures a second are the game's own
-	// (PerformanceMetrics, over the last half second of real time), the same "Game" FPS the overlay shows.
-	if (s_video_active && s_video_auto)
+	// Compilation 51: the auto mode's measuring, while a movie plays. Compilation 65: guided by the speed, the steady sign of
+	// whether the movie plays in real time; its pictures a second change with each scene (Crash Nitro Kart's intro: 29 at
+	// 100 % in a light scene, 21 in a heavy one), so comparing them across windows chased the scenes. Each window (3 s, after
+	// 1.5 s to settle a change): under 92 % the rate goes a step down (two under 80 %) and that rate becomes the game's
+	// ceiling; at 98 % or more it tries a step up, once a movie and never to the ceiling, and keeps it only at 95 % or more.
+	// So it ends on the highest rate the PS4 plays the game's movies at in real time, without trials every few seconds.
+	// Tales of the Abyss (2026-10-20): 98-104 % at 36 %, 89-93 % at 50 %, 77-85 % at 60 %, 81 % at 100 %.
+	if (s_video_active && s_video_auto && elapsed - s_video_probe_since >= VIDEO_PROBE_SETTLE)
 	{
-		if (s_video_probe == VideoProbe::Hold)
+		s_video_probe_fps_sum += PerformanceMetrics::GetInternalFPS();
+		s_video_probe_speed_sum += PerformanceMetrics::GetSpeed();
+		s_video_probe_samples++;
+		if (elapsed - s_video_probe_since >= VIDEO_PROBE_SETTLE + VIDEO_PROBE_WINDOW)
 		{
-			if (elapsed - s_video_probe_since >= VIDEO_PROBE_HOLD)
+			const int rate = EmuConfig.Speedhacks.EECycleRate;
+			const double fps = s_video_probe_fps_sum / s_video_probe_samples;
+			const double speed = s_video_probe_speed_sum / s_video_probe_samples;
+			const char* what = "holds";
+			int next = rate;
+			if (speed < 92.0 && rate > VIDEO_AUTO_LOWEST)
 			{
-				s_video_probe = VideoProbe::Measure;
-				s_video_probe_since = elapsed - VIDEO_PROBE_SETTLE; // same rate: nothing to settle
-				s_video_probe_fps_sum = 0.0;
-				s_video_probe_speed_sum = 0.0;
-				s_video_probe_samples = 0;
+				next = std::max(rate - (speed < 80.0 ? 2 : 1), VIDEO_AUTO_LOWEST);
+				s_video_auto_ceiling = std::min(s_video_auto_ceiling, rate - 1);
+				what = "slowed down, lower";
 			}
-		}
-		else if (elapsed - s_video_probe_since >= VIDEO_PROBE_SETTLE)
-		{
-			s_video_probe_fps_sum += PerformanceMetrics::GetInternalFPS();
-			s_video_probe_speed_sum += PerformanceMetrics::GetSpeed();
-			s_video_probe_samples++;
-			if (elapsed - s_video_probe_since >= VIDEO_PROBE_SETTLE + VIDEO_PROBE_WINDOW)
+			else if (s_video_probe == VideoProbe::Up && speed < 95.0)
 			{
-				const int rate = EmuConfig.Speedhacks.EECycleRate;
-				const double fps = s_video_probe_fps_sum / s_video_probe_samples;
-				const double speed = s_video_probe_speed_sum / s_video_probe_samples;
-				const bool better = fps > s_video_probe_best_fps * VIDEO_PROBE_GAIN;
-				// Compilation 64: the EE thread is what holds the movie back: slow, with that thread full. Then fewer EE cycles a
-				// second is the way, even with as many pictures (a slowed movie has its sound cut too).
-				const bool ee_bound = speed < 90.0 && PerformanceMetrics::GetCPUThreadUsage() >= 95.0;
-				const VideoProbe phase = s_video_probe;
-				int next = rate;
-				switch (phase)
-				{
-					case VideoProbe::Measure:
-						s_video_probe_best = rate;
-						s_video_probe_best_fps = fps;
-						s_video_probe_best_speed = speed;
-						s_video_probe_went_up = false;
-						if (ee_bound && rate > VIDEO_AUTO_LOWEST)
-						{
-							// Two steps down at once: from 100 % to 60 % (one step, 75 %, gave Crash 68 -> 76 % speed).
-							next = std::max(rate - 2, VIDEO_AUTO_LOWEST);
-							s_video_probe = VideoProbe::Down;
-						}
-						else if (rate < VIDEO_AUTO_HIGHEST)
-						{
-							next = rate + 1;
-							s_video_probe = VideoProbe::Up;
-						}
-						else if (rate > VIDEO_AUTO_LOWEST)
-						{
-							next = rate - 1;
-							s_video_probe = VideoProbe::Down;
-						}
-						else
-						{
-							s_video_probe = VideoProbe::Hold;
-						}
-						break;
-					case VideoProbe::Up:
-						if (better)
-						{
-							s_video_probe_best = rate;
-							s_video_probe_best_fps = fps;
-							s_video_probe_best_speed = speed;
-							s_video_probe_went_up = true;
-							if (rate < VIDEO_AUTO_HIGHEST)
-								next = rate + 1;
-							else
-								s_video_probe = VideoProbe::Hold;
-						}
-						else if (!s_video_probe_went_up && s_video_probe_best > VIDEO_AUTO_LOWEST)
-						{
-							next = s_video_probe_best - 1;
-							s_video_probe = VideoProbe::Down;
-						}
-						else
-						{
-							next = s_video_probe_best;
-							s_video_probe = VideoProbe::Hold;
-						}
-						break;
-					case VideoProbe::Down:
-						// Compilation 64: going down, faster at about as many pictures is better too.
-						if (better || (speed > s_video_probe_best_speed + 5.0 && fps >= s_video_probe_best_fps * 0.97))
-						{
-							s_video_probe_best = rate;
-							s_video_probe_best_fps = fps;
-							s_video_probe_best_speed = speed;
-							if (rate > VIDEO_AUTO_LOWEST && (ee_bound || better))
-								next = rate - 1;
-							else
-								s_video_probe = VideoProbe::Hold;
-						}
-						else
-						{
-							next = s_video_probe_best;
-							s_video_probe = VideoProbe::Hold;
-						}
-						break;
-					case VideoProbe::Hold:
-						break;
-				}
-				// Compilation 63: measured; compilation 64: only on a rate that plays the movie at about full speed, so one bad
-				// first measure (a light opening, a loading pause) doesn't hold a whole game's movies at a slow rate.
-				if (s_video_probe == VideoProbe::Hold && phase != VideoProbe::Hold && s_video_probe_best_speed >= 90.0)
-					s_video_auto_settled = true;
-				static constexpr const char* phase_names[] = {"measure", "up", "down", "hold"};
-				ProbeLog("Video mode: auto %s at %d: %.1f pictures/s (speed %.0f %%%s), best %d (%.1f) -> %d\n",
-					phase_names[static_cast<int>(phase)], rate, fps, speed, ee_bound ? ", EE thread full" : "", s_video_probe_best,
-					s_video_probe_best_fps, next);
-				s_video_auto_rate = s_video_probe_best;
-				s_video_probe_since = elapsed;
-				s_video_probe_fps_sum = 0.0;
-				s_video_probe_speed_sum = 0.0;
-				s_video_probe_samples = 0;
-				if (next != rate)
-				{
-					EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(next);
-					Cpu->Reset();
-				}
+				next = rate - 1;
+				s_video_auto_ceiling = std::min(s_video_auto_ceiling, rate - 1);
+				what = "the step up was slower, back";
+			}
+			else if (speed >= 98.0 && !s_video_auto_tried_up && rate < std::min(s_video_auto_ceiling, VIDEO_AUTO_HIGHEST))
+			{
+				next = rate + 1;
+				s_video_auto_tried_up = true;
+				what = "real time, a step up";
+			}
+			s_video_probe = next > rate ? VideoProbe::Up : VideoProbe::Measure;
+			ProbeLog("Video mode: auto at %d: %.1f pictures/s, speed %.0f %% (ceiling %d): %s -> %d\n", rate, fps, speed,
+				s_video_auto_ceiling, what, next);
+			s_video_auto_rate = next;
+			s_video_probe_since = elapsed;
+			s_video_probe_fps_sum = 0.0;
+			s_video_probe_speed_sum = 0.0;
+			s_video_probe_samples = 0;
+			if (next != rate)
+			{
+				EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(next);
+				Cpu->Reset();
 			}
 		}
 	}
@@ -2082,14 +2008,12 @@ static void UpdateVideoMode(double elapsed)
 		const int video_rate = s_video_auto ? s_video_auto_rate : s_video_ee_rate;
 		s_video_saved_rate = EmuConfig.Speedhacks.EECycleRate;
 		s_video_since = elapsed;
-		// Compilation 63: measured already in this game: its best rate, held (VIDEO_PROBE_HOLD later a long movie measures again).
-		s_video_probe = s_video_auto && s_video_auto_settled ? VideoProbe::Hold : VideoProbe::Measure;
+		s_video_probe = VideoProbe::Measure;
+		s_video_auto_tried_up = false; // compilation 65
 		s_video_probe_since = elapsed;
 		s_video_probe_fps_sum = 0.0;
 		s_video_probe_speed_sum = 0.0;
 		s_video_probe_samples = 0;
-		s_video_probe_best = video_rate;
-		s_video_probe_best_fps = 0.0;
 		s_video_active = true;
 		// Compilation 48: up as well as down. It was made to lower a game at 100 % to 50-60 % during its movies; since the
 		// games start at 27 % (compilation 45) the movie's rate is above theirs, and "already lower" left God of War II's
@@ -3425,7 +3349,7 @@ static void* RunVM(void*)
 				crc, Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - scan_start));
 			s_cpu_auto_steps = 0;
 			s_gs_skip_mode = -1; // compilation 47: a new game starts drawing every frame (ApplyGameProfile sets it again)
-			s_video_auto_settled = false; // compilation 63: a new game's movies are measured again
+			s_video_auto_ceiling = VIDEO_AUTO_HIGHEST; // compilation 65: a new game's movies find their own ceiling
 			ResetGsFilterList(); // compilation 54: a new game's list starts empty
 			LoadRules(); // compilation 55: huellas.ini, before the profile turns its rules on
 			s_fast_forward = false; // compilation 58: a game starts at its own speed
