@@ -339,7 +339,7 @@ endif()
 set(FORJA_VERSION_MAJOR "${CMAKE_MATCH_1}")
 string(REGEX REPLACE "^0([0-9])$" "\\1" FORJA_VERSION_MINOR "${CMAKE_MATCH_2}")
 message(STATUS "Forja SX2 version ${FORJA_VERSION_MAJOR}.${FORJA_VERSION_MINOR} build ${FORJA_BUILD_NUMBER}")
-set_source_files_properties(main.cpp GameMenu.cpp PROPERTIES COMPILE_DEFINITIONS
+set_source_files_properties(main.cpp GameMenu.cpp PatchDownload.cpp PROPERTIES COMPILE_DEFINITIONS
   "FORJA_BUILD_NUMBER=${FORJA_BUILD_NUMBER};FORJA_VERSION_MAJOR=${FORJA_VERSION_MAJOR};FORJA_VERSION_MINOR=${FORJA_VERSION_MINOR}")
 ps4_link_mesa(vm_boot)
 target_link_libraries(vm_boot PRIVATE glslang glslang-default-resource-limits ryml ps4_audio_resampler ps4_chd

@@ -86,6 +86,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
       su fecha), del PKG, o ninguno. **X** los busca otra vez. Al empezar cada juego Forja baja de su GitHub el perfil y
       los parches recomendados de ese juego (desde la 54, cada vez que empieza el juego; antes, una vez al día), así las mejoras
       llegan sin un PKG nuevo. Lo que llega se usa desde la siguiente vez que abras ese juego. `vm-sin-centro` lo apaga.
+      Desde la 1.06 cada versión baja sus propios ajustes: la versión publicada, los de su rama `centro-v1.06` (o los
+      que traía su compilación, si esa rama todavía no existe); el canal de pruebas, los más nuevos.
   - **No tocar** (desde la 53): los experimentos con los que medimos y mejoramos los juegos, aparte de los ajustes para que
     nadie los confunda con mejoras. Si no sabes qué hace algo, déjalo como está.
     - **Filtro VU1 (experimental):** un laboratorio de efectos para cualquier juego. Muestra los programas del VU1 que más

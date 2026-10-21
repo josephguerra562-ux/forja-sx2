@@ -45,3 +45,22 @@ jobs:
           estable=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')
           echo "Canal estable: $estable"
           echo "Compilación $NUMERO aprobada. El canal estable ofrece ahora: $estable" >> "$GITHUB_STEP_SUMMARY"
+          # Forja 1.06: el canal estable baja el centro de ajustes de su versión desde la rama centro-vX.YY
+          # (ps4/vm/PatchDownload.cpp). Se crea aquí en el commit de la compilación aprobada. Si ya existe (otra compilación
+          # de la misma versión), solo se adelanta cuando no tiene arreglos propios; si los tiene, queda como está y avisa.
+          if [ -z "$version" ]; then
+            echo "Sin versión en el nombre del paquete: no hay rama del centro de ajustes"
+            exit 0
+          fi
+          rama="centro-v$version"
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$tag" --jq '.sha')
+          if gh api "repos/$GITHUB_REPOSITORY/branches/$rama" --silent 2>/dev/null; then
+            if gh api -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/heads/$rama" -f sha="$sha" -F force=false --silent; then
+              echo "Centro de ajustes: rama $rama adelantada a $sha" | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning::La rama $rama tiene arreglos propios y no se tocó: revisa a mano si le falta algo de la $NUMERO"
+            fi
+          else
+            gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/heads/$rama" -f sha="$sha" --silent
+            echo "Centro de ajustes: rama $rama creada en $sha" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
