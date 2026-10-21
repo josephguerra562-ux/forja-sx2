@@ -1,5 +1,8 @@
 # Forja SX2: guía de uso en la PS4
 
+**Comunidad:** únete al [Discord de Forja SX2](https://discord.gg/YVCQF5XFFd): novedades, ayuda para instalar, juegos probados y el foro
+**reportar-errores** para avisar de un problema.
+
 ## 1. Instalar (una sola vez)
 1. Copia `IV0000-FRJA00002_00-FORJASX2EMULADOR.pkg` a una USB en exFAT.
 2. En la PS4 con GoldHEN, entra a Ajustes > Ajustes de depuración > Juego > Instalador de paquetes e instálalo.
@@ -390,4 +393,5 @@ Para una sesión anterior, usa su carpeta de `logs/sesiones/` (trae los mismos a
 - **Error al arrancar:** prueba `vm-no-fastmem`.
 - **Audio roto:** prueba `vm-audio-legacy-stretch`. Si lo nuevo de la 31 suena peor, prueba `vm-audio-cortes-antes` y avísame.
 - **Un estado no carga:** pasa si es de otra compilación. Usa la memory card del juego.
-- Para cualquier otra cosa: baja `/data/ForjaSX2/logs/` y `crash.log` por FTP y pásamelos.
+- Para cualquier otra cosa: baja `/data/ForjaSX2/logs/` y `crash.log` por FTP y pásamelos, o abre un tema en el foro
+  **reportar-errores** del [Discord](https://discord.gg/YVCQF5XFFd) con `logs/resumen.txt`.

@@ -11,6 +11,8 @@ stutters, audio dropouts or crashes.
   published automatically with every change and may break (testing channel). You can download whichever you like.
 - **Install and use:** the full guide is in Spanish, [LEEME_FORJA_SX2.md](LEEME_FORJA_SX2.md) (installation, folders,
   controls, per-game settings and troubleshooting). The app's menus are in Spanish.
+- **Community:** join the [Forja SX2 Discord](https://discord.gg/YVCQF5XFFd) (in Spanish) for news, help with installing, game reports and bug
+  reports (the **reportar-errores** forum).
 - **No BIOS or games are included.** You need your own PS2 BIOS, dumped from your console, and your own copies of your
   games. Please do not ask for or share those files here.
 
@@ -29,18 +31,19 @@ in each game's factory profile (`resources/perfiles/`); whatever you change in t
 | Playable | Tales of the Abyss | USA (SLUS-21386) | Gameplay 93-100 %. Cutscenes ~78 % (23 FPS) without video mode. | PS2 CPU at 100 %, normal cores. |
 | Playable | Mega Man X Command Mission | USA (SLUS-20903) | 30 FPS version: locked 30 FPS, even at 4x. The intro runs at 80-90 % with video mode. | Normal VU1 clamping. |
 
-Tried another game? Open an issue with the game, its region and serial, how it ran (FPS and speed from the overlay) and that
+Tried another game? Tell us in **#juegos-probados** on the [Discord](https://discord.gg/YVCQF5XFFd) or open an issue with the game, its region and serial, how it ran (FPS and speed from the overlay) and that
 session's `logs/sesiones` folder.
 
 ## Reporting a problem
 
-Open an [issue](https://github.com/josephguerra562-ux/forja-sx2/issues/new/choose) and include:
+Open an [issue](https://github.com/josephguerra562-ux/forja-sx2/issues/new/choose), or a post in the **reportar-errores**
+forum of the [Discord](https://discord.gg/YVCQF5XFFd), and include:
 
 1. **Console model** (CUH-xxxx; PS4 Fat, Slim or Pro) and **firmware** (for example 9.00 or 11.00), and your GoldHEN version.
 2. **Forja SX2 version** (bottom left of the library, for example "Versión 1.03 (57)").
 3. **What happens:** the app doesn't open, the game closes, black screen, slow... and any error code the PS4 shows (CE-xxxxx-x).
 4. **The logs:** the `/data/ForjaSX2/logs` folder (via FTP). If the app closes before the library appears, that folder still
-   shows how far it got.
+   shows how far it got. Since 1.06, `logs/resumen.txt` sums up the whole session on one page.
 
 > The technical documentation below comes from PS4SX2. In Forja SX2 the folders are under `/data/ForjaSX2/`, and the up to
 > date user guide (in Spanish) is [LEEME_FORJA_SX2.md](LEEME_FORJA_SX2.md).
