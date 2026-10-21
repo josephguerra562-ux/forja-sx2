@@ -25,6 +25,7 @@
 
 #include "fmt/format.h"
 #include "IconsFontAwesome.h"
+#include "ps4/core/ForjaSkipGuard.h"
 
 #include <algorithm>
 #include <array>
@@ -56,7 +57,12 @@ bool g_forja_gs_skip_tracking = false; // GS thread only: Draw notes the draws i
 // as few as the game needs to run at full speed). The pictures shown drop by as much: one in 6 keeps 25 of 30.
 std::atomic<unsigned> g_forja_gs_skip_every{2};
 static unsigned s_forja_skip_count = 0;
-std::atomic<unsigned> g_forja_gs_skip_stats[4]; // draws left out, pictures hidden, pictures shown, frames drawn whole by force
+// Draws left out, pictures hidden, pictures shown, frames drawn whole by force; Forja 1.06: frames left out that showed (the
+// guard paused), vsyncs the guard kept Saltar cuadros paused.
+std::atomic<unsigned> g_forja_gs_skip_stats[6];
+std::atomic<bool> g_forja_gs_skip_paused{false}; // Forja 1.06: the guard has it paused (main.cpp's Auto waits it out)
+static forja_skip::Guard s_forja_guard; // Forja 1.06 (ForjaSkipGuard.h)
+static u32 s_forja_hidden_total = 0;    // Forja 1.06: pictures hidden, for the guard's checks
 namespace
 {
 	struct ForjaSkipTarget
@@ -1011,12 +1017,25 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				const bool force = s_forja_hidden_frames >= 2;
 				if (force && forja_want)
 					g_forja_gs_skip_stats[3].fetch_add(1, std::memory_order_relaxed);
+				// Forja 1.06: the guard (ForjaSkipGuard.h): a frame left out whose picture was never hidden pauses Saltar cuadros, and
+				// after a load or a light frame it waits for a second of heavy frames.
+				if (s_forja_guard.FrameStart(s_forja_previous_frame_draws, s_forja_hidden_total, s_forja_vsync) && forja_want)
+				{
+					g_forja_gs_skip_stats[4].fetch_add(1, std::memory_order_relaxed);
+					ProbeLog("GS skip: paused for %u vsyncs: a frame left out was shown on the TV, not hidden (the game builds this "
+						"picture another way: a menu, a result, a scene that changes); %u so far\n",
+						s_forja_guard.LastPause(), s_forja_guard.Unmasked());
+				}
 				const unsigned every = std::max(g_forja_gs_skip_every.load(std::memory_order_relaxed), 2u);
 				s_forja_skip_count = (s_forja_skip_count + 1) % every;
 				g_forja_gs_skip_drawing = forja_want && !g_forja_gs_skip_drawing && !force && s_forja_skip_count == 0 &&
-					s_forja_previous_frame_draws >= FORJA_SKIP_MIN_PREVIOUS; // compilation 68: never after a light frame
+					s_forja_previous_frame_draws >= FORJA_SKIP_MIN_PREVIOUS && // compilation 68: never after a light frame
+					s_forja_guard.MayChoose(s_forja_vsync); // Forja 1.06
 				if (g_forja_gs_skip_drawing)
+				{
 					g_forja_gs_skipped_frames.fetch_add(1, std::memory_order_relaxed);
+					s_forja_guard.Chosen(s_forja_hidden_total);
+				}
 			}
 			else if (++s_forja_vsyncs_since_frame > 8)
 			{
@@ -1025,6 +1044,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 					ForjaGsSkipFrameEnd(); // compilation 67
 				g_forja_gs_skip_drawing = false;
 				ForjaGsSkipClearAll(); // compilation 67: and show what the buffers hold
+				s_forja_guard.Reset(); // Forja 1.06: the warm-up again
 			}
 			// Compilation 68: the main circuit only, as until compilation 66. The first circuit's buffer, the one Dragon Ball draws
 			// into, is stale every other frame at one in 2: hiding for it (compilation 67) would hide nearly every picture. Its
@@ -1033,6 +1053,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 			{
 				skip_frame = true;
 				g_forja_gs_skip_stats[1].fetch_add(1, std::memory_order_relaxed);
+				s_forja_hidden_total++; // Forja 1.06
 			}
 			else
 			{
@@ -1041,7 +1062,15 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 			}
 		}
 		else
+		{
 			s_forja_hidden_frames = 0;
+			s_forja_guard.Reset(); // Forja 1.06: off, it warms up again when it comes back
+		}
+		// Forja 1.06: the guard's pause, for main.cpp's Auto and the 5 s report.
+		const bool forja_paused = forja_want && s_forja_guard.Paused(s_forja_vsync);
+		g_forja_gs_skip_paused.store(forja_paused, std::memory_order_relaxed);
+		if (forja_paused)
+			g_forja_gs_skip_stats[5].fetch_add(1, std::memory_order_relaxed);
 	}
 
 	const bool blank_frame = !Merge(field);

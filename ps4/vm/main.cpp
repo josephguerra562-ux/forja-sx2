@@ -317,7 +317,8 @@ static unsigned s_cpu_auto_room_checks = 0;
 // Forja SX2 (compilation 47): "Saltar cuadros" (UpdateGsSkip). mode: 0 off, 1 auto, 2 always; the GS reads the atomic.
 extern std::atomic<bool> g_forja_gs_skip_active;     // ps4/core/GSRendererPS4.cpp
 extern std::atomic<unsigned> g_forja_gs_skipped_frames;
-extern std::atomic<unsigned> g_forja_gs_skip_stats[4]; // compilation 62: GSRendererPS4.cpp, VSync and ForjaGsSkipNote
+extern std::atomic<unsigned> g_forja_gs_skip_stats[6]; // compilation 62: GSRendererPS4.cpp, VSync and ForjaGsSkipNote
+extern std::atomic<bool> g_forja_gs_skip_paused;      // Forja 1.06: its guard has it paused (ForjaSkipGuard.h)
 extern std::atomic<unsigned> g_forja_gs_skip_every;    // compilation 63: one frame in N left out
 static int s_gs_skip_mode = 0;
 // Compilation 63: Auto's steps, one frame in N left out (index 0: every frame drawn), and the one it is on.
@@ -2281,10 +2282,13 @@ static void UpdateGsSkip(double elapsed)
 		const unsigned hidden = g_forja_gs_skip_stats[1].exchange(0, std::memory_order_relaxed);
 		const unsigned shown = g_forja_gs_skip_stats[2].exchange(0, std::memory_order_relaxed);
 		const unsigned forced = g_forja_gs_skip_stats[3].exchange(0, std::memory_order_relaxed);
-		if (skipped || draws || hidden)
+		// Forja 1.06: and its guard's (ForjaSkipGuard.h): frames left out that showed on the TV, and the vsyncs it kept it paused.
+		const unsigned unmasked = g_forja_gs_skip_stats[4].exchange(0, std::memory_order_relaxed);
+		const unsigned paused = g_forja_gs_skip_stats[5].exchange(0, std::memory_order_relaxed);
+		if (skipped || draws || hidden || paused)
 			ProbeLog("GS skip: %u frames of the game not drawn in the last %.0f s (%u draws into la pantalla left out; TV "
-					 "pictures %u hidden, %u shown; %u frames drawn whole by force)\n",
-				skipped, elapsed - s_gs_skip_last_report, draws, hidden, shown, forced);
+					 "pictures %u hidden, %u shown; %u frames drawn whole by force; %u shown though left out, paused %u vsyncs)\n",
+				skipped, elapsed - s_gs_skip_last_report, draws, hidden, shown, forced, unmasked, paused);
 		s_gs_skip_last_report = elapsed;
 	}
 	if (s_gs_skip_mode != 1 || s_video_active || elapsed - s_gs_skip_last_check < 0.5)
@@ -2311,6 +2315,15 @@ static void UpdateGsSkip(double elapsed)
 	}
 	if (elapsed - s_gs_skip_last_change < 1.0)
 		return;
+	// Forja 1.06: while the guard has Saltar cuadros paused (a screen where frames left out show), every frame is drawn: those
+	// seconds say nothing about the step, and Auto would climb on them.
+	if (g_forja_gs_skip_paused.load(std::memory_order_relaxed))
+	{
+		s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
+		s_gs_skip_samples = 0;
+		s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
+		return;
+	}
 	s_gs_skip_speed_sum += PerformanceMetrics::GetSpeed();
 	s_gs_skip_gs_sum += PerformanceMetrics::GetGSThreadUsage();
 	s_gs_skip_others_sum += std::max(PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()));
