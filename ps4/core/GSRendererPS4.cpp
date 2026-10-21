@@ -1017,14 +1017,14 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				const bool force = s_forja_hidden_frames >= 2;
 				if (force && forja_want)
 					g_forja_gs_skip_stats[3].fetch_add(1, std::memory_order_relaxed);
-				// Forja 1.06: the guard (ForjaSkipGuard.h): a frame left out whose picture was never hidden pauses Saltar cuadros, and
+				// Forja 1.06: the guard (ForjaSkipGuard.h): frames left out whose pictures the TV didn't hide pause Saltar cuadros, and
 				// after a load or a light frame it waits for a second of heavy frames.
 				if (s_forja_guard.FrameStart(s_forja_previous_frame_draws, s_forja_hidden_total, s_forja_vsync) && forja_want)
 				{
 					g_forja_gs_skip_stats[4].fetch_add(1, std::memory_order_relaxed);
-					ProbeLog("GS skip: paused for %u vsyncs: a frame left out was shown on the TV, not hidden (the game builds this "
-						"picture another way: a menu, a result, a scene that changes); %u so far\n",
-						s_forja_guard.LastPause(), s_forja_guard.Unmasked());
+					ProbeLog("GS skip: paused for %u vsyncs: the TV hid %u pictures for the last %u frames left out, so they showed "
+						"(the game builds this picture another way: a menu, a result, a scene that changes); %u so far\n",
+						s_forja_guard.LastPause(), s_forja_guard.LastHidden(), forja_skip::Guard::kGroup, s_forja_guard.Unmasked());
 				}
 				const unsigned every = std::max(g_forja_gs_skip_every.load(std::memory_order_relaxed), 2u);
 				s_forja_skip_count = (s_forja_skip_count + 1) % every;

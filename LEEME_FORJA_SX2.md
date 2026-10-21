@@ -141,8 +141,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     frena unos 6 s (velocidad bajo 95 % con el GS al 80 % o más y el EE y el VU1 al 75 % o menos), sube de a un paso,
     baja cuando sobra o cuando el que frena es el EE o el VU1, y **nunca con la generación de cuadros prendida**: las dos
     se estorban (si la generación de cuadros se apagó sola por lenta, el Auto sí trabaja). **Guardián** (desde la 1.06, en
-    Auto y en "1 de 2"): cada cuadro saltado tiene que quedar oculto en la tele; si uno se llega a ver (una pantalla de
-    victoria, un menú, el inicio de una pelea), Saltar cuadros se pausa 2 s y, si vuelve a pasar, 30 s. Después de una
+    Auto y en "1 de 2"): los cuadros saltados tienen que quedar ocultos en la tele. Los revisa de a 3, un momento después
+    (Dragon Ball muestra cada cuadro un cuadro más tarde); si la tele no los ocultó (una pantalla de victoria, un menú, el
+    inicio de una pelea), Saltar cuadros se pausa 2 s, después 8 s y después 30 s. Después de una
     carga espera un segundo de escena pesada antes de saltar. Solo funciona en juegos que anuncian cada cuadro con los
     registros de pantalla (God of War II, Dragon
     Ball); en los demás dibuja todo. Puede dejar algún efecto a medias en juegos que dibujan algo en una imagen aparte y lo
