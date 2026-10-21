@@ -385,8 +385,11 @@ tr: 1 من 2
 es: Saltar cuadros (GS):  < %s >
 tr: تخطي الإطارات (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
-tr: إذا لم يلحق GS يرسم إطارًا من كل 2: تسير اللعبة بسرعتها (تجريبي)  ·  الآن: %s  ·  %s
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: إذا لم يلحق GS يرسم إطارًا من كل 2: تسير اللعبة بسرعتها  ·  الآن: %s  ·  %s
+
+es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
+tr: دائمًا إطار من كل 2، حتى عندما لا يحتاج GS لذلك: الأفضل تلقائي  ·  الآن: %s  ·  %s
 
 es: saltando
 tr: يتخطى

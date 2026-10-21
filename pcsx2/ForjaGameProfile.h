@@ -167,6 +167,16 @@ namespace ForjaGameProfile
 		read_int("FrameGen", &v.frame_gen, &v.frame_gen_origin);
 		read_int("CpuAuto", &v.cpu_auto, &v.cpu_auto_origin);
 		read_int("SaltarCuadros", &v.gs_skip, &v.gs_skip_origin);
+		// Forja 1.06: [Forja] SaltarCuadrosConGuardian, a factory profile's frame skip for the versions with the guard (73 on),
+		// which wins over its SaltarCuadros (never over the player's). The versions before 1.06 fetch the factory profiles from
+		// main and read only SaltarCuadros: there it keeps what suits their skip without the guard (Dragon Ball: off).
+		int guarded = -1;
+		if (v.gs_skip_origin != Origin::Player && v.has_factory && factory.GetIntValue("Forja", "SaltarCuadrosConGuardian", &guarded) &&
+			guarded >= 0)
+		{
+			v.gs_skip = guarded;
+			v.gs_skip_origin = Origin::Factory;
+		}
 		if (v.has_player && player.GetStringValue("Forja", "Nucleos", &v.cores))
 			v.cores_origin = Origin::Player;
 		else if (v.has_factory && factory.GetStringValue("Forja", "Nucleos", &v.cores))

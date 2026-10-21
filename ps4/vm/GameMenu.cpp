@@ -1837,13 +1837,15 @@ namespace PS4GameMenu
 				menu_state.frame_gen >= 2 ? T("Rellena cada refresco que la tele repetiría (juegos PAL, cuadros desparejos).") :
 											T("Muestra a 60 un juego estable a 30 (experimental)."),
 				origin(menu_state.frame_gen_origin));
-			// Forja SX2 (compilation 47): "Saltar cuadros" (main.cpp, UpdateGsSkip; GSRendererPS4.cpp, VSync).
+			// Forja SX2 (compilation 47): "Saltar cuadros" (main.cpp, UpdateGsSkip; GSRendererPS4.cpp, VSync). 1.06: back in
+			// Rendimiento without "(experimental)", and "1 de 2" says it skips even where the GS needs no help.
 			static constexpr const char* gs_skip_names[] = {N_("No"), N_("Auto"), N_("1 de 2")};
 			char gs_skip_label[256];
 			std::snprintf(gs_skip_label, sizeof(gs_skip_label), TF("Saltar cuadros (GS):  < %s >"), T(gs_skip_names[std::min(menu_state.gs_skip, 2u)]));
 			char gs_skip_description[512];
 			std::snprintf(gs_skip_description, sizeof(gs_skip_description),
-				TF("Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s"),
+				menu_state.gs_skip == 2 ? TF("Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s") :
+										  TF("Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s"),
 				menu_state.gs_skip_active ? T("saltando") : T("dibuja todos"), origin(menu_state.gs_skip_origin));
 			static constexpr const char* cores_names[] = {N_("Global"), N_("Normal"), N_("Plan B"), N_("Propio")};
 			char cores_label[256];

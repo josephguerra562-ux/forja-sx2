@@ -385,8 +385,11 @@ tr: 1 из 2
 es: Saltar cuadros (GS):  < %s >
 tr: Пропуск кадров (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
-tr: Если GS не успевает, рисует 1 кадр из 2: игра идёт со своей скоростью (эксперимент)  ·  сейчас: %s  ·  %s
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: Если GS не успевает, рисует 1 кадр из 2: игра идёт со своей скоростью  ·  сейчас: %s  ·  %s
+
+es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
+tr: Всегда 1 кадр из 2, даже когда GS это не нужно: лучше Авто  ·  сейчас: %s  ·  %s
 
 es: saltando
 tr: пропускает

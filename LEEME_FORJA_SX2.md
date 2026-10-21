@@ -66,7 +66,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
   - **Partida** (desde la 58 también): **Avance rápido** (X lo prende o lo apaga: el juego corre lo más rápido que aguante
     la PS4, para cargas y diálogos; no se guarda) y, en Guardar/Cargar estado, **la fecha y la hora** en que se guardó cada
     ranura.
-  - **Rendimiento:** velocidad del CPU de la PS2, **CPU automático**, modo video y núcleos.
+  - **Rendimiento:** velocidad del CPU de la PS2, **CPU automático**, modo video, núcleos y **Saltar cuadros** (de vuelta
+    aquí desde la 75; de la 59 a la 74 estuvo en No tocar).
   - **Extras** (se llamaba Parches; desde la 44 trae más; desde la 53 los filtros están en **No tocar**):
     - **Parche:** los parches de ese juego, uno por uno. ←/→ elige, **X** lo pone o lo quita y se guarda para ese juego.
       Algunos piden reiniciar el juego para quitarse del todo.
@@ -137,7 +138,7 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     (el CPU de la PS2 se recompila). Con 100 % o 75 % fijos todo el video puede ir más lento si la PS4 no da
     abasto: en Tales of the Abyss, al 100 % salían 14 cuadros por segundo y al 60 %, 23. God of War II lo trae de fábrica. Desde la 48 también lo **sube**: con el
     juego al 27 %, los videos de God of War II se decodificaban con muy poco CPU y salían a 17-21 cuadros en vez de 25.
-  - **Saltar cuadros (GS)** (desde la 47, experimental): No / Auto / 1 de 2. Para juegos en los que el GS de la PS4 no da
+  - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2. Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
     1 de cada 2 cuadros del juego y la tele sigue mostrando el último dibujado: el juego, su música y sus movimientos van
     a su velocidad, con la mitad de cuadros en pantalla. **Auto** (desde la 1.06) lo prende solo cuando el GS es el que
@@ -148,9 +149,12 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     (Dragon Ball muestra cada cuadro un cuadro más tarde); si la tele no los ocultó (una pantalla de victoria, un menú, el
     inicio de una pelea), Saltar cuadros se pausa 2 s, después 8 s y después 30 s. Después de una
     carga espera un segundo de escena pesada antes de saltar. Solo funciona en juegos que anuncian cada cuadro con los
-    registros de pantalla (God of War II, Dragon
-    Ball); en los demás dibuja todo. Puede dejar algún efecto a medias en juegos que dibujan algo en una imagen aparte y lo
-    reusan: si pasa, ponlo en No. **En God of War II, mejor en No** (su perfil ya lo trae así): el que frena es el VU1.
+    registros de pantalla, como Dragon Ball; en los demás dibuja todo. Puede dejar algún efecto a medias en juegos que
+    dibujan algo en una imagen aparte y lo reusan: si pasa, ponlo en No. **"1 de 2" salta siempre**, aunque el GS no lo
+    necesite: casi siempre conviene más Auto, que solo salta cuando hace falta. **En God of War II, mejor en No** (su
+    perfil ya lo trae así): el que frena es el VU1, y además no salta ningún cuadro porque arma su imagen de otra forma.
+    **Dragon Ball Z Budokai Tenkaichi 4 lo trae en Auto de fábrica desde la 75** (en la 73: 100 % de velocidad a 30
+    cuadros en las peleas).
   - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
     cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
     60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %
@@ -206,6 +210,8 @@ Cada juego arma sus ajustes en tres capas. La de más abajo gana:
    - God of War II PAL (`SCES-54206`): atajo del VU1, CPU al 27 %, generación de cuadros en "Sí", Plan B y Saltar cuadros
      en No (desde 2026-10-21).
    - Tales of the Abyss (`SLUS-21386`): CPU al 100 %, cinemáticas al 60 % y núcleos normales.
+   - Dragon Ball Z Budokai Tenkaichi 4, el mod (`SLUS-21978`): la huella "Menos efectos: sombreado de personajes",
+     generación de cuadros en No y Saltar cuadros en Auto (desde la 75).
 3. **Tu perfil:** `gamesettings/SERIAL_CRC.ini`. Lo escribe el menú L3+R3, y también se puede escribir a mano.
 
 Lo que diga un perfil **también le gana a la base de datos de PCSX2 (GameIndex), clave por clave**. Ya no hace falta
@@ -223,7 +229,12 @@ VideoEECycleRate = -2
 FrameGen = 0
 ; Núcleos de este juego, con la misma forma que nucleos.txt en una línea ("global" = usar nucleos.txt)
 Nucleos = EE=1 VU1=2 GS=3 AUDIO=5 AYUDANTES=4
+; Saltar cuadros: 0 = no, 1 = Auto, 2 = 1 de 2
+SaltarCuadros = 0
 ```
+En un perfil de fábrica, `SaltarCuadrosConGuardian` (desde la 75) es el valor para las versiones con el guardián de
+Saltar cuadros, y le gana a su `SaltarCuadros` (nunca a tu perfil). Las versiones anteriores a la 1.06 bajan los perfiles
+de fábrica de main y solo leen `SaltarCuadros`: así Dragon Ball sigue en No para ellas, porque su Auto no tiene el guardián.
 
 ### Archivo de tu perfil (`gamesettings/`)
 El nombre del archivo es `SERIAL_CRC.ini`. Para sacarlo de cualquier ISO:

@@ -385,8 +385,11 @@ tr: 2 取 1
 es: Saltar cuadros (GS):  < %s >
 tr: 跳帧（GS）：  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
-tr: 如果 GS 跟不上，每 2 帧只画 1 帧：游戏保持原速（实验）  ·  当前：%s  ·  %s
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: 如果 GS 跟不上，每 2 帧只画 1 帧：游戏保持原速  ·  当前：%s  ·  %s
+
+es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
+tr: 始终每 2 帧只画 1 帧，即使 GS 不需要：建议用自动  ·  当前：%s  ·  %s
 
 es: saltando
 tr: 跳帧中

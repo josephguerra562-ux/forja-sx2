@@ -385,8 +385,11 @@ tr: 2回に1回
 es: Saltar cuadros (GS):  < %s >
 tr: フレームスキップ（GS）：  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
-tr: GSが追いつかないとき2フレームに1回だけ描画し、ゲームは本来の速度で進みます（実験的）  ·  現在：%s  ·  %s
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: GSが追いつかないとき2フレームに1回だけ描画し、ゲームは本来の速度で進みます  ·  現在：%s  ·  %s
+
+es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
+tr: GSに余裕があっても常に2フレームに1回だけ描画します：自動のほうがおすすめ  ·  現在：%s  ·  %s
 
 es: saltando
 tr: スキップ中

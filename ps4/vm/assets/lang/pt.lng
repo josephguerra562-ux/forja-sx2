@@ -385,8 +385,11 @@ tr: 1 de 2
 es: Saltar cuadros (GS):  < %s >
 tr: Pular quadros (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
-tr: Se o GS não der conta, desenha 1 de cada 2 quadros: o jogo roda na sua velocidade (experimental)  ·  agora: %s  ·  %s
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: Se o GS não der conta, desenha 1 de cada 2 quadros: o jogo roda na sua velocidade  ·  agora: %s  ·  %s
+
+es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
+tr: Sempre 1 de cada 2 quadros, mesmo quando o GS não precisa: melhor em Auto  ·  agora: %s  ·  %s
 
 es: saltando
 tr: pulando

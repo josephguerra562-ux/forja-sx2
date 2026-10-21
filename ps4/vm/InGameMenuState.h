@@ -30,6 +30,9 @@ namespace PS4GameMenu
 		ROW_CPU_AUTO,
 		ROW_VIDEO_MODE,
 		ROW_CORES,
+		// Compilation 47 here; No tocar from 59 to 74. 1.06 (Joseph, 2026-10-21: "lo coloquemos en el lugar que debe estar"):
+		// back here, once the guard of 73 kept Dragon Ball at full speed without the flicker.
+		ROW_GS_SKIP,
 		// Extras (compilation 42 "Parches", 44 "Extras"): the game's patch groups one at a time (main.cpp, PublishPatchMenuText)
 		// and where the recommended settings come from
 		ROW_PATCH,
@@ -38,9 +41,9 @@ namespace PS4GameMenu
 		// Compilation 59 (Joseph, 2026-10-19: "eso es por no tocar hasta no haber pulido"): frame skip, HD textures and cheats
 		// too, until they are tested and polished; God of War II closed four times that day with them on. (Frame generation
 		// was here in 59 and 60.) Compilation 62: frame skip stays here with its new skip (Joseph: "es una opción de no tocar").
+		// (Frame skip was here from 59 to 74.)
 		ROW_VU1_FILTER,
 		ROW_GS_FILTER, // compilation 51
-		ROW_GS_SKIP, // compilation 47
 		ROW_TEXTURES,
 		ROW_CHEATS, // compilation 58
 		// Sistema

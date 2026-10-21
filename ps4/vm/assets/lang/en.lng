@@ -385,8 +385,11 @@ tr: 1 of 2
 es: Saltar cuadros (GS):  < %s >
 tr: Frame skip (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
-tr: If the GS can't keep up, it draws 1 frame in 2: the game runs at its speed (experimental)  ·  now: %s  ·  %s
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: If the GS can't keep up, it draws 1 frame in 2: the game runs at its speed  ·  now: %s  ·  %s
+
+es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
+tr: Always 1 frame in 2, even when the GS doesn't need it: Auto is better  ·  now: %s  ·  %s
 
 es: saltando
 tr: skipping

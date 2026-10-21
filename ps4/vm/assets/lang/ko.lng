@@ -385,8 +385,11 @@ tr: 2개 중 1개
 es: Saltar cuadros (GS):  < %s >
 tr: 프레임 스킵 (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
-tr: GS가 따라가지 못하면 2프레임 중 1프레임만 그려 게임이 제 속도로 갑니다 (실험)  ·  현재: %s  ·  %s
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: GS가 따라가지 못하면 2프레임 중 1프레임만 그려 게임이 제 속도로 갑니다  ·  현재: %s  ·  %s
+
+es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
+tr: GS에 여유가 있어도 항상 2프레임 중 1프레임만 그립니다: 자동이 더 좋습니다  ·  현재: %s  ·  %s
 
 es: saltando
 tr: 스킵 중

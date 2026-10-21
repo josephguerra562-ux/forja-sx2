@@ -385,8 +385,11 @@ tr: 1 z 2
 es: Saltar cuadros (GS):  < %s >
 tr: Pomijanie klatek (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
-tr: Gdy GS nie nadąża, rysuje 1 klatkę z 2: gra idzie swoim tempem (eksperyment)  ·  teraz: %s  ·  %s
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: Gdy GS nie nadąża, rysuje 1 klatkę z 2: gra idzie swoim tempem  ·  teraz: %s  ·  %s
+
+es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
+tr: Zawsze 1 klatka z 2, nawet gdy GS tego nie potrzebuje: lepiej Auto  ·  teraz: %s  ·  %s
 
 es: saltando
 tr: pomija

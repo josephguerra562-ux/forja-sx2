@@ -385,8 +385,11 @@ tr: 2'de 1
 es: Saltar cuadros (GS):  < %s >
 tr: Kare atlama (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
-tr: GS yetişemezse 2 kareden 1'ini çizer: oyun kendi hızında gider (deneysel)  ·  şu an: %s  ·  %s
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: GS yetişemezse 2 kareden 1'ini çizer: oyun kendi hızında gider  ·  şu an: %s  ·  %s
+
+es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
+tr: GS'nin ihtiyacı olmasa da her zaman 2 kareden 1'ini çizer: Otomatik daha iyi  ·  şu an: %s  ·  %s
 
 es: saltando
 tr: atlıyor

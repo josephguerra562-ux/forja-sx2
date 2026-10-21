@@ -385,8 +385,11 @@ tr: 1 von 2
 es: Saltar cuadros (GS):  < %s >
 tr: Bilder überspringen (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
-tr: Kommt der GS nicht nach, zeichnet er jedes 2. Bild: das Spiel läuft in seinem Tempo (experimentell)  ·  jetzt: %s  ·  %s
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: Kommt der GS nicht nach, zeichnet er jedes 2. Bild: das Spiel läuft in seinem Tempo  ·  jetzt: %s  ·  %s
+
+es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
+tr: Immer jedes 2. Bild, auch wenn der GS es nicht braucht: besser Auto  ·  jetzt: %s  ·  %s
 
 es: saltando
 tr: überspringt

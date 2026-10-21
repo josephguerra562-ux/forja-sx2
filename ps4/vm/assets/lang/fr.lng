@@ -385,8 +385,11 @@ tr: 1 sur 2
 es: Saltar cuadros (GS):  < %s >
 tr: Saut d'images (GS) :  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
-tr: Si le GS ne suit pas, il dessine 1 image sur 2 : le jeu garde sa vitesse (expérimental)  ·  actuel : %s  ·  %s
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: Si le GS ne suit pas, il dessine 1 image sur 2 : le jeu garde sa vitesse  ·  actuel : %s  ·  %s
+
+es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
+tr: Toujours 1 image sur 2, même quand le GS n'en a pas besoin : mieux vaut Auto  ·  actuel : %s  ·  %s
 
 es: saltando
 tr: saut actif

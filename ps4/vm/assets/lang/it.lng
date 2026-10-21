@@ -385,8 +385,11 @@ tr: 1 su 2
 es: Saltar cuadros (GS):  < %s >
 tr: Salta fotogrammi (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad (experimental)  ·  ahora: %s  ·  %s
-tr: Se il GS non ce la fa, disegna 1 fotogramma su 2: il gioco va alla sua velocità (sperimentale)  ·  ora: %s  ·  %s
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: Se il GS non ce la fa, disegna 1 fotogramma su 2: il gioco va alla sua velocità  ·  ora: %s  ·  %s
+
+es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
+tr: Sempre 1 fotogramma su 2, anche quando il GS non ne ha bisogno: meglio Auto  ·  ora: %s  ·  %s
 
 es: saltando
 tr: salta
