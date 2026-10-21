@@ -2,7 +2,10 @@
 param(
   [string]$Toolchain = $env:OO_PS4_TOOLCHAIN,
   [string]$Eboot = (Join-Path $PSScriptRoot 'build/eboot.bin'),
-  # Forja SX2: 0x00010000 = séptimo núcleo (65536 decimal); -ModoPro suma 0x00800000 (total 8454144) (modo PS4 Pro, sin probar).
+  # Forja SX2: ATTRIBUTE 0, el modo de 6 CPU de toda app (compilación 69). Hasta la 68 pedía 0x00010000, el modo de 7 CPU
+  # (el séptimo núcleo, que el sistema comparte), y en PS4 con firmware 9.00 Forja se cerraba al abrir el sonido de un juego
+  # o al arrancar; el PS4SX2 original y DolphinPS4, que corren en 9.00, usan 0, y ningún hilo de Forja usa el núcleo 6 de
+  # fábrica (nucleos.txt puede pedirlo; sin el modo, la PS4 no lo da). -ModoPro pone 0x00800000 (8388608) (modo PS4 Pro, sin probar).
   [switch]$ModoPro
 )
 $ErrorActionPreference = 'Stop'
@@ -139,7 +142,7 @@ try {
   $entries = @(
     # (AI-assisted) Restore game SFO metadata with PAID 0x3800000000000011.
     @('APP_TYPE', 'Integer', '4', '1'), @('APP_VER', 'Utf8', '8', $appVersion),
-    @('ATTRIBUTE', 'Integer', '4', $(if ($ModoPro) { '8454144' } else { '65536' })), @('CATEGORY', 'Utf8', '4', 'gd'),
+    @('ATTRIBUTE', 'Integer', '4', $(if ($ModoPro) { '8388608' } else { '0' })), @('CATEGORY', 'Utf8', '4', 'gd'),
 
     @('CONTENT_ID', 'Utf8', '48', $contentId), @('DOWNLOAD_DATA_SIZE', 'Integer', '4', '0'),
     @('SYSTEM_VER', 'Integer', '4', '0'), @('TITLE', 'Utf8', '128', 'Forja SX2'),

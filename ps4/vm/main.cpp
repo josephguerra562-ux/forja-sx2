@@ -3777,6 +3777,17 @@ std::atomic<bool> g_forja_menu_active{false};
 #endif
 extern std::atomic<u64> g_forja_gs_vsyncs; // ps4/core/GSRendererPS4.cpp
 
+// Forja SX2 (compilation 69): the library is up (GameMenu.cpp): the log goes back to its queue, unless a game is starting.
+void ForjaStartupLogDone()
+{
+	static bool s_done = false;
+	if (s_done || s_log_direct_boot)
+		return;
+	s_done = true;
+	PS4ProbeLogger::SetDirect(false);
+	ProbeLog("PS4 log: back to its queue (the library is up)\n");
+}
+
 // Forja SX2 (compilation 67): the last game's start died while its sound opened (ps4/core/AudioStreamPS4.cpp,
 // FORJA_AUDIO_TRIAL): the next mode, and the library says so (GameMenu.cpp reads ultimo-error.txt).
 static void ForjaCheckAudioTrial()
@@ -3893,6 +3904,9 @@ int main()
 	const bool synchronous_log = access("/data/ForjaSX2/vm-sync-log", F_OK) == 0 || s_verbose_diag;
 	const bool kernel_log = access("/data/ForjaSX2/vm-kernel-log", F_OK) == 0 || s_verbose_diag;
 	const int log_thread_result = PS4ProbeLogger::Start(s_log, synchronous_log, kernel_log);
+	// Compilation 69: line by line until the library is up (GameMenu.cpp, ForjaStartupLogDone): a start that dies before it
+	// keeps its last step (the PS4s with firmware 9.00 that close at the loading picture, 2026-10-20).
+	PS4ProbeLogger::SetDirect(true);
 	// Live telemetry to PC debug server (reads /data/ForjaSX2/telemetry.conf). Needs proper testing.
 	const bool telemetry_started = PS4Telemetry::Start();
 	// Record entry before module loading, so a stalled re-launch still has a startup marker.
@@ -3930,6 +3944,18 @@ int main()
 	ProbeLog("Host clock gate: max_calls=%u cycle_interval=%u input_interval_ms=10 legacy_marker=%d\n",
 		host_poll_calls, host_poll_cycles, legacy_host_poll);
 	ProbeLog("Launch profile: PAID=0x3800000000000011 APP_TYPE=1 ATTRIBUTE=0 CATEGORY=gd\n");
+	{
+		// Compilation 69: the console's system software and Pro mode, for the reports from other firmwares (both calls exist in
+		// 9.00 and earlier). The CPU mode is the package's: the six cores of every app since this compilation (ATTRIBUTE 0).
+		OrbisKernelSwVersion sw{};
+		sw.Size = sizeof(sw);
+		const int sw_result = sceKernelGetSystemSwVersion(&sw);
+		char version[sizeof(sw.VersionString) + 1] = {};
+		if (sw_result == 0)
+			std::memcpy(version, sw.VersionString, sizeof(sw.VersionString));
+		ProbeLog("Console: system software '%s' (0x%08x, result %#x), Pro mode %d, CPU mode 6 (ATTRIBUTE 0)\n", version,
+			sw_result == 0 ? sw.Version : 0u, static_cast<unsigned>(sw_result), sceKernelIsNeoMode());
+	}
 	ProbeLog("Vulkan preflight: SystemService=%#x VideoOut=%#x\n", system_service_result, video_out_result);
 	{
 		MemorySettingsInterface folder_settings;

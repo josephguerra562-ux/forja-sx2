@@ -43,6 +43,7 @@
 #include <vector>
 
 extern void ProbeLog(const char* format, ...);
+extern void ForjaStartupLogDone(); // main.cpp (compilation 69): the log back to its queue once the library is up
 // Forja SX2 (languages): the fonts UIVM.cpp made, Chinese first and Japanese first.
 extern ImFont* g_forja_language_fonts[2];
 using ForjaLang::T;
@@ -1053,6 +1054,7 @@ namespace PS4GameMenu
 		}
 		if (language_dialog_visible)
 			PublishLanguageDialog(true, language_focus);
+		ForjaStartupLogDone(); // compilation 69
 		// Compilation 59: why the last game could not start (main.cpp writes it before the app opens the library again).
 		if (std::FILE* reason = std::fopen("/data/ForjaSX2/ultimo-error.txt", "r"))
 		{

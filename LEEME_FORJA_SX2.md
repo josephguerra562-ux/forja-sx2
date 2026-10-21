@@ -347,8 +347,9 @@ Audio=5
 ```
 Los hilos secundarios (lectura del disco, registro, guardado de la caché) van a los núcleos 0-1, que están libres;
 con `AYUDANTES=0` los dejas en uno solo.
-Compara los FPS (L3+R3 > contador) en la MISMA escena con y sin el archivo. El núcleo 6 también se puede usar
-(Forja SX2 pide el séptimo núcleo a la PS4), pero el sistema lo comparte.
+Compara los FPS (L3+R3 > contador) en la MISMA escena con y sin el archivo. Usa los núcleos 0 a 5: desde la versión 1.05
+Forja SX2 ya no pide el séptimo núcleo (el 6), que el sistema comparte; con él, en las PS4 con firmware 9.00 la app se
+cerraba.
 
 **Por juego:** la fila "Núcleos de la CPU" del menú L3+R3, o `Nucleos =` en `[Forja]`, cambia el reparto solo para ese juego.
 Las opciones son "Global" (usa `nucleos.txt`), "Normal" (el reparto de arriba) y "Plan B". EE, VU1, GS y Audio se mueven al
