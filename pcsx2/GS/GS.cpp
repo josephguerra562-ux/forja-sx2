@@ -1123,6 +1123,15 @@ void GSFreeWrappedMemory(void* ptr, size_t size, size_t repeat)
 
 static int s_shm_fd = -1;
 
+#if defined(PCSX2_PS4)
+// The PS4 kernel's address-space calls, as ps4/core/HostSysPS4.cpp declares them for fastmem.
+extern "C" int sceKernelReserveVirtualRange(void** addr, size_t size, int flags, size_t alignment);
+extern "C" int sceKernelMmap(void* addr, size_t size, int prot, int flags, int fd, off_t offset, void** result);
+extern "C" int sceKernelMunmap(void* addr, size_t size);
+// ps4/vm/PlatformVM.cpp: a "STAGE:" line with the PS4's free flexible memory.
+extern "C" void orbis_stage(const char* stage) __attribute__((weak));
+#endif
+
 void* GSAllocateWrappedMemory(size_t size, size_t repeat)
 {
 	pxAssert(s_shm_fd == -1);
@@ -1140,6 +1149,40 @@ void* GSAllocateWrappedMemory(size_t size, size_t repeat)
 		return nullptr;
 	}
 
+#if defined(PCSX2_PS4)
+	// Forja SX2: the object holds `size` bytes, the GS memory (4 MiB); the other views are mirrors of its start, so a
+	// `repeat * size` object (16 MiB) had 12 MiB that only took the PS4's regular flexible memory. The views go into
+	// a plain address reservation, as fastmem's do.
+	const size_t total = size * repeat;
+	if (ftruncate(s_shm_fd, size) < 0)
+		fprintf(stderr, "Failed to reserve memory due to %s\n", strerror(errno));
+	void* area = nullptr;
+	if (sceKernelReserveVirtualRange(&area, total, 0, 0) != 0 || !area)
+	{
+		Console.Error("GS: no address range for the GS local memory (%zu bytes)", total);
+		close(s_shm_fd);
+		s_shm_fd = -1;
+		return nullptr;
+	}
+	for (size_t i = 0; i < repeat; i++)
+	{
+		void* base = static_cast<u8*>(area) + size * i;
+		void* mapped = base;
+		const int rc = sceKernelMmap(base, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, s_shm_fd, 0, &mapped);
+		if (rc != 0 || mapped != base)
+		{
+			Console.Error("GS: view %zu of the GS local memory failed (rc=0x%x at %p)", i, static_cast<unsigned>(rc), mapped);
+			sceKernelMunmap(area, total); // the views made and the rest of the reservation, as fastmem releases its own
+			close(s_shm_fd);
+			s_shm_fd = -1;
+			return nullptr;
+		}
+	}
+	Console.WriteLn("[dbg] gsm: GS local memory of %zu bytes, %zu views at %p", size, repeat, area);
+	if (orbis_stage)
+		orbis_stage("GS local memory mapped");
+	return area;
+#else
 	if (ftruncate(s_shm_fd, repeat * size) < 0)
 		fprintf(stderr, "Failed to reserve memory due to %s\n", strerror(errno));
 
@@ -1157,6 +1200,7 @@ void* GSAllocateWrappedMemory(size_t size, size_t repeat)
 	}
 
 	return fifo;
+#endif
 }
 
 void GSFreeWrappedMemory(void* ptr, size_t size, size_t repeat)
@@ -1166,7 +1210,14 @@ void GSFreeWrappedMemory(void* ptr, size_t size, size_t repeat)
 	if (s_shm_fd < 0)
 		return;
 
+#if defined(PCSX2_PS4)
+	// Forja SX2: the views and their reservation (GSAllocateWrappedMemory), released as fastmem releases its own. A view left
+	// mapped would keep the 4 MiB object alive after close() at every game start.
+	if (const int rc = sceKernelMunmap(ptr, size * repeat); rc != 0)
+		Console.Error("GS: releasing the GS local memory failed (rc=0x%x)", static_cast<unsigned>(rc));
+#else
 	munmap(ptr, size * repeat);
+#endif
 
 	close(s_shm_fd);
 	s_shm_fd = -1;

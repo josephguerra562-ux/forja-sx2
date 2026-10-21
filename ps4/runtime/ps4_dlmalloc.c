@@ -33,3 +33,10 @@ int ps4_heap_ok(void* msp) {
   mstate ms = (mstate)msp;
   return ok_magic(ms);
 }
+
+/* Diagnostics: the free space at the top of the mspace, dlmalloc's top chunk (read without the lock: a number for the
+ * log, not for decisions). */
+size_t ps4_heap_top_free(void* msp) {
+  mstate ms = (mstate)msp;
+  return ok_magic(ms) ? ms->topsize : 0;
+}

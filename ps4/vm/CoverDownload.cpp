@@ -18,6 +18,8 @@
 #include <vector>
 
 extern void ProbeLog(const char* format, ...);
+// PlatformVM.cpp: a "STAGE:" line with the PS4's free flexible memory.
+extern "C" void orbis_stage(const char* stage);
 // OpenOrbis leaves these declarations untyped. PS4 ABI: (id, microseconds/enabled).
 extern "C" int CoverHttpRecvTimeout(int, unsigned int) __asm__("sceHttpSetRecvTimeOut");
 extern "C" int CoverHttpAutoRedirect(int, int) __asm__("sceHttpSetAutoRedirect");
@@ -34,6 +36,7 @@ namespace
 		// Process-owned contexts, shared by the single sequential menu downloader.
 		// Avoid repeated global init/term while other PS4 services are active.
 		static const int context = [] {
+			orbis_stage("network: before its modules");
 			for (const auto module : {ORBIS_SYSMODULE_INTERNAL_NET, ORBIS_SYSMODULE_INTERNAL_NETCTL,
 					 ORBIS_SYSMODULE_INTERNAL_SSL, ORBIS_SYSMODULE_INTERNAL_HTTP})
 			{
@@ -55,6 +58,7 @@ namespace
 				return -1;
 			const int http = sceHttpInit(pool, ssl, 1024 * 1024);
 			ProbeLog("Disc cover: native http=%#x\n", http);
+			orbis_stage("network ready (Net, NetCtl, Ssl and Http modules, three 1 MiB pools)");
 			return http;
 		}();
 		return context;

@@ -37,6 +37,8 @@ BIOS
 
 #if defined(PCSX2_PS4)
 #include "ps4/core/MemoryMapPS4.h"
+// ps4/vm/PlatformVM.cpp: a "STAGE:" line with the PS4's free flexible memory.
+extern "C" void orbis_stage(const char* stage) __attribute__((weak));
 #endif
 
 #include "common/AlignedMalloc.h"
@@ -1334,6 +1336,11 @@ void memReset()
 	Console.WriteLn("[dbg] memReset: CopyBIOSToMemory");
 	CopyBIOSToMemory();
 	Console.WriteLn("[dbg] memReset: done");
+#if defined(PCSX2_PS4)
+	// Forja SX2: the PS2's memory has now been written (all of its pages are in use) and fastmem's views are mapped.
+	if (orbis_stage)
+		orbis_stage("memReset done (PS2 memory cleared, fastmem views mapped)");
+#endif
 }
 
 void memRelease()

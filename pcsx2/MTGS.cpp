@@ -31,6 +31,10 @@
 // (AI-assisted) GSDeviceVK.cpp: flips a completed deferred VideoOut frame without waiting.
 extern void PS4GSPollDeferredFlip();
 #endif
+#if defined(PCSX2_PS4)
+// ps4/vm/PlatformVM.cpp: a "STAGE:" line with the PS4's free flexible memory.
+extern "C" void orbis_stage(const char* stage) __attribute__((weak));
+#endif
 
 // Uncomment this to enable profiling of the GS RingBufferCopy function.
 //#define PCSX2_GSRING_SAMPLING_STATS
@@ -167,7 +171,9 @@ void MTGS::StartThread()
 		return;
 
 	pxAssertRel(!s_open_flag.load(), "GS thread should not be opened when starting");
-	s_thread.SetStackSize(16 * 1024 * 1024);
+	// Forja SX2: 8 MiB (was 16), Linux's default; upstream PCSX2 gives this thread the system's default (1 MiB on
+	// Windows). The PS4 takes the whole stack out of its regular flexible memory when the thread starts.
+	s_thread.SetStackSize(8 * 1024 * 1024);
 	s_sem_event.Reset();
 	s_shutdown_flag.store(false, std::memory_order_release);
 #if defined(PCSX2_GS_MTGS_PROBE)
@@ -175,6 +181,10 @@ void MTGS::StartThread()
 		Host::ReportErrorAsync("MTGS probe", "Failed to create the GS thread.");
 #else
 	s_thread.Start(&MTGS::ThreadEntryPoint);
+#endif
+#if defined(PCSX2_PS4)
+	if (orbis_stage)
+		orbis_stage("GS thread started (8 MiB stack)");
 #endif
 }
 

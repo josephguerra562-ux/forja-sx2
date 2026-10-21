@@ -44,6 +44,8 @@
 
 extern void ProbeLog(const char* format, ...);
 extern void ForjaStartupLogDone(); // main.cpp (compilation 69): the log back to its queue once the library is up
+// PlatformVM.cpp: a "STAGE:" line with the PS4's free flexible memory.
+extern "C" void orbis_stage(const char* stage);
 // Forja SX2 (languages): the fonts UIVM.cpp made, Chinese first and Japanese first.
 extern ImFont* g_forja_language_fonts[2];
 using ForjaLang::T;
@@ -630,6 +632,7 @@ namespace PS4GameMenu
 			}
 			std::sort(items.begin(), items.end(), [](const Item& a, const Item& b) { return a.name < b.name; });
 			ProbeLog("Game menu: found %zu .iso/.bin/.chd/.cso/.zso/.gz files in %s\n", items.size(), Directory);
+			orbis_stage("game library listed (covers loaded)");
 			return items;
 		}
 

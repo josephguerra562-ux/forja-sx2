@@ -57,6 +57,7 @@ void* memcpy(void* dst, const void* src, size_t n);
 // port/ps4_crashlog.cpp (weak: a program may link without it).
 __attribute__((weak)) void ps4_boot_trace(const char* stage);
 int ps4_heap_ok(void* msp);  // port/ps4_dlmalloc.c
+size_t ps4_heap_top_free(void* msp);  // port/ps4_dlmalloc.c
 
 extern char __text_start[];  // OpenOrbis link.x: start of .text (ELF address 0)
 }
@@ -74,6 +75,24 @@ mspace g_heap = nullptr;
 const char* g_heapPool = "none";
 uintptr_t g_heapBase = 0;
 size_t g_heapSize = 0;
+// Regular flexible memory free when the heap was created (the first malloc, in static initialisation).
+size_t g_flexibleAtStart = 0;
+
+// The heap's lines, kept for the app's log (ps4_heap_log_next, read by ps4/vm/PlatformVM.cpp's orbis_stage): they
+// are written before that log exists, and from inside malloc, which must not call it. A fixed ring, no allocation;
+// when it is full the oldest lines go.
+constexpr unsigned LOG_LINES = 32;
+constexpr size_t LOG_LINE = 200;
+char g_logRing[LOG_LINES][LOG_LINE];
+unsigned g_logWritten = 0;
+unsigned g_logRead = 0;
+std::atomic_flag g_logLock = ATOMIC_FLAG_INIT;
+
+void lockLog() {
+    while (g_logLock.test_and_set(std::memory_order_acquire))
+        sched_yield();
+}
+void unlockLog() { g_logLock.clear(std::memory_order_release); }
 
 // sceKernelDebugOutText doesn't format its arguments; vsnprintf doesn't allocate.
 __attribute__((format(printf, 1, 2))) void heapLog(const char* fmt, ...) {
@@ -85,6 +104,15 @@ __attribute__((format(printf, 1, 2))) void heapLog(const char* fmt, ...) {
     sceKernelDebugOutText(0, line);
     if (ps4_boot_trace)
         ps4_boot_trace(line);
+    lockLog();
+    char* slot = g_logRing[g_logWritten % LOG_LINES];
+    const int length = snprintf(slot, LOG_LINE, "%s", line);
+    if (length >= static_cast<int>(LOG_LINE))
+        slot[LOG_LINE - 2] = '\n';  // a cut line still ends its line
+    g_logWritten++;
+    if (g_logWritten - g_logRead > LOG_LINES)
+        g_logRead = g_logWritten - LOG_LINES;
+    unlockLog();
 }
 
 unsigned long long elf(const void* address) {
@@ -173,6 +201,7 @@ mspace createDirectHeap(size_t size) {
 mspace createHeap() {
     size_t available = 0;
     int32_t ret = sceKernelAvailableFlexibleMemorySize(&available);
+    g_flexibleAtStart = ret == 0 ? available : 0;
     heapLog("[dolphin] heap: flexible memory available %zu MiB (0x%x)\n", available / MB, ret);
     // Where does the kernel library put its own objects? (8 bytes reserved even if the
     // headers' pthread_mutexattr_t is the 4-byte musl one.)
@@ -693,6 +722,30 @@ const char* ps4rt_heap_source(void) {
 size_t ps4rt_heap_size(void) {
     getHeap();
     return g_heapSize;
+}
+// Regular flexible memory free at the first malloc (static initialisation), before the heap and everything else.
+size_t ps4rt_flexible_at_start(void) {
+    getHeap();
+    return g_flexibleAtStart;
+}
+// How far into the main heap dlmalloc's blocks reach now: the heap's size minus the free space at its top (freeing the last
+// blocks moves it back, so it is the extent now, not a record).
+size_t ps4rt_heap_high_water(void) {
+    mspace heap = getHeap();
+    return heap ? g_heapSize - ps4_heap_top_free(heap) : 0;
+}
+// The direct-memory overflow heap's size, 0 while the main heap has been enough.
+size_t ps4rt_overflow_heap_size(void) { return __atomic_load_n(&g_overflow, __ATOMIC_ACQUIRE) ? g_overflowSize : 0; }
+// Copies the oldest heap line not yet taken (ends with '\n'); 0 when there is none.
+int ps4rt_heap_log_next(char* out, size_t size) {
+    if (!out || size == 0)
+        return 0;
+    lockLog();
+    const bool pending = g_logRead != g_logWritten;
+    if (pending)
+        snprintf(out, size, "%s", g_logRing[g_logRead++ % LOG_LINES]);
+    unlockLog();
+    return pending ? 1 : 0;
 }
 
 }  // extern "C"

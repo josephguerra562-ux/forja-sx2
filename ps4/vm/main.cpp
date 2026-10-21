@@ -145,6 +145,11 @@ static void ConsoleMessage(LOGLEVEL level, ConsoleColors, std::string_view messa
 extern void VMHostSetCPUThread();
 extern void VMHostDrainCPUQueue();
 extern u64 VMHostGetCPUQueueLockCount();
+// PlatformVM.cpp: a "STAGE:" line with the PS4's free flexible memory; ps4/runtime/ps4_runtime.cpp: the heap's numbers
+// and its lines (the overflow heap, a large mmap) since the last stage.
+extern "C" void orbis_stage(const char* stage);
+extern "C" size_t ps4rt_heap_high_water(void);
+extern "C" int ps4rt_heap_log_next(char* out, size_t size);
 static int s_pad = -1;
 static std::string s_selected_game;
 static bool s_use_vulkan_selector = false;
@@ -2774,16 +2779,23 @@ void VMHostPoll()
 		s_last_host_poll_calls = s_host_poll_calls;
 		s_last_log = elapsed;
 		s_last_ee_cycle = cpuRegs.cycle;
-			// Compilation 59: the flexible memory left (threads' stacks and malloc come from it): threads that could not start on
-			// 2026-10-19 point to it running out.
+			// Compilation 59: the flexible memory left (threads' stacks, system modules and shared memory come from it; malloc
+			// comes from the system pool, heap_high_water_mb): threads that could not start on 2026-10-19 point to it running out.
+			{
+				char heap_line[256];
+				while (ps4rt_heap_log_next(heap_line, sizeof(heap_line)))
+					ProbeLog("PS4 runtime: %s", heap_line);
+			}
+			const u64 flexible_free = GetAvailablePhysicalMemory();
 			ProbeLog("VM heartbeat: seconds=%.1f EE_PC=%08x IOP_PC=%08x EE_cycles=%u EE_Mcycles_per_second=%.2f "
 				 "Host_polls_per_second=%.0f Host_clock_checks_per_second=%.0f CPU_queue_drain_locks=%llu verbose=%d paused=%d menu=%d vsyncq=%d "
-				 "flexible_free_mb=%llu\n",
+				 "flexible_free_mb=%llu flexible_free_kb=%llu heap_high_water_mb=%zu\n",
 			elapsed, cpuRegs.pc, psxRegs.pc,
 			cpuRegs.cycle, ee_mcycles, host_polls_per_second, host_clock_checks_per_second,
 			static_cast<unsigned long long>(VMHostGetCPUQueueLockCount()), s_verbose_diag ? 1 : 0,
 			vm_state == VMState::Paused ? 1 : 0, s_game_menu_open ? 1 : 0, MTGS::GetCurrentVsyncQueueSize(),
-			static_cast<unsigned long long>(GetAvailablePhysicalMemory() / (1024 * 1024)));
+			static_cast<unsigned long long>(flexible_free / (1024 * 1024)), static_cast<unsigned long long>(flexible_free / 1024),
+			ps4rt_heap_high_water() >> 20);
 		// Live telemetry heartbeat (PC debug server). Needs proper testing.
 		{
 			const double boot_s = PS4Telemetry::GetBootSeconds();
@@ -4013,7 +4025,10 @@ int main()
 	rc = pthread_attr_init(&attr);
 	if (rc == 0)
 	{
-		rc = pthread_attr_setstacksize(&attr, 16 * 1024 * 1024);
+		// Forja SX2: 8 MiB (was 16), Linux's default and 4x upstream PCSX2's CPU thread (EMU_THREAD_STACK_SIZE). The
+		// PS4 takes the whole stack out of its regular flexible memory when the thread starts.
+		orbis_stage("before the CPU thread (8 MiB stack)");
+		rc = pthread_attr_setstacksize(&attr, 8 * 1024 * 1024);
 		if (rc == 0)
 			rc = pthread_create(&cpu_thread, &attr, RunVM, nullptr);
 		pthread_attr_destroy(&attr);

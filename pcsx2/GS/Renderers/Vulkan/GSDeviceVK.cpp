@@ -61,6 +61,10 @@
 // vk-285-51: the port's settings log (frontend/fe_ps5.cpp), for the GPU-hang exit. Weak: tools have none.
 extern "C" void orbis_event_log(const char* line) __attribute__((weak));
 #endif
+#if defined(PCSX2_PS4)
+// ps4/vm/PlatformVM.cpp: a "STAGE:" line with the PS4's free flexible memory (weak: tools have none).
+extern "C" void orbis_stage(const char* stage) __attribute__((weak));
+#endif
 #ifdef ORBIS_VULKAN
 unsigned long long g_orbis_vkw_ns[ORBIS_VKW_KINDS], g_orbis_vkw_n[ORBIS_VKW_KINDS],
 	g_orbis_vkw_max_ns[ORBIS_VKW_KINDS];
@@ -3665,6 +3669,8 @@ bool GSDeviceVK::Create(GSVSyncMode vsync_mode, bool allow_present_throttle)
 	InitializeState();
 #if defined(PCSX2_PS4)
 	Console.WriteLn("PS4 GS: device initialization complete");
+	if (orbis_stage)
+		orbis_stage("Vulkan device ready (utility pipelines compiled)");
 #endif
 	return true;
 }

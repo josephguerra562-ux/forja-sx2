@@ -16,6 +16,10 @@
 #include "ps4/core/ThreadCPUMetricsPS4.h"
 #include "ps4/core/ThreadAffinityPS4.h"
 #endif
+#if defined(PCSX2_PS4)
+// ps4/vm/PlatformVM.cpp: a "STAGE:" line with the PS4's free flexible memory.
+extern "C" void orbis_stage(const char* stage) __attribute__((weak));
+#endif
 
 VU_Thread vu1Thread;
 unsigned long long g_orbis_vu_idle_ticks, g_orbis_ee_waitvu_ticks, g_orbis_ee_vuring_ticks; // eerec-281
@@ -301,6 +305,10 @@ void VU_Thread::Open()
 	m_shutdown_flag.store(false, std::memory_order_release);
 	m_thread.SetStackSize(VMManager::EMU_THREAD_STACK_SIZE);
 	m_thread.Start([this]() { ExecuteRingBuffer(); });
+#if defined(PCSX2_PS4)
+	if (orbis_stage)
+		orbis_stage("VU1 thread started");
+#endif
 }
 
 void VU_Thread::Close()

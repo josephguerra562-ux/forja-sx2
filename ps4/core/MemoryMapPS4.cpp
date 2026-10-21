@@ -28,12 +28,17 @@ namespace HostMemoryMap
 	}
 } // namespace HostMemoryMap
 
+// ps4/vm/PlatformVM.cpp: a "STAGE:" line with the PS4's free flexible memory (weak: the probes link without it).
+extern "C" void orbis_stage(const char* stage) __attribute__((weak));
+
 bool SysMemory::AllocateMemoryMap()
 {
 	if (s_data_memory && s_code_memory)
 		return true;
 
 	std::printf("[PS4] memmap: MainSize=%u CodeSize=%u\n", HostMemoryMap::MainSize, HostMemoryMap::CodeSize);
+	if (orbis_stage)
+		orbis_stage("PS2 memory: before its block");
 	s_data_memory_file_handle = HostSys::CreateSharedMemory(
 		HostSys::GetFileMappingName("pcsx2").c_str(), HostMemoryMap::MainSize);
 	if (!s_data_memory_file_handle)
@@ -47,6 +52,8 @@ bool SysMemory::AllocateMemoryMap()
 		s_data_memory_file_handle = nullptr;
 		return false;
 	}
+	if (orbis_stage)
+		orbis_stage("PS2 memory block mapped (shared memory, not written yet)");
 
 	void* code = mmap(nullptr, HostMemoryMap::CodeSize, PROT_READ | PROT_WRITE | PROT_EXEC,
 		MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -64,6 +71,8 @@ bool SysMemory::AllocateMemoryMap()
 	HostMemoryMap::IOPmem = reinterpret_cast<uptr>(s_data_memory + HostMemoryMap::IOPmemOffset);
 	HostMemoryMap::VUmem = reinterpret_cast<uptr>(s_data_memory + HostMemoryMap::VUmemOffset);
 	std::printf("[PS4] memmap: data=%p code=%p\n", static_cast<void*>(s_data_memory), static_cast<void*>(s_code_memory));
+	if (orbis_stage)
+		orbis_stage("JIT code block mapped (system flexible memory)");
 	return true;
 }
 

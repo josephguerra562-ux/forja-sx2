@@ -185,7 +185,34 @@ void OrbisVU1Dump() {}
 #endif
 void OrbisCpuForget(int) {}
 extern void ProbeLog(const char*, ...);
-extern "C" void orbis_stage(const char* message) { ProbeLog("STAGE: %s\n", message); }
+// ps4/runtime/ps4_runtime.cpp: the heap's diagnostics.
+extern "C" const char* ps4rt_heap_source(void);
+extern "C" size_t ps4rt_heap_size(void);
+extern "C" size_t ps4rt_flexible_at_start(void);
+extern "C" size_t ps4rt_heap_high_water(void);
+extern "C" size_t ps4rt_overflow_heap_size(void);
+extern "C" int ps4rt_heap_log_next(char* out, size_t size);
+// Forja SX2: each stage line says how much regular flexible memory is free and how much it took since the previous
+// one. Thread stacks, system modules, shared memory and the program's static buffers come out of it, and it stood
+// at 3-4 MiB all through God of War II (2026-10-20). The heap lives in the system pool instead (heap_high_water_mb:
+// how far its allocations have reached). The heap's own lines, written before this log exists, are copied in first.
+extern "C" void orbis_stage(const char* message)
+{
+	static std::atomic<long long> s_last_kb{-1};
+	char line[256];
+	while (ps4rt_heap_log_next(line, sizeof(line)))
+		ProbeLog("PS4 runtime: %s", line);
+	const long long free_kb = static_cast<long long>(GetAvailablePhysicalMemory() / 1024);
+	long long last_kb = s_last_kb.exchange(free_kb);
+	if (last_kb < 0)
+	{
+		last_kb = static_cast<long long>(ps4rt_flexible_at_start() / 1024);
+		ProbeLog("STAGE: app start (first malloc) flexible_free_kb=%lld heap=%s heap_mb=%zu\n", last_kb,
+			ps4rt_heap_source(), ps4rt_heap_size() >> 20);
+	}
+	ProbeLog("STAGE: %s flexible_free_kb=%lld change_kb=%lld heap_high_water_mb=%zu overflow_heap_mb=%zu\n", message,
+		free_kb, free_kb - last_kb, ps4rt_heap_high_water() >> 20, ps4rt_overflow_heap_size() >> 20);
+}
 // No JIT state exists in this interpreter-only application; reject savestates.
 #if !defined(PCSX2_PS4_VM_BOOT_JIT)
 bool SaveStateBase::vuJITFreeze() { return false; }

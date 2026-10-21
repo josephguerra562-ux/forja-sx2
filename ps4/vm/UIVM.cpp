@@ -25,6 +25,8 @@
 #include <vector>
 
 extern void ProbeLog(const char* format, ...);
+// PlatformVM.cpp: a "STAGE:" line with the PS4's free flexible memory.
+extern "C" void orbis_stage(const char* stage);
 
 namespace InputRecordingUI
 {
@@ -207,6 +209,7 @@ namespace ImGuiManager
 		ProbeLog("STAGE: ImGui first frame (stb font loader)\n");
 		ImGui::NewFrame();
 		ProbeLog("STAGE: ImGui initialization complete\n");
+		orbis_stage("ImGui ready (fonts loaded)");
 		return true;
 	}
 	bool InitializeFullscreenUIOnce()
