@@ -57,6 +57,7 @@ namespace
 		std::atomic<u32> queue_min{0}, queue_max{0};
 		std::atomic<u32> peak_q15{0}, rms_q15{0};
 		std::atomic<u64> invalid_samples{0}, clipped_samples{0};
+		std::atomic<u64> limited_frames{0}; // Forja 1.06: frames the limiter turned down (clipped_samples: over full scale before it)
 		std::atomic<int> port_result{0}, port_volume{0};
 		std::atomic<u32> port_output{0}, port_channels{0};
 		std::atomic<u64> port_flags{0};
@@ -130,6 +131,7 @@ namespace
 			s_output.rms_q15.store(0, std::memory_order_relaxed);
 			s_output.invalid_samples.store(0, std::memory_order_relaxed);
 			s_output.clipped_samples.store(0, std::memory_order_relaxed);
+			s_output.limited_frames.store(0, std::memory_order_relaxed);
 			s_output.port_result.store(0, std::memory_order_relaxed);
 			s_output.port_output.store(0, std::memory_order_relaxed);
 			s_output.port_channels.store(0, std::memory_order_relaxed);
@@ -217,6 +219,12 @@ namespace
 		static constexpr u32 GRAIN = 512;
 		static constexpr u32 OUTPUT_RATE = 48000;
 		static constexpr u64 STARTUP_BLOCKS = 20ull * OUTPUT_RATE / GRAIN; // 20 s of output
+		// Forja 1.06: the output's limiter (the loop in the output thread). God of War II's mix reaches full scale, and after the
+		// stretching and the resampling some samples went past it: 1,104 cut off flat in the first seconds of one movie
+		// (2026-10-21), heard as crackles. A frame that would pass the ceiling turns the gain down to fit at once, and the gain
+		// comes back in ~50 ms; both channels together, so the stereo picture stays. Under the ceiling nothing changes.
+		static constexpr float LIMIT_CEILING = 0.98f; // -0.18 dB
+		static constexpr float LIMIT_RELEASE = 1.0f / (0.05f * OUTPUT_RATE);
 
 		// Called with m_read_mutex held. Keep unconsumed input and filter state
 		// across hardware blocks: 512 output frames are not 512 PS1 input frames.
@@ -338,6 +346,8 @@ namespace
 			PS4ThreadAffinity::PinCurrentThread("Audio", 5);
 			u64 buffers = 0, pcm_buffers = 0, input_short = 0, paused_buffers = 0;
 			u64 invalid_samples = 0, clipped_samples = 0;
+			u64 limited_frames = 0;  // Forja 1.06
+			float limit_gain = 1.0f; // Forja 1.06: the limiter's gain now (LIMIT_CEILING)
 			u64 refill_pending = 0, concealed = 0;
 			u32 queue_min = UINT32_MAX, queue_max = 0;
 			u32 current_buffer = 0, window_frames = 0;
@@ -362,21 +372,35 @@ namespace
 					}
 				}
 				float peak = 0.0f;
-				for (u32 i = 0; i < GRAIN * 2; i++)
+				for (u32 i = 0; i < GRAIN * 2; i += 2)
 				{
-					float sample = m_samples[i];
-					if (!std::isfinite(sample))
+					float frame[2] = {m_samples[i], m_samples[i + 1]};
+					for (float& sample : frame)
 					{
-						invalid_samples++;
-						sample = 0.0f;
+						if (!std::isfinite(sample))
+						{
+							invalid_samples++;
+							sample = 0.0f;
+						}
+						clipped_samples += sample < -1.0f || sample > 1.0f;
 					}
-					clipped_samples += sample < -1.0f || sample > 1.0f;
-					sample = std::clamp(sample, -1.0f, 1.0f);
-					// Scaling/clamping before conversion keeps both signed endpoints valid.
-					const s32 pcm = static_cast<s32>(sample * 32768.0f);
-					m_pcm[current_buffer][i] = static_cast<s16>(std::clamp(pcm, -32768, 32767));
-					peak = std::max(peak, std::abs(sample));
-					window_energy += sample * sample;
+					// Forja 1.06: the limiter (LIMIT_CEILING), on the frame's louder channel.
+					const float frame_peak = std::max(std::abs(frame[0]), std::abs(frame[1]));
+					if (frame_peak * limit_gain > LIMIT_CEILING)
+					{
+						limit_gain = LIMIT_CEILING / frame_peak;
+						limited_frames++;
+					}
+					for (u32 c = 0; c < 2; c++)
+					{
+						const float sample = std::clamp(frame[c] * limit_gain, -1.0f, 1.0f);
+						// Scaling/clamping before conversion keeps both signed endpoints valid.
+						const s32 pcm = static_cast<s32>(sample * 32768.0f);
+						m_pcm[current_buffer][i + c] = static_cast<s16>(std::clamp(pcm, -32768, 32767));
+						peak = std::max(peak, std::abs(sample));
+						window_energy += sample * sample;
+					}
+					limit_gain += (1.0f - limit_gain) * LIMIT_RELEASE;
 				}
 				// (AI-assisted) Alternate buffers as in DolphinPS4. Output paces the
 				// loop; do not drain/restart the port for every block. Needs proper
@@ -419,6 +443,7 @@ namespace
 						std::memory_order_relaxed);
 					s_output.invalid_samples.store(invalid_samples, std::memory_order_relaxed);
 					s_output.clipped_samples.store(clipped_samples, std::memory_order_relaxed);
+					s_output.limited_frames.store(limited_frames, std::memory_order_relaxed);
 					if (!m_simple)
 						RefreshPortState();
 					window_frames = 0;
@@ -463,11 +488,12 @@ void PS4Audio::LogStatus()
 		s_output.underruns.load(std::memory_order_relaxed),
 		static_cast<unsigned long long>(s_output.concealed.load(std::memory_order_relaxed)),
 		s_output.cushion_q4.load(std::memory_order_relaxed) * 25);
-	ProbeLog("PS4 audio signal: peak_q15=%u rms_q15=%u invalid_samples=%llu clipped_samples=%llu "
+	ProbeLog("PS4 audio signal: peak_q15=%u rms_q15=%u invalid_samples=%llu clipped_samples=%llu limited_frames=%llu "
 			 "port_result=%#x output=%#x channels=%u volume_raw=%d flags=%#llx\n",
 		s_output.peak_q15.load(std::memory_order_relaxed), s_output.rms_q15.load(std::memory_order_relaxed),
 		static_cast<unsigned long long>(s_output.invalid_samples.load(std::memory_order_relaxed)),
 		static_cast<unsigned long long>(s_output.clipped_samples.load(std::memory_order_relaxed)),
+		static_cast<unsigned long long>(s_output.limited_frames.load(std::memory_order_relaxed)),
 		s_output.port_result.load(std::memory_order_relaxed), s_output.port_output.load(std::memory_order_relaxed),
 		s_output.port_channels.load(std::memory_order_relaxed), s_output.port_volume.load(std::memory_order_relaxed),
 		static_cast<unsigned long long>(s_output.port_flags.load(std::memory_order_relaxed)));

@@ -296,6 +296,7 @@ extern double GetVerticalFrequency(); // pcsx2/GS.h (Counters.cpp): the PS2's re
 extern bool g_orbis_fg_wanted; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp: frame generation, read by the GS at every frame
 extern bool g_orbis_fg_fluid;  // ...and its fluid mode (compilation 40: [Forja] FrameGen = 2)
 extern bool g_orbis_fg_movie;  // ...and a movie playing (compilation 66: no pauses for the speed, OrbisFrameGenPacing.h)
+extern bool g_orbis_fg_held;   // ...and held for a PAL game's movie on a 59.94 Hz TV (Forja 1.06, ForjaMovieSettings)
 static ForjaGameProfile::Values s_profile;
 static bool s_global_video_mode = true; // ajustes.ini
 static bool s_global_frame_gen = false; // ajustes.ini
@@ -343,7 +344,7 @@ static bool s_movie_settings = false;
 
 static void ForjaApplyFgFluid()
 {
-	g_orbis_fg_fluid = s_fg_fluid_profile || (s_movie_settings && g_orbis_fg_wanted);
+	g_orbis_fg_fluid = s_fg_fluid_profile || (s_movie_settings && g_orbis_fg_wanted && !g_orbis_fg_held);
 }
 
 static void ForjaMovieSettings(bool movie)
@@ -352,6 +353,14 @@ static void ForjaMovieSettings(bool movie)
 		return;
 	s_movie_settings = movie;
 	const bool fluid_before = g_orbis_fg_fluid;
+	// Forja 1.06: no generated frames in a PAL game's movie while the TV is at 59.94 Hz (the PS4 refuses 50 Hz, VulkanVideoOut.h):
+	// its 25 pictures a second are 2.4 refreshes each and the in-between frame came by turns (OrbisFrameGenPacing.h, SetHeld).
+	// God of War II's movies played whole, 25 pictures of 25 at full speed, and Joseph still saw them fail (2026-10-21): of the
+	// games tested, the only one with PAL movies and frame generation on (Crash Nitro Kart's, PAL without it, and the NTSC
+	// ones with it were fine). The game's own setting is back after the movie.
+	const double ps2_hz = GetVerticalFrequency();
+	const int tv_millihz = PS4Port::g_output_millihz.load(std::memory_order_relaxed);
+	g_orbis_fg_held = movie && ps2_hz > 49.0 && ps2_hz < 51.0 && (tv_millihz < 49000 || tv_millihz > 51000);
 	ForjaApplyFgFluid();
 	// Compilation 66: in a movie the EE's core is the limit and frame generation runs on the GPU and the GS thread, so its
 	// safety net (a pause after 3 s under 95 %) only took the generated frames away: Tales of the Abyss's movies at 91-93 %,
@@ -378,7 +387,8 @@ static void ForjaMovieSettings(bool movie)
 		g_forja_gs_skip_active.store(false, std::memory_order_relaxed);
 	}
 	ProbeLog("Movie settings: %s (frame generation %s%s; Saltar cuadros %s)\n", movie ? "on" : "off",
-		!g_orbis_fg_wanted ? "off" : g_orbis_fg_fluid ? "fluid" : "steady", fluid_before != g_orbis_fg_fluid ? ", changed" : "",
+		!g_orbis_fg_wanted ? "off" : g_orbis_fg_held ? "held, a PAL movie on a 59.94 Hz TV" : g_orbis_fg_fluid ? "fluid" : "steady",
+		fluid_before != g_orbis_fg_fluid ? ", changed" : "",
 		movie ? "paused" : s_gs_skip_mode == 2 ? "one in two again" : s_gs_skip_mode == 1 ? "auto from every frame" : "off");
 }
 
@@ -2236,6 +2246,26 @@ static void SetCpuAutoRate(int rate, const char* why, double speed, double busie
 // the game out (GSRendererPS4.cpp, VSync): the game keeps its speed, its music and its moves, with less GS work. Dragon Ball Z
 // Budokai Tenkaichi 4 (2026-10-18): ~2,100 draws a frame in its fights, 25 us each for the PS4's CPU, 31 ms a vsync for the GS,
 // 48 % speed. Compilation 63: Auto goes through GS_SKIP_STEPS.
+// Forja 1.06: Auto's change of step (UpdateGsSkip), with why.
+static void SetGsSkipAutoStep(unsigned step, double elapsed, const char* why, double speed, double gs, double others)
+{
+	const unsigned of_before = s_gs_skip_step > 0 ? GS_SKIP_STEPS[s_gs_skip_step] : 1u;
+	s_gs_skip_step = step;
+	g_forja_gs_skip_every.store(step > 0 ? GS_SKIP_STEPS[step] : 2u, std::memory_order_relaxed);
+	g_forja_gs_skip_active.store(step > 0, std::memory_order_relaxed);
+	if (step > 0)
+		ProbeLog("GS skip: auto one frame in %u (%s; speed %.0f %%, GS %.0f %%, EE/VU1 %.0f %%)\n", GS_SKIP_STEPS[step], why, speed, gs,
+			others);
+	else
+		ProbeLog("GS skip: auto off, every frame again (%s; speed %.0f %%, GS %.0f %% drawing all but one in %u)\n", why, speed, gs,
+			of_before);
+	s_gs_skip_last_change = elapsed;
+	s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
+	s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
+	s_gs_skip_samples = 0;
+	PublishGameMenu();
+}
+
 static void UpdateGsSkip(double elapsed)
 {
 	if (s_gs_skip_mode == 0)
@@ -2265,6 +2295,17 @@ static void UpdateGsSkip(double elapsed)
 	// second instead of 25; one in 6 or so keeps ~25 at full speed (2026-10-20).
 	// Compilation 64: on the averages of 2 s, measured from 1 s after a change. On single samples, a moment at 96 % right after
 	// reaching one in 3 (which ran Dragon Ball at 96-107 %) took it to one in 2 in ~10 s, and 15 pictures a second again.
+	// Forja 1.06: never with frame generation on. Frames left out make the game's frames of uneven lengths, which frame
+	// generation waits out ("the game's frames aren't of one length"), so each undid the other (God of War II, 2026-10-21);
+	// the generated frames are what the player turned on.
+	if (g_orbis_fg_wanted)
+	{
+		if (s_gs_skip_step > 0)
+			SetGsSkipAutoStep(0, elapsed, "frame generation is on", PerformanceMetrics::GetSpeed(),
+				PerformanceMetrics::GetGSThreadUsage(), 0.0);
+		s_gs_skip_slow_checks = 0;
+		return;
+	}
 	if (elapsed - s_gs_skip_last_change < 1.0)
 		return;
 	s_gs_skip_speed_sum += PerformanceMetrics::GetSpeed();
@@ -2278,7 +2319,15 @@ static void UpdateGsSkip(double elapsed)
 	s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
 	s_gs_skip_samples = 0;
 	// The GS is what holds the game back: busy, and clearly busier than the EE and the VU1 (God of War II's VU1 limit is not).
-	const bool gs_bound = gs >= 70.0 && gs >= others + 10.0;
+	// Forja 1.06: stricter. To start, 6 s of it (three averages in a row under 95 % with the GS at 80 % or more and the EE and
+	// the VU1 at 75 % or less): God of War II's Auto had come on at one in 8 after a single average (speed 56 %, GS 86 %, EE/VU1
+	// 69 %) in a game whose VU1 is the limit (97-113 % in its fights), and its effects, drawn into buffers the next frame reads,
+	// showed the frames left out. Further steps as before while the EE and the VU1 stay under 80 %, and one back when they
+	// reach 90 % with the game still slow: leaving out GS work doesn't help it then. Dragon Ball's fights (GS ~86 %, EE/VU1
+	// ~60 %, 2026-10-20) still pass.
+	const bool slow = speed < 95.0;
+	const bool gs_bound = gs >= 70.0 && gs >= others + 10.0 && others < 80.0;
+	s_gs_skip_slow_checks = s_gs_skip_step == 0 && slow && gs >= 80.0 && others <= 75.0 ? s_gs_skip_slow_checks + 1 : 0;
 	const unsigned drawn_now = s_gs_skip_step > 0 ? GS_SKIP_STEPS[s_gs_skip_step] - 1u : 1u;
 	const unsigned of_now = s_gs_skip_step > 0 ? GS_SKIP_STEPS[s_gs_skip_step] : 1u;
 	// The GS's use one step lighter, from the share of frames each step draws.
@@ -2293,25 +2342,15 @@ static void UpdateGsSkip(double elapsed)
 	// room for the GS drawing more.
 	s_gs_skip_room_checks = (s_gs_skip_step > 0 && speed >= 99.0 && lighter_gs < 85.0) ? s_gs_skip_room_checks + 1 : 0;
 	const unsigned last_step = static_cast<unsigned>(std::size(GS_SKIP_STEPS)) - 1u;
-	unsigned step = s_gs_skip_step;
-	if (speed < 95.0 && gs_bound && step < last_step)
-		step++;
+	const unsigned step = s_gs_skip_step;
+	if (step == 0 && s_gs_skip_slow_checks >= 3)
+		SetGsSkipAutoStep(1, elapsed, "the GS held the game back for 6 s", speed, gs, others);
+	else if (step > 0 && slow && gs_bound && step < last_step)
+		SetGsSkipAutoStep(step + 1, elapsed, "the GS holds the game back", speed, gs, others);
+	else if (step > 0 && slow && others >= 90.0)
+		SetGsSkipAutoStep(step - 1, elapsed, "the EE or the VU1 holds the game back, not the GS", speed, gs, others);
 	else if (s_gs_skip_room_checks >= 2 && step > 0)
-		step--;
-	else
-		return;
-	s_gs_skip_step = step;
-	g_forja_gs_skip_every.store(step > 0 ? GS_SKIP_STEPS[step] : 2u, std::memory_order_relaxed);
-	g_forja_gs_skip_active.store(step > 0, std::memory_order_relaxed);
-	if (step > 0)
-		ProbeLog("GS skip: auto one frame in %u (speed %.0f %%, GS %.0f %%, EE/VU1 %.0f %%)\n", GS_SKIP_STEPS[step], speed, gs, others);
-	else
-		ProbeLog("GS skip: auto off, every frame again (speed %.0f %%, GS %.0f %% drawing all but one in %u)\n", speed, gs, of_now);
-	s_gs_skip_last_change = elapsed;
-	s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
-	s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
-	s_gs_skip_samples = 0;
-	PublishGameMenu();
+		SetGsSkipAutoStep(step - 1, elapsed, "room to draw more", speed, gs, others);
 }
 
 static void UpdateCpuAuto(double elapsed)
@@ -3550,6 +3589,7 @@ static void* RunVM(void*)
 			s_video_auto_ceiling = VIDEO_AUTO_HIGHEST; // compilation 65: a new game's movies find their own ceiling
 			s_movie_settings = false; // compilation 65
 			g_orbis_fg_movie = false; // compilation 66
+			g_orbis_fg_held = false; // Forja 1.06
 			g_forja_iop_sleep = false; // compilation 67
 			ResetGsFilterList(); // compilation 54: a new game's list starts empty
 			LoadRules(); // compilation 55: huellas.ini, before the profile turns its rules on

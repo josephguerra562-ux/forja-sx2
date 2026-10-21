@@ -64,6 +64,7 @@ namespace orbis_fg
 		NotNominal, // the frame limiter isn't at normal speed
 		Paused,     // the safety net's pause
 		Generating,
+		Held,       // Forja 1.06: held by main.cpp (a PAL game's movie on a 59.94 Hz TV): the game's own frames
 	};
 
 	// The safety net's news, for the log.
@@ -109,6 +110,18 @@ namespace orbis_fg
 		// Forja SX2 (compilation 66): a movie playing (main.cpp, ForjaMovieSettings): the safety net makes no pauses, and one
 		// under way ends; the EE's core is a movie's limit, not the generated frames.
 		void SetMovie(bool movie) { m_movie = movie; }
+		// Forja 1.06: no generated frames while held (main.cpp, ForjaMovieSettings: a PAL game's movie on a 59.94 Hz TV). Its 25
+		// pictures a second are 2.4 refreshes each, so the in-between frame went on screen once or twice by turns, and over a
+		// movie's fast cuts it showed as jumps and warps (God of War II, 2026-10-21); NTSC movies (2.0 refreshes) stay smooth.
+		// The interpolator starts over when the hold ends.
+		void SetHeld(bool held)
+		{
+			if (held == m_held)
+				return;
+			m_held = held;
+			m_credit = 0.0;
+			m_reset = true;
+		}
 
 		// One new frame of the game: `vsyncs` since the last new frame (1 at 60 fps, 2 at 30), `already` the presents made since
 		// the last one was given here (its own game frame and any repeat presented after it), the PS2's and the display's rates
@@ -151,6 +164,12 @@ namespace orbis_fg
 				m_repeats--;
 
 			Second(now, speed);
+			if (m_held) // Forja 1.06
+			{
+				m_state = State::Held;
+				m_reset = true;
+				return d;
+			}
 			if (m_fluid)
 				return FluidFrame(d, gap, ratio, now_refreshes, already, nominal);
 
@@ -351,6 +370,7 @@ namespace orbis_fg
 		uint32_t m_steady = 0; // vk-285-135
 		bool m_fluid = false;  // Forja SX2 (compilation 40)
 		bool m_movie = false;  // Forja SX2 (compilation 66)
+		bool m_held = false;   // Forja 1.06
 		double m_credit = 0.0; // the fluid mode's refreshes not yet presented
 		double m_refreshes = 0.0;
 		uint32_t m_repeats = 1;

@@ -137,15 +137,18 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
   - **Saltar cuadros (GS)** (desde la 47, experimental): No / Auto / 1 de 2. Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
     1 de cada 2 cuadros del juego y la tele sigue mostrando el último dibujado: el juego, su música y sus movimientos van
-    a su velocidad, con la mitad de cuadros en pantalla. **Auto** lo prende solo cuando el GS es el que frena (velocidad
-    bajo 92 % unos 3 s con el GS al 90 % o más) y lo apaga cuando sobra. Solo funciona en juegos que anuncian cada cuadro
-    con los registros de pantalla (God of War II, Dragon Ball); en los demás dibuja todo. Puede dejar algún efecto a medias
-    en juegos que dibujan algo una sola vez y lo reusan: si pasa, ponlo en No. **En Dragon Ball no sirve** (la imagen sale
-    blanca y pixelada): ese juego dibuja casi todo directo en la imagen que se ve.
+    a su velocidad, con la mitad de cuadros en pantalla. **Auto** (desde la 1.06) lo prende solo cuando el GS es el que
+    frena unos 6 s (velocidad bajo 95 % con el GS al 80 % o más y el EE y el VU1 al 75 % o menos), sube de a un paso,
+    baja cuando sobra o cuando el que frena es el EE o el VU1, y **nunca con la generación de cuadros prendida**: las dos
+    se estorban. Solo funciona en juegos que anuncian cada cuadro con los registros de pantalla (God of War II, Dragon
+    Ball); en los demás dibuja todo. Puede dejar algún efecto a medias en juegos que dibujan algo en una imagen aparte y lo
+    reusan: si pasa, ponlo en No. **En God of War II, mejor en No** (su perfil ya lo trae así): el que frena es el VU1.
   - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
     cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
-    60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %,
-    que la trae de fábrica. Cuesta trabajo a la gráfica: mejor en 1x o 2x.
+    60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %
+    (su perfil trae "Sí"). Cuesta trabajo a la gráfica: mejor en 1x o 2x. En los videos, "Sí" pasa a "Fluida" (desde la 65),
+    salvo en los juegos PAL con la tele a 60 Hz (desde la 1.06): sus 25 imágenes por segundo no caen parejas y la imagen
+    generada se notaba, así que esos videos se ven con sus propias imágenes, como sin la generación de cuadros.
 - **Salida a 50 Hz para juegos PAL (desde la 37):** la PS4 manda la imagen a 60 Hz, y un juego PAL hace 50 cuadros por
   segundo. 50 en 60 no reparte parejo: 1 de cada 5 cuadros queda el doble en pantalla y se nota un tironcito 10 veces por
   segundo. Forja le pide 50 Hz a la PS4 al empezar un juego PAL, pero una PS4 Pro probada lo rechaza
@@ -192,7 +195,8 @@ Cada juego arma sus ajustes en tres capas. La de más abajo gana:
 1. **Global:** la pestaña Ajustes y `nucleos.txt`.
 2. **Perfil de fábrica:** viene dentro del PKG (`resources/perfiles/SERIAL.ini`), con lo que medimos en la consola. Hoy hay para:
    - Mega Man X Command Mission (`SLUS-20903`): clamp normal del VU1.
-   - God of War II PAL (`SCES-54206`): atajo del VU1 y Plan B.
+   - God of War II PAL (`SCES-54206`): atajo del VU1, CPU al 27 %, generación de cuadros en "Sí", Plan B y Saltar cuadros
+     en No (desde 2026-10-21).
    - Tales of the Abyss (`SLUS-21386`): CPU al 100 %, cinemáticas al 60 % y núcleos normales.
 3. **Tu perfil:** `gamesettings/SERIAL_CRC.ini`. Lo escribe el menú L3+R3, y también se puede escribir a mano.
 
