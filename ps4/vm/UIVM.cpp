@@ -23,8 +23,11 @@
 #include <initializer_list>
 #include <unistd.h>
 #include <vector>
+#include "SessionStats.h"
 
 extern void ProbeLog(const char* format, ...);
+// Forja 1.06: HostVM.cpp, what held the last 5 s back (SessionStats.h's ForjaSession::Limit), for the HUD's brackets.
+extern std::atomic<int> g_forja_limit;
 // PlatformVM.cpp: a "STAGE:" line with the PS4's free flexible memory.
 extern "C" void orbis_stage(const char* stage);
 
@@ -318,9 +321,14 @@ namespace ImGuiManager
 		const float vu_ms = PerformanceMetrics::GetVUThreadAverageTime();
 		if (ee_ms + gs_ms + vu_ms > 0.0)
 		{
-			std::snprintf(fields[3], sizeof(fields[3]), "EE %.1f ms", ee_ms);
-			std::snprintf(fields[4], sizeof(fields[4]), "GS %.1f ms", gs_ms);
-			std::snprintf(fields[5], sizeof(fields[5]), "VU1 %.1f ms", vu_ms);
+			// Forja 1.06: the one that held the last 5 s back goes in brackets (HostVM.cpp, g_forja_limit); the GPU takes the
+			// PS2's rate's place when it is the one. Language-neutral, so nothing to translate (LEEME_FORJA_SX2.md explains it).
+			const int limit = g_forja_limit.load(std::memory_order_relaxed);
+			std::snprintf(fields[3], sizeof(fields[3]), limit == ForjaSession::LimitEE ? "[EE %.1f ms]" : "EE %.1f ms", ee_ms);
+			std::snprintf(fields[4], sizeof(fields[4]), limit == ForjaSession::LimitGS ? "[GS %.1f ms]" : "GS %.1f ms", gs_ms);
+			std::snprintf(fields[5], sizeof(fields[5]), limit == ForjaSession::LimitVU1 ? "[VU1 %.1f ms]" : "VU1 %.1f ms", vu_ms);
+			if (limit == ForjaSession::LimitGPU)
+				std::snprintf(fields[2], sizeof(fields[2]), "[GPU %.1f ms]", PerformanceMetrics::GetGPUAverageTime());
 		}
 		else
 		{

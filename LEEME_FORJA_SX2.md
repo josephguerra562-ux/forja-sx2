@@ -368,6 +368,18 @@ momento (desde la 31 también el VU1 en escenas pesadas: antes se quedaba en su 
 Algunos hilos secundarios solo cambian al volver a abrir el juego, así que para medir, reabre el juego.
 
 ## 8. Medir una prueba
+**Desde la 1.06, dos ayudas para cualquiera:**
+- **El medidor en pantalla marca entre corchetes lo que frena el juego:** `[GS 18.3 ms]`, `[VU1 ...]`, `[EE ...]`, o
+  `[GPU ...]` en lugar de los Hz de la PS2. Sin corchetes, el juego va a velocidad completa. Qué hacer con cada uno:
+  - **GS:** Saltar cuadros en Auto, una huella (Extras) o apagar la generación de cuadros. Bajar la resolución casi no
+    ayuda: el GS gasta en preparar cada dibujo, no en pintarlo.
+  - **VU1 o EE:** bajar la CPU de la PS2 (Rendimiento) o el CPU automático.
+  - **GPU:** bajar la resolución.
+- **`logs/resumen.txt`:** una página con cómo fue la partida: velocidad, cuadros por segundo, qué frenó, tirones por
+  causa, cortes de sonido, memoria libre, generación de cuadros, Saltar cuadros y videos. Se reescribe cada minuto y al
+  terminar el juego, y se guarda con cada sesión en `logs/sesiones/`. Para reportar un problema, es lo primero que hay
+  que mandar.
+
 Baja `/data/ForjaSX2/logs` por FTP y arrástrala encima de `Herramientas PC\ANALIZAR LOGS (arrastra la carpeta aqui).bat`.
 Te dice los FPS, la velocidad, los tirones y qué parte frenó el juego, y crea `INFORME_RENDIMIENTO.md`.
 Para una sesión anterior, usa su carpeta de `logs/sesiones/` (trae los mismos archivos, y `samples.log` si el muestreador estaba encendido).

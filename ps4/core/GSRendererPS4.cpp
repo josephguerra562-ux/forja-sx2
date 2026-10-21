@@ -858,6 +858,9 @@ static u32 s_orbis_fg_vsyncs = 0;
 static u32 s_orbis_fg_presents = 0;
 static u32 s_orbis_fg_guard = 0; // 0 = not armed; then vsyncs since the first generated frame
 
+// Forja 1.06: ps4/vm/SessionStats.cpp, the session's summary (weak: the probes link without it).
+extern "C" void ForjaSessionHitch(double gap_ms, unsigned compiled, unsigned resets, unsigned pipelines, unsigned disc_kb)
+	__attribute__((weak));
 static void ForjaReportHitch()
 {
 	static Common::Timer::Value s_last = 0;
@@ -879,12 +882,19 @@ static void ForjaReportHitch()
 	{
 		const double gap_ms = Common::Timer::ConvertValueToMilliseconds(now - s_last);
 		// 50..2000 ms: a hitch. Longer gaps are a pause, a loading screen with no vsyncs, or the menu.
-		if (gap_ms > 50.0 && gap_ms < 2000.0 && VMManager::GetState() == VMState::Running && s_reported < 2000)
+		if (gap_ms > 50.0 && gap_ms < 2000.0 && VMManager::GetState() == VMState::Running)
 		{
-			++s_reported;
-			ProbeLog("Hitch: frame_gap_ms=%.0f ee_blocks_compiled=%u ee_rec_resets=%u pipelines_created=%u disc_kb=%llu\n",
-				gap_ms, compiles - s_compiles, resets - s_resets, g_forja_pipelines_created - s_pipelines,
-				static_cast<unsigned long long>((disc - s_disc) / 1024));
+			if (s_reported < 2000)
+			{
+				++s_reported;
+				ProbeLog("Hitch: frame_gap_ms=%.0f ee_blocks_compiled=%u ee_rec_resets=%u pipelines_created=%u disc_kb=%llu\n",
+					gap_ms, compiles - s_compiles, resets - s_resets, g_forja_pipelines_created - s_pipelines,
+					static_cast<unsigned long long>((disc - s_disc) / 1024));
+			}
+			// Forja 1.06: the session's summary counts them all, by cause (ps4/vm/SessionStats.cpp; weak: the probes have none).
+			if (ForjaSessionHitch)
+				ForjaSessionHitch(gap_ms, compiles - s_compiles, resets - s_resets, g_forja_pipelines_created - s_pipelines,
+					static_cast<unsigned>((disc - s_disc) / 1024));
 		}
 	}
 	s_last = now;

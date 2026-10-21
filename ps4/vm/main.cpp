@@ -49,6 +49,7 @@
 #include "ForjaLang.h"
 #include "ForjaSettings.h"
 #include "SessionLogs.h"
+#include "SessionStats.h"
 #include "ps4/core/WorkerProfilePS4.h"
 
 #include <orbis/Pad.h>
@@ -189,6 +190,8 @@ static int s_game_ee_rate = -1;
 // clock is measured: a chain of dependent adds takes one cycle each on Jaguar, so adds per second is the
 // clock. ~40 ms, once, on the EE's own core before the VM starts.
 static double s_console_cpu_ghz = 0.0;
+static std::string s_console_system; // Forja 1.06: the system software's version (main), for the session's summary
+static int s_console_neo = 0;        // ...and the Pro mode
 static bool s_console_fast_cpu = false;
 // Compilation 59: for VMManager.cpp (LoadCoreSettings), which keeps a slow console at 2x at most. True until measured.
 bool g_forja_console_fast_cpu = true;
@@ -2285,6 +2288,7 @@ static void UpdateGsSkip(double elapsed)
 		// Forja 1.06: and its guard's (ForjaSkipGuard.h): frames left out that showed on the TV, and the vsyncs it kept it paused.
 		const unsigned unmasked = g_forja_gs_skip_stats[4].exchange(0, std::memory_order_relaxed);
 		const unsigned paused = g_forja_gs_skip_stats[5].exchange(0, std::memory_order_relaxed);
+		ForjaSession::AddSkip(skipped, unmasked); // Forja 1.06
 		if (skipped || draws || hidden || paused)
 			ProbeLog("GS skip: %u frames of the game not drawn in the last %.0f s (%u draws into la pantalla left out; TV "
 					 "pictures %u hidden, %u shown; %u frames drawn whole by force; %u shown though left out, paused %u vsyncs)\n",
@@ -2771,6 +2775,36 @@ static void ResumeFromGameMenu(u32 raw)
 	VMManager::SetPaused(false);
 }
 
+// Forja 1.06: the session's summary, logs/resumen.txt (SessionStats.h): who, what console, what settings, and the figures.
+// Every minute of play (VMHostPoll's heartbeat) and when the game ends (RunVM).
+static unsigned s_session_beats = 0;
+static void ForjaSessionWrite(bool final)
+{
+	char header[640];
+	std::snprintf(header, sizeof(header),
+		"Forja SX2 %d.%02d (compilación %d): resumen de la partida\n"
+		"Juego: %s (%s, CRC %08X)\n"
+		"Consola: %s (CPU ~%.2f GHz, modo Pro %d), sistema %s\n",
+		FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER, VMManager::GetTitle(false).c_str(),
+		VMManager::GetDiscSerial().c_str(), VMManager::GetDiscCRC(),
+		s_console_fast_cpu ? "PS4 Pro con el Modo Boost" : "PS4 normal o Slim (o una Pro sin el Modo Boost)", s_console_cpu_ghz,
+		s_console_neo, s_console_system.empty() ? "?" : s_console_system.c_str());
+	const int rate = s_video_active ? s_video_saved_rate : static_cast<int>(EmuConfig.Speedhacks.EECycleRate);
+	char cpu_auto[48] = "apagado";
+	if (s_cpu_auto_floor != 0)
+		std::snprintf(cpu_auto, sizeof(cpu_auto), "hasta %d %%", EERatePercent(s_cpu_auto_floor));
+	const char* frame_gen = !g_orbis_fg_wanted ? "No" : s_fg_fluid_profile ? "Fluida" : "Sí";
+	const char* gs_skip = s_gs_skip_mode == 2 ? "1 de 2" : s_gs_skip_mode == 1 ? "Auto" : "No";
+	char settings[768];
+	std::snprintf(settings, sizeof(settings),
+		"Ajustes: CPU de la PS2 %d %% (CPU automático %s), resolución %ux, generación de cuadros %s%s, Saltar cuadros %s, "
+		"huellas [%s], núcleos %s, Modo video %s\n",
+		EERatePercent(rate), cpu_auto, s_game_upscale, frame_gen, g_orbis_fg_wanted && g_orbis_fg_gave_up ? " (se apagó sola: costaba velocidad)" : "",
+		gs_skip, RulesOnList().c_str(), s_profile.cores.empty() ? "global" : s_profile.cores.c_str(),
+		!s_video_mode_enabled ? "No" : s_video_auto ? "Auto" : "fijo");
+	ForjaSession::Write(header, settings, final);
+}
+
 void VMHostPoll()
 {
 	++s_host_poll_calls;
@@ -2843,6 +2877,15 @@ void VMHostPoll()
 					ProbeLog("PS4 runtime: %s", heap_line);
 			}
 			const u64 flexible_free = GetAvailablePhysicalMemory();
+			{
+				// Forja 1.06: the session's summary (SessionStats.h).
+				unsigned underruns = 0;
+				unsigned long long limited = 0;
+				PS4Audio::Totals(underruns, limited);
+				ForjaSession::AddHeartbeat(flexible_free, ps4rt_heap_high_water(), underruns, limited);
+				if (vm_state == VMState::Running && ++s_session_beats % 12 == 0)
+					ForjaSessionWrite(false);
+			}
 			ProbeLog("VM heartbeat: seconds=%.1f EE_PC=%08x IOP_PC=%08x EE_cycles=%u EE_Mcycles_per_second=%.2f "
 				 "Host_polls_per_second=%.0f Host_clock_checks_per_second=%.0f CPU_queue_drain_locks=%llu verbose=%d paused=%d menu=%d vsyncq=%d "
 				 "flexible_free_mb=%llu flexible_free_kb=%llu heap_high_water_mb=%zu\n",
@@ -3608,6 +3651,8 @@ static void* RunVM(void*)
 			g_orbis_fg_movie = false; // compilation 66
 			g_orbis_fg_held = false; // Forja 1.06
 			g_orbis_fg_gave_up = false; // Forja 1.06: a new game gets its frame generation back (OrbisFrameGenPacing.h, NewGame)
+			ForjaSession::Begin(); // Forja 1.06: and its own summary
+			s_session_beats = 0;
 			g_orbis_fg_restart.fetch_add(1, std::memory_order_relaxed);
 			g_forja_iop_sleep = false; // compilation 67
 			ResetGsFilterList(); // compilation 54: a new game's list starts empty
@@ -3796,6 +3841,7 @@ static void* RunVM(void*)
 		PS4EEHotspots::Reset(false);
 		PS4EEHotspots::ResetBlockSampling(false);
 		PS4EEEventProfile::s_sampling.gap_pending = false;
+		ForjaSessionWrite(true); // Forja 1.06: the summary's last version, before the VM goes
 		ProbeLog("STAGE: VMManager::Shutdown\n");
 		PS4Telemetry::Stage("vm-shutdown");
 		if (s_log_direct_boot) // compilation 67: a game closed before its first heartbeat
@@ -4024,6 +4070,8 @@ int main()
 		char version[sizeof(sw.VersionString) + 1] = {};
 		if (sw_result == 0)
 			std::memcpy(version, sw.VersionString, sizeof(sw.VersionString));
+		s_console_system = version; // Forja 1.06
+		s_console_neo = sceKernelIsNeoMode();
 		ProbeLog("Console: system software '%s' (0x%08x, result %#x), Pro mode %d, CPU mode 6 (ATTRIBUTE 0)\n", version,
 			sw_result == 0 ? sw.Version : 0u, static_cast<unsigned>(sw_result), sceKernelIsNeoMode());
 	}

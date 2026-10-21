@@ -3070,6 +3070,10 @@ namespace
 			len += std::snprintf(line + len, sizeof(line) - len, " vertex_trace_us=%.2f early_left_out_per_s=%.0f",
 				g_forja_trace_samples ? static_cast<double>(g_forja_trace_ticks) / g_forja_trace_samples / 1600.0 : 0.0,
 				g_forja_early_left_out / seconds);
+			// Forja 1.06: what a drawn draw costs the GS thread on average (the groups' timed draws, one in 8 counting for 8): the
+			// figure the "Dibujo rápido" project has to bring down (Dragon Ball: ~26 us, 2026-10-18).
+			len += std::snprintf(line + len, sizeof(line) - len, " us_per_draw=%.1f",
+				s_forja_gs_draws ? static_cast<double>(total) / s_forja_gs_draws / 1600.0 : 0.0);
 			for (u32 i = 0; i < rules && len > 0 && len < static_cast<int>(sizeof(line)); i++)
 			{
 				const u32 permille = static_cast<u32>(std::min<u64>(s_forja_rule_ticks[i] * 1000 / total, 1000));

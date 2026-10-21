@@ -17,6 +17,7 @@
 #include "ps4/core/EEEventProfilePS4.h"
 #include "ps4/core/GSProfilePS4.h"
 #include "ps4/core/WorkerProfilePS4.h"
+#include "SessionStats.h"
 #include <string>
 #include <mutex>
 #include <cstring>
@@ -59,6 +60,10 @@ void VMHostDrainCPUQueue()
 void VMHostPoll();
 extern void ProbeLog(const char*, ...);
 extern void ForjaLogFramePacing(); // compilation 65: ps4/core/GSRendererPS4.cpp, the frame pacing meter
+extern bool g_orbis_fg_movie;   // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp: a movie playing (main.cpp sets it)
+extern bool g_orbis_fg_engaged; // ...and frame generation generating now
+// Forja 1.06: what held the last 5 s back (SessionStats.h, ForjaSession::Limit), for UIVM.cpp's HUD.
+std::atomic<int> g_forja_limit{0};
 
 namespace BuildVersion
 {
@@ -285,16 +290,23 @@ void Host::OnPerformanceMetricsUpdated()
 	const double gs_usage = PerformanceMetrics::GetGSThreadUsage();
 	const double vu_usage = PerformanceMetrics::GetVUThreadUsage();
 	const float gpu_ms = PerformanceMetrics::GetGPUAverageTime();
+	// Forja 1.06: what held these 5 s back (ForjaSession::ClassifyLimit), and the window for the session's summary.
+	const int limit = ForjaSession::ClassifyLimit(PerformanceMetrics::GetSpeed(), ee_usage, vu_usage, gs_usage,
+		PerformanceMetrics::GetGPUUsage());
+	g_forja_limit.store(limit, std::memory_order_relaxed);
+	if (profile_interval > 0.0)
+		ForjaSession::AddWindow(PerformanceMetrics::GetSpeed(), PerformanceMetrics::GetInternalFPS(), limit, g_orbis_fg_movie,
+			g_orbis_fg_engaged);
 	ProbeLog("Performance: seconds=%.1f PS2_Hz=%.2f Speed_pct=%.2f Game_FPS=%.2f FPS_method=%s "
 		"Frame_ms=%.2f Frame_max_ms=%.2f EE_pct=%.2f EE_ms=%.2f GS_pct=%.2f GS_ms=%.2f "
-		"VU1_pct=%.2f VU1_ms=%.2f CPU_timing=%s CPU_clock=owner_sampled_100ms GPU_pct=%.2f GPU_ms=%.2f GPU_timing=%s\n",
+		"VU1_pct=%.2f VU1_ms=%.2f CPU_timing=%s CPU_clock=owner_sampled_100ms GPU_pct=%.2f GPU_ms=%.2f GPU_timing=%s Limit=%s\n",
 		Common::Timer::ConvertValueToSeconds(now - first_update), PerformanceMetrics::GetFPS(),
 		PerformanceMetrics::GetSpeed(), PerformanceMetrics::GetInternalFPS(), method,
 		PerformanceMetrics::GetAverageFrameTime(), PerformanceMetrics::GetMaximumFrameTime(),
 		ee_usage, PerformanceMetrics::GetCPUThreadAverageTime(), gs_usage, PerformanceMetrics::GetGSThreadAverageTime(),
 		vu_usage, PerformanceMetrics::GetVUThreadAverageTime(),
 		(ee_usage + gs_usage + vu_usage > 0.0) ? "samples" : "no_samples",
-		PerformanceMetrics::GetGPUUsage(), gpu_ms, gpu_ms > 0.0f ? "samples" : "no_samples");
+		PerformanceMetrics::GetGPUUsage(), gpu_ms, gpu_ms > 0.0f ? "samples" : "no_samples", ForjaSession::LimitName(limit));
 	PS4IPUProfile::LogInterval(profile_interval);
 	PS4EEEventProfile::LogInterval(profile_interval);
 	PS4GSProfile::LogInterval(profile_interval);

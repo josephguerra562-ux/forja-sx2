@@ -90,7 +90,8 @@ namespace PS4SessionLogs
 			return -1;
 		int copied = 0;
 		constexpr const char* names[] = {
-			"PCSX2-vm-boot.log", "PCSX2-vm-stdout.log", "PCSX2-vm-stderr.log", "emulog.txt"};
+			"PCSX2-vm-boot.log", "PCSX2-vm-stdout.log", "PCSX2-vm-stderr.log", "emulog.txt",
+			"resumen.txt"}; // Forja 1.06: SessionStats.h
 		for (const char* name : names)
 			copied += CopyFile((std::string(archived) + "/" + name).c_str(), (target + "/" + name).c_str()) ? 1 : 0;
 		// The sampler rewrites samples.log every 10 s while it runs; an older one is from another session.
@@ -143,7 +144,8 @@ namespace PS4SessionLogs
 		// Only these app-owned files rotate. User crash reports and other folders
 		// are untouched. Keep one previous game per platform, rather than unbounded logs.
 		constexpr const char* names[] = {
-			"PCSX2-vm-boot.log", "PCSX2-vm-stdout.log", "PCSX2-vm-stderr.log", "emulog.txt"};
+			"PCSX2-vm-boot.log", "PCSX2-vm-stdout.log", "PCSX2-vm-stderr.log", "emulog.txt",
+			"resumen.txt"}; // Forja 1.06: SessionStats.h
 		for (const char* name : names)
 		{
 			char source[160], target[160];

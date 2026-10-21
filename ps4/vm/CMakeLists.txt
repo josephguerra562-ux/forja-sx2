@@ -291,7 +291,7 @@ target_compile_definitions(ps4_audio_resampler PRIVATE OUTSIDE_SPEEX FLOATING_PO
 target_compile_options(ps4_audio_resampler PRIVATE -march=btver2 -ffunction-sections -fdata-sections -fvisibility=hidden)
 set_property(SOURCE "${PCSX2_ROOT}/ps4/core/AudioStreamPS4.cpp"
   APPEND PROPERTY COMPILE_DEFINITIONS OUTSIDE_SPEEX RANDOM_PREFIX=ps4sx2)
-add_executable(vm_boot main.cpp GameMenu.cpp CoverImage.cpp CoverDownload.cpp ReleaseCheck.cpp HostVM.cpp UIVM.cpp CPUInfoVM.cpp NetworkVM.cpp CaptureVM.cpp DiscVM.cpp PhysicalDisc.cpp DiscCopy.cpp PatchDownload.cpp PlatformVM.cpp
+add_executable(vm_boot main.cpp GameMenu.cpp CoverImage.cpp CoverDownload.cpp ReleaseCheck.cpp HostVM.cpp UIVM.cpp CPUInfoVM.cpp NetworkVM.cpp CaptureVM.cpp DiscVM.cpp PhysicalDisc.cpp DiscCopy.cpp PatchDownload.cpp SessionStats.cpp PlatformVM.cpp
   "${PCSX2_ROOT}/ps4/core/ThreadCPUMetricsPS4.cpp" "${PCSX2_ROOT}/ps4/core/IPUProfilePS4.cpp"
   "${PCSX2_ROOT}/ps4/core/GSProfilePS4.cpp"
   "${PCSX2_ROOT}/ps4/core/EEEventProfilePS4.cpp"

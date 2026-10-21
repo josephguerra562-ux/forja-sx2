@@ -472,6 +472,12 @@ namespace
 	};
 } // namespace
 
+void PS4Audio::Totals(unsigned& underruns, unsigned long long& limited) // Forja 1.06
+{
+	underruns = s_output.underruns.load(std::memory_order_relaxed);
+	limited = s_output.limited_frames.load(std::memory_order_relaxed);
+}
+
 void PS4Audio::LogStatus()
 {
 	if (!s_output.attempted.load(std::memory_order_relaxed))

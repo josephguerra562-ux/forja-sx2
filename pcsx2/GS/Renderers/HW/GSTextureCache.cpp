@@ -4985,7 +4985,12 @@ void GSTextureCache::InvalidateLocalMem(const GSOffset& off, const GSVector4i& r
 	{
 		if (GSConfig.HWDownloadMode > GSHardwareDownloadMode::EnabledForceFull)
 		{
-			DevCon.Error("TC: Skipping depth readback of %ux%u @ %u,%u", r.width(), r.height(), r.left, r.top);
+			// Forja SX2 (1.06): the first three, then one line in 1000 with the count. Dragon Ball Z Budokai Tenkaichi 4 asks ~44 times
+			// a second with the readbacks off: 21,145 of the 25,127 lines of a session's log (2026-10-21).
+			static u32 s_forja_skipped_depth = 0;
+			if (++s_forja_skipped_depth <= 3 || s_forja_skipped_depth % 1000 == 0)
+				DevCon.Error("TC: Skipping depth readback of %ux%u @ %u,%u (%u so far)", r.width(), r.height(), r.left, r.top,
+					s_forja_skipped_depth);
 			return;
 		}
 
@@ -5255,7 +5260,10 @@ void GSTextureCache::InvalidateLocalMem(const GSOffset& off, const GSVector4i& r
 
 				if (GSConfig.HWDownloadMode > GSHardwareDownloadMode::EnabledForceFull)
 				{
-					DevCon.Error("TC: Skipping depth readback of %ux%u @ %u,%u", targetr.width(), targetr.height(), targetr.left, targetr.top);
+					static u32 s_forja_skipped_depth = 0; // Forja SX2 (1.06): as in InvalidateLocalMem
+					if (++s_forja_skipped_depth <= 3 || s_forja_skipped_depth % 1000 == 0)
+						DevCon.Error("TC: Skipping depth readback of %ux%u @ %u,%u (%u so far)", targetr.width(), targetr.height(),
+							targetr.left, targetr.top, s_forja_skipped_depth);
 					continue;
 				}
 
