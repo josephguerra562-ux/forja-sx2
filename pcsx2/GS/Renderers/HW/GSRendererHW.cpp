@@ -2925,6 +2925,10 @@ struct OrbisHwDrawTimer
 // Compilation 62: g_forja_gs_skip_tracking while VSync follows what each framebuffer holds, through ForjaGsSkipNote.
 extern bool g_forja_gs_skip_drawing;
 extern bool g_forja_gs_skip_tracking;
+// Forja 1.06: pcsx2/GS/GSState.cpp, FlushPrim: the vertex trace's sampled cost and the draws left out before it.
+extern u64 g_forja_trace_ticks;
+extern u32 g_forja_trace_samples;
+extern u32 g_forja_early_left_out;
 extern bool ForjaGsSkipDraw(u32 fbp); // compilation 66: notes the draw, and whether it is left out (a frame's first ones never)
 extern bool ForjaGsSkipIsDisplayBuffer(u32 fbp);
 
@@ -3061,6 +3065,11 @@ namespace
 			// Compilation 55: each fingerprint rule's share (published for the menu) and the draws they left out.
 			const u32 rules = std::min(g_forja_gs_rule_count.load(std::memory_order_acquire), 16u);
 			len += std::snprintf(line + len, sizeof(line) - len, " rules_left_out_per_s=%.0f", s_forja_rule_left_out / seconds);
+			// Forja 1.06: what a draw's vertex trace costs (FlushPrim, before Draw), and how many draws went before it: their
+			// count times that cost is what leaving them out early saves.
+			len += std::snprintf(line + len, sizeof(line) - len, " vertex_trace_us=%.2f early_left_out_per_s=%.0f",
+				g_forja_trace_samples ? static_cast<double>(g_forja_trace_ticks) / g_forja_trace_samples / 1600.0 : 0.0,
+				g_forja_early_left_out / seconds);
 			for (u32 i = 0; i < rules && len > 0 && len < static_cast<int>(sizeof(line)); i++)
 			{
 				const u32 permille = static_cast<u32>(std::min<u64>(s_forja_rule_ticks[i] * 1000 / total, 1000));
@@ -3110,6 +3119,9 @@ namespace
 		std::memset(s_forja_rule_ticks, 0, sizeof(s_forja_rule_ticks));
 		std::memset(s_forja_rule_draws, 0, sizeof(s_forja_rule_draws));
 		s_forja_rule_left_out = 0;
+		g_forja_trace_ticks = 0; // Forja 1.06
+		g_forja_trace_samples = 0;
+		g_forja_early_left_out = 0;
 	}
 
 	void ForjaGsNote(ForjaGsGroup& group, const GIFRegTEX0& tex0, const GIFRegALPHA& alpha, bool textured, u64 desc)
@@ -3175,7 +3187,13 @@ namespace
 	};
 } // namespace
 
-void GSRendererHW::Draw()
+// Forja 1.06: the first steps of the GS filter, from FlushPrim before the draw's vertex trace (m_vt.Update and the texel
+// rounding): Saltar cuadros and the huellas' rules, as at the top of Draw until compilation 70. A draw left out here costs no
+// vertex trace either: Dragon Ball Z Budokai Tenkaichi 4 sends ~2,200 draws a frame, and "sombreado de personajes" leaves
+// out ~1,000 of them (2026-10-21). Only the draw itself reads its vertex trace (Draw and the helpers it calls), so leaving
+// it out changes nothing else; FlushPrim's bookkeeping after the draw runs as before. Draw, called only from FlushPrim for a
+// draw kept here, takes the descriptor and the rules from m_forja_*.
+bool GSRendererHW::ForjaLeaveOutEarly()
 {
 	// Forja SX2 (compilation 51): the GS filter: a group the player left out isn't drawn. Compilation 52: the last two
 	// framebuffers the TV showed (a double buffer) count as one, "la pantalla".
@@ -3191,6 +3209,7 @@ void GSRendererHW::Draw()
 	const u32 forja_fbp = static_cast<u32>(m_context->FRAME.FBP);
 	const bool forja_tex = PRIM->TME != 0;
 	const bool forja_shown = forja_fbp == s_forja_shown[0] || forja_fbp == s_forja_shown[1];
+	m_forja_shown = forja_shown;
 	// Forja SX2 (compilation 62): "Saltar cuadros" leaves out the draws of every other frame into the framebuffers the TV is
 	// showing (up to four, shown in the last 12 vsyncs: ForjaGsSkipIsDisplayBuffer), the bulk of a game's picture (Dragon
 	// Ball Z Budokai Tenkaichi 4 draws ~100 % of its fights into la pantalla). Draws into anything else (its textures,
@@ -3199,7 +3218,7 @@ void GSRendererHW::Draw()
 	if (g_forja_gs_skip_tracking && ForjaGsSkipIsDisplayBuffer(forja_fbp)) [[unlikely]]
 	{
 		if (ForjaGsSkipDraw(forja_fbp))
-			return;
+			return true;
 	}
 	// Compilation 55: the draw's fingerprint descriptor (g_forja_gs_rules has the layout) and the rules it matches.
 	const u64 forja_desc = (forja_shown ? u64{1} : u64{0}) | (forja_tex ? u64{2} : u64{0}) |
@@ -3209,7 +3228,7 @@ void GSRendererHW::Draw()
 		(PRIM->ABE ? (u64{1} << 11) : u64{0}) |
 		(static_cast<u64>(static_cast<u32>(m_context->ALPHA.A) | (static_cast<u32>(m_context->ALPHA.B) << 2) |
 			(static_cast<u32>(m_context->ALPHA.C) << 4) | (static_cast<u32>(m_context->ALPHA.D) << 6)) << 12) |
-		(static_cast<u64>(static_cast<u32>(m_vt.m_primclass) & 3u) << 20) |
+		(static_cast<u64>(static_cast<u32>(GSUtil::GetPrimClass(PRIM->PRIM)) & 3u) << 20) |
 		(m_context->ZBUF.ZMSK ? u64{0} : (u64{1} << 22)) |
 		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.TW) & 0xfu) : 0u) << 23) |
 		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.TH) & 0xfu) : 0u) << 27);
@@ -3232,9 +3251,22 @@ void GSRendererHW::Draw()
 		if (forja_rules & g_forja_gs_rules_off.load(std::memory_order_relaxed))
 		{
 			s_forja_rule_left_out++;
-			return;
+			return true;
 		}
 	}
+	m_forja_desc = forja_desc;
+	m_forja_rules = forja_rules;
+	return false;
+}
+
+void GSRendererHW::Draw()
+{
+	// Forja SX2: Saltar cuadros and the huellas' rules ran before the vertex trace (Forja 1.06, ForjaLeaveOutEarly).
+	const u32 forja_fbp = static_cast<u32>(m_context->FRAME.FBP);
+	const bool forja_tex = PRIM->TME != 0;
+	const bool forja_shown = m_forja_shown;
+	const u64 forja_desc = m_forja_desc;
+	const u32 forja_rules = m_forja_rules;
 	const u64 forja_gs_key = (u64{1} << 63) |
 		(static_cast<u64>(forja_shown ? 0x1ffu : (forja_fbp & 0x1ffu)) << 31) |
 		(static_cast<u64>(forja_tex ? (static_cast<u32>(m_context->TEX0.TBP0) & 0x3fffu) : 0x3fffu) << 17) |

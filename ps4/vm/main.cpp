@@ -297,6 +297,8 @@ extern bool g_orbis_fg_wanted; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp: fram
 extern bool g_orbis_fg_fluid;  // ...and its fluid mode (compilation 40: [Forja] FrameGen = 2)
 extern bool g_orbis_fg_movie;  // ...and a movie playing (compilation 66: no pauses for the speed, OrbisFrameGenPacing.h)
 extern bool g_orbis_fg_held;   // ...and held for a PAL game's movie on a 59.94 Hz TV (Forja 1.06, ForjaMovieSettings)
+extern bool g_orbis_fg_gave_up; // ...off for this game, where it cost speed (Forja 1.06, OrbisFrameGenPacing.h GaveUp)
+extern std::atomic<unsigned> g_orbis_fg_restart; // ...its "off for this game" starts over when this changes (Forja 1.06)
 static ForjaGameProfile::Values s_profile;
 static bool s_global_video_mode = true; // ajustes.ini
 static bool s_global_frame_gen = false; // ajustes.ini
@@ -2297,8 +2299,9 @@ static void UpdateGsSkip(double elapsed)
 	// reaching one in 3 (which ran Dragon Ball at 96-107 %) took it to one in 2 in ~10 s, and 15 pictures a second again.
 	// Forja 1.06: never with frame generation on. Frames left out make the game's frames of uneven lengths, which frame
 	// generation waits out ("the game's frames aren't of one length"), so each undid the other (God of War II, 2026-10-21);
-	// the generated frames are what the player turned on.
-	if (g_orbis_fg_wanted)
+	// the generated frames are what the player turned on. Unless they went off for this game for costing it speed
+	// (OrbisFrameGenPacing.h, GaveUp): then Auto is free to help (Dragon Ball, 2026-10-21).
+	if (g_orbis_fg_wanted && !g_orbis_fg_gave_up)
 	{
 		if (s_gs_skip_step > 0)
 			SetGsSkipAutoStep(0, elapsed, "frame generation is on", PerformanceMetrics::GetSpeed(),
@@ -2552,6 +2555,7 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			const int next = (current + delta + 3) % 3;
 			if (next != 0)
 				s_frame_gen_blocked = false; // turned back on by hand after a hang guard
+			g_orbis_fg_restart.fetch_add(1, std::memory_order_relaxed); // Forja 1.06: a change by hand undoes "off for this game"
 			SavePlayerProfile("Frame generation", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "FrameGen", next); },
 				false);
 			break;
@@ -3590,6 +3594,8 @@ static void* RunVM(void*)
 			s_movie_settings = false; // compilation 65
 			g_orbis_fg_movie = false; // compilation 66
 			g_orbis_fg_held = false; // Forja 1.06
+			g_orbis_fg_gave_up = false; // Forja 1.06: a new game gets its frame generation back (OrbisFrameGenPacing.h, NewGame)
+			g_orbis_fg_restart.fetch_add(1, std::memory_order_relaxed);
 			g_forja_iop_sleep = false; // compilation 67
 			ResetGsFilterList(); // compilation 54: a new game's list starts empty
 			LoadRules(); // compilation 55: huellas.ini, before the profile turns its rules on

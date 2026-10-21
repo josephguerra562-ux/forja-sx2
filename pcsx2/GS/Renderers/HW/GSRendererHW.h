@@ -345,6 +345,11 @@ private:
 	GSHWDrawConfig m_conf = {};
 	HWCachedCtx m_cached_ctx;
 
+	// Forja 1.06: what ForjaLeaveOutEarly found for the draw FlushPrim hands to Draw next.
+	bool m_forja_shown = false; // into "la pantalla", one of the framebuffers the TV showed last
+	u64 m_forja_desc = 0;       // the draw's fingerprint descriptor (the layout is in GSRendererHW.cpp)
+	u32 m_forja_rules = 0;      // the fingerprint rules it matches, a bit each
+
 	// software sprite renderer state
 	std::vector<GSVertexSW> m_sw_vertex_buffer;
 	std::unique_ptr<GSTextureCacheSW::Texture> m_sw_texture[7 + 1];
@@ -384,6 +389,7 @@ public:
 	void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, const GSVector4i& r, bool clut = false) override;
 	void Move() override;
 	void Draw() override;
+	bool ForjaLeaveOutEarly() override; // Forja 1.06
 
 	void PurgeTextureCache(bool sources, bool targets, bool hash_cache) override;
 	void ReadbackTextureCache() override;

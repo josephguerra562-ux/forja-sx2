@@ -4698,6 +4698,8 @@ bool g_orbis_fg_engaged = false; // vk-285-133: the pacing has room for generate
 bool g_orbis_fg_fluid = false; // Forja SX2 (compilation 40): main.cpp, [Forja] FrameGen = 2 (OrbisFrameGenPacing.h's fluid mode)
 bool g_orbis_fg_movie = false; // Forja SX2 (compilation 66): main.cpp, a movie playing (no pauses for the speed)
 bool g_orbis_fg_held = false; // Forja 1.06: main.cpp, a PAL game's movie on a 59.94 Hz TV (OrbisFrameGenPacing.h, SetHeld)
+bool g_orbis_fg_gave_up = false; // Forja 1.06: off for this game, it cost speed (OrbisFrameGenPacing.h, GaveUp; main.cpp reads it)
+std::atomic<unsigned> g_orbis_fg_restart{0}; // Forja 1.06: main.cpp, a new game or frame generation changed in the menu (NewGame)
 
 // The driver's measured refresh of the output its swapchain presents to (ps5vk's high-frame-rate output, 2026-10-08); a driver
 // without it presents at 59.94 Hz.
@@ -4718,6 +4720,7 @@ namespace
 		bool have_output = false;
 		double hz = 59.94;
 		orbis_fg::Pacing pacing; // vk-285-133
+		unsigned restart = 0;    // Forja 1.06: the g_orbis_fg_restart the pacing last started a game at
 		std::chrono::steady_clock::time_point stat_start{};
 		std::chrono::steady_clock::time_point last_state_log{};
 		int logged_state = -1;   // the pacing's state the log last described
@@ -4911,6 +4914,8 @@ namespace
 					   "shown\n",
 					s.hz, p.Refreshes());
 				break;
+			case orbis_fg::State::GaveUp: // Forja 1.06: its own line, OrbisFrameGenLogEvent's
+				break;
 		}
 		fflush(stdout);
 	}
@@ -4933,6 +4938,12 @@ namespace
 				printf("[fg] the pause is over: %.0f%% without generated frames against %.0f%% with them, so they cost speed here; "
 					   "the next pause would be %.0f s\n",
 					p.NoFgSpeed(), p.SlowSpeed(), p.NextPause());
+				break;
+			case orbis_fg::Event::GaveUp: // Forja 1.06
+				printf("[fg] off for this game: %u times the game ran faster without generated frames (the last: %.0f%% against "
+					   "%.0f%% with them); turning frame generation off and on in L3+R3 > Imagen brings it back\n",
+					orbis_fg::Pacing::kGiveUpPauses, p.NoFgSpeed(), p.SlowSpeed());
+				s.logged_state = static_cast<int>(orbis_fg::State::GaveUp);
 				break;
 			case orbis_fg::Event::ResumedSlowGame:
 				printf("[fg] the pause is over: %.0f%% without generated frames, about as with them (%.0f%%): the game is slow by "
@@ -4966,10 +4977,16 @@ u32 GSDeviceVK::OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv,
 	s.pacing.SetFluid(g_orbis_fg_fluid);
 	s.pacing.SetMovie(g_orbis_fg_movie); // compilation 66
 	s.pacing.SetHeld(g_orbis_fg_held); // Forja 1.06
+	if (const unsigned restart = g_orbis_fg_restart.load(std::memory_order_relaxed); restart != s.restart) // Forja 1.06
+	{
+		s.restart = restart;
+		s.pacing.NewGame();
+	}
 	const orbis_fg::Decision decision = s.pacing.Frame(vsyncs, already, ps2_hz, s.hz, now_s, speed, nominal);
 	OrbisFrameGenLogEvent(s, s.pacing.TakeEvent());
 	OrbisFrameGenLogState(s, now, ps2_hz);
 	g_orbis_fg_engaged = decision.engaged;
+	g_orbis_fg_gave_up = s.pacing.GaveUp(); // Forja 1.06
 
 	// A status line every 10 s, generating or not.
 	if (s.stat_start == std::chrono::steady_clock::time_point{})

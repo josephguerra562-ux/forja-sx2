@@ -65,6 +65,7 @@ namespace orbis_fg
 		Paused,     // the safety net's pause
 		Generating,
 		Held,       // Forja 1.06: held by main.cpp (a PAL game's movie on a 59.94 Hz TV): the game's own frames
+		GaveUp,     // Forja 1.06: off for this game, the game ran faster without them kGiveUpPauses times (NewGame)
 	};
 
 	// The safety net's news, for the log.
@@ -74,6 +75,7 @@ namespace orbis_fg
 		Paused,          // the game slowed while frames were generated: none for PauseSeconds()
 		ResumedCostly,   // the game was at full speed without them: the next pause is longer
 		ResumedSlowGame, // it was as slow without them: a lower floor for a minute
+		GaveUp,          // Forja 1.06: it was faster without them for the kGiveUpPauses-th time: off for this game
 	};
 
 	class Pacing
@@ -94,6 +96,7 @@ namespace orbis_fg
 		static constexpr double kCostly = 3.0;         // points of speed a pause has to win back to blame the generated frames
 		static constexpr uint32_t kSteadyStart = 7;    // vk-285-135: intervals of the window's usual length, to start generating...
 		static constexpr uint32_t kSteadyKeep = 6;     // ...and to go on
+		static constexpr uint32_t kGiveUpPauses = 3;   // Forja 1.06: pauses after which the game ran faster without them
 		static constexpr double kMaxCredit = 4.0;      // Forja SX2 (compilation 40): the fluid mode's budget, in refreshes
 		static constexpr uint32_t kMaxFluidPresents = 3;
 
@@ -122,6 +125,19 @@ namespace orbis_fg
 			m_credit = 0.0;
 			m_reset = true;
 		}
+		// Forja 1.06: where they cost speed, off for the rest of the game. Dragon Ball Z Budokai Tenkaichi 4 (2026-10-21), whose
+		// limit is the GS: 67-70 % while frames were generated against 75-84 % in the pauses, and a pause every 10-40 s that
+		// the player saw as stutter; each pause ended "slow by itself", since without them it still wasn't at full speed. So
+		// a pause counts when the game ran kCostly points faster without them, at any speed, and after kGiveUpPauses of them
+		// they stay off (movies excepted: there the EE is the limit, and they cost it nothing). NewGame: a new game, or frame
+		// generation turned off and on in the menu (main.cpp, g_orbis_fg_restart).
+		void NewGame()
+		{
+			m_costly_pauses = 0;
+			m_gave_up = false;
+			m_reset = true;
+		}
+		bool GaveUp() const { return m_gave_up; }
 
 		// One new frame of the game: `vsyncs` since the last new frame (1 at 60 fps, 2 at 30), `already` the presents made since
 		// the last one was given here (its own game frame and any repeat presented after it), the PS2's and the display's rates
@@ -167,6 +183,12 @@ namespace orbis_fg
 			if (m_held) // Forja 1.06
 			{
 				m_state = State::Held;
+				m_reset = true;
+				return d;
+			}
+			if (m_gave_up && !m_movie) // Forja 1.06
+			{
+				m_state = State::GaveUp;
 				m_reset = true;
 				return d;
 			}
@@ -323,6 +345,13 @@ namespace orbis_fg
 				m_nofg_speed = m_nofg_n > 0 ? m_nofg_sum / m_nofg_n : speed;
 				m_nofg_sum = 0.0;
 				m_nofg_n = 0;
+				if (m_nofg_speed >= m_fg_speed + kCostly && ++m_costly_pauses >= kGiveUpPauses) // Forja 1.06 (NewGame)
+				{
+					m_gave_up = true;
+					m_event = Event::GaveUp;
+					m_reset = true;
+					return;
+				}
 				if (m_nofg_speed >= kFullSpeed && m_nofg_speed >= m_fg_speed + kCostly)
 				{
 					m_next_pause = std::min(m_next_pause * 2.0, kMaxPause);
@@ -371,6 +400,8 @@ namespace orbis_fg
 		bool m_fluid = false;  // Forja SX2 (compilation 40)
 		bool m_movie = false;  // Forja SX2 (compilation 66)
 		bool m_held = false;   // Forja 1.06
+		uint32_t m_costly_pauses = 0; // Forja 1.06: pauses in this game after which it ran faster without them (NewGame)
+		bool m_gave_up = false;       // Forja 1.06
 		double m_credit = 0.0; // the fluid mode's refreshes not yet presented
 		double m_refreshes = 0.0;
 		uint32_t m_repeats = 1;

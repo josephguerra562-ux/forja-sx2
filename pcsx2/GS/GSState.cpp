@@ -2504,6 +2504,15 @@ u32 GSState::CalcMask(int exp, int max_exp)
 	return (1 << std::min(amount, 23)) - 1;
 }
 
+// Forja 1.06: the vertex trace's cost (one draw in 8 of those that run it, timed with the TSC) and the draws left out before
+// it (ForjaLeaveOutEarly); GSRendererHW.cpp writes them in its "GS groups" line and starts them over. Measured on the PS4 only.
+u64 g_forja_trace_ticks = 0;
+u32 g_forja_trace_samples = 0;
+u32 g_forja_early_left_out = 0;
+#if defined(PCSX2_PS4)
+static u32 s_forja_trace_number = 0;
+#endif
+
 void GSState::FlushPrim()
 {
 	if (m_index->tail > 0)
@@ -2581,13 +2590,23 @@ void GSState::FlushPrim()
 #endif
 		// Update scissor, it may have been modified by a previous draw
 		m_env.CTXT[PRIM->CTXT].UpdateScissor();
-		m_vt.Update(vtx_buff.buff, idx_buff.buff, vtx_buff.tail, idx_buff.tail, GSUtil::GetPrimClass(PRIM->PRIM));
+		// Skip draw if Z test is enabled, but set to fail all pixels.
+		const bool ztst_never = (m_context->TEST.ZTE && m_context->TEST.ZTST == ZTST_NEVER);
+		// Forja 1.06: a draw that Saltar cuadros or a huella leaves out goes before its vertex trace and texel rounding
+		// (GSRendererHW::ForjaLeaveOutEarly; only the draw itself reads them). A draw that fails every pixel never got to those
+		// steps of Draw, and still doesn't.
+		const bool forja_left_out = !ztst_never && ForjaLeaveOutEarly();
+#if defined(PCSX2_PS4)
+		const u64 forja_trace_t0 = !forja_left_out && (++s_forja_trace_number & 7) == 0 ? __builtin_ia32_rdtsc() : 0;
+#endif
+		if (!forja_left_out)
+			m_vt.Update(vtx_buff.buff, idx_buff.buff, vtx_buff.tail, idx_buff.tail, GSUtil::GetPrimClass(PRIM->PRIM));
 
 		// Texel coordinate rounding
 		// Helps Manhunt (lights shining through objects).
 		// Can help with some alignment issues when upscaling too, and is for both Software and Hardware renderers.
 		// Sometimes hardware doesn't get affected, likely due to the difference in how GPU's handle textures (Persona minimap).
-		if (PRIM->TME && (GSUtil::GetPrimClass(PRIM->PRIM) == GS_PRIM_CLASS::GS_SPRITE_CLASS || m_vt.m_eq.z))
+		if (!forja_left_out && PRIM->TME && (GSUtil::GetPrimClass(PRIM->PRIM) == GS_PRIM_CLASS::GS_SPRITE_CLASS || m_vt.m_eq.z))
 		{
 			if (!PRIM->FST) // STQ's
 			{
@@ -2627,8 +2646,16 @@ void GSState::FlushPrim()
 			}
 		}
 
-		// Skip draw if Z test is enabled, but set to fail all pixels.
-		const bool skip_draw = (m_context->TEST.ZTE && m_context->TEST.ZTST == ZTST_NEVER);
+#if defined(PCSX2_PS4)
+		if (forja_trace_t0)
+		{
+			g_forja_trace_ticks += __builtin_ia32_rdtsc() - forja_trace_t0;
+			g_forja_trace_samples++;
+		}
+		if (forja_left_out)
+			g_forja_early_left_out++;
+#endif
+		const bool skip_draw = ztst_never || forja_left_out;
 		m_quad_check_valid = false;
 		m_quad_check_valid_shuffle = false;
 		m_drawlist.clear();

@@ -500,6 +500,8 @@ public:
 	bool TestDrawChanged();
 	void FlushWrite();
 	virtual void Draw() = 0;
+	// Forja 1.06: true to leave the draw out before its vertex trace (GSRendererHW: Saltar cuadros and the huellas' rules).
+	virtual bool ForjaLeaveOutEarly() { return false; }
 	virtual void PurgeTextureCache(bool sources, bool targets, bool hash_cache);
 	virtual void ReadbackTextureCache();
 	virtual void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, const GSVector4i& r) {}
