@@ -838,17 +838,20 @@ tr: 自動はオフになりました：このゲームは画像を別の場所�
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: 動作しません：このゲームのPS2のCPU（%d %%）はすでにこの値以下です。もっと低い上限を選ぶか、PS2のCPUを上げてください
 
+es: Pésimo
+tr: 最悪
+
+es: Mal
+tr: 悪い
+
+es: Regular
+tr: 普通
+
+es: Bien
+tr: 良い
+
 es: Perfecto
 tr: パーフェクト
-
-es: Se puede jugar
-tr: プレイできる
-
-es: Con fallos
-tr: 不具合あり
-
-es: Va muy lento
-tr: とても遅い
 
 es: %d/%m a las %H:%M
 tr: %m月%d日 %H:%M

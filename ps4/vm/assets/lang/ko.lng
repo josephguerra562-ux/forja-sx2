@@ -838,17 +838,20 @@ tr: 자동이 꺼졌습니다: 이 게임은 이미지를 다른 곳에 그린 �
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: 작동하지 않습니다: 이 게임의 PS2 CPU(%d %%)가 이미 이 값 이하입니다. 더 낮은 한도를 고르거나 PS2 CPU를 올리세요
 
+es: Pésimo
+tr: 최악
+
+es: Mal
+tr: 나쁨
+
+es: Regular
+tr: 보통
+
+es: Bien
+tr: 좋음
+
 es: Perfecto
 tr: 완벽
-
-es: Se puede jugar
-tr: 플레이 가능
-
-es: Con fallos
-tr: 문제 있음
-
-es: Va muy lento
-tr: 매우 느림
 
 es: %d/%m a las %H:%M
 tr: %m월 %d일 %H:%M

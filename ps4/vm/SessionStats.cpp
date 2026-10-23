@@ -36,6 +36,10 @@ namespace
 		bool memory_seen = false;
 		uint32_t audio_last = 0;
 		uint64_t audio_cuts = 0, limited_last = 0, limited = 0;
+		uint64_t audio_cuts_movie = 0; // compilation 79: of audio_cuts, the ones while a movie played
+		// Compilation 79: the heap after the first minute (the game's load is in it), and the heartbeats since, for its growth.
+		uint64_t heap_at_minute = 0;
+		uint32_t heartbeats = 0;
 		bool audio_seen = false;
 		uint64_t skipped = 0, guard_pauses = 0;
 		// Compilation 77: per limit, the windows by how much cheaper the limiting part had to be (percent, 0-99).
@@ -158,17 +162,22 @@ namespace ForjaSession
 			s.hitch_other++;
 	}
 
-	void AddHeartbeat(uint64_t flexible_free, uint64_t heap_high, uint32_t audio_underruns, uint64_t audio_limited)
+	void AddHeartbeat(uint64_t flexible_free, uint64_t heap_high, uint32_t audio_underruns, uint64_t audio_limited, bool movie)
 	{
 		std::lock_guard lock(s_mutex);
 		Stats& s = s_stats;
 		s.flexible_min = s.memory_seen ? std::min(s.flexible_min, flexible_free) : flexible_free;
 		s.heap_max = std::max(s.heap_max, heap_high);
 		s.memory_seen = true;
+		if (++s.heartbeats == 12) // a heartbeat every 5 s
+			s.heap_at_minute = heap_high;
 		// The sound's counters start over when its stream opens again: what they grew by, or all of it after a restart.
 		if (s.audio_seen)
 		{
-			s.audio_cuts += audio_underruns >= s.audio_last ? audio_underruns - s.audio_last : audio_underruns;
+			const uint64_t cuts = audio_underruns >= s.audio_last ? audio_underruns - s.audio_last : audio_underruns;
+			s.audio_cuts += cuts;
+			if (movie)
+				s.audio_cuts_movie += cuts;
 			s.limited += audio_limited >= s.limited_last ? audio_limited - s.limited_last : audio_limited;
 		}
 		s.audio_last = audio_underruns;
@@ -235,12 +244,24 @@ namespace ForjaSession
 			"(sombreadores) %u, recompilador reiniciado %u, código nuevo del juego %u, disco %u, otras %u\n",
 			s.hitches, minutes > 0.0 ? s.hitches / minutes : 0.0, s.hitches_200, s.hitch_worst_ms, s.hitch_pipelines,
 			s.hitch_resets, s.hitch_compile, s.hitch_disc, s.hitch_other);
-		Append(text, "Sonido: %llu cortes de la salida (%.1f por minuto); el limitador bajó el volumen %llu veces\n",
+		Append(text, "Sonido: %llu cortes de la salida (%.1f por minuto), %llu de ellos en videos; el limitador bajó el volumen %llu veces\n",
 			static_cast<unsigned long long>(s.audio_cuts), minutes > 0.0 ? s.audio_cuts / minutes : 0.0,
-			static_cast<unsigned long long>(s.limited));
+			static_cast<unsigned long long>(s.audio_cuts_movie), static_cast<unsigned long long>(s.limited));
 		if (s.memory_seen)
-			Append(text, "Memoria: mínimo %llu MB libres de la flexible normal; el heap llegó a %llu MB\n",
+		{
+			Append(text, "Memoria: mínimo %llu MB libres de la flexible normal; el heap llegó a %llu MB",
 				static_cast<unsigned long long>(s.flexible_min >> 20), static_cast<unsigned long long>(s.heap_max >> 20));
+			// Compilation 79: how fast it grew after the first minute. Crash Nitro Kart's went from 283 to 500 MB in 5.5 minutes
+			// (~40 MB a minute) and filled the main heap; the other games stay within a few MB.
+			if (s.heartbeats > 24 && s.heap_at_minute > 0)
+			{
+				const double grown_mb = static_cast<double>(s.heap_max - std::min(s.heap_max, s.heap_at_minute)) / (1024.0 * 1024.0);
+				const double after_minutes = (s.heartbeats - 12) * 5.0 / 60.0;
+				Append(text, " (después del primer minuto creció %.1f MB por minuto%s)", grown_mb / after_minutes,
+					grown_mb / after_minutes > 10.0 ? ": demasiado, puede llenarse" : "");
+			}
+			text += "\n";
+		}
 		Append(text, "Generación de cuadros: generó en el %u %% del tiempo\n", Share(s.fg_windows, s.windows));
 		Append(text, "Saltar cuadros: %llu cuadros saltados; el guardián se pausó %llu veces\n",
 			static_cast<unsigned long long>(s.skipped), static_cast<unsigned long long>(s.guard_pauses));

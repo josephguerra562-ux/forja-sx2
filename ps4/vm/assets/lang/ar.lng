@@ -838,17 +838,20 @@ tr: توقف التلقائي: هذه اللعبة ترسم صورتها في م
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: لا يعمل: معالج PS2 لهذه اللعبة (%d %%) بالفعل عند هذا الحد أو أقل. اختر حدًا أقل أو ارفع معالج PS2
 
+es: Pésimo
+tr: سيئ جدًا
+
+es: Mal
+tr: سيئ
+
+es: Regular
+tr: متوسط
+
+es: Bien
+tr: جيد
+
 es: Perfecto
 tr: ممتاز
-
-es: Se puede jugar
-tr: يمكن اللعب
-
-es: Con fallos
-tr: به أخطاء
-
-es: Va muy lento
-tr: بطيء جدًا
 
 es: %d/%m a las %H:%M
 tr: %d/%m الساعة %H:%M

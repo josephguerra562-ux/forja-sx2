@@ -113,7 +113,7 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
       mientras juegas (antes el 1 y el 2 podían cambiarse de lugar al volver a abrir el menú). Lo quitado con la 51-53 se
       devuelve solo al pasar a la 54.
   - **Sistema:** **Reportar este juego** (desde la 77), restablecer los ajustes del juego, volver a la biblioteca y salir.
-    En "Reportar este juego" eliges con Izquierda/Derecha cómo te va (Perfecto, Se puede jugar, Con fallos, Va muy lento)
+    En "Reportar este juego" eliges con Izquierda/Derecha cómo te va (desde la 79: Pésimo, Mal, Regular, Bien, Perfecto)
     y X lo manda al canal de reportes del Discord de Forja: el resumen de la partida, los ajustes del juego, los medidores
     de los últimos minutos y el `crash.log` si hay. **Nada de tu cuenta de PSN.** Te da un número (por ejemplo `F-3A2C`)
     para mencionarlo en el Discord. Si no hay internet, el reporte queda en `/data/ForjaSX2/reportes/`. Uno por minuto.
@@ -226,6 +226,11 @@ Cada juego arma sus ajustes en tres capas. La de más abajo gana:
    - Tales of the Abyss (`SLUS-21386`): CPU al 100 %, cinemáticas al 60 % y núcleos normales.
    - Dragon Ball Z Budokai Tenkaichi 4, el mod (`SLUS-21978`): la huella "Menos efectos: sombreado de personajes",
      generación de cuadros en No y Saltar cuadros en Auto (desde la 75).
+   - **Desde la 79**, medidos el 2026-10-23: Downhill Domination (`SLES-52202`: CPU 31 %, generación de cuadros en "Sí",
+     que lo lleva de 25 a 50 en pantalla), Resident Evil 4 (`SLES-53702`: CPU 27 %, sin generación de cuadros), Need for
+     Speed Most Wanted (`SLES-53559`: CPU 31 %, sin generación de cuadros, Saltar cuadros en Auto), Shadow of the Colossus
+     (`SCES-53326`) y Guitar Hero III (`SLES-54974`): CPU 31 %, sin generación de cuadros ni Saltar cuadros. Los dos
+     últimos todavía no van completos en la PS4.
 3. **Tu perfil:** `gamesettings/SERIAL_CRC.ini`. Lo escribe el menú L3+R3, y también se puede escribir a mano.
 
 Lo que diga un perfil **también le gana a la base de datos de PCSX2 (GameIndex), clave por clave**. Ya no hace falta
@@ -407,7 +412,10 @@ Algunos hilos secundarios solo cambian al volver a abrir el juego, así que para
   causa, cortes de sonido, memoria libre, generación de cuadros, Saltar cuadros y videos. Se reescribe cada minuto y al
   terminar el juego, y se guarda con cada sesión en `logs/sesiones/`. Para reportar un problema, es lo primero que hay
   que mandar. Desde la 76 un tirón es un cuadro de más de 50 ms **y** del doble de los de alrededor: un juego que va lento
-  pero parejo ya no cuenta cada cuadro como tirón (Guitar Hero III tenía 1.250 en 7 minutos). Desde la 77 dice también
+  pero parejo ya no cuenta cada cuadro como tirón (Guitar Hero III tenía 1.250 en 7 minutos). Desde la 79 se compara con
+  lo que dura un cuadro del juego, no un refresco de la PS2: con "1 de 2" o con el GS atrasado (Shadow of the Colossus) ya
+  no cuenta de más. También dice cuántos cortes de sonido fueron en videos y **cuánto crece el heap por minuto** después del
+  primero (si pasa de 10 MB por minuto, avisa: es una fuga, como la de Crash Nitro Kart). Desde la 77 dice también
   **cuánto más barato tenía que ser lo que frenó** para ir al 100 % (Shadow of the Colossus: "GS 41 %"): cuanto más alto,
   más lejos está ese juego de ir completo en la PS4.
 - **Reportar este juego** (L3+R3 > Sistema, desde la 77): manda todo eso al Discord de Forja sin FTP.

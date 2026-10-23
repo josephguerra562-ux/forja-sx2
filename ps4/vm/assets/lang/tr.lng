@@ -838,17 +838,20 @@ tr: Otomatik kendini kapattı: bu oyun görüntüsünü başka bir yerde çizip 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: Etkisiz: bu oyunun PS2 CPU'su (%d %%) zaten bu kadar ya da daha düşük. Daha düşük bir sınır seçin ya da PS2 CPU'sunu yükseltin
 
+es: Pésimo
+tr: Berbat
+
+es: Mal
+tr: Kötü
+
+es: Regular
+tr: İdare eder
+
+es: Bien
+tr: İyi
+
 es: Perfecto
 tr: Mükemmel
-
-es: Se puede jugar
-tr: Oynanabilir
-
-es: Con fallos
-tr: Sorunlu
-
-es: Va muy lento
-tr: Çok yavaş
 
 es: %d/%m a las %H:%M
 tr: %d.%m, %H:%M

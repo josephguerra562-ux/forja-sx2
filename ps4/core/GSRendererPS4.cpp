@@ -861,14 +861,13 @@ static u32 s_orbis_fg_guard = 0; // 0 = not armed; then vsyncs since the first g
 // Forja 1.06: ps4/vm/SessionStats.cpp, the session's summary (weak: the probes link without it).
 extern "C" void ForjaSessionHitch(double gap_ms, unsigned compiled, unsigned resets, unsigned pipelines, unsigned disc_kb)
 	__attribute__((weak));
-static void ForjaReportHitch()
+static void ForjaReportHitch(bool new_frame)
 {
 	static Common::Timer::Value s_last = 0;
 	static u32 s_compiles = 0, s_resets = 0, s_pipelines = 0;
 	static u64 s_disc = 0;
 	static unsigned s_reported = 0;
 	static u32 s_resumes = 0;
-	g_forja_gs_vsyncs.fetch_add(1, std::memory_order_relaxed);
 	if (const u32 resumes = g_forja_resumes.load(std::memory_order_relaxed); resumes != s_resumes)
 	{
 		s_resumes = resumes;
@@ -884,21 +883,32 @@ static void ForjaReportHitch()
 		// Compilation 76: and over twice the usual gap of the last 16 vsyncs. A game running slowly but evenly has every gap over
 		// 50 ms (Guitar Hero III at 40 %: 52 ms each), and each one counted: 1,250 "hitches" in 7 minutes, 3,305 "other" ones in
 		// Need for Speed Most Wanted (2026-10-23). A hitch is a gap that stands out.
-		static double s_gaps[16] = {};
-		static unsigned s_gap_count = 0, s_gap_next = 0;
+		// Compilation 79: against the usual length of the game's own frames (the median of the last 16 between two new frames), not
+		// of the vsyncs. When the GS is behind, the vsyncs come in bunches, one long and then a few short, and against their median
+		// the long one stood out though the picture changed evenly: the 77 still counted 574 "other" hitches in a minute of Shadow
+		// of the Colossus (each frame 4-5 vsyncs, ~90 ms) and 594 in Dragon Ball with "1 de 2" (a frame drawn, the next one left
+		// out). A still screen has short vsyncs and no new frames: no hitch either.
+		static double s_frame_gaps[16] = {};
+		static unsigned s_frame_count = 0, s_frame_next = 0;
+		static Common::Timer::Value s_frame_last = 0;
 		double usual = 0.0;
-		if (s_gap_count >= 8)
+		if (s_frame_count >= 8)
 		{
 			double sorted[16];
-			std::copy(s_gaps, s_gaps + s_gap_count, sorted);
-			std::nth_element(sorted, sorted + s_gap_count / 2, sorted + s_gap_count);
-			usual = sorted[s_gap_count / 2];
+			std::copy(s_frame_gaps, s_frame_gaps + s_frame_count, sorted);
+			std::nth_element(sorted, sorted + s_frame_count / 2, sorted + s_frame_count);
+			usual = sorted[s_frame_count / 2];
 		}
-		if (gap_ms < 2000.0)
+		if (new_frame)
 		{
-			s_gaps[s_gap_next] = gap_ms;
-			s_gap_next = (s_gap_next + 1) % 16;
-			s_gap_count = std::min(s_gap_count + 1, 16u);
+			const double frame_ms = s_frame_last ? Common::Timer::ConvertValueToMilliseconds(now - s_frame_last) : 0.0;
+			if (frame_ms > 0.0 && frame_ms < 2000.0)
+			{
+				s_frame_gaps[s_frame_next] = frame_ms;
+				s_frame_next = (s_frame_next + 1) % 16;
+				s_frame_count = std::min(s_frame_count + 1, 16u);
+			}
+			s_frame_last = now;
 		}
 		// 50..2000 ms: a hitch. Longer gaps are a pause, a loading screen with no vsyncs, or the menu.
 		if (gap_ms > 50.0 && gap_ms < 2000.0 && gap_ms > 2.0 * usual && VMManager::GetState() == VMState::Running)
@@ -928,7 +938,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 	// The PS4 POC starts with the Null renderer and has no presentation device yet.
 	if (!g_gs_device)
 		return;
-	ForjaReportHitch();
+	g_forja_gs_vsyncs.fetch_add(1, std::memory_order_relaxed); // the watchdog's (main.cpp)
 	// Forja SX2: frame generation's hang guard (main.cpp reads it). Armed at the first generated frame, cleared 10 s later.
 	if (s_orbis_fg_guard > 0 && ++s_orbis_fg_guard == 600)
 		unlink("/data/ForjaSX2/fg-en-prueba");
@@ -979,8 +989,11 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 			s_forja_pace[std::min(s_forja_pace_run, 6u) - 1u]++;
 			s_forja_pace_run = 0;
 		}
+		ForjaReportHitch(pace_new_frame); // compilation 79: it measures against the game's frames
 	}
 
+#else
+	ForjaReportHitch(true);
 #endif
 	bool skip_frame = false;
 #if !defined(PCSX2_GS_RENDERER_PROBE)

@@ -837,16 +837,19 @@ tr:
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: 
 
+es: Pésimo
+tr: 
+
+es: Mal
+tr: 
+
+es: Regular
+tr: 
+
+es: Bien
+tr: 
+
 es: Perfecto
-tr: 
-
-es: Se puede jugar
-tr: 
-
-es: Con fallos
-tr: 
-
-es: Va muy lento
 tr: 
 
 es: %d/%m a las %H:%M

@@ -1802,9 +1802,11 @@ static void PublishAutoNotes()
 }
 
 // Compilation 77: "Reportar este juego" (SendReport, PublishReportText): the player's word for it, and when the last one went.
-static constexpr const char* REPORT_RATINGS[] = {N_("Perfecto"), N_("Se puede jugar"), N_("Con fallos"), N_("Va muy lento")};
+// Compilation 79 (Joseph, 2026-10-23: "también tienen que poner mal, bien, bueno ... perfecto"): five words, worst to best, starting
+// in the middle so the word is the player's, not ours.
+static constexpr const char* REPORT_RATINGS[] = {N_("Pésimo"), N_("Mal"), N_("Regular"), N_("Bien"), N_("Perfecto")};
 static constexpr int REPORT_RATING_COUNT = static_cast<int>(std::size(REPORT_RATINGS));
-static int s_report_rating = 0;
+static int s_report_rating = 2; // "Regular"
 static double s_report_last_sent = -1000.0;
 static bool s_report_too_soon = false;
 static ForjaReport::Status s_report_shown = ForjaReport::Status::Idle;
@@ -3009,11 +3011,12 @@ static std::string ReportLogLines(const char* path, size_t read_bytes, size_t ma
 	return text;
 }
 
-// A whole small file (a crash or hang log), with its date.
+// A whole small file (a crash or hang log), with its date. Compilation 79: only one from the last two hours (this session, or the one
+// that just closed): the 77's first report carried a crash.log from three days before, of another game.
 static std::string ReportSmallFile(const char* path, size_t max_bytes)
 {
 	struct stat st{};
-	if (stat(path, &st) != 0 || st.st_size <= 0)
+	if (stat(path, &st) != 0 || st.st_size <= 0 || std::time(nullptr) - st.st_mtime > 2 * 3600)
 		return {};
 	std::FILE* file = std::fopen(path, "rb");
 	if (!file)
@@ -3190,7 +3193,7 @@ void VMHostPoll()
 				unsigned underruns = 0;
 				unsigned long long limited = 0;
 				PS4Audio::Totals(underruns, limited);
-				ForjaSession::AddHeartbeat(flexible_free, ps4rt_heap_high_water(), underruns, limited);
+				ForjaSession::AddHeartbeat(flexible_free, ps4rt_heap_high_water(), underruns, limited, s_video_active);
 				if (vm_state == VMState::Running && ++s_session_beats % 12 == 0)
 					ForjaSessionWrite(false);
 			}
@@ -3611,7 +3614,9 @@ void VMHostPoll()
 				s_game_menu_selection = first + (row - first + count - 1) % count;
 			else if (navigation == ORBIS_PAD_BUTTON_DOWN)
 				s_game_menu_selection = first + (row - first + 1) % count;
-			else if (row == PS4GameMenu::ROW_CHANGE_DISC) // compilation 44
+			// Compilation 79: and the report's word, the one row of Sistema with values (in the 77 Left/Right did nothing there, so
+			// every report said "Perfecto").
+			else if (row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT) // compilation 44
 				ChangeGameMenuRow(row, navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1);
 			else if (row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE)
 			{

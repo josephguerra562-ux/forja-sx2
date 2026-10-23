@@ -838,17 +838,20 @@ tr: Auto si è spento: questo gioco disegna l'immagine a parte e poi la copia su
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: Non agisce: la CPU della PS2 di questo gioco (%d %%) è già uguale o più bassa. Scegli un limite più basso o alza la CPU della PS2
 
+es: Pésimo
+tr: Pessimo
+
+es: Mal
+tr: Male
+
+es: Regular
+tr: Così così
+
+es: Bien
+tr: Bene
+
 es: Perfecto
 tr: Perfetto
-
-es: Se puede jugar
-tr: Giocabile
-
-es: Con fallos
-tr: Con problemi
-
-es: Va muy lento
-tr: Molto lento
 
 es: %d/%m a las %H:%M
 tr: %d/%m alle %H:%M

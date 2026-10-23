@@ -838,17 +838,20 @@ tr: 自动已关闭：这个游戏先在别处绘制画面，再复制到屏幕�
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: 不起作用：此游戏的 PS2 CPU（%d %%）已经等于或低于此限制。请选择更低的限制，或提高 PS2 CPU
 
+es: Pésimo
+tr: 很差
+
+es: Mal
+tr: 差
+
+es: Regular
+tr: 一般
+
+es: Bien
+tr: 好
+
 es: Perfecto
 tr: 完美
-
-es: Se puede jugar
-tr: 可以玩
-
-es: Con fallos
-tr: 有问题
-
-es: Va muy lento
-tr: 非常慢
 
 es: %d/%m a las %H:%M
 tr: %m月%d日 %H:%M
