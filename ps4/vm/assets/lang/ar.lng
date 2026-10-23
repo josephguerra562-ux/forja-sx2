@@ -385,11 +385,11 @@ tr: 1 من 2
 es: Saltar cuadros (GS):  < %s >
 tr: تخطي الإطارات (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
-tr: إذا لم يلحق GS يرسم إطارًا من كل 2: تسير اللعبة بسرعتها  ·  الآن: %s  ·  %s
-
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: دائمًا إطار من كل 2، حتى عندما لا يحتاج GS لذلك: الأفضل تلقائي  ·  الآن: %s  ·  %s
+
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: إذا لم يلحق GS يرسم إطارًا من كل 2: تسير اللعبة بسرعتها  ·  الآن: %s  ·  %s
 
 es: saltando
 tr: يتخطى
@@ -831,6 +831,12 @@ tr:   (مُدخل)
 
 es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
 tr: X: يبدّل إلى القرص المختار، كفتح درج PS2 وإدخال قرص آخر. افعل ذلك عندما تطلبه اللعبة
+
+es: Auto se apagó: este juego dibuja su imagen aparte y después la copia a la pantalla, así que no hay cuadros que saltar  ·  ahora: dibuja todos
+tr: توقف التلقائي: هذه اللعبة ترسم صورتها في مكان آخر ثم تنسخها إلى الشاشة، فلا توجد إطارات لتخطيها  ·  الآن: يرسم الكل
+
+es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
+tr: لا يعمل: معالج PS2 لهذه اللعبة (%d %%) بالفعل عند هذا الحد أو أقل. اختر حدًا أقل أو ارفع معالج PS2
 
 es: %d/%m a las %H:%M
 tr: %d/%m الساعة %H:%M

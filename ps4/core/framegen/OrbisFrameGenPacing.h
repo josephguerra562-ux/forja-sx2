@@ -96,7 +96,7 @@ namespace orbis_fg
 		static constexpr double kCostly = 3.0;         // points of speed a pause has to win back to blame the generated frames
 		static constexpr uint32_t kSteadyStart = 7;    // vk-285-135: intervals of the window's usual length, to start generating...
 		static constexpr uint32_t kSteadyKeep = 6;     // ...and to go on
-		static constexpr uint32_t kGiveUpPauses = 3;   // Forja 1.06: pauses after which the game ran faster without them
+		static constexpr uint32_t kGiveUpPauses = 2;   // Forja 1.06: pauses after which the game ran faster without them (3 until 75)
 		static constexpr double kMaxCredit = 4.0;      // Forja SX2 (compilation 40): the fluid mode's budget, in refreshes
 		static constexpr uint32_t kMaxFluidPresents = 3;
 
@@ -131,6 +131,9 @@ namespace orbis_fg
 		// a pause counts when the game ran kCostly points faster without them, at any speed, and after kGiveUpPauses of them
 		// they stay off (movies excepted: there the EE is the limit, and they cost it nothing). NewGame: a new game, or frame
 		// generation turned off and on in the menu (main.cpp, g_orbis_fg_restart).
+		// Compilation 76: two such pauses, not three. Each takes 10 s plus the minute of the lower floor after it, and on
+		// 2026-10-23 the generated frames cost Need for Speed Most Wanted 13 points (80 % against 93 %) and Shadow of the Colossus
+		// 5-10 through all three, while they kept Saltar cuadros waiting; a second pause that wins kCostly points back is proof.
 		void NewGame()
 		{
 			m_costly_pauses = 0;

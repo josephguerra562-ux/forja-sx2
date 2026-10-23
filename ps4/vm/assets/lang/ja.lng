@@ -385,11 +385,11 @@ tr: 2回に1回
 es: Saltar cuadros (GS):  < %s >
 tr: フレームスキップ（GS）：  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
-tr: GSが追いつかないとき2フレームに1回だけ描画し、ゲームは本来の速度で進みます  ·  現在：%s  ·  %s
-
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: GSに余裕があっても常に2フレームに1回だけ描画します：自動のほうがおすすめ  ·  現在：%s  ·  %s
+
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: GSが追いつかないとき2フレームに1回だけ描画し、ゲームは本来の速度で進みます  ·  現在：%s  ·  %s
 
 es: saltando
 tr: スキップ中
@@ -831,6 +831,12 @@ tr:   （使用中）
 
 es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
 tr: X：選んだディスクに替えます（PS2のトレイを開けて入れ替えるのと同じ）。ゲームに求められたときに
+
+es: Auto se apagó: este juego dibuja su imagen aparte y después la copia a la pantalla, así que no hay cuadros que saltar  ·  ahora: dibuja todos
+tr: 自動はオフになりました：このゲームは画像を別の場所に描いてから画面にコピーするので、飛ばせるフレームがありません  ·  現在：すべて描画
+
+es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
+tr: 動作しません：このゲームのPS2のCPU（%d %%）はすでにこの値以下です。もっと低い上限を選ぶか、PS2のCPUを上げてください
 
 es: %d/%m a las %H:%M
 tr: %m月%d日 %H:%M

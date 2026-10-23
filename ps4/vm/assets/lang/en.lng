@@ -385,11 +385,11 @@ tr: 1 of 2
 es: Saltar cuadros (GS):  < %s >
 tr: Frame skip (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
-tr: If the GS can't keep up, it draws 1 frame in 2: the game runs at its speed  ·  now: %s  ·  %s
-
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Always 1 frame in 2, even when the GS doesn't need it: Auto is better  ·  now: %s  ·  %s
+
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: If the GS can't keep up, it draws 1 frame in 2: the game runs at its speed  ·  now: %s  ·  %s
 
 es: saltando
 tr: skipping
@@ -831,6 +831,12 @@ tr:   (inserted)
 
 es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
 tr: X: switches to the chosen disc, like opening the PS2 tray and putting in another. Do it when the game asks
+
+es: Auto se apagó: este juego dibuja su imagen aparte y después la copia a la pantalla, así que no hay cuadros que saltar  ·  ahora: dibuja todos
+tr: Auto turned itself off: this game draws its picture elsewhere and then copies it to the screen, so there are no frames to skip  ·  now: drawing all
+
+es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
+tr: Not acting: this game's PS2 CPU (%d %%) is already this low or lower. Pick a lower limit or raise the PS2 CPU
 
 es: %d/%m a las %H:%M
 tr: %d/%m at %H:%M

@@ -236,6 +236,7 @@ enum class VideoProbe
 {
 	Measure, // the rate in place
 	Up,      // one step up, kept only if the movie still plays in real time
+	Down,    // compilation 76: one step down, kept only if the movie keeps its pictures and runs faster
 };
 static bool s_video_auto = false;
 static int s_video_auto_rate = VIDEO_EE_RATE; // where the game's next movie starts
@@ -248,6 +249,12 @@ static int s_video_auto_ceiling = 0;
 // windows in a row under the speed floor.
 static double s_video_probe_pictures_before = 0.0;
 static unsigned s_video_slow_windows = 0;
+// Compilation 76: the other way. A movie with pictures to spare (30 % more than one every two PS2 vsyncs) that runs under 95 % tries
+// a step down, and keeps it if it still has all its pictures and runs 4 points faster; otherwise that rate is the game's floor.
+// Resident Evil 4 (2026-10-23): its movies showed 50 pictures a PS2 second, twice the 25 they need, at 85 % speed with the EE
+// over its time, and the old Auto held -3 since it only went down under 78 %. The speed before the step, to compare.
+static int s_video_auto_floor = -5; // VIDEO_AUTO_LOWEST
+static double s_video_probe_speed_before = 0.0;
 // Compilation 65: the video meter. The IPU's sampled profile (PS4IPUProfile: one worker call in 128, one register access in
 // 1024; the GS thread writes "IPU profile" and "Video meter:" lines every 5 s) is on while a movie plays, to see how much of
 // the EE thread the decoding takes; vm-profile-ipu keeps it on all the time and vm-no-ipu-profile off.
@@ -293,6 +300,9 @@ static constexpr double VIDEO_DECODES_PER_SECOND = 2000.0; // a movie: tens of t
 // gives it all its pictures, down to 78 % speed: the time stretching keeps its sound whole at that speed, a little slower.
 static constexpr double VIDEO_SPEED_FLOOR = 78.0;
 static constexpr double VIDEO_SHORT_OF_PICTURES = 0.95;
+static constexpr double VIDEO_SPARE_PICTURES = 1.3; // compilation 76: s_video_auto_floor
+static constexpr double VIDEO_SPARE_SLOW = 95.0;
+static constexpr double VIDEO_DOWN_GAIN = 4.0;
 extern double GetVerticalFrequency(); // pcsx2/GS.h (Counters.cpp): the PS2's refresh now
 // Forja SX2: the running game's profile (pcsx2/ForjaGameProfile.h): its factory profile under the player's own. Read before
 // the VM boots, from the library's scan of the image, and again if PCSX2 identifies another disc.
@@ -335,6 +345,19 @@ static double s_gs_skip_last_change = -100.0;
 static double s_gs_skip_last_report = 0.0;
 static unsigned s_gs_skip_slow_checks = 0;
 static unsigned s_gs_skip_room_checks = 0;
+// Compilation 76: Auto checks that it really leaves frames out. A game that draws its picture into a buffer of its own and copies
+// it to la pantalla at the end leaves the skip nothing to leave out: Shadow of the Colossus (its costliest draws go to 01c00)
+// went up to one in 2 with no frame skipped and no change in speed (2026-10-23), as God of War II had. After three of the 5 s
+// reports with Auto on, outside a movie, with nothing left out and no pause of the guard, it draws every frame again and stays
+// so for this game (until another game, or the row changed by hand).
+static double s_gs_skip_on_since = -1.0; // when Auto left step 0 (-1: at step 0)
+static unsigned s_gs_skip_reports_on = 0; // the reports since then, outside movies
+static bool s_gs_skip_left_any = false;   // anything left out (or the guard paused) since then
+static bool s_gs_skip_useless = false;    // this game leaves the skip nothing to leave out
+// Compilation 76: when frame generation last generated a frame (g_orbis_fg_engaged), to tell "on and generating" from "on and
+// idle": a 50 fps game on a 59.94 Hz TV has no room for generated frames ("Sí"), and in a pause the game runs without them.
+extern bool g_orbis_fg_engaged; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp, written by the GS thread at each frame
+static double s_fg_engaged_seen = -100.0;
 
 // Compilation 65: what a movie gets besides its EE rate, the game's own settings back when it ends. Both use other parts of the
 // PS4 than the EE's core, the one a movie fills:
@@ -1737,8 +1760,49 @@ static void LogGameSettings(const char* why)
 		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str());
 }
 
+// Compilation 76: two rows say so when their Auto can do nothing in this game, in place of their usual line (GameMenu.cpp's
+// own text comes back when it can again). Saltar cuadros: UpdateGsSkip found nothing to leave out. CPU automático: it only
+// lowers the PS2 CPU down to its floor, and the game's own is already there or lower (on 2026-10-23 it did nothing in any of
+// five games, all at 27-31 % with floors of 27 % or 50 %, while the row said "Hasta 50 %").
+static int EERatePercent(int rate);
+
+static bool CpuAutoIdle()
+{
+	return s_cpu_auto_floor != 0 && s_cpu_auto_steps == 0 && s_game_ee_rate <= s_cpu_auto_floor;
+}
+
+static void PublishAutoNotes()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	if (s_gs_skip_mode == 1 && s_gs_skip_useless)
+	{
+		std::snprintf(label, sizeof(label), TF("Saltar cuadros (GS):  < %s >"), T("Auto"));
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_GS_SKIP, label,
+			T("Auto se apagó: este juego dibuja su imagen aparte y después la copia a la pantalla, así que no hay cuadros que saltar  ·  ahora: dibuja todos"));
+	}
+	else
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_GS_SKIP, "", "");
+	if (CpuAutoIdle())
+	{
+		// GameMenu.cpp's names for the row's values.
+		static constexpr const char* names[] = {N_("No"), N_("Hasta 75 %"), N_("Hasta 60 %"), N_("Hasta 50 %"), N_("Hasta 36 % (exp.)"),
+			N_("Hasta 31 % (exp.)"), N_("Hasta 27 % (exp.)")};
+		std::snprintf(label, sizeof(label), TF("CPU automático:  < %s >"), T(names[std::clamp(-s_cpu_auto_floor, 0, 6)]));
+		char description[512];
+		std::snprintf(description, sizeof(description),
+			TF("No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2"),
+			EERatePercent(s_game_ee_rate));
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_CPU_AUTO, label, description);
+	}
+	else
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_CPU_AUTO, "", "");
+}
+
 static void PublishGameMenu()
 {
+	PublishAutoNotes(); // compilation 76
 	PS4GameMenu::InGameMenuState state;
 	state.visible = s_game_menu_open;
 	state.selected = s_game_menu_selection;
@@ -1830,6 +1894,7 @@ static const char* ProfileOriginName(ForjaGameProfile::Origin origin)
 // reads them itself, as the game settings layer (VMManager::UpdateGameSettingsLayer).
 static void ApplyGameProfile(ForjaGameProfile::Values profile)
 {
+	const bool new_game = profile.serial != s_profile.serial || profile.crc != s_profile.crc; // compilation 76
 	s_profile = std::move(profile);
 	const int previous_video_ee_rate = s_video_ee_rate;
 	s_video_mode_enabled = s_profile.video_mode >= 0 ? s_profile.video_mode != 0 : s_global_video_mode;
@@ -1844,6 +1909,7 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		{
 			s_video_auto_rate = std::clamp(s_video_ee_rate, VIDEO_AUTO_LOWEST, VIDEO_AUTO_HIGHEST);
 			s_video_auto_ceiling = VIDEO_AUTO_HIGHEST;
+			s_video_auto_floor = VIDEO_AUTO_LOWEST; // compilation 76
 		}
 		s_video_auto = video_auto;
 	}
@@ -1856,8 +1922,12 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	// Compilation 47: "Saltar cuadros". Always on at 2; auto (1) starts off and UpdateGsSkip turns it on when the GS holds the game back.
 	{
 		const int gs_skip = s_profile.gs_skip >= 0 ? s_profile.gs_skip : 0;
-		if (gs_skip != s_gs_skip_mode)
+		// Compilation 76: and for another game, which starts drawing every frame; "no use in this game" (UpdateGsSkip) lasts until
+		// then, or until the row is changed by hand.
+		if (gs_skip != s_gs_skip_mode || new_game)
 		{
+			s_gs_skip_useless = false;
+			s_gs_skip_on_since = -1.0;
 			s_gs_skip_mode = gs_skip;
 			s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
 			s_gs_skip_step = 0; // compilation 63: Auto starts drawing every frame; "1 de 2" is one frame in two
@@ -2117,8 +2187,20 @@ static void UpdateVideoMode(double elapsed)
 			// this game: the movie had them all (one of 24 or 15 a second) or the EE was not what held it. Out of a step up, a
 			// rate goes down only after two windows in a row under the floor, so one heavy scene does not undo it.
 			const bool probing_up = s_video_probe == VideoProbe::Up;
+			VideoProbe probe = VideoProbe::Measure;
 			s_video_slow_windows = speed < VIDEO_SPEED_FLOOR ? s_video_slow_windows + 1 : 0;
-			if (speed < VIDEO_SPEED_FLOOR && rate > VIDEO_AUTO_LOWEST && (probing_up || s_video_slow_windows >= 2))
+			if (s_video_probe == VideoProbe::Down) // compilation 76
+			{
+				if (short_of_pictures || speed < s_video_probe_speed_before + VIDEO_DOWN_GAIN)
+				{
+					next = rate + 1;
+					s_video_auto_floor = std::max(s_video_auto_floor, rate + 1);
+					what = short_of_pictures ? "the step down lost pictures, back" : "the step down gave no speed, back";
+				}
+				else
+					what = "the step down kept: all its pictures, and faster";
+			}
+			else if (speed < VIDEO_SPEED_FLOOR && rate > VIDEO_AUTO_LOWEST && (probing_up || s_video_slow_windows >= 2))
 			{
 				next = probing_up ? rate - 1 : std::max(rate - (speed < 70.0 ? 2 : 1), VIDEO_AUTO_LOWEST);
 				s_video_auto_ceiling = std::min(s_video_auto_ceiling, rate - 1);
@@ -2135,11 +2217,20 @@ static void UpdateVideoMode(double elapsed)
 			{
 				next = rate + 1;
 				s_video_probe_pictures_before = pictures;
+				probe = VideoProbe::Up;
 				what = "short of pictures (and of sound), a step up";
 			}
-			s_video_probe = next > rate ? VideoProbe::Up : VideoProbe::Measure;
-			ProbeLog("Video mode: auto at %d: %.1f pictures/s (%.1f a PS2 second, of %.0f), speed %.0f %% (ceiling %d): %s -> %d\n",
-				rate, fps, pictures, full, speed, s_video_auto_ceiling, what, next);
+			else if (!probing_up && pictures >= full * VIDEO_SPARE_PICTURES && speed < VIDEO_SPARE_SLOW &&
+					 rate > std::max(s_video_auto_floor, VIDEO_AUTO_LOWEST)) // compilation 76
+			{
+				next = rate - 1;
+				s_video_probe_speed_before = speed;
+				probe = VideoProbe::Down;
+				what = "pictures to spare and under full speed, a step down";
+			}
+			s_video_probe = probe;
+			ProbeLog("Video mode: auto at %d: %.1f pictures/s (%.1f a PS2 second, of %.0f), speed %.0f %% (ceiling %d, floor %d): %s -> %d\n",
+				rate, fps, pictures, full, speed, s_video_auto_ceiling, std::max(s_video_auto_floor, VIDEO_AUTO_LOWEST), what, next);
 			s_video_auto_rate = next;
 			s_video_probe_since = elapsed;
 			s_video_probe_fps_sum = 0.0;
@@ -2256,6 +2347,15 @@ static void SetCpuAutoRate(int rate, const char* why, double speed, double busie
 static void SetGsSkipAutoStep(unsigned step, double elapsed, const char* why, double speed, double gs, double others)
 {
 	const unsigned of_before = s_gs_skip_step > 0 ? GS_SKIP_STEPS[s_gs_skip_step] : 1u;
+	// Compilation 76: from the step 0 on, whether it leaves anything out (UpdateGsSkip's reports).
+	if (s_gs_skip_step == 0 && step > 0)
+	{
+		s_gs_skip_on_since = elapsed;
+		s_gs_skip_reports_on = 0;
+		s_gs_skip_left_any = false;
+	}
+	else if (step == 0)
+		s_gs_skip_on_since = -1.0;
 	s_gs_skip_step = step;
 	g_forja_gs_skip_every.store(step > 0 ? GS_SKIP_STEPS[step] : 2u, std::memory_order_relaxed);
 	g_forja_gs_skip_active.store(step > 0, std::memory_order_relaxed);
@@ -2294,10 +2394,27 @@ static void UpdateGsSkip(double elapsed)
 					 "pictures %u hidden, %u shown; %u frames drawn whole by force; %u shown though left out, paused %u vsyncs)\n",
 				skipped, elapsed - s_gs_skip_last_report, draws, hidden, shown, forced, unmasked, paused);
 		s_gs_skip_last_report = elapsed;
+		// Compilation 76: Auto on, a report outside a movie (Saltar cuadros is paused in one) while the game draws and the GS
+		// works (a loading screen, black or still, has nothing to leave out either).
+		if (s_gs_skip_on_since >= 0.0 && !s_video_active && PerformanceMetrics::GetInternalFPS() >= 5.0f &&
+			PerformanceMetrics::GetGSThreadUsage() >= 50.0)
+		{
+			s_gs_skip_reports_on++;
+			if (skipped || draws || hidden || paused)
+				s_gs_skip_left_any = true;
+		}
 	}
-	if (s_gs_skip_mode != 1 || s_video_active || elapsed - s_gs_skip_last_check < 0.5)
+	if (s_gs_skip_mode != 1 || s_video_active || s_gs_skip_useless || elapsed - s_gs_skip_last_check < 0.5)
 		return;
 	s_gs_skip_last_check = elapsed;
+	if (s_gs_skip_step > 0 && s_gs_skip_reports_on >= 3 && !s_gs_skip_left_any)
+	{
+		s_gs_skip_useless = true;
+		SetGsSkipAutoStep(0, elapsed,
+			"nothing left out in 3 reports on: the game draws its picture somewhere else and copies it to la pantalla; off for this game",
+			PerformanceMetrics::GetSpeed(), PerformanceMetrics::GetGSThreadUsage(), 0.0);
+		return;
+	}
 	// Compilation 63: Auto leaves out as few frames as the game needs to run at full speed, one in 8 up to one in 2
 	// (GS_SKIP_STEPS), a step at a time while the GS holds the game back, and back a step after 4 s at full speed when the
 	// GS would still have room drawing more. With the huella, Dragon Ball's fights ran at 81-88 % with the GS at a steady
@@ -2309,12 +2426,18 @@ static void UpdateGsSkip(double elapsed)
 	// generation waits out ("the game's frames aren't of one length"), so each undid the other (God of War II, 2026-10-21);
 	// the generated frames are what the player turned on. Unless they went off for this game for costing it speed
 	// (OrbisFrameGenPacing.h, GaveUp): then Auto is free to help (Dragon Ball, 2026-10-21).
-	if (g_orbis_fg_wanted && !g_orbis_fg_gave_up)
+	// Compilation 76: only while frame generation really generates (a frame in the last 2 s), and then Auto holds its step
+	// instead of going back to 0. Turned on but idle it held Auto off all the same: Need for Speed Most Wanted, a 50 fps game
+	// on a 59.94 Hz TV with no room for generated frames ("Sí"), ran its heavy part at 32 % with the GS the limit and Saltar
+	// cuadros waiting for 6.5 minutes (2026-10-23); in the safety net's pauses the game runs without them too. When they
+	// generate again on top of a step, their safety net judges them as before (and gives up where they cost speed).
+	if (g_orbis_fg_engaged)
+		s_fg_engaged_seen = elapsed;
+	if (g_orbis_fg_wanted && !g_orbis_fg_gave_up && elapsed - s_fg_engaged_seen < 2.0)
 	{
-		if (s_gs_skip_step > 0)
-			SetGsSkipAutoStep(0, elapsed, "frame generation is on", PerformanceMetrics::GetSpeed(),
-				PerformanceMetrics::GetGSThreadUsage(), 0.0);
-		s_gs_skip_slow_checks = 0;
+		s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
+		s_gs_skip_samples = 0;
+		s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
 		return;
 	}
 	if (elapsed - s_gs_skip_last_change < 1.0)
@@ -2780,21 +2903,30 @@ static void ResumeFromGameMenu(u32 raw)
 static unsigned s_session_beats = 0;
 static void ForjaSessionWrite(bool final)
 {
+	// Compilation 76: PCSX2's title is "<serial> [?]" for a game the PS4's GameDB reading leaves without a name (every one of the
+	// five new games on 2026-10-23): the library's file name says which game it is.
+	std::string title = VMManager::GetTitle(false);
+	if ((title.empty() || title.ends_with(" [?]")) && !s_selected_game.empty())
+		title = std::string(Path::GetFileTitle(s_selected_game));
 	char header[640];
 	std::snprintf(header, sizeof(header),
 		"Forja SX2 %d.%02d (compilación %d): resumen de la partida\n"
 		"Juego: %s (%s, CRC %08X)\n"
 		"Consola: %s (CPU ~%.2f GHz, modo Pro %d), sistema %s\n",
-		FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER, VMManager::GetTitle(false).c_str(),
+		FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER, title.c_str(),
 		VMManager::GetDiscSerial().c_str(), VMManager::GetDiscCRC(),
 		s_console_fast_cpu ? "PS4 Pro con el Modo Boost" : "PS4 normal o Slim (o una Pro sin el Modo Boost)", s_console_cpu_ghz,
 		s_console_neo, s_console_system.empty() ? "?" : s_console_system.c_str());
 	const int rate = s_video_active ? s_video_saved_rate : static_cast<int>(EmuConfig.Speedhacks.EECycleRate);
-	char cpu_auto[48] = "apagado";
+	char cpu_auto[96] = "apagado";
 	if (s_cpu_auto_floor != 0)
-		std::snprintf(cpu_auto, sizeof(cpu_auto), "hasta %d %%", EERatePercent(s_cpu_auto_floor));
+		std::snprintf(cpu_auto, sizeof(cpu_auto), "hasta %d %%%s", EERatePercent(s_cpu_auto_floor),
+			CpuAutoIdle() ? ", no actúa: la CPU del juego ya está igual o más baja" : ""); // compilation 76
 	const char* frame_gen = !g_orbis_fg_wanted ? "No" : s_fg_fluid_profile ? "Fluida" : "Sí";
-	const char* gs_skip = s_gs_skip_mode == 2 ? "1 de 2" : s_gs_skip_mode == 1 ? "Auto" : "No";
+	const char* gs_skip = s_gs_skip_mode == 2 ? "1 de 2" :
+	                      s_gs_skip_mode == 1 ? (s_gs_skip_useless ? "Auto (se apagó: el juego dibuja fuera de la pantalla y no hay cuadros que saltar)" :
+	                                                                 "Auto") :
+	                                            "No";
 	char settings[768];
 	std::snprintf(settings, sizeof(settings),
 		"Ajustes: CPU de la PS2 %d %% (CPU automático %s), resolución %ux, generación de cuadros %s%s, Saltar cuadros %s, "

@@ -881,8 +881,27 @@ static void ForjaReportHitch()
 	if (s_last != 0)
 	{
 		const double gap_ms = Common::Timer::ConvertValueToMilliseconds(now - s_last);
+		// Compilation 76: and over twice the usual gap of the last 16 vsyncs. A game running slowly but evenly has every gap over
+		// 50 ms (Guitar Hero III at 40 %: 52 ms each), and each one counted: 1,250 "hitches" in 7 minutes, 3,305 "other" ones in
+		// Need for Speed Most Wanted (2026-10-23). A hitch is a gap that stands out.
+		static double s_gaps[16] = {};
+		static unsigned s_gap_count = 0, s_gap_next = 0;
+		double usual = 0.0;
+		if (s_gap_count >= 8)
+		{
+			double sorted[16];
+			std::copy(s_gaps, s_gaps + s_gap_count, sorted);
+			std::nth_element(sorted, sorted + s_gap_count / 2, sorted + s_gap_count);
+			usual = sorted[s_gap_count / 2];
+		}
+		if (gap_ms < 2000.0)
+		{
+			s_gaps[s_gap_next] = gap_ms;
+			s_gap_next = (s_gap_next + 1) % 16;
+			s_gap_count = std::min(s_gap_count + 1, 16u);
+		}
 		// 50..2000 ms: a hitch. Longer gaps are a pause, a loading screen with no vsyncs, or the menu.
-		if (gap_ms > 50.0 && gap_ms < 2000.0 && VMManager::GetState() == VMState::Running)
+		if (gap_ms > 50.0 && gap_ms < 2000.0 && gap_ms > 2.0 * usual && VMManager::GetState() == VMState::Running)
 		{
 			if (s_reported < 2000)
 			{

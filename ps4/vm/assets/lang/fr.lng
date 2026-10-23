@@ -385,11 +385,11 @@ tr: 1 sur 2
 es: Saltar cuadros (GS):  < %s >
 tr: Saut d'images (GS) :  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
-tr: Si le GS ne suit pas, il dessine 1 image sur 2 : le jeu garde sa vitesse  ·  actuel : %s  ·  %s
-
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Toujours 1 image sur 2, même quand le GS n'en a pas besoin : mieux vaut Auto  ·  actuel : %s  ·  %s
+
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: Si le GS ne suit pas, il dessine 1 image sur 2 : le jeu garde sa vitesse  ·  actuel : %s  ·  %s
 
 es: saltando
 tr: saut actif
@@ -831,6 +831,12 @@ tr:   (inséré)
 
 es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
 tr: X : passe au disque choisi, comme ouvrir le tiroir de la PS2 et en mettre un autre. À faire quand le jeu le demande
+
+es: Auto se apagó: este juego dibuja su imagen aparte y después la copia a la pantalla, así que no hay cuadros que saltar  ·  ahora: dibuja todos
+tr: Auto s'est désactivé : ce jeu dessine son image à part puis la copie à l'écran, il n'y a donc pas d'images à sauter  ·  actuel : tout dessiné
+
+es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
+tr: N'agit pas : le CPU de la PS2 de ce jeu (%d %%) est déjà aussi bas ou plus bas. Choisissez une limite plus basse ou montez le CPU de la PS2
 
 es: %d/%m a las %H:%M
 tr: %d/%m à %H:%M

@@ -174,6 +174,12 @@ tr:
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: 
 
+es: Forja se cerró al abrir el sonido del último juego. Ahora el sonido se abrirá en modo sencillo
+tr: 
+
+es: Forja se volvió a cerrar al abrir el sonido: en esta consola los juegos irán sin sonido
+tr: 
+
 es: El juego no pudo iniciar: falta la BIOS de la PS2. Cópiala por FTP a /data/ForjaSX2/bios
 tr: 
 
@@ -378,10 +384,10 @@ tr:
 es: Saltar cuadros (GS):  < %s >
 tr: 
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: 
 
-es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
 tr: 
 
 es: saltando
@@ -454,6 +460,9 @@ es: La ranura %u está vacía.
 tr: 
 
 es: No se pudo cargar la ranura %u.
+tr: 
+
+es: La ranura %u está dañada: rompía el juego y volviste a donde estabas. Guarda en otra ranura
 tr: 
 
 es: Guardado el %s  ·  X: vuelve a ese momento y sigue jugando
@@ -792,6 +801,9 @@ tr:
 es: Ajustes recomendados:  buscando en GitHub...
 tr: 
 
+es: Ajustes recomendados:  aplicados ahora
+tr: 
+
 es: Ajustes recomendados:  del centro (GitHub), %s
 tr: 
 
@@ -801,7 +813,7 @@ tr:
 es: Ajustes recomendados:  ninguno para este juego
 tr: 
 
-es: X: buscarlos otra vez en GitHub (con internet). Valen desde el próximo arranque. Sistema > Restablecer vuelve a ellos
+es: X: traer de GitHub los mejores ajustes probados y usarlos ya. Los tuyos quedan en una copia; la resolución no cambia
 tr: 
 
 es: Cambiar disco:  este juego tiene un solo disco
@@ -817,6 +829,12 @@ es:   (puesto)
 tr: 
 
 es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
+tr: 
+
+es: Auto se apagó: este juego dibuja su imagen aparte y después la copia a la pantalla, así que no hay cuadros que saltar  ·  ahora: dibuja todos
+tr: 
+
+es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: 
 
 es: %d/%m a las %H:%M

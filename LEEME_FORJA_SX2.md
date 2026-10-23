@@ -129,7 +129,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     otra vez, vuelve a subir. Cada cambio da un tironcito, así que hay como mucho uno cada 6 s. La fila dice a qué velocidad
     va **ahora**. En God of War II viene apagado desde la 36: medido, las peleas pesadas iban igual al 50, 60, 75 y 100 %.
     Desde la 45, un juego sin ajuste propio usa el de la pestaña Ajustes (de fábrica, "Hasta 27 %"): si le subes el CPU y se
-    pone lento en una escena pesada, baja solo, como mucho hasta el 27 %.
+    pone lento en una escena pesada, baja solo, como mucho hasta el 27 %. Solo **baja**: si el CPU de la PS2 del juego ya
+    está igual o más bajo que el límite, no tiene nada que hacer, y desde la 76 la fila lo dice ("No actúa…").
   - **Modo video:** No / **Auto** / 100 % / 75 % / 60 % / 50 % / 36 %. Es el CPU de la PS2 durante las cinemáticas.
     **Auto** busca solo el punto justo de cada video: desde la 51 mide cuántos cuadros salen, prueba un paso más arriba
     (y si no mejora, uno más abajo) y se queda con el que da más cuadros, entre 31 y 100 %. Vuelve a medir cada 40 s y
@@ -138,13 +139,20 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     (el CPU de la PS2 se recompila). Con 100 % o 75 % fijos todo el video puede ir más lento si la PS4 no da
     abasto: en Tales of the Abyss, al 100 % salían 14 cuadros por segundo y al 60 %, 23. God of War II lo trae de fábrica. Desde la 48 también lo **sube**: con el
     juego al 27 %, los videos de God of War II se decodificaban con muy poco CPU y salían a 17-21 cuadros en vez de 25.
+    **Desde la 76 también baja cuando le sobran imágenes:** si el video saca un 30 % más de las que necesita y va bajo el
+    95 % de velocidad, prueba un paso abajo y se queda si no pierde imágenes y va 4 puntos más rápido (Resident Evil 4 sacaba
+    el doble al 50 % y su video iba al 85 %).
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2. Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
     1 de cada 2 cuadros del juego y la tele sigue mostrando el último dibujado: el juego, su música y sus movimientos van
     a su velocidad, con la mitad de cuadros en pantalla. **Auto** (desde la 1.06) lo prende solo cuando el GS es el que
     frena unos 6 s (velocidad bajo 95 % con el GS al 80 % o más y el EE y el VU1 al 75 % o menos), sube de a un paso,
-    baja cuando sobra o cuando el que frena es el EE o el VU1, y **nunca con la generación de cuadros prendida**: las dos
-    se estorban (si la generación de cuadros se apagó sola por lenta, el Auto sí trabaja). **Guardián** (desde la 1.06, en
+    baja cuando sobra o cuando el que frena es el EE o el VU1, y **no arranca mientras la generación de cuadros está
+    generando**: las dos se estorban. Desde la 76 solo la espera si de verdad genera: prendida pero sin generar (un juego a
+    50 cuadros en una tele de 60 Hz con "Sí", o en una pausa por lenta) ya no la frena; y si la generación de cuadros se
+    apagó sola por lenta (desde la 76, a la segunda vez), el Auto trabaja como siempre. **Desde la 76, si en ~15 s prendido
+    no salta ni un cuadro** (el juego dibuja su imagen aparte y la copia a la pantalla, como Shadow of the Colossus o God
+    of War II), se apaga solo para ese juego y la fila lo dice. **Guardián** (desde la 1.06, en
     Auto y en "1 de 2"): los cuadros saltados tienen que quedar ocultos en la tele. Los revisa de a 3, un momento después
     (Dragon Ball muestra cada cuadro un cuadro más tarde); si la tele no los ocultó (una pantalla de victoria, un menú, el
     inicio de una pelea), Saltar cuadros se pausa 2 s, después 8 s y después 30 s. Después de una
@@ -158,7 +166,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
   - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
     cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
     60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %
-    (su perfil trae "Sí"). Cuesta trabajo a la gráfica: mejor en 1x o 2x. En los videos, "Sí" pasa a "Fluida" (desde la 65),
+    (su perfil trae "Sí"). Cuesta trabajo a la gráfica: mejor en 1x o 2x. Si el juego va lento, se pausa sola; si sin ella
+    el juego va más rápido, se apaga sola para ese juego (desde la 1.06 a la tercera vez, desde la 76 a la segunda; para
+    traerla de vuelta, ponla en No y otra vez en Sí). En los videos, "Sí" pasa a "Fluida" (desde la 65),
     salvo en los juegos PAL con la tele a 60 Hz (desde la 1.06): sus 25 imágenes por segundo no caen parejas y la imagen
     generada se notaba, así que esos videos se ven con sus propias imágenes, como sin la generación de cuadros.
 - **Salida a 50 Hz para juegos PAL (desde la 37):** la PS4 manda la imagen a 60 Hz, y un juego PAL hace 50 cuadros por
@@ -392,7 +402,8 @@ Algunos hilos secundarios solo cambian al volver a abrir el juego, así que para
 - **`logs/resumen.txt`:** una página con cómo fue la partida: velocidad, cuadros por segundo, qué frenó, tirones por
   causa, cortes de sonido, memoria libre, generación de cuadros, Saltar cuadros y videos. Se reescribe cada minuto y al
   terminar el juego, y se guarda con cada sesión en `logs/sesiones/`. Para reportar un problema, es lo primero que hay
-  que mandar.
+  que mandar. Desde la 76 un tirón es un cuadro de más de 50 ms **y** del doble de los de alrededor: un juego que va lento
+  pero parejo ya no cuenta cada cuadro como tirón (Guitar Hero III tenía 1.250 en 7 minutos).
 
 Baja `/data/ForjaSX2/logs` por FTP y arrástrala encima de `Herramientas PC\ANALIZAR LOGS (arrastra la carpeta aqui).bat`.
 Te dice los FPS, la velocidad, los tirones y qué parte frenó el juego, y crea `INFORME_RENDIMIENTO.md`.

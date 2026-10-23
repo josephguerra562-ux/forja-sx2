@@ -385,11 +385,11 @@ tr: 2 取 1
 es: Saltar cuadros (GS):  < %s >
 tr: 跳帧（GS）：  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
-tr: 如果 GS 跟不上，每 2 帧只画 1 帧：游戏保持原速  ·  当前：%s  ·  %s
-
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: 始终每 2 帧只画 1 帧，即使 GS 不需要：建议用自动  ·  当前：%s  ·  %s
+
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: 如果 GS 跟不上，每 2 帧只画 1 帧：游戏保持原速  ·  当前：%s  ·  %s
 
 es: saltando
 tr: 跳帧中
@@ -831,6 +831,12 @@ tr:   （当前）
 
 es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
 tr: X：切换到所选光盘，就像打开 PS2 光驱放入另一张。请在游戏要求时操作
+
+es: Auto se apagó: este juego dibuja su imagen aparte y después la copia a la pantalla, así que no hay cuadros que saltar  ·  ahora: dibuja todos
+tr: 自动已关闭：这个游戏先在别处绘制画面，再复制到屏幕上，所以没有可跳过的帧  ·  当前：全部绘制
+
+es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
+tr: 不起作用：此游戏的 PS2 CPU（%d %%）已经等于或低于此限制。请选择更低的限制，或提高 PS2 CPU
 
 es: %d/%m a las %H:%M
 tr: %m月%d日 %H:%M

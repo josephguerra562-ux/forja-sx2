@@ -385,11 +385,11 @@ tr: 1 z 2
 es: Saltar cuadros (GS):  < %s >
 tr: Pomijanie klatek (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
-tr: Gdy GS nie nadąża, rysuje 1 klatkę z 2: gra idzie swoim tempem  ·  teraz: %s  ·  %s
-
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Zawsze 1 klatka z 2, nawet gdy GS tego nie potrzebuje: lepiej Auto  ·  teraz: %s  ·  %s
+
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: Gdy GS nie nadąża, rysuje 1 klatkę z 2: gra idzie swoim tempem  ·  teraz: %s  ·  %s
 
 es: saltando
 tr: pomija
@@ -831,6 +831,12 @@ tr:   (włożona)
 
 es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
 tr: X: zmienia na wybraną płytę, jak otwarcie tacki PS2 i włożenie innej. Zrób to, gdy gra poprosi
+
+es: Auto se apagó: este juego dibuja su imagen aparte y después la copia a la pantalla, así que no hay cuadros que saltar  ·  ahora: dibuja todos
+tr: Auto się wyłączyło: ta gra rysuje obraz osobno, a potem kopiuje go na ekran, więc nie ma klatek do pominięcia  ·  teraz: rysuje wszystkie
+
+es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
+tr: Nie działa: CPU PS2 tej gry (%d %%) jest już tak niskie lub niższe. Wybierz niższy limit albo podnieś CPU PS2
 
 es: %d/%m a las %H:%M
 tr: %d.%m o %H:%M

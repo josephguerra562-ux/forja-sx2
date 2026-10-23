@@ -385,11 +385,11 @@ tr: 1 из 2
 es: Saltar cuadros (GS):  < %s >
 tr: Пропуск кадров (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
-tr: Если GS не успевает, рисует 1 кадр из 2: игра идёт со своей скоростью  ·  сейчас: %s  ·  %s
-
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Всегда 1 кадр из 2, даже когда GS это не нужно: лучше Авто  ·  сейчас: %s  ·  %s
+
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: Если GS не успевает, рисует 1 кадр из 2: игра идёт со своей скоростью  ·  сейчас: %s  ·  %s
 
 es: saltando
 tr: пропускает
@@ -831,6 +831,12 @@ tr:   (вставлен)
 
 es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
 tr: X: переключает на выбранный диск, как открыть лоток PS2 и вставить другой. Делайте это, когда игра просит
+
+es: Auto se apagó: este juego dibuja su imagen aparte y después la copia a la pantalla, así que no hay cuadros que saltar  ·  ahora: dibuja todos
+tr: Авто отключилось: эта игра рисует изображение отдельно и потом копирует его на экран, поэтому пропускать нечего  ·  сейчас: рисует все
+
+es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
+tr: Не действует: ЦП PS2 этой игры (%d %%) уже на этом уровне или ниже. Выберите предел ниже или поднимите ЦП PS2
 
 es: %d/%m a las %H:%M
 tr: %d.%m в %H:%M

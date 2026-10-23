@@ -385,11 +385,11 @@ tr: 2개 중 1개
 es: Saltar cuadros (GS):  < %s >
 tr: 프레임 스킵 (GS):  < %s >
 
-es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
-tr: GS가 따라가지 못하면 2프레임 중 1프레임만 그려 게임이 제 속도로 갑니다  ·  현재: %s  ·  %s
-
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: GS에 여유가 있어도 항상 2프레임 중 1프레임만 그립니다: 자동이 더 좋습니다  ·  현재: %s  ·  %s
+
+es: Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s
+tr: GS가 따라가지 못하면 2프레임 중 1프레임만 그려 게임이 제 속도로 갑니다  ·  현재: %s  ·  %s
 
 es: saltando
 tr: 스킵 중
@@ -831,6 +831,12 @@ tr:   (넣은 디스크)
 
 es: X: cambia al disco elegido, como abrir la bandeja de la PS2 y meter otro. Hazlo cuando el juego lo pida
 tr: X: 고른 디스크로 바꿉니다. PS2 트레이를 열고 다른 디스크를 넣는 것과 같습니다. 게임이 요청할 때 하세요
+
+es: Auto se apagó: este juego dibuja su imagen aparte y después la copia a la pantalla, así que no hay cuadros que saltar  ·  ahora: dibuja todos
+tr: 자동이 꺼졌습니다: 이 게임은 이미지를 다른 곳에 그린 뒤 화면으로 복사하므로 건너뛸 프레임이 없습니다  ·  현재: 모두 그림
+
+es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
+tr: 작동하지 않습니다: 이 게임의 PS2 CPU(%d %%)가 이미 이 값 이하입니다. 더 낮은 한도를 고르거나 PS2 CPU를 올리세요
 
 es: %d/%m a las %H:%M
 tr: %m월 %d일 %H:%M

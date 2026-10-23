@@ -28,7 +28,7 @@ namespace
 		uint32_t movie_speed[kSpeedBins] = {};
 		uint32_t movie_fps[kFpsBins] = {};
 		bool in_movie = false;
-		// Hitches over 50 ms (the ones GSRendererPS4.cpp logs), by what happened in them.
+		// Hitches over 50 ms and over twice the usual gap (the ones GSRendererPS4.cpp logs; compilation 76), by what happened in them.
 		uint32_t hitches = 0, hitches_200 = 0, hitch_pipelines = 0, hitch_resets = 0, hitch_compile = 0, hitch_disc = 0,
 				 hitch_other = 0;
 		double hitch_worst_ms = 0.0;
@@ -204,7 +204,7 @@ namespace ForjaSession
 			Share(s.limits[LimitGS], s.windows), Share(s.limits[LimitVU1], s.windows), Share(s.limits[LimitEE], s.windows),
 			Share(s.limits[LimitGPU], s.windows), Share(s.limits[LimitWait], s.windows), Share(s.limits[LimitNone], s.windows));
 		const double minutes = seconds / 60.0;
-		Append(text, "Tirones de más de 50 ms: %u (%.1f por minuto), %u de más de 200 ms, el peor de %.0f ms. Causas: efectos nuevos "
+		Append(text, "Tirones (más de 50 ms y del doble de los de alrededor): %u (%.1f por minuto), %u de más de 200 ms, el peor de %.0f ms. Causas: efectos nuevos "
 			"(sombreadores) %u, recompilador reiniciado %u, código nuevo del juego %u, disco %u, otras %u\n",
 			s.hitches, minutes > 0.0 ? s.hitches / minutes : 0.0, s.hitches_200, s.hitch_worst_ms, s.hitch_pipelines,
 			s.hitch_resets, s.hitch_compile, s.hitch_disc, s.hitch_other);
