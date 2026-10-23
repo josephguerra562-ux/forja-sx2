@@ -54,8 +54,12 @@ jobs:
           FORJA_REPORT_URL: ${{ secrets.FORJA_REPORT_URL }}
         run: |
           set -euo pipefail
-          # Compilation 78: a public note that says whether the reports channel went in (never the address itself).
-          if [[ "${FORJA_REPORT_URL:-}" == https://* ]]; then echo "::notice::Forja SX2 reports: channel set"; else echo "::notice::Forja SX2 reports: no channel (FORJA_REPORT_URL not set)"; fi
+          # Compilation 78: a public note that says whether the reports channel went in (never the address itself). Compilation
+          # 79: and why not: empty (the secret is not a repository Actions secret named FORJA_REPORT_URL), or not a webhook's form.
+          report_url="$(printf '%s' "${FORJA_REPORT_URL:-}" | tr -d '[:space:]')"
+          if [[ -z "$report_url" ]]; then echo "::notice::Forja SX2 reports: no channel (the FORJA_REPORT_URL repository secret is empty or not visible to this workflow)"
+          elif [[ "$report_url" == https://discord.com/api/webhooks/* || "$report_url" == https://discordapp.com/api/webhooks/* ]]; then echo "::notice::Forja SX2 reports: channel set (${#report_url} characters)"
+          else echo "::notice::Forja SX2 reports: FORJA_REPORT_URL is set (${#report_url} characters) but is not a Discord webhook address"; fi
           mkdir -p ci-output ps4/deps/prefix
           rsync -a "$RUNNER_TEMP/ps4-sdk/linux/prefix/" ps4/deps/prefix/
           export OPENORBIS="$RUNNER_TEMP/ps4-sdk/linux/openorbis"
