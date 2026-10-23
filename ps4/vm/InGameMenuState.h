@@ -47,6 +47,7 @@ namespace PS4GameMenu
 		ROW_TEXTURES,
 		ROW_CHEATS, // compilation 58
 		// Sistema
+		ROW_REPORT, // compilation 77: "Reportar este juego" (main.cpp, SendReport; ForjaReport.cpp)
 		ROW_RESET_PROFILE,
 		ROW_LIBRARY,
 		ROW_EXIT,
@@ -58,7 +59,7 @@ namespace PS4GameMenu
 	constexpr unsigned TAB_LAB = 4; // compilation 53: "No tocar"
 	// The first row of each tab, and ROW_COUNT after the last.
 	constexpr unsigned TAB_FIRST_ROW[TAB_COUNT + 1] = {ROW_RESUME, ROW_RESOLUTION, ROW_EE_RATE, ROW_PATCH, ROW_VU1_FILTER,
-		ROW_RESET_PROFILE, ROW_COUNT};
+		ROW_REPORT, ROW_COUNT};
 
 	constexpr unsigned TabOfRow(unsigned row)
 	{

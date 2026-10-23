@@ -174,6 +174,61 @@ bool PS4CoverHttp::Get(const std::string& url, const char* user_agent, std::vect
 	return true;
 }
 
+bool PS4CoverHttp::Post(const std::string& url, const char* user_agent, const std::string& content_type, const std::string& body, int& http,
+	std::string& response)
+{
+	http = 0;
+	response.clear();
+	const int context = HttpContext();
+	if (context < 0 || url.empty() || !user_agent)
+		return false;
+	Request request;
+	request.tmpl = sceHttpCreateTemplate(context, user_agent, ORBIS_HTTP_VERSION_1_1, 0);
+	if (request.tmpl < 0)
+		return false;
+	for (int rc : {sceHttpsEnableOption(request.tmpl, 0xbd),
+		sceHttpSetResolveTimeOut(request.tmpl, 8000000),
+		sceHttpSetConnectTimeOut(request.tmpl, 8000000),
+		sceHttpSetSendTimeOut(request.tmpl, 20000000),
+		CoverHttpRecvTimeout(request.tmpl, 20000000),
+		CoverHttpAutoRedirect(request.tmpl, 0)})
+	{
+		if (rc < 0)
+		{
+			ProbeLog("Native HTTPS post: setup failed=%#x\n", rc);
+			return false;
+		}
+	}
+	request.connection = sceHttpCreateConnectionWithURL(request.tmpl, url.c_str(), false);
+	if (request.connection < 0)
+		return false;
+	request.request = sceHttpCreateRequestWithURL(request.connection, ORBIS_METHOD_POST, url.c_str(), body.size());
+	if (request.request < 0)
+		return false;
+	if (sceHttpAddRequestHeader(request.request, "User-Agent", user_agent, 0) < 0 ||
+		sceHttpAddRequestHeader(request.request, "Content-Type", content_type.c_str(), 0) < 0)
+	{
+		ProbeLog("Native HTTPS post: request headers unavailable\n");
+		return false;
+	}
+	const int result = sceHttpSendRequest(request.request, body.data(), body.size());
+	const int status = result < 0 ? result : sceHttpGetStatusCode(request.request, &http);
+	// The URL is not logged: a report's carries the channel's key.
+	ProbeLog("Native HTTPS post: %zu bytes, send=%#x status=%#x http=%d\n", body.size(), result, status, http);
+	if (status < 0)
+		return false;
+	std::array<unsigned char, 4096> buffer{};
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+	while (response.size() < 16 * 1024 && std::chrono::steady_clock::now() < deadline)
+	{
+		const int count = sceHttpReadData(request.request, buffer.data(), buffer.size());
+		if (count <= 0 || static_cast<size_t>(count) > buffer.size())
+			break;
+		response.append(reinterpret_cast<const char*>(buffer.data()), static_cast<size_t>(count));
+	}
+	return http >= 200 && http < 300;
+}
+
 bool PS4CoverHttp::Stream(const std::string& url, const char* user_agent,
 	const std::function<bool(const unsigned char*, size_t)>& sink, size_t& total, unsigned deadline_s, std::string& error)
 {

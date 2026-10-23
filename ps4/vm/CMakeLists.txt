@@ -291,7 +291,7 @@ target_compile_definitions(ps4_audio_resampler PRIVATE OUTSIDE_SPEEX FLOATING_PO
 target_compile_options(ps4_audio_resampler PRIVATE -march=btver2 -ffunction-sections -fdata-sections -fvisibility=hidden)
 set_property(SOURCE "${PCSX2_ROOT}/ps4/core/AudioStreamPS4.cpp"
   APPEND PROPERTY COMPILE_DEFINITIONS OUTSIDE_SPEEX RANDOM_PREFIX=ps4sx2)
-add_executable(vm_boot main.cpp GameMenu.cpp CoverImage.cpp CoverDownload.cpp ReleaseCheck.cpp HostVM.cpp UIVM.cpp CPUInfoVM.cpp NetworkVM.cpp CaptureVM.cpp DiscVM.cpp PhysicalDisc.cpp DiscCopy.cpp PatchDownload.cpp SessionStats.cpp PlatformVM.cpp
+add_executable(vm_boot main.cpp GameMenu.cpp CoverImage.cpp CoverDownload.cpp ReleaseCheck.cpp HostVM.cpp UIVM.cpp CPUInfoVM.cpp NetworkVM.cpp CaptureVM.cpp DiscVM.cpp PhysicalDisc.cpp DiscCopy.cpp PatchDownload.cpp SessionStats.cpp ForjaReport.cpp PlatformVM.cpp
   "${PCSX2_ROOT}/ps4/core/ThreadCPUMetricsPS4.cpp" "${PCSX2_ROOT}/ps4/core/IPUProfilePS4.cpp"
   "${PCSX2_ROOT}/ps4/core/GSProfilePS4.cpp"
   "${PCSX2_ROOT}/ps4/core/EEEventProfilePS4.cpp"
@@ -339,6 +339,19 @@ endif()
 set(FORJA_VERSION_MAJOR "${CMAKE_MATCH_1}")
 string(REGEX REPLACE "^0([0-9])$" "\\1" FORJA_VERSION_MINOR "${CMAKE_MATCH_2}")
 message(STATUS "Forja SX2 version ${FORJA_VERSION_MAJOR}.${FORJA_VERSION_MINOR} build ${FORJA_BUILD_NUMBER}")
+# Forja SX2 (compilation 77): the reports channel (ForjaReport.cpp), from the repository's FORJA_REPORT_URL secret, which the
+# workflow hands to this step. In hexadecimal, so the address is not plain text in the package; never printed. A build without
+# the secret (a fork, a local build) only keeps the reports on the console.
+set(FORJA_REPORT_URL "$ENV{FORJA_REPORT_URL}")
+string(STRIP "${FORJA_REPORT_URL}" FORJA_REPORT_URL)
+if(FORJA_REPORT_URL MATCHES "^https://")
+  string(HEX "${FORJA_REPORT_URL}" FORJA_REPORT_HEX)
+  message(STATUS "Forja SX2 reports: channel set")
+else()
+  set(FORJA_REPORT_HEX "")
+  message(STATUS "Forja SX2 reports: no channel (FORJA_REPORT_URL not set), reports are only kept on the console")
+endif()
+set_source_files_properties(ForjaReport.cpp PROPERTIES COMPILE_DEFINITIONS "FORJA_REPORT_HEX=\"${FORJA_REPORT_HEX}\"")
 set_source_files_properties(main.cpp GameMenu.cpp PatchDownload.cpp PROPERTIES COMPILE_DEFINITIONS
   "FORJA_BUILD_NUMBER=${FORJA_BUILD_NUMBER};FORJA_VERSION_MAJOR=${FORJA_VERSION_MAJOR};FORJA_VERSION_MINOR=${FORJA_VERSION_MINOR}")
 ps4_link_mesa(vm_boot)

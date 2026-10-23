@@ -112,7 +112,11 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
       cuerpo de Kratos y cambiaba el color del Coloso); y **la lista no se reordena**: cada grupo se queda en su número
       mientras juegas (antes el 1 y el 2 podían cambiarse de lugar al volver a abrir el menú). Lo quitado con la 51-53 se
       devuelve solo al pasar a la 54.
-  - **Sistema:** restablecer los ajustes del juego, volver a la biblioteca y salir.
+  - **Sistema:** **Reportar este juego** (desde la 77), restablecer los ajustes del juego, volver a la biblioteca y salir.
+    En "Reportar este juego" eliges con Izquierda/Derecha cómo te va (Perfecto, Se puede jugar, Con fallos, Va muy lento)
+    y X lo manda al canal de reportes del Discord de Forja: el resumen de la partida, los ajustes del juego, los medidores
+    de los últimos minutos y el `crash.log` si hay. **Nada de tu cuenta de PSN.** Te da un número (por ejemplo `F-3A2C`)
+    para mencionarlo en el Discord. Si no hay internet, el reporte queda en `/data/ForjaSX2/reportes/`. Uno por minuto.
 - **Todo lo que cambies en L3+R3 se guarda solo para ese juego** (como las propiedades por juego de Dolphin), menos el
   contador de FPS. Se aplica al instante:
   - **Resolución interna** y **relación de aspecto**.
@@ -403,7 +407,10 @@ Algunos hilos secundarios solo cambian al volver a abrir el juego, así que para
   causa, cortes de sonido, memoria libre, generación de cuadros, Saltar cuadros y videos. Se reescribe cada minuto y al
   terminar el juego, y se guarda con cada sesión en `logs/sesiones/`. Para reportar un problema, es lo primero que hay
   que mandar. Desde la 76 un tirón es un cuadro de más de 50 ms **y** del doble de los de alrededor: un juego que va lento
-  pero parejo ya no cuenta cada cuadro como tirón (Guitar Hero III tenía 1.250 en 7 minutos).
+  pero parejo ya no cuenta cada cuadro como tirón (Guitar Hero III tenía 1.250 en 7 minutos). Desde la 77 dice también
+  **cuánto más barato tenía que ser lo que frenó** para ir al 100 % (Shadow of the Colossus: "GS 41 %"): cuanto más alto,
+  más lejos está ese juego de ir completo en la PS4.
+- **Reportar este juego** (L3+R3 > Sistema, desde la 77): manda todo eso al Discord de Forja sin FTP.
 
 Baja `/data/ForjaSX2/logs` por FTP y arrástrala encima de `Herramientas PC\ANALIZAR LOGS (arrastra la carpeta aqui).bat`.
 Te dice los FPS, la velocidad, los tirones y qué parte frenó el juego, y crea `INFORME_RENDIMIENTO.md`.

@@ -19,6 +19,7 @@
 #include "ps4/core/WorkerProfilePS4.h"
 #include "SessionStats.h"
 #include <string>
+extern double GetVerticalFrequency(); // pcsx2/GS.h (Counters.cpp): the PS2's refresh at the game's own rate (compilation 77)
 #include <mutex>
 #include <cstring>
 #include <deque>
@@ -295,8 +296,18 @@ void Host::OnPerformanceMetricsUpdated()
 		PerformanceMetrics::GetGPUUsage());
 	g_forja_limit.store(limit, std::memory_order_relaxed);
 	if (profile_interval > 0.0)
+	{
+		// Compilation 77: the limiting part's time per PS2 refresh against a refresh at the game's own rate (the summary's "cuánto
+		// más barato").
+		const double hz = GetVerticalFrequency();
+		const double budget_ms = hz > 20.0 && hz < 100.0 ? 1000.0 / hz : 0.0;
+		const double limit_ms = limit == ForjaSession::LimitEE ? PerformanceMetrics::GetCPUThreadAverageTime() :
+		                        limit == ForjaSession::LimitVU1 ? PerformanceMetrics::GetVUThreadAverageTime() :
+		                        limit == ForjaSession::LimitGS  ? PerformanceMetrics::GetGSThreadAverageTime() :
+		                        limit == ForjaSession::LimitGPU ? static_cast<double>(gpu_ms) : 0.0;
 		ForjaSession::AddWindow(PerformanceMetrics::GetSpeed(), PerformanceMetrics::GetInternalFPS(), limit, g_orbis_fg_movie,
-			g_orbis_fg_engaged);
+			g_orbis_fg_engaged, limit_ms, budget_ms);
+	}
 	ProbeLog("Performance: seconds=%.1f PS2_Hz=%.2f Speed_pct=%.2f Game_FPS=%.2f FPS_method=%s "
 		"Frame_ms=%.2f Frame_max_ms=%.2f EE_pct=%.2f EE_ms=%.2f GS_pct=%.2f GS_ms=%.2f "
 		"VU1_pct=%.2f VU1_ms=%.2f CPU_timing=%s CPU_clock=owner_sampled_100ms GPU_pct=%.2f GPU_ms=%.2f GPU_timing=%s Limit=%s\n",

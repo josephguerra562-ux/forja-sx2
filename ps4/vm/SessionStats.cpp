@@ -38,6 +38,9 @@ namespace
 		uint64_t audio_cuts = 0, limited_last = 0, limited = 0;
 		bool audio_seen = false;
 		uint64_t skipped = 0, guard_pauses = 0;
+		// Compilation 77: per limit, the windows by how much cheaper the limiting part had to be (percent, 0-99).
+		uint32_t need[ForjaSession::LimitCount][100] = {};
+		uint32_t need_windows[ForjaSession::LimitCount] = {};
 	};
 
 	std::mutex s_mutex;
@@ -107,10 +110,16 @@ namespace ForjaSession
 		return limit;
 	}
 
-	void AddWindow(double speed, double fps, int limit, bool movie, bool fg_generating)
+	void AddWindow(double speed, double fps, int limit, bool movie, bool fg_generating, double limit_ms, double budget_ms)
 	{
 		std::lock_guard lock(s_mutex);
 		Stats& s = s_stats;
+		// Compilation 77: Shadow of the Colossus's GS took 28.6 ms of its 16.7: it had to be 42 % cheaper (2026-10-23).
+		if (limit >= LimitEE && limit <= LimitGPU && budget_ms > 0.0 && limit_ms > budget_ms)
+		{
+			s.need[limit][std::clamp(static_cast<int>((1.0 - budget_ms / limit_ms) * 100.0), 0, 99)]++;
+			s.need_windows[limit]++;
+		}
 		if (movie)
 		{
 			if (!s.in_movie)
@@ -203,6 +212,24 @@ namespace ForjaSession
 			"completa el %u %%\n",
 			Share(s.limits[LimitGS], s.windows), Share(s.limits[LimitVU1], s.windows), Share(s.limits[LimitEE], s.windows),
 			Share(s.limits[LimitGPU], s.windows), Share(s.limits[LimitWait], s.windows), Share(s.limits[LimitNone], s.windows));
+		// Compilation 77: how far each part that held the game back was from its time, the median of the windows it held back.
+		{
+			std::string need;
+			static constexpr int order[] = {LimitGS, LimitVU1, LimitEE, LimitGPU};
+			static constexpr const char* names[] = {"GS", "VU1", "EE", "gráfica"};
+			for (int i = 0; i < 4; i++)
+			{
+				const int limit = order[i];
+				if (s.need_windows[limit] == 0)
+					continue;
+				char part[96];
+				std::snprintf(part, sizeof(part), "%s%s %d %% (%u tramos)", need.empty() ? "" : ", ", names[i],
+					Percentile(s.need[limit], 100, s.need_windows[limit], 0.5), s.need_windows[limit]);
+				need += part;
+			}
+			if (!need.empty())
+				Append(text, "Cuánto más barato tenía que ser lo que frenó para ir al 100 %% (mediana): %s\n", need.c_str());
+		}
 		const double minutes = seconds / 60.0;
 		Append(text, "Tirones (más de 50 ms y del doble de los de alrededor): %u (%.1f por minuto), %u de más de 200 ms, el peor de %.0f ms. Causas: efectos nuevos "
 			"(sombreadores) %u, recompilador reiniciado %u, código nuevo del juego %u, disco %u, otras %u\n",

@@ -838,8 +838,44 @@ tr: 自動はオフになりました：このゲームは画像を別の場所�
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: 動作しません：このゲームのPS2のCPU（%d %%）はすでにこの値以下です。もっと低い上限を選ぶか、PS2のCPUを上げてください
 
+es: Perfecto
+tr: パーフェクト
+
+es: Se puede jugar
+tr: プレイできる
+
+es: Con fallos
+tr: 不具合あり
+
+es: Va muy lento
+tr: とても遅い
+
 es: %d/%m a las %H:%M
 tr: %m月%d日 %H:%M
+
+es: Reportar este juego:  < %s >
+tr: このゲームを報告：  < %s >
+
+es: Mandando el reporte...
+tr: レポートを送信中...
+
+es: Mandado: reporte %s. Gracias. Si quieres, cuéntanos más en el Discord de Forja
+tr: 送信しました：レポート %s。ありがとうございます！よければ Forja の Discord でもっと教えてください
+
+es: No se pudo mandar (¿sin internet?): el reporte %s quedó en /data/ForjaSX2/reportes
+tr: 送信できませんでした（ネット未接続？）：レポート %s は /data/ForjaSX2/reportes に保存されました
+
+es: Esta versión no tiene el canal de reportes: el reporte %s quedó en /data/ForjaSX2/reportes
+tr: このバージョンにはレポート用チャンネルがありません：レポート %s は /data/ForjaSX2/reportes に保存されました
+
+es: X: manda al Discord de Forja cómo va este juego, con el resumen de la partida y sus medidores (nada de tu cuenta)
+tr: X：このゲームの動作を、プレイの概要と測定値とともに Forja の Discord に送ります（アカウント情報は含みません）
+
+es: X: guarda en /data/ForjaSX2/reportes cómo va este juego (esta versión no tiene el canal de reportes)
+tr: X：このゲームの動作を /data/ForjaSX2/reportes に保存します（このバージョンにはレポート用チャンネルがありません）
+
+es: Ya mandaste uno hace poco: espera un minuto para mandar otro
+tr: 少し前に送ったばかりです：次を送るには1分待ってください
 
 es: Preparando la BIOS de la PS2...
 tr: PS2のBIOSを準備中...

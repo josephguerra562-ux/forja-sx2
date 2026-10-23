@@ -2079,6 +2079,11 @@ namespace PS4GameMenu
 							draw->AddRect(ip(x, y), ip(x + 12, y + 12), icon_line, 2 * scale, lw, 0);
 						}
 						break;
+					case ROW_REPORT: // an envelope (compilation 77)
+						draw->AddRect(ip(-15, -10), ip(15, 10), icon_line, 2 * scale, lw, 0);
+						draw->AddLine(ip(-15, -10), ip(0, 2), icon_line, lw);
+						draw->AddLine(ip(15, -10), ip(0, 2), icon_line, lw);
+						break;
 					case ROW_RESET_PROFILE: // sliders back at their start
 						draw->AddLine(ip(-13, -7), ip(13, -7), icon_line, lw);
 						draw->AddLine(ip(-13, 7), ip(13, 7), icon_line, lw);
@@ -2145,7 +2150,7 @@ namespace PS4GameMenu
 					action = T("ELEGIR");
 				else if (row == ROW_VU1_FILTER || row == ROW_GS_FILTER)
 					action = T("ELEGIR  ·  X  ·  CUADRADO"); // compilation 52: Cuadrado brings everything back
-				else if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC)
+				else if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)
 					action = T("ELEGIR  ·  X");
 				else if (row == ROW_FAST_FORWARD) // compilation 58
 					action = "X";

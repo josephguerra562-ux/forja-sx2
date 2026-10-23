@@ -838,8 +838,44 @@ tr: Auto się wyłączyło: ta gra rysuje obraz osobno, a potem kopiuje go na ek
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: Nie działa: CPU PS2 tej gry (%d %%) jest już tak niskie lub niższe. Wybierz niższy limit albo podnieś CPU PS2
 
+es: Perfecto
+tr: Idealnie
+
+es: Se puede jugar
+tr: Da się grać
+
+es: Con fallos
+tr: Z błędami
+
+es: Va muy lento
+tr: Bardzo wolno
+
 es: %d/%m a las %H:%M
 tr: %d.%m o %H:%M
+
+es: Reportar este juego:  < %s >
+tr: Zgłoś tę grę:  < %s >
+
+es: Mandando el reporte...
+tr: Wysyłanie zgłoszenia...
+
+es: Mandado: reporte %s. Gracias. Si quieres, cuéntanos más en el Discord de Forja
+tr: Wysłano: zgłoszenie %s. Dziękujemy! Jeśli chcesz, opowiedz nam więcej na Discordzie Forja
+
+es: No se pudo mandar (¿sin internet?): el reporte %s quedó en /data/ForjaSX2/reportes
+tr: Nie udało się wysłać (brak internetu?): zgłoszenie %s zostało w /data/ForjaSX2/reportes
+
+es: Esta versión no tiene el canal de reportes: el reporte %s quedó en /data/ForjaSX2/reportes
+tr: Ta wersja nie ma kanału zgłoszeń: zgłoszenie %s zostało w /data/ForjaSX2/reportes
+
+es: X: manda al Discord de Forja cómo va este juego, con el resumen de la partida y sus medidores (nada de tu cuenta)
+tr: X: wysyła na Discorda Forja, jak działa ta gra, z podsumowaniem sesji i pomiarami (nic z twojego konta)
+
+es: X: guarda en /data/ForjaSX2/reportes cómo va este juego (esta versión no tiene el canal de reportes)
+tr: X: zapisuje w /data/ForjaSX2/reportes, jak działa ta gra (ta wersja nie ma kanału zgłoszeń)
+
+es: Ya mandaste uno hace poco: espera un minuto para mandar otro
+tr: Właśnie wysłałeś zgłoszenie: poczekaj minutę, aby wysłać kolejne
 
 es: Preparando la BIOS de la PS2...
 tr: Przygotowywanie BIOS-u PS2...

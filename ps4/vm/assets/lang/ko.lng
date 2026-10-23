@@ -838,8 +838,44 @@ tr: 자동이 꺼졌습니다: 이 게임은 이미지를 다른 곳에 그린 �
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: 작동하지 않습니다: 이 게임의 PS2 CPU(%d %%)가 이미 이 값 이하입니다. 더 낮은 한도를 고르거나 PS2 CPU를 올리세요
 
+es: Perfecto
+tr: 완벽
+
+es: Se puede jugar
+tr: 플레이 가능
+
+es: Con fallos
+tr: 문제 있음
+
+es: Va muy lento
+tr: 매우 느림
+
 es: %d/%m a las %H:%M
 tr: %m월 %d일 %H:%M
+
+es: Reportar este juego:  < %s >
+tr: 이 게임 보고:  < %s >
+
+es: Mandando el reporte...
+tr: 보고서를 보내는 중...
+
+es: Mandado: reporte %s. Gracias. Si quieres, cuéntanos más en el Discord de Forja
+tr: 보냈습니다: 보고서 %s. 감사합니다! 원하시면 Forja 디스코드에서 더 알려 주세요
+
+es: No se pudo mandar (¿sin internet?): el reporte %s quedó en /data/ForjaSX2/reportes
+tr: 보내지 못했습니다(인터넷 없음?): 보고서 %s는 /data/ForjaSX2/reportes에 저장됐습니다
+
+es: Esta versión no tiene el canal de reportes: el reporte %s quedó en /data/ForjaSX2/reportes
+tr: 이 버전에는 보고 채널이 없습니다: 보고서 %s는 /data/ForjaSX2/reportes에 저장됐습니다
+
+es: X: manda al Discord de Forja cómo va este juego, con el resumen de la partida y sus medidores (nada de tu cuenta)
+tr: X: 이 게임이 어떻게 돌아가는지 플레이 요약과 측정값과 함께 Forja 디스코드로 보냅니다(계정 정보는 없음)
+
+es: X: guarda en /data/ForjaSX2/reportes cómo va este juego (esta versión no tiene el canal de reportes)
+tr: X: 이 게임이 어떻게 돌아가는지 /data/ForjaSX2/reportes에 저장합니다(이 버전에는 보고 채널이 없음)
+
+es: Ya mandaste uno hace poco: espera un minuto para mandar otro
+tr: 방금 하나를 보냈습니다: 다른 것을 보내려면 1분 기다리세요
 
 es: Preparando la BIOS de la PS2...
 tr: PS2 BIOS 준비 중...

@@ -49,6 +49,9 @@ jobs:
           sudo apt-get install -y clang-21 llvm-21 lld-21
 
       - name: Compile and generate EBOOT
+        # Forja SX2 (compilation 77): the reports channel's address (ps4/vm/CMakeLists.txt, ForjaReport.cpp), a repository secret.
+        env:
+          FORJA_REPORT_URL: ${{ secrets.FORJA_REPORT_URL }}
         run: |
           set -euo pipefail
           mkdir -p ci-output ps4/deps/prefix

@@ -21,6 +21,7 @@
 #include "Counters.h" // compilation 58: g_FrameCount, for the hang watch
 #include "Patch.h"
 #include "PatchDownload.h"
+#include "ForjaReport.h"
 #include "GameList.h"
 #include "PerformanceMetrics.h"
 #include "common/Timer.h"
@@ -1800,9 +1801,19 @@ static void PublishAutoNotes()
 		PS4GameMenu::SetRowText(PS4GameMenu::ROW_CPU_AUTO, "", "");
 }
 
+// Compilation 77: "Reportar este juego" (SendReport, PublishReportText): the player's word for it, and when the last one went.
+static constexpr const char* REPORT_RATINGS[] = {N_("Perfecto"), N_("Se puede jugar"), N_("Con fallos"), N_("Va muy lento")};
+static constexpr int REPORT_RATING_COUNT = static_cast<int>(std::size(REPORT_RATINGS));
+static int s_report_rating = 0;
+static double s_report_last_sent = -1000.0;
+static bool s_report_too_soon = false;
+static ForjaReport::Status s_report_shown = ForjaReport::Status::Idle;
+static void PublishReportText();
+
 static void PublishGameMenu()
 {
 	PublishAutoNotes(); // compilation 76
+	PublishReportText();
 	PS4GameMenu::InGameMenuState state;
 	state.visible = s_game_menu_open;
 	state.selected = s_game_menu_selection;
@@ -2707,6 +2718,9 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			SavePlayerProfile("CPU auto", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "CpuAuto", -next); }, false);
 			break;
 		}
+		case PS4GameMenu::ROW_REPORT: // compilation 77: the player's word for the report, not saved
+			s_report_rating = (s_report_rating + REPORT_RATING_COUNT + delta) % REPORT_RATING_COUNT;
+			break;
 		case PS4GameMenu::ROW_GS_SKIP:
 		{
 			// No, auto, one frame in two ([Forja] SaltarCuadros 0, 1, 2; compilation 47). ApplyGameProfile takes it from the file.
@@ -2901,13 +2915,20 @@ static void ResumeFromGameMenu(u32 raw)
 // Forja 1.06: the session's summary, logs/resumen.txt (SessionStats.h): who, what console, what settings, and the figures.
 // Every minute of play (VMHostPoll's heartbeat) and when the game ends (RunVM).
 static unsigned s_session_beats = 0;
-static void ForjaSessionWrite(bool final)
+// Compilation 76: PCSX2's title is "<serial> [?]" for a game the PS4's GameDB reading leaves without a name (every one of the
+// five new games on 2026-10-23): the library's file name says which game it is.
+static std::string ForjaGameTitle()
 {
-	// Compilation 76: PCSX2's title is "<serial> [?]" for a game the PS4's GameDB reading leaves without a name (every one of the
-	// five new games on 2026-10-23): the library's file name says which game it is.
 	std::string title = VMManager::GetTitle(false);
 	if ((title.empty() || title.ends_with(" [?]")) && !s_selected_game.empty())
 		title = std::string(Path::GetFileTitle(s_selected_game));
+	return title;
+}
+
+// The summary's first lines: who, what console, what settings (compilation 77: the player's report starts with them too).
+static void ForjaSessionLines(std::string& header_text, std::string& settings_text)
+{
+	const std::string title = ForjaGameTitle();
 	char header[640];
 	std::snprintf(header, sizeof(header),
 		"Forja SX2 %d.%02d (compilación %d): resumen de la partida\n"
@@ -2934,7 +2955,162 @@ static void ForjaSessionWrite(bool final)
 		EERatePercent(rate), cpu_auto, s_game_upscale, frame_gen, g_orbis_fg_wanted && g_orbis_fg_gave_up ? " (se apagó sola: costaba velocidad)" : "",
 		gs_skip, RulesOnList().c_str(), s_profile.cores.empty() ? "global" : s_profile.cores.c_str(),
 		!s_video_mode_enabled ? "No" : s_video_auto ? "Auto" : "fijo");
+	header_text = header;
+	settings_text = settings;
+}
+
+static void ForjaSessionWrite(bool final)
+{
+	std::string header, settings;
+	ForjaSessionLines(header, settings);
 	ForjaSession::Write(header, settings, final);
+}
+
+// Forja SX2 (compilation 77): "Reportar este juego" (L3+R3 > Sistema; ForjaReport.cpp). Joseph (2026-10-23), after M33's reports:
+// the players send how a game runs, with the logs and the meters, so the emulator can get better from them. The report is the
+// session's summary, the player's word for it, the game's profile and settings lines and the last ~2 minutes of the meters, plus
+// a crash or hang log if one is there; nothing of the PSN account. Left/Right picks the word, X sends; one a minute at most.
+// The lines of a log worth sending, the last `max_bytes` of them.
+static std::string ReportLogLines(const char* path, size_t read_bytes, size_t max_bytes)
+{
+	static constexpr const char* kept[] = {"Performance:", "GS groups:", "Frame pacing:", "Video mode:", "Movie settings:", "GS skip:",
+		"CPU auto:", "[fg]", "VM heartbeat:", "Game settings", "Game profile:", "Render configuration:", "Hitch:", "Audio SPU2 split:",
+		"PS4 audio queue:", "EE JIT cumulative:", "Patches:", "VU1 programs:", "Recommended settings:", "Emulator menu:"};
+	std::string text;
+	std::FILE* file = std::fopen(path, "rb");
+	if (!file)
+		return text;
+	std::fseek(file, 0, SEEK_END);
+	const long size = std::ftell(file);
+	std::fseek(file, size > static_cast<long>(read_bytes) ? size - static_cast<long>(read_bytes) : 0, SEEK_SET);
+	std::string raw(read_bytes, '\0');
+	raw.resize(std::fread(raw.data(), 1, raw.size(), file));
+	std::fclose(file);
+	size_t start = size > static_cast<long>(read_bytes) ? raw.find('\n') + 1 : 0; // a cut first line is dropped
+	while (start < raw.size())
+	{
+		size_t end = raw.find('\n', start);
+		if (end == std::string::npos)
+			end = raw.size();
+		const std::string_view line(raw.data() + start, end - start);
+		for (const char* prefix : kept)
+		{
+			if (line.starts_with(prefix))
+			{
+				text.append(line);
+				text += '\n';
+				break;
+			}
+		}
+		start = end + 1;
+	}
+	if (text.size() > max_bytes)
+		text.erase(0, text.find('\n', text.size() - max_bytes) + 1);
+	return text;
+}
+
+// A whole small file (a crash or hang log), with its date.
+static std::string ReportSmallFile(const char* path, size_t max_bytes)
+{
+	struct stat st{};
+	if (stat(path, &st) != 0 || st.st_size <= 0)
+		return {};
+	std::FILE* file = std::fopen(path, "rb");
+	if (!file)
+		return {};
+	std::string text(std::min<size_t>(static_cast<size_t>(st.st_size), max_bytes), '\0');
+	text.resize(std::fread(text.data(), 1, text.size(), file));
+	std::fclose(file);
+	char date[64];
+	std::strftime(date, sizeof(date), "%Y-%m-%d %H:%M", std::localtime(&st.st_mtime));
+	return std::string("--- ") + path + " (" + date + ")\n" + text + "\n";
+}
+
+static void SendReport(double elapsed)
+{
+	s_report_too_soon = elapsed - s_report_last_sent < 60.0;
+	if (s_report_too_soon || ForjaReport::GetStatus() == ForjaReport::Status::Sending)
+		return;
+	const std::string serial = VMManager::GetDiscSerial();
+	const std::time_t now = std::time(nullptr);
+	char stamp[32];
+	std::strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", std::localtime(&now));
+	char name[128];
+	std::snprintf(name, sizeof(name), "%s_%s_c%d", serial.empty() ? "sin-serial" : serial.c_str(), stamp, FORJA_BUILD_NUMBER);
+	// A short number the player can quote: four hexadecimal digits from the report's name.
+	unsigned hash = 2166136261u;
+	for (const char* c = name; *c; c++)
+		hash = (hash ^ static_cast<unsigned char>(*c)) * 16777619u;
+	char id[16];
+	std::snprintf(id, sizeof(id), "F-%04X", hash & 0xffffu);
+	const char* rating = REPORT_RATINGS[std::clamp(s_report_rating, 0, REPORT_RATING_COUNT - 1)];
+
+	std::string header, settings;
+	ForjaSessionLines(header, settings);
+	std::string text = "Reporte " + std::string(id) + " de un jugador: " + rating + "\n";
+	text += ForjaSession::Text(header, settings, false);
+	text += "\n--- Ahora\n";
+	{
+		char line[512];
+		std::snprintf(line, sizeof(line), "Velocidad %.0f %%, %.1f cuadros/s, EE %.0f %%, GS %.0f %%, VU1 %.0f %%, gráfica %.0f %%; video %s\n",
+			PerformanceMetrics::GetSpeed(), PerformanceMetrics::GetInternalFPS(), PerformanceMetrics::GetCPUThreadUsage(),
+			PerformanceMetrics::GetGSThreadUsage(), PerformanceMetrics::GetVUThreadUsage(), PerformanceMetrics::GetGPUUsage(),
+			s_video_active ? "sí" : "no");
+		text += line;
+	}
+	text += "\n--- El registro (líneas de medidores, los últimos minutos)\n";
+	text += ReportLogLines("/data/ForjaSX2/logs/PCSX2-vm-boot.log", 384 * 1024, 48 * 1024);
+	text += ReportSmallFile("/data/ForjaSX2/crash.log", 4096);
+	text += ReportSmallFile("/data/ForjaSX2/logs/crash.log", 4096);
+	text += ReportSmallFile("/data/ForjaSX2/logs/hang.log", 2048);
+
+	char summary[512];
+	std::snprintf(summary, sizeof(summary), "Reporte %s · %s · %s · %s · Forja %d.%02d (%d) · %s · velocidad %.0f %%", id,
+		ForjaGameTitle().c_str(), serial.empty() ? "?" : serial.c_str(), rating, FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR,
+		FORJA_BUILD_NUMBER, s_console_fast_cpu ? "PS4 Pro con Boost" : "PS4 normal o Slim", PerformanceMetrics::GetSpeed());
+	if (ForjaReport::Send(std::string(id) + "_" + name, summary, text))
+	{
+		s_report_last_sent = elapsed;
+		ProbeLog("Report: %s (%s, %zu bytes) %s\n", id, rating, text.size(),
+			ForjaReport::HasChannel() ? "sending to the reports channel" : "kept in reportes/ (no channel in this build)");
+	}
+}
+
+static void PublishReportText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("Reportar este juego:  < %s >"),
+		T(REPORT_RATINGS[std::clamp(s_report_rating, 0, REPORT_RATING_COUNT - 1)]));
+	const std::string last = ForjaReport::LastName();
+	const std::string id = last.substr(0, last.find('_'));
+	const bool channel = ForjaReport::HasChannel();
+	char description[512];
+	switch (ForjaReport::GetStatus())
+	{
+		case ForjaReport::Status::Sending:
+			std::snprintf(description, sizeof(description), "%s", T("Mandando el reporte..."));
+			break;
+		case ForjaReport::Status::Sent:
+			std::snprintf(description, sizeof(description), TF("Mandado: reporte %s. Gracias. Si quieres, cuéntanos más en el Discord de Forja"),
+				id.c_str());
+			break;
+		case ForjaReport::Status::Kept:
+			std::snprintf(description, sizeof(description),
+				channel ? TF("No se pudo mandar (¿sin internet?): el reporte %s quedó en /data/ForjaSX2/reportes") :
+						  TF("Esta versión no tiene el canal de reportes: el reporte %s quedó en /data/ForjaSX2/reportes"),
+				id.c_str());
+			break;
+		default:
+			std::snprintf(description, sizeof(description), "%s",
+				channel ? T("X: manda al Discord de Forja cómo va este juego, con el resumen de la partida y sus medidores (nada de tu cuenta)") :
+						  T("X: guarda en /data/ForjaSX2/reportes cómo va este juego (esta versión no tiene el canal de reportes)"));
+			break;
+	}
+	if (s_report_too_soon && s_run_timer.GetTimeSeconds() - s_report_last_sent < 60.0)
+		std::snprintf(description, sizeof(description), "%s", T("Ya mandaste uno hace poco: espera un minuto para mandar otro"));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_REPORT, label, description);
 }
 
 void VMHostPoll()
@@ -3295,6 +3471,12 @@ void VMHostPoll()
 		PublishRecommendedText();
 		PublishGameMenu();
 	}
+	// Compilation 77: the report's row follows its sending (ForjaReport.cpp's thread).
+	if (const ForjaReport::Status status = ForjaReport::GetStatus(); status != s_report_shown)
+	{
+		s_report_shown = status;
+		PublishGameMenu();
+	}
 
 	const bool cancel = (pressed & ORBIS_PAD_BUTTON_CIRCLE) != 0 || chord_edge;
 	const bool confirm = (pressed & ORBIS_PAD_BUTTON_CROSS) != 0;
@@ -3335,10 +3517,12 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_FAST_FORWARD || row == PS4GameMenu::ROW_CHEATS ||
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
 						   row == PS4GameMenu::ROW_TEXTURES ||
-						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC))
+						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT))
 		{
 			if (row == PS4GameMenu::ROW_SAVE_STATE)
 				SaveGameState();
+			else if (row == PS4GameMenu::ROW_REPORT) // compilation 77
+				SendReport(elapsed);
 			else if (row == PS4GameMenu::ROW_LOAD_STATE)
 			{
 				if (LoadGameState())

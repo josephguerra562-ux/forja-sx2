@@ -19,6 +19,10 @@ namespace PS4CoverHttp
 	// Gives up after `deadline_s` seconds in all; `error` says why it failed.
 	bool Stream(const std::string& url, const char* user_agent, const std::function<bool(const unsigned char*, size_t)>& sink,
 		size_t& total, unsigned deadline_s, std::string& error);
+	// Forja SX2 (compilation 77): sends `body` with POST (a player's report, ForjaReport.cpp). `http` gets the status code and
+	// `response` up to 16 KB of the answer; true for a 2xx answer. No redirects; 8 s to connect, 20 s for the answer.
+	bool Post(const std::string& url, const char* user_agent, const std::string& content_type, const std::string& body, int& http,
+		std::string& response);
 }
 
 // (AI-assisted) One menu-owned request; no detached work or GPU access.

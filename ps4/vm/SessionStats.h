@@ -28,8 +28,9 @@ namespace ForjaSession
 	// Ball's fights held back by the GS had it at 65-88 % (it also waits for the GPU and the presents).
 	int ClassifyLimit(double speed, double ee_pct, double vu1_pct, double gs_pct, double gpu_pct);
 
-	// GS thread, every 5 s (HostVM.cpp): one window of the game.
-	void AddWindow(double speed, double fps, int limit, bool movie, bool fg_generating);
+	// GS thread, every 5 s (HostVM.cpp): one window of the game. Compilation 77: limit_ms, the time the limiting part took per PS2
+	// refresh, against budget_ms, a refresh's time at the game's own rate (20 ms at 50 Hz): how much cheaper it would have to be.
+	void AddWindow(double speed, double fps, int limit, bool movie, bool fg_generating, double limit_ms = 0.0, double budget_ms = 0.0);
 	// GS thread (GSRendererPS4.cpp, ForjaSessionHitch): a hitch of gap_ms between two pictures, and what happened in it.
 	void AddHitch(double gap_ms, unsigned ee_blocks_compiled, unsigned ee_rec_resets, unsigned pipelines_created, unsigned disc_kb);
 	// CPU thread, every heartbeat (main.cpp): the regular flexible memory free, how far the heap reaches, and the sound's

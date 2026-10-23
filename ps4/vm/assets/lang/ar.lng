@@ -838,8 +838,44 @@ tr: توقف التلقائي: هذه اللعبة ترسم صورتها في م
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: لا يعمل: معالج PS2 لهذه اللعبة (%d %%) بالفعل عند هذا الحد أو أقل. اختر حدًا أقل أو ارفع معالج PS2
 
+es: Perfecto
+tr: ممتاز
+
+es: Se puede jugar
+tr: يمكن اللعب
+
+es: Con fallos
+tr: به أخطاء
+
+es: Va muy lento
+tr: بطيء جدًا
+
 es: %d/%m a las %H:%M
 tr: %d/%m الساعة %H:%M
+
+es: Reportar este juego:  < %s >
+tr: الإبلاغ عن هذه اللعبة:  < %s >
+
+es: Mandando el reporte...
+tr: جارٍ إرسال التقرير...
+
+es: Mandado: reporte %s. Gracias. Si quieres, cuéntanos más en el Discord de Forja
+tr: تم الإرسال: التقرير %s. شكرًا! إن أردت، أخبرنا بالمزيد في ديسكورد Forja
+
+es: No se pudo mandar (¿sin internet?): el reporte %s quedó en /data/ForjaSX2/reportes
+tr: تعذر الإرسال (لا يوجد إنترنت؟): حُفظ التقرير %s في /data/ForjaSX2/reportes
+
+es: Esta versión no tiene el canal de reportes: el reporte %s quedó en /data/ForjaSX2/reportes
+tr: هذا الإصدار بلا قناة تقارير: حُفظ التقرير %s في /data/ForjaSX2/reportes
+
+es: X: manda al Discord de Forja cómo va este juego, con el resumen de la partida y sus medidores (nada de tu cuenta)
+tr: X: يرسل إلى ديسكورد Forja كيف تعمل هذه اللعبة، مع ملخص الجلسة وقياساتها (لا شيء من حسابك)
+
+es: X: guarda en /data/ForjaSX2/reportes cómo va este juego (esta versión no tiene el canal de reportes)
+tr: X: يحفظ في /data/ForjaSX2/reportes كيف تعمل هذه اللعبة (هذا الإصدار بلا قناة تقارير)
+
+es: Ya mandaste uno hace poco: espera un minuto para mandar otro
+tr: أرسلت تقريرًا قبل قليل: انتظر دقيقة لإرسال آخر
 
 es: Preparando la BIOS de la PS2...
 tr: جارٍ تجهيز BIOS الخاص بـ PS2...
