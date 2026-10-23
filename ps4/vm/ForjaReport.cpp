@@ -74,22 +74,47 @@ namespace
 		std::string name, summary, text;
 	};
 
+	// Compilation 79: a forum channel takes a webhook's message only as a new post, which needs its title (thread_name, up to 100
+	// characters); a text channel refuses one. So the message goes as it is, and again with the title if the channel says it is a
+	// forum (Discord's 220001: "Webhooks posted to forum channels must have a thread_name or thread_id").
+	std::string Body(const Job& job, const std::string& boundary, bool forum)
+	{
+		std::string title;
+		if (forum)
+		{
+			title = job.summary.substr(0, 100);
+			while (!title.empty() && (static_cast<unsigned char>(title.back()) & 0xC0) == 0x80)
+				title.pop_back(); // not a letter cut in half
+			if (!title.empty() && (static_cast<unsigned char>(title.back()) & 0x80) != 0)
+				title.pop_back();
+		}
+		std::string body;
+		body += "--" + boundary + "\r\nContent-Disposition: form-data; name=\"payload_json\"\r\nContent-Type: application/json\r\n\r\n";
+		body += "{\"username\":\"Forja SX2\",\"allowed_mentions\":{\"parse\":[]},\"content\":" + JsonString(job.summary);
+		if (forum)
+			body += ",\"thread_name\":" + JsonString(title);
+		body += "}\r\n";
+		body += "--" + boundary + "\r\nContent-Disposition: form-data; name=\"files[0]\"; filename=\"" + job.name +
+		        ".txt\"\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n";
+		body += job.text;
+		body += "\r\n--" + boundary + "--\r\n";
+		return body;
+	}
+
 	void* Run(void* argument)
 	{
 		pthread_setname_np(pthread_self(), "Forja report");
 		const std::unique_ptr<Job> job(static_cast<Job*>(argument));
 		const std::string boundary = "ForjaSX2-report-boundary-7f3a";
-		std::string body;
-		body += "--" + boundary + "\r\nContent-Disposition: form-data; name=\"payload_json\"\r\nContent-Type: application/json\r\n\r\n";
-		body += "{\"username\":\"Forja SX2\",\"allowed_mentions\":{\"parse\":[]},\"content\":" + JsonString(job->summary) + "}\r\n";
-		body += "--" + boundary + "\r\nContent-Disposition: form-data; name=\"files[0]\"; filename=\"" + job->name +
-		        ".txt\"\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n";
-		body += job->text;
-		body += "\r\n--" + boundary + "--\r\n";
+		const std::string type = "multipart/form-data; boundary=" + boundary;
 		int http = 0;
 		std::string response;
-		const bool sent = PS4CoverHttp::Post(ChannelUrl() + "?wait=true", "ForjaSX2 reports", "multipart/form-data; boundary=" + boundary,
-			body, http, response);
+		bool sent = PS4CoverHttp::Post(ChannelUrl() + "?wait=true", "ForjaSX2 reports", type, Body(*job, boundary, false), http, response);
+		if (!sent && http == 400 && (response.find("220001") != std::string::npos || response.find("thread_name") != std::string::npos))
+		{
+			ProbeLog("Report: the channel is a forum, sending it as a new post\n");
+			sent = PS4CoverHttp::Post(ChannelUrl() + "?wait=true", "ForjaSX2 reports", type, Body(*job, boundary, true), http, response);
+		}
 		ProbeLog("Report: %s %s (http %d)\n", job->name.c_str(), sent ? "sent to the reports channel" : "not sent, kept in reportes/", http);
 		s_status.store(sent ? ForjaReport::Status::Sent : ForjaReport::Status::Kept, std::memory_order_release);
 		return nullptr;
