@@ -4346,6 +4346,9 @@ int main()
 	ProbeLog("Forja SX2 %d.%02d (base PS4SX2 1.00) BUILD: FORJASX2-%d.%02d compilacion=%d\n", FORJA_VERSION_MAJOR,
 		FORJA_VERSION_MINOR, FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER);
 	ProbeLog("Telemetry: start=%d\n", telemetry_started ? 1 : 0);
+	// Compilation 78: whether this build sends the players' reports (ForjaReport.cpp), so a log says it without trying one.
+	ProbeLog("Reports: %s\n", ForjaReport::HasChannel() ? "the reports channel is set (Reportar este juego sends to Forja's Discord)" :
+															  "no reports channel in this build (reports are kept in /data/ForjaSX2/reportes)");
 	PS4Telemetry::Stage("boot");
 	ProbeLog("Telemetry: PC debug server target from /data/ForjaSX2/telemetry.conf (create with 'host=PC_IP port=19423')\n");
 	ProbeLog("Log directory: /data/ForjaSX2/logs migrated=%d\n", migrated_logs);

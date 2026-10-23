@@ -54,6 +54,8 @@ jobs:
           FORJA_REPORT_URL: ${{ secrets.FORJA_REPORT_URL }}
         run: |
           set -euo pipefail
+          # Compilation 78: a public note that says whether the reports channel went in (never the address itself).
+          if [[ "${FORJA_REPORT_URL:-}" == https://* ]]; then echo "::notice::Forja SX2 reports: channel set"; else echo "::notice::Forja SX2 reports: no channel (FORJA_REPORT_URL not set)"; fi
           mkdir -p ci-output ps4/deps/prefix
           rsync -a "$RUNNER_TEMP/ps4-sdk/linux/prefix/" ps4/deps/prefix/
           export OPENORBIS="$RUNNER_TEMP/ps4-sdk/linux/openorbis"
