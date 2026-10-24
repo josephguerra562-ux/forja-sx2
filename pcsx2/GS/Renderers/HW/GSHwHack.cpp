@@ -4,8 +4,11 @@
 #include "GS/Renderers/HW/GSRendererHW.h"
 #include "GS/Renderers/HW/GSHwHack.h"
 #include "GS/GSGL.h"
+#include "GS/GSPerfMon.h"
 #include "GS/GSUtil.h"
 
+#include <algorithm>
+#include <atomic>
 #include <cmath>
 
 static bool s_nativeres;
@@ -227,6 +230,13 @@ bool GSHwHack::GSC_SacredBlaze(GSRendererHW& r, int& skip)
 	return true;
 }
 
+// Forja SX2 (compilation 82): the crowd drawn in software once every this many of its passes (main.cpp, [Forja] PublicoCada;
+// 1 = every pass, as PCSX2). In the passes left out, its draws aren't drawn at all and the last crowd stays in the GS's
+// memory and the texture cache. Guitar Hero III (2026-10-24): these software draws were ~70 % of the GS thread, 270 us a
+// draw on average and 36 ms a frame, the song at 40 %; drawn on the GPU instead (render fixes off) it ran at 81 % with the GS
+// at 14 ms, but the crowd came out as blocks of noise.
+std::atomic<u32> g_forja_crowd_every{1};
+
 bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 {
 	// Crowd sprite generation is a mess, better done in software.
@@ -234,6 +244,23 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 	{
 		if (RTBW <= 4 && RTME && RFBW <= 4 && (r.m_context->TEX1.MMIN & 1) == 0)
 		{
+			// Forja SX2 (compilation 82): counted in passes, a pass being the crowd's draws of one GS frame, not in vsyncs: a game
+			// drawing a frame every two vsyncs would always fall on the same side of "one in two" and never or always draw it.
+			// The first pass is drawn.
+			static int s_pass_frame = -1;
+			static u32 s_passes = 0;
+			static bool s_leave_out = false;
+			if (const int frame = g_perfmon.GetFrame(); frame != s_pass_frame)
+			{
+				s_pass_frame = frame;
+				const u32 every = std::max(g_forja_crowd_every.load(std::memory_order_relaxed), 1u);
+				s_leave_out = every > 1 && (s_passes++ % every) != 0;
+			}
+			if (s_leave_out)
+			{
+				skip = 1;
+				return true;
+			}
 			r.ClearGSLocalMemory(r.m_context->offset.zb, r.m_r, 0);
 			r.SwPrimRender(r, RFBP != 0x2DC0, false);
 			skip = 1;

@@ -547,11 +547,11 @@ tr: 조절
 es: ELEGIR
 tr: 선택
 
-es: ELEGIR  ·  X  ·  CUADRADO
-tr: 선택  ·  X  ·  네모
-
 es: ELEGIR  ·  X
 tr: 선택  ·  X
+
+es: ELEGIR  ·  X  ·  CUADRADO
+tr: 선택  ·  X  ·  네모
 
 es: CAMBIAR
 tr: 전환
@@ -837,6 +837,21 @@ tr: 자동이 꺼졌습니다: 이 게임은 이미지를 다른 곳에 그린 �
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: 작동하지 않습니다: 이 게임의 PS2 CPU(%d %%)가 이미 이 값 이하입니다. 더 낮은 한도를 고르거나 PS2 CPU를 올리세요
+
+es: Público por software:  este juego no lo usa
+tr: 소프트웨어 관중:  이 게임은 사용하지 않음
+
+es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
+tr: 관중을 소프트웨어로 그리는 것은 Guitar Hero 게임뿐입니다. 이 게임에서는 바뀌는 것이 없습니다
+
+es: Público por software:  < todos los cuadros (lento) >
+tr: 소프트웨어 관중:  < 매 프레임 (느림) >
+
+es: Público por software:  < 1 de cada %u cuadros >
+tr: 소프트웨어 관중:  < %u 프레임마다 1번 >
+
+es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
+tr: 이 게임은 관중을 CPU로 그리며, 이것이 가장 느리게 만듭니다. 횟수를 줄이면 = 더 빠름; 관중의 움직임은 덜 부드러워집니다. 이 게임에 저장됩니다
 
 es: Pésimo
 tr: 최악

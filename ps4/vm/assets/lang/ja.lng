@@ -547,11 +547,11 @@ tr: 調整
 es: ELEGIR
 tr: 選択
 
-es: ELEGIR  ·  X  ·  CUADRADO
-tr: 選択  ·  X  ·  □
-
 es: ELEGIR  ·  X
 tr: 選択  ·  X
+
+es: ELEGIR  ·  X  ·  CUADRADO
+tr: 選択  ·  X  ·  □
 
 es: CAMBIAR
 tr: 切替
@@ -837,6 +837,21 @@ tr: 自動はオフになりました：このゲームは画像を別の場所�
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: 動作しません：このゲームのPS2のCPU（%d %%）はすでにこの値以下です。もっと低い上限を選ぶか、PS2のCPUを上げてください
+
+es: Público por software:  este juego no lo usa
+tr: ソフトウェア描画の観客：  このゲームでは使いません
+
+es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
+tr: 観客をソフトウェアで描くのは Guitar Hero シリーズだけです。このゲームでは何も変わりません
+
+es: Público por software:  < todos los cuadros (lento) >
+tr: ソフトウェア描画の観客：  < 毎フレーム（遅い） >
+
+es: Público por software:  < 1 de cada %u cuadros >
+tr: ソフトウェア描画の観客：  < %u フレームに 1 回 >
+
+es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
+tr: このゲームは観客を CPU で描いていて、それが一番の遅さの原因です。回数を減らす = 速くなる。観客の動きは少しなめらかでなくなります。このゲーム用に保存されます
 
 es: Pésimo
 tr: 最悪

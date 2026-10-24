@@ -547,11 +547,11 @@ tr: ADJUST
 es: ELEGIR
 tr: CHOOSE
 
-es: ELEGIR  ·  X  ·  CUADRADO
-tr: CHOOSE  ·  X  ·  SQUARE
-
 es: ELEGIR  ·  X
 tr: CHOOSE  ·  X
+
+es: ELEGIR  ·  X  ·  CUADRADO
+tr: CHOOSE  ·  X  ·  SQUARE
 
 es: CAMBIAR
 tr: SWITCH
@@ -837,6 +837,21 @@ tr: Auto turned itself off: this game draws its picture elsewhere and then copie
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: Not acting: this game's PS2 CPU (%d %%) is already this low or lower. Pick a lower limit or raise the PS2 CPU
+
+es: Público por software:  este juego no lo usa
+tr: Software crowd:  not used by this game
+
+es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
+tr: Only the Guitar Hero games draw their crowd in software. Nothing changes in this game
+
+es: Público por software:  < todos los cuadros (lento) >
+tr: Software crowd:  < every frame (slow) >
+
+es: Público por software:  < 1 de cada %u cuadros >
+tr: Software crowd:  < 1 of every %u frames >
+
+es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
+tr: This game draws its crowd with the CPU, what slows it down the most. Fewer times = more speed; the crowd moves less smoothly. Saved for this game
 
 es: Pésimo
 tr: Awful

@@ -66,8 +66,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
   - **Partida** (desde la 58 también): **Avance rápido** (X lo prende o lo apaga: el juego corre lo más rápido que aguante
     la PS4, para cargas y diálogos; no se guarda) y, en Guardar/Cargar estado, **la fecha y la hora** en que se guardó cada
     ranura.
-  - **Rendimiento:** velocidad del CPU de la PS2, **CPU automático**, modo video, núcleos y **Saltar cuadros** (de vuelta
-    aquí desde la 75; de la 59 a la 74 estuvo en No tocar).
+  - **Rendimiento:** velocidad del CPU de la PS2, **CPU automático**, modo video, núcleos, **Saltar cuadros** (de vuelta
+    aquí desde la 75; de la 59 a la 74 estuvo en No tocar) y, desde la 82, **Público por software** (abajo).
   - **Extras** (se llamaba Parches; desde la 44 trae más; desde la 53 los filtros están en **No tocar**):
     - **Parche:** los parches de ese juego, uno por uno. ←/→ elige, **X** lo pone o lo quita y se guarda para ese juego.
       Algunos piden reiniciar el juego para quitarse del todo.
@@ -117,7 +117,7 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     y X lo manda al canal de reportes del Discord de Forja: el resumen de la partida, los ajustes del juego, los medidores
     de los últimos minutos y el `crash.log` si hay. **Nada de tu cuenta de PSN.** Te da un número (por ejemplo `F-3A2C`)
     para mencionarlo en el Discord. Si no hay internet, el reporte queda en `/data/ForjaSX2/reportes/`. Uno por minuto.
-    Desde la 80, debajo está **Qué falló** (Nada en especial, Va lento, Fallos de imagen, Fallos de sonido, Los controles,
+    Desde la 80, debajo está **Qué falló** (desde la 82, **X ahí también lo manda**) (Nada en especial, Va lento, Fallos de imagen, Fallos de sonido, Los controles,
     Se cuelga o se cierra): se manda con el reporte, junto con lo que midieron los medidores. La velocidad la miden ellos;
     la imagen, el sonido y los controles solo los ves tú.
 - **Todo lo que cambies en L3+R3 se guarda solo para ese juego** (como las propiedades por juego de Dolphin), menos el
@@ -149,6 +149,12 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     **Desde la 76 también baja cuando le sobran imágenes:** si el video saca un 30 % más de las que necesita y va bajo el
     95 % de velocidad, prueba un paso abajo y se queda si no pierde imágenes y va 4 puntos más rápido (Resident Evil 4 sacaba
     el doble al 50 % y su video iba al 85 %).
+  - **Público por software** (desde la 82, solo en los Guitar Hero): todos los cuadros / 1 de cada 2 / 4 / 8. La base de
+    datos de PCSX2 hace que estos juegos dibujen el público **con la CPU** y no con la gráfica, porque la gráfica lo dibuja
+    roto. En la PS4 eso era lo que más frenaba a Guitar Hero III (~70 % del GS: las canciones al 40 %). Con "1 de cada N",
+    el público se sigue dibujando bien, pero solo en uno de cada N cuadros; en los demás queda el anterior. Cuesta la
+    N-ésima parte y el público se mueve menos fluido. Sin elegir nada va en **1 de cada 2**; Guitar Hero III viene de
+    fábrica en **1 de cada 4**.
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2. Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
     1 de cada 2 cuadros del juego y la tele sigue mostrando el último dibujado: el juego, su música y sus movimientos van

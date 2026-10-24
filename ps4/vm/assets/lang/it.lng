@@ -547,11 +547,11 @@ tr: REGOLA
 es: ELEGIR
 tr: SCEGLI
 
-es: ELEGIR  ·  X  ·  CUADRADO
-tr: SCEGLI  ·  X  ·  QUADRATO
-
 es: ELEGIR  ·  X
 tr: SCEGLI  ·  X
+
+es: ELEGIR  ·  X  ·  CUADRADO
+tr: SCEGLI  ·  X  ·  QUADRATO
 
 es: CAMBIAR
 tr: CAMBIA
@@ -837,6 +837,21 @@ tr: Auto si è spento: questo gioco disegna l'immagine a parte e poi la copia su
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: Non agisce: la CPU della PS2 di questo gioco (%d %%) è già uguale o più bassa. Scegli un limite più basso o alza la CPU della PS2
+
+es: Público por software:  este juego no lo usa
+tr: Pubblico via software:  questo gioco non lo usa
+
+es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
+tr: Solo i Guitar Hero disegnano il pubblico via software. In questo gioco non cambia nulla
+
+es: Público por software:  < todos los cuadros (lento) >
+tr: Pubblico via software:  < ogni fotogramma (lento) >
+
+es: Público por software:  < 1 de cada %u cuadros >
+tr: Pubblico via software:  < 1 fotogramma su %u >
+
+es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
+tr: Questo gioco disegna il pubblico con la CPU, ciò che lo rallenta di più. Meno volte = più velocità; il pubblico si muove meno fluido. Salvato per questo gioco
 
 es: Pésimo
 tr: Pessimo

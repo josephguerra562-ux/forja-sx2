@@ -547,11 +547,11 @@ tr: НАСТРОИТЬ
 es: ELEGIR
 tr: ВЫБРАТЬ
 
-es: ELEGIR  ·  X  ·  CUADRADO
-tr: ВЫБРАТЬ  ·  X  ·  КВАДРАТ
-
 es: ELEGIR  ·  X
 tr: ВЫБРАТЬ  ·  X
+
+es: ELEGIR  ·  X  ·  CUADRADO
+tr: ВЫБРАТЬ  ·  X  ·  КВАДРАТ
 
 es: CAMBIAR
 tr: СМЕНИТЬ
@@ -837,6 +837,21 @@ tr: Авто отключилось: эта игра рисует изображ
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: Не действует: ЦП PS2 этой игры (%d %%) уже на этом уровне или ниже. Выберите предел ниже или поднимите ЦП PS2
+
+es: Público por software:  este juego no lo usa
+tr: Программная толпа:  в этой игре нет
+
+es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
+tr: Только игры Guitar Hero рисуют толпу программно. В этой игре ничего не меняется
+
+es: Público por software:  < todos los cuadros (lento) >
+tr: Программная толпа:  < каждый кадр (медленно) >
+
+es: Público por software:  < 1 de cada %u cuadros >
+tr: Программная толпа:  < 1 из %u кадров >
+
+es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
+tr: Эта игра рисует толпу процессором, и это тормозит её сильнее всего. Реже = быстрее; толпа движется менее плавно. Сохраняется для этой игры
 
 es: Pésimo
 tr: Ужасно

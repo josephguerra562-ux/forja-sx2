@@ -547,11 +547,11 @@ tr: AYARLA
 es: ELEGIR
 tr: SEÇ
 
-es: ELEGIR  ·  X  ·  CUADRADO
-tr: SEÇ  ·  X  ·  KARE
-
 es: ELEGIR  ·  X
 tr: SEÇ  ·  X
+
+es: ELEGIR  ·  X  ·  CUADRADO
+tr: SEÇ  ·  X  ·  KARE
 
 es: CAMBIAR
 tr: DEĞİŞTİR
@@ -837,6 +837,21 @@ tr: Otomatik kendini kapattı: bu oyun görüntüsünü başka bir yerde çizip 
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: Etkisiz: bu oyunun PS2 CPU'su (%d %%) zaten bu kadar ya da daha düşük. Daha düşük bir sınır seçin ya da PS2 CPU'sunu yükseltin
+
+es: Público por software:  este juego no lo usa
+tr: Yazılımla seyirci:  bu oyun kullanmıyor
+
+es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
+tr: Seyirciyi yazılımla yalnızca Guitar Hero oyunları çizer. Bu oyunda hiçbir şey değişmez
+
+es: Público por software:  < todos los cuadros (lento) >
+tr: Yazılımla seyirci:  < her kare (yavaş) >
+
+es: Público por software:  < 1 de cada %u cuadros >
+tr: Yazılımla seyirci:  < her %u karede 1 >
+
+es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
+tr: Bu oyun seyirciyi CPU ile çizer, onu en çok yavaşlatan budur. Daha az = daha hızlı; seyirci daha az akıcı hareket eder. Bu oyun için kaydedilir
 
 es: Pésimo
 tr: Berbat

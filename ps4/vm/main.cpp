@@ -336,6 +336,12 @@ extern std::atomic<unsigned> g_forja_gs_skipped_frames;
 extern std::atomic<unsigned> g_forja_gs_skip_stats[6]; // compilation 62: GSRendererPS4.cpp, VSync and ForjaGsSkipNote
 extern std::atomic<bool> g_forja_gs_skip_paused;      // Forja 1.06: its guard has it paused (ForjaSkipGuard.h)
 extern std::atomic<unsigned> g_forja_gs_skip_every;    // compilation 63: one frame in N left out
+// Compilation 82: the Guitar Hero games' crowd, drawn in software once every N of its passes (GSHwHack.cpp, GSC_GuitarHero;
+// [Forja] PublicoCada). Without a value, one in two: every one is PCSX2's, and cost Guitar Hero III ~36 ms a frame.
+extern std::atomic<u32> g_forja_crowd_every;
+static constexpr unsigned CROWD_EVERY_STEPS[] = {1u, 2u, 4u, 8u};
+static constexpr unsigned CROWD_EVERY_DEFAULT = 2u;
+static unsigned s_crowd_every = CROWD_EVERY_DEFAULT;
 static int s_gs_skip_mode = 0;
 // Compilation 63: Auto's steps, one frame in N left out (index 0: every frame drawn), and the one it is on.
 static constexpr unsigned GS_SKIP_STEPS[] = {0u, 8u, 6u, 5u, 4u, 3u, 2u};
@@ -1805,6 +1811,32 @@ static void PublishAutoNotes()
 		PS4GameMenu::SetRowText(PS4GameMenu::ROW_CPU_AUTO, "", "");
 }
 
+// Compilation 82: whether the running game draws its crowd in software (the GameDB's GSC_GuitarHero, render fixes on).
+static bool GameDrawsCrowdInSoftware()
+{
+	static const s16 guitar_hero = GSLookupGetSkipCountFunctionId("GSC_GuitarHero");
+	return guitar_hero >= 0 && EmuConfig.GS.GetSkipCountFunctionId == guitar_hero && !EmuConfig.GS.UserHacks_DisableRenderFixes;
+}
+
+static void PublishCrowdText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	if (!GameDrawsCrowdInSoftware())
+	{
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_CROWD, T("Público por software:  este juego no lo usa"),
+			T("Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada"));
+		return;
+	}
+	char label[256];
+	if (s_crowd_every <= 1)
+		std::snprintf(label, sizeof(label), "%s", T("Público por software:  < todos los cuadros (lento) >"));
+	else
+		std::snprintf(label, sizeof(label), TF("Público por software:  < 1 de cada %u cuadros >"), s_crowd_every);
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CROWD, label,
+		T("Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego"));
+}
+
 // Compilation 77: "Reportar este juego" (SendReport, PublishReportText): the player's word for it, and when the last one went.
 // Compilation 79 (Joseph, 2026-10-23: "también tienen que poner mal, bien, bueno ... perfecto"): five words, worst to best, starting
 // in the middle so the word is the player's, not ours.
@@ -1824,6 +1856,7 @@ static void PublishReportText();
 static void PublishGameMenu()
 {
 	PublishAutoNotes(); // compilation 76
+	PublishCrowdText(); // compilation 82
 	PublishReportText();
 	PS4GameMenu::InGameMenuState state;
 	state.visible = s_game_menu_open;
@@ -1959,6 +1992,11 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 			g_forja_gs_skip_active.store(gs_skip == 2 && !s_movie_settings, std::memory_order_relaxed); // compilation 65
 		}
 	}
+	// Compilation 82: the Guitar Hero games' crowd (GSC_GuitarHero reads the atomic on the GS thread).
+	s_crowd_every = s_profile.crowd_every > 0 ? static_cast<unsigned>(s_profile.crowd_every) : CROWD_EVERY_DEFAULT;
+	g_forja_crowd_every.store(s_crowd_every, std::memory_order_relaxed);
+	if (GameDrawsCrowdInSoftware())
+		ProbeLog("Crowd: drawn in software one pass in %u (%s)\n", s_crowd_every, ProfileOriginName(s_profile.crowd_every_origin));
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
 	ApplyVu1SkipList(s_profile.vu1_skip); // compilation 44: the VU1 filter
 	ApplyGsFilterList(s_profile.gs_filter); // compilation 51: the GS filter
@@ -2735,6 +2773,21 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		case PS4GameMenu::ROW_REPORT_ISSUE: // compilation 80: what went wrong, not saved either
 			s_report_issue = (s_report_issue + REPORT_ISSUE_COUNT + delta) % REPORT_ISSUE_COUNT;
 			break;
+		case PS4GameMenu::ROW_CROWD: // compilation 82: the crowd in software every 1, 2, 4 or 8 passes ([Forja] PublicoCada)
+		{
+			if (!GameDrawsCrowdInSoftware())
+				break;
+			constexpr int count = static_cast<int>(std::size(CROWD_EVERY_STEPS));
+			int position = 0;
+			for (int i = 0; i < count; i++)
+			{
+				if (CROWD_EVERY_STEPS[i] == s_crowd_every)
+					position = i;
+			}
+			const int next = static_cast<int>(CROWD_EVERY_STEPS[(position + delta + count) % count]);
+			SavePlayerProfile("Crowd", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "PublicoCada", next); }, false);
+			break;
+		}
 		case PS4GameMenu::ROW_GS_SKIP:
 		{
 			// No, auto, one frame in two ([Forja] SaltarCuadros 0, 1, 2; compilation 47). ApplyGameProfile takes it from the file.
@@ -2971,6 +3024,13 @@ static void ForjaSessionLines(std::string& header_text, std::string& settings_te
 		!s_video_mode_enabled ? "No" : s_video_auto ? "Auto" : "fijo");
 	header_text = header;
 	settings_text = settings;
+	// Compilation 82: the crowd of the Guitar Hero games, drawn in software once every N passes.
+	if (GameDrawsCrowdInSoftware())
+	{
+		char crowd[96];
+		std::snprintf(crowd, sizeof(crowd), "Público por software: 1 de cada %u cuadros\n", s_crowd_every);
+		settings_text += crowd;
+	}
 }
 
 static void ForjaSessionWrite(bool final)
@@ -3537,16 +3597,19 @@ void VMHostPoll()
 		if (confirm && (row == PS4GameMenu::ROW_OVERLAY || row == PS4GameMenu::ROW_VIDEO_MODE || row == PS4GameMenu::ROW_FRAME_GEN ||
 						   row == PS4GameMenu::ROW_SHARPNESS ||
 						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_CPU_AUTO || row == PS4GameMenu::ROW_RESET_PROFILE ||
-						   row == PS4GameMenu::ROW_GS_SKIP ||
+						   row == PS4GameMenu::ROW_GS_SKIP || row == PS4GameMenu::ROW_CROWD ||
 						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART ||
 						   row == PS4GameMenu::ROW_FAST_FORWARD || row == PS4GameMenu::ROW_CHEATS ||
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
 						   row == PS4GameMenu::ROW_TEXTURES ||
-						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT))
+						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
+						   row == PS4GameMenu::ROW_REPORT_ISSUE))
 		{
 			if (row == PS4GameMenu::ROW_SAVE_STATE)
 				SaveGameState();
-			else if (row == PS4GameMenu::ROW_REPORT) // compilation 77
+			// Compilation 77; 82: from "Qué falló" too. Joseph chose what went wrong in Guitar Hero (2026-10-24) and pressed X there,
+			// on the row below the one that sent, and nothing went.
+			else if (row == PS4GameMenu::ROW_REPORT || row == PS4GameMenu::ROW_REPORT_ISSUE)
 				SendReport(elapsed);
 			else if (row == PS4GameMenu::ROW_LOAD_STATE)
 			{

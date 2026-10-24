@@ -547,11 +547,11 @@ tr: 调整
 es: ELEGIR
 tr: 选择
 
-es: ELEGIR  ·  X  ·  CUADRADO
-tr: 选择  ·  X  ·  方块键
-
 es: ELEGIR  ·  X
 tr: 选择  ·  X
+
+es: ELEGIR  ·  X  ·  CUADRADO
+tr: 选择  ·  X  ·  方块键
 
 es: CAMBIAR
 tr: 切换
@@ -837,6 +837,21 @@ tr: 自动已关闭：这个游戏先在别处绘制画面，再复制到屏幕�
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: 不起作用：此游戏的 PS2 CPU（%d %%）已经等于或低于此限制。请选择更低的限制，或提高 PS2 CPU
+
+es: Público por software:  este juego no lo usa
+tr: 软件绘制观众：  此游戏不使用
+
+es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
+tr: 只有 Guitar Hero 系列用软件绘制观众。此游戏不受影响
+
+es: Público por software:  < todos los cuadros (lento) >
+tr: 软件绘制观众：  < 每一帧（慢） >
+
+es: Público por software:  < 1 de cada %u cuadros >
+tr: 软件绘制观众：  < 每 %u 帧画 1 次 >
+
+es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
+tr: 此游戏用 CPU 绘制观众，这是最拖慢它的部分。次数越少 = 速度越快；观众动作不那么流畅。为此游戏保存
 
 es: Pésimo
 tr: 很差

@@ -547,11 +547,11 @@ tr: ضبط
 es: ELEGIR
 tr: اختيار
 
-es: ELEGIR  ·  X  ·  CUADRADO
-tr: اختيار  ·  X  ·  المربع
-
 es: ELEGIR  ·  X
 tr: اختيار  ·  X
+
+es: ELEGIR  ·  X  ·  CUADRADO
+tr: اختيار  ·  X  ·  المربع
 
 es: CAMBIAR
 tr: تبديل
@@ -837,6 +837,21 @@ tr: توقف التلقائي: هذه اللعبة ترسم صورتها في م
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: لا يعمل: معالج PS2 لهذه اللعبة (%d %%) بالفعل عند هذا الحد أو أقل. اختر حدًا أقل أو ارفع معالج PS2
+
+es: Público por software:  este juego no lo usa
+tr: الجمهور بالبرمجيات:  لا تستخدمه هذه اللعبة
+
+es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
+tr: ألعاب Guitar Hero وحدها ترسم جمهورها بالبرمجيات. لا يتغير شيء في هذه اللعبة
+
+es: Público por software:  < todos los cuadros (lento) >
+tr: الجمهور بالبرمجيات:  < كل الإطارات (بطيء) >
+
+es: Público por software:  < 1 de cada %u cuadros >
+tr: الجمهور بالبرمجيات:  < 1 من كل %u إطارات >
+
+es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
+tr: ترسم هذه اللعبة جمهورها بالمعالج، وهذا أكثر ما يبطئها. مرات أقل = سرعة أكبر؛ يتحرك الجمهور بسلاسة أقل. يُحفظ لهذه اللعبة
 
 es: Pésimo
 tr: سيئ جدًا

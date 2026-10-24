@@ -70,6 +70,10 @@ extern bool g_orbis_fg_engaged; // ...and frame generation generating now
 // controllers connected (main.cpp, the second pad).
 extern std::atomic<u64> g_forja_gs_draws_total;
 extern std::atomic<int> g_forja_pads;
+// Compilation 82: the EE thread's waits for the GS thread (pcsx2/MTGS.cpp, the PS5 port's counters, in TSC ticks): two
+// refreshes already queued (vsyncq), its ring full (stall), a wait for it to empty (waitgs); and the GS thread's own wait for
+// work. Only the EE thread writes the first three and only the GS thread the last: a meter's reads, no lock.
+extern unsigned long long g_orbis_ee_vsyncq_ticks, g_orbis_ee_stall_ticks, g_orbis_ee_waitgs_ticks, g_orbis_gs_idle_ticks;
 // Forja 1.06: what held the last 5 s back (SessionStats.h, ForjaSession::Limit), for UIVM.cpp's HUD.
 std::atomic<int> g_forja_limit{0};
 
@@ -344,6 +348,27 @@ void Host::OnPerformanceMetricsUpdated()
 		vu_usage, PerformanceMetrics::GetVUThreadAverageTime(),
 		(ee_usage + gs_usage + vu_usage > 0.0) ? "samples" : "no_samples",
 		PerformanceMetrics::GetGPUUsage(), gpu_ms, gpu_ms > 0.0f ? "samples" : "no_samples", ForjaSession::LimitName(limit));
+	// Compilation 82: how long the EE waited for the GS each PS2 refresh. Guitar Hero III's songs (2026-10-24) had the EE and the GS
+	// at ~50 ms a refresh in every window, rising and falling together (44.9/47.8, 52.0/50.5, 31.1/32.4): the EE may be
+	// waiting for the GS, not working, and "Limit=EE" would then point at the wrong part.
+	{
+		static unsigned long long last[4] = {};
+		const unsigned long long now_ticks[4] = {g_orbis_ee_vsyncq_ticks, g_orbis_ee_stall_ticks, g_orbis_ee_waitgs_ticks,
+			g_orbis_gs_idle_ticks};
+		double ms[4] = {};
+		const double refreshes = profile_interval * PerformanceMetrics::GetFPS();
+		for (int i = 0; i < 4; i++)
+		{
+			const unsigned long long delta = now_ticks[i] >= last[i] ? now_ticks[i] - last[i] : 0;
+			last[i] = now_ticks[i];
+			ms[i] = refreshes > 0.0 ? static_cast<double>(delta) / 1600000.0 / refreshes : 0.0; // the PS4's TSC runs at ~1.6 GHz
+		}
+		if (profile_interval > 0.0)
+			ProbeLog("EE waits for the GS: per_refresh_ms total=%.2f vsync_queue=%.2f ring_full=%.2f wait_gs=%.2f of EE_ms=%.2f; "
+					 "GS idle per_refresh_ms=%.2f of GS_ms=%.2f\n",
+				ms[0] + ms[1] + ms[2], ms[0], ms[1], ms[2], PerformanceMetrics::GetCPUThreadAverageTime(), ms[3],
+				PerformanceMetrics::GetGSThreadAverageTime());
+	}
 	PS4IPUProfile::LogInterval(profile_interval);
 	PS4EEEventProfile::LogInterval(profile_interval);
 	PS4GSProfile::LogInterval(profile_interval);

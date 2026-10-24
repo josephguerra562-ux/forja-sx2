@@ -2084,6 +2084,13 @@ namespace PS4GameMenu
 						draw->AddLine(ip(-15, -10), ip(0, 2), icon_line, lw);
 						draw->AddLine(ip(15, -10), ip(0, 2), icon_line, lw);
 						break;
+					case ROW_CROWD: // three heads, a crowd (compilation 82)
+						for (int i = -1; i <= 1; i++)
+						{
+							draw->AddCircle(ip(i * 10.0f, -4), 4.5f * scale, icon_line, 12, lw);
+							draw->AddLine(ip(i * 10.0f - 5, 11), ip(i * 10.0f + 5, 11), icon_line, lw);
+						}
+						break;
 					case ROW_REPORT_ISSUE: // a warning sign (compilation 80)
 						draw->AddTriangle(ip(0, -15), ip(16, 13), ip(-16, 13), icon_line, lw);
 						draw->AddLine(ip(0, -5), ip(0, 4), icon_line, lw);
@@ -2151,8 +2158,10 @@ namespace PS4GameMenu
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
 					action = T("AJUSTAR");
 				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
-				         row == ROW_SHARPNESS || row == ROW_GS_SKIP || row == ROW_REPORT_ISSUE)
+				         row == ROW_SHARPNESS || row == ROW_GS_SKIP || row == ROW_CROWD)
 					action = T("ELEGIR");
+				else if (row == ROW_REPORT_ISSUE) // compilation 82: X sends the report from here too
+					action = T("ELEGIR  ·  X");
 				else if (row == ROW_VU1_FILTER || row == ROW_GS_FILTER)
 					action = T("ELEGIR  ·  X  ·  CUADRADO"); // compilation 52: Cuadrado brings everything back
 				else if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)

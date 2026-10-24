@@ -71,6 +71,10 @@ namespace ForjaGameProfile
 		// (ps4/vm/main.cpp, LoadRules; pcsx2/ForjaGsRules.h).
 		std::string rules_on;
 		Origin rules_on_origin = Origin::Global;
+		// [Forja] PublicoCada (compilation 82): the Guitar Hero games' crowd, drawn in software (GSHwHack.cpp, GSC_GuitarHero) once
+		// every 1, 2, 4 or 8 of its passes; 0 not set (main.cpp's default).
+		int crowd_every = 0;
+		Origin crowd_every_origin = Origin::Global;
 	};
 
 	// Forja SX2 (compilation 44): the settings center's copy (/data/ForjaSX2/centro/perfiles, fetched from the project's GitHub by
@@ -167,6 +171,7 @@ namespace ForjaGameProfile
 		read_int("FrameGen", &v.frame_gen, &v.frame_gen_origin);
 		read_int("CpuAuto", &v.cpu_auto, &v.cpu_auto_origin);
 		read_int("SaltarCuadros", &v.gs_skip, &v.gs_skip_origin);
+		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);
 		// Forja 1.06: [Forja] SaltarCuadrosConGuardian, a factory profile's frame skip for the versions with the guard (73 on),
 		// which wins over its SaltarCuadros (never over the player's). The versions before 1.06 fetch the factory profiles from
 		// main and read only SaltarCuadros: there it keeps what suits their skip without the guard (Dragon Ball: off).
@@ -207,6 +212,8 @@ namespace ForjaGameProfile
 			v.cpu_auto = 0;
 		if (v.gs_skip >= 0)
 			v.gs_skip = std::min(v.gs_skip, 2);
+		if (v.crowd_every != 0)
+			v.crowd_every = v.crowd_every >= 8 ? 8 : v.crowd_every >= 4 ? 4 : v.crowd_every >= 2 ? 2 : 1;
 		return v;
 	}
 
