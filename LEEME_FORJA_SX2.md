@@ -67,8 +67,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     la PS4, para cargas y diálogos; no se guarda) y, en Guardar/Cargar estado, **la fecha y la hora** en que se guardó cada
     ranura.
   - **Rendimiento:** velocidad del CPU de la PS2, **CPU automático**, modo video, núcleos, **Saltar cuadros** (de vuelta
-    aquí desde la 75; de la 59 a la 74 estuvo en No tocar) y, desde la 82, **Público por software** (abajo).
-  - **Extras** (se llamaba Parches; desde la 44 trae más; desde la 53 los filtros están en **No tocar**):
+    aquí desde la 75; de la 59 a la 74 estuvo en No tocar).
+  - **Extras** (se llamaba Parches; desde la 44 trae más; desde la 53 los filtros están en **No tocar**; desde la 83,
+    **Público por software**, que en la 82 estaba en Rendimiento: ver más abajo):
     - **Parche:** los parches de ese juego, uno por uno. ←/→ elige, **X** lo pone o lo quita y se guarda para ese juego.
       Algunos piden reiniciar el juego para quitarse del todo.
       **Huellas de Forja** (desde la 55): al final de la lista pueden aparecer parches propios de Forja, marcados "(Forja)".
@@ -149,12 +150,14 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     **Desde la 76 también baja cuando le sobran imágenes:** si el video saca un 30 % más de las que necesita y va bajo el
     95 % de velocidad, prueba un paso abajo y se queda si no pierde imágenes y va 4 puntos más rápido (Resident Evil 4 sacaba
     el doble al 50 % y su video iba al 85 %).
-  - **Público por software** (desde la 82, solo en los Guitar Hero): todos los cuadros / 1 de cada 2 / 4 / 8. La base de
-    datos de PCSX2 hace que estos juegos dibujen el público **con la CPU** y no con la gráfica, porque la gráfica lo dibuja
-    roto. En la PS4 eso era lo que más frenaba a Guitar Hero III (~70 % del GS: las canciones al 40 %). Con "1 de cada N",
-    el público se sigue dibujando bien, pero solo en uno de cada N cuadros; en los demás queda el anterior. Cuesta la
-    N-ésima parte y el público se mueve menos fluido. Sin elegir nada va en **1 de cada 2**; Guitar Hero III viene de
-    fábrica en **1 de cada 4**.
+  - **Público por software** (desde la 82, solo en los Guitar Hero; en **Extras** desde la 83): todos los cuadros / 1 de
+    cada 2 / 4 / 8. La base de datos de PCSX2 hace que estos juegos dibujen el público **con la CPU** y no con la gráfica,
+    porque la gráfica lo dibuja roto. En la PS4 eso era lo que más frenaba a Guitar Hero III (~70 % del GS). Con "1 de cada
+    N", el público se dibuja en uno de cada N cuadros y en los demás queda el anterior: con la CPU de la PS2 al 31 %, las
+    canciones van al 40 % con todos, 56 % con 1 de 2, 73 % con 1 de 4 y 86 % con 1 de 8. **En la 82 se pixelaba**: el
+    juego también dibuja con la gráfica en esas imágenes cada cuadro, y quedaban a medias. Desde la 83, en los cuadros sin
+    público esos dibujos tampoco se hacen, y queda entero el público anterior. Sin elegir nada va en **1 de cada 2**;
+    Guitar Hero III viene de fábrica en **1 de cada 4**.
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 82 **1 de 2 sin guardián** (abajo). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja

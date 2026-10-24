@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <iterator>
 
 static bool s_nativeres;
 
@@ -239,31 +240,56 @@ std::atomic<u32> g_forja_crowd_every{1};
 
 bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 {
+	// Forja SX2 (compilation 82): a pass is one GS frame with draws (this runs for every draw), not a vsync: a game drawing a
+	// frame every two vsyncs would always fall on the same side of "one in two" and never or always draw it. The first pass is
+	// drawn. Compilation 83: the GPU's own draws into the crowd's buffers are left out too in a pass left out. Guitar Hero III
+	// clears 008c0 and draws into it on the GPU each frame before its software draws (2026-10-24): with only the software ones
+	// left out, the buffer the screen reads was half made, and the crowd came out pixelated at 1 in 2, 4 and 8. So a drawn pass
+	// notes the buffers its software draws went into, and a pass left out leaves every draw into them out, GPU or not: they
+	// keep the last whole crowd. Its speed, with the PS2's CPU at 31 %: 40 % drawing every pass, 56 % at 1 in 2, 73 % at 1 in
+	// 4, 86 % at 1 in 8.
+	// The buffers are those of the last pass that drew the crowd, and they lapse after two rounds without one (a menu after a
+	// song draws no crowd, and its draws into those buffers aren't left out).
+	static int s_pass_frame = -1;
+	static u32 s_passes = 0;
+	static u32 s_every = 1;
+	static bool s_leave_out = false;
+	static u32 s_crowd_fbps[16];
+	static u32 s_crowd_fbp_count = 0;
+	static u32 s_crowd_pass = 0; // the pass whose software draws noted the buffers (0: none yet)
+	if (const int frame = g_perfmon.GetFrame(); frame != s_pass_frame)
+	{
+		s_pass_frame = frame;
+		s_every = std::max(g_forja_crowd_every.load(std::memory_order_relaxed), 1u);
+		s_leave_out = s_every > 1 && (s_passes++ % s_every) != 0;
+	}
+	const u32 fbp = RFBP;
+	const auto noted = [fbp]() { return std::find(s_crowd_fbps, s_crowd_fbps + s_crowd_fbp_count, fbp) != s_crowd_fbps + s_crowd_fbp_count; };
+
 	// Crowd sprite generation is a mess, better done in software.
 	if (skip == 0)
 	{
 		if (RTBW <= 4 && RTME && RFBW <= 4 && (r.m_context->TEX1.MMIN & 1) == 0)
 		{
-			// Forja SX2 (compilation 82): counted in passes, a pass being the crowd's draws of one GS frame, not in vsyncs: a game
-			// drawing a frame every two vsyncs would always fall on the same side of "one in two" and never or always draw it.
-			// The first pass is drawn.
-			static int s_pass_frame = -1;
-			static u32 s_passes = 0;
-			static bool s_leave_out = false;
-			if (const int frame = g_perfmon.GetFrame(); frame != s_pass_frame)
-			{
-				s_pass_frame = frame;
-				const u32 every = std::max(g_forja_crowd_every.load(std::memory_order_relaxed), 1u);
-				s_leave_out = every > 1 && (s_passes++ % every) != 0;
-			}
 			if (s_leave_out)
 			{
 				skip = 1;
 				return true;
 			}
+			if (s_crowd_pass != s_passes)
+			{
+				s_crowd_pass = s_passes; // this pass's buffers replace the last one's
+				s_crowd_fbp_count = 0;
+			}
+			if (!noted() && s_crowd_fbp_count < std::size(s_crowd_fbps))
+				s_crowd_fbps[s_crowd_fbp_count++] = fbp;
 			r.ClearGSLocalMemory(r.m_context->offset.zb, r.m_r, 0);
 			r.SwPrimRender(r, RFBP != 0x2DC0, false);
 			skip = 1;
+		}
+		else if (s_leave_out && s_crowd_pass != 0 && s_passes - s_crowd_pass <= 2 * s_every && noted())
+		{
+			skip = 1; // the GPU's draw into a crowd buffer (compilation 83)
 		}
 	}
 

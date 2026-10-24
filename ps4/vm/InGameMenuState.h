@@ -33,12 +33,13 @@ namespace PS4GameMenu
 		// Compilation 47 here; No tocar from 59 to 74. 1.06 (Joseph, 2026-10-21: "lo coloquemos en el lugar que debe estar"):
 		// back here, once the guard of 73 kept Dragon Ball at full speed without the flicker.
 		ROW_GS_SKIP,
-		// Compilation 82: the Guitar Hero games' crowd, drawn in software once every N of its passes (main.cpp, PublishCrowdText).
-		ROW_CROWD,
 		// Extras (compilation 42 "Parches", 44 "Extras"): the game's patch groups one at a time (main.cpp, PublishPatchMenuText)
 		// and where the recommended settings come from
 		ROW_PATCH,
 		ROW_RECOMMENDED,
+		// Compilation 82: the Guitar Hero games' crowd, drawn in software once every N of its passes (main.cpp, PublishCrowdText).
+		// Compilation 83 (Joseph, 2026-10-24: "solo es para Guitar Hero, no es para todos los juegos"): in Extras, not Rendimiento.
+		ROW_CROWD,
 		// No tocar (compilation 53, Joseph's name): the labs the games are measured with, apart so nobody takes them for settings.
 		// Compilation 59 (Joseph, 2026-10-19: "eso es por no tocar hasta no haber pulido"): frame skip, HD textures and cheats
 		// too, until they are tested and polished; God of War II closed four times that day with them on. (Frame generation
