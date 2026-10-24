@@ -74,6 +74,9 @@ extern std::atomic<int> g_forja_pads;
 // refreshes already queued (vsyncq), its ring full (stall), a wait for it to empty (waitgs); and the GS thread's own wait for
 // work. Only the EE thread writes the first three and only the GS thread the last: a meter's reads, no lock.
 extern unsigned long long g_orbis_ee_vsyncq_ticks, g_orbis_ee_stall_ticks, g_orbis_ee_waitgs_ticks, g_orbis_gs_idle_ticks;
+// Compilation 85: the GameDB's software draws (GSRendererHW.cpp), the GS thread's waits for their workers and each worker's
+// drawing (pcsx2/GS/Renderers/SW/GSRasterizer.cpp, the PS5 port's counters), for the "Software draws" line.
+extern unsigned long long g_forja_sw_draws, g_forja_sw_ticks, g_orbis_gs_swsync_ticks, g_orbis_sw_busy_ticks[16];
 // Forja 1.06: what held the last 5 s back (SessionStats.h, ForjaSession::Limit), for UIVM.cpp's HUD.
 std::atomic<int> g_forja_limit{0};
 
@@ -368,6 +371,28 @@ void Host::OnPerformanceMetricsUpdated()
 					 "GS idle per_refresh_ms=%.2f of GS_ms=%.2f\n",
 				ms[0] + ms[1] + ms[2], ms[0], ms[1], ms[2], PerformanceMetrics::GetCPUThreadAverageTime(), ms[3],
 				PerformanceMetrics::GetGSThreadAverageTime());
+	}
+	// Compilation 85: the software draws in these 5 s, a second: how many, the GS thread's whole time in them, its waits for the
+	// workers, and each of the 3 workers' drawing. Whole time much more than the workers' drawing: the cost is the setup around
+	// each draw, not its pixels (Guitar Hero's crowd went from ~36 to ~28 ms a pass with 3 workers, not to ~12).
+	{
+		static unsigned long long last_draws = 0, last_ticks = 0, last_sync = 0, last_busy[3] = {};
+		const unsigned long long draws_now = g_forja_sw_draws, ticks_now = g_forja_sw_ticks, sync_now = g_orbis_gs_swsync_ticks;
+		const double to_ms_per_s = profile_interval > 0.0 ? 1.0 / 1600000.0 / profile_interval : 0.0; // TSC at ~1.6 GHz
+		if (profile_interval > 0.0 && draws_now > last_draws)
+		{
+			double busy[3];
+			for (int i = 0; i < 3; i++)
+				busy[i] = static_cast<double>(g_orbis_sw_busy_ticks[i] - last_busy[i]) * to_ms_per_s;
+			ProbeLog("Software draws: per_second=%.0f gs_thread_ms=%.1f waiting_workers_ms=%.1f workers_drawing_ms=%.1f,%.1f,%.1f\n",
+				static_cast<double>(draws_now - last_draws) / profile_interval, static_cast<double>(ticks_now - last_ticks) * to_ms_per_s,
+				static_cast<double>(sync_now - last_sync) * to_ms_per_s, busy[0], busy[1], busy[2]);
+		}
+		last_draws = draws_now;
+		last_ticks = ticks_now;
+		last_sync = sync_now;
+		for (int i = 0; i < 3; i++)
+			last_busy[i] = g_orbis_sw_busy_ticks[i];
 	}
 	PS4IPUProfile::LogInterval(profile_interval);
 	PS4EEEventProfile::LogInterval(profile_interval);

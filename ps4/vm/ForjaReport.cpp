@@ -13,6 +13,7 @@
 #include <mutex>
 #include <pthread.h>
 #include <sys/stat.h>
+#include <zlib.h>
 
 extern void ProbeLog(const char* format, ...);
 
@@ -72,7 +73,43 @@ namespace
 	struct Job
 	{
 		std::string name, summary, text;
+		std::string log_gz; // compilation 85: the session's whole log, gzipped (Run fills it)
 	};
+
+	// Compilation 85: the session's whole log goes with the report, gzipped, as a second file. Until 84 a report carried the
+	// summary and the meters' lines of its last ~2 minutes (~50 KB): not how the game started, its fixes and patches, nor
+	// anything earlier. A 12-minute log of ~700 KB is ~70 KB gzipped. Its last 16 MB at most.
+	constexpr const char* SessionLog = "/data/ForjaSX2/logs/PCSX2-vm-boot.log";
+	constexpr long MaxLogBytes = 16L * 1024 * 1024;
+
+	std::string GzippedLog()
+	{
+		std::string raw;
+		if (std::FILE* file = std::fopen(SessionLog, "rb"))
+		{
+			std::fseek(file, 0, SEEK_END);
+			const long size = std::ftell(file);
+			const long start = size > MaxLogBytes ? size - MaxLogBytes : 0;
+			std::fseek(file, start, SEEK_SET);
+			raw.resize(size > start ? static_cast<size_t>(size - start) : 0);
+			raw.resize(raw.empty() ? 0 : std::fread(raw.data(), 1, raw.size(), file));
+			std::fclose(file);
+		}
+		if (raw.empty())
+			return {};
+		z_stream stream{};
+		if (deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK) // 15 + 16: gzip
+			return {};
+		std::string out(deflateBound(&stream, static_cast<uLong>(raw.size())), '\0');
+		stream.next_in = reinterpret_cast<Bytef*>(raw.data());
+		stream.avail_in = static_cast<uInt>(raw.size());
+		stream.next_out = reinterpret_cast<Bytef*>(out.data());
+		stream.avail_out = static_cast<uInt>(out.size());
+		const int result = deflate(&stream, Z_FINISH);
+		out.resize(stream.total_out);
+		deflateEnd(&stream);
+		return result == Z_STREAM_END ? out : std::string();
+	}
 
 	// Compilation 79: a forum channel takes a webhook's message only as a new post, which needs its title (thread_name, up to 100
 	// characters); a text channel refuses one. So the message goes as it is, and again with the title if the channel says it is a
@@ -97,6 +134,12 @@ namespace
 		body += "--" + boundary + "\r\nContent-Disposition: form-data; name=\"files[0]\"; filename=\"" + job.name +
 		        ".txt\"\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n";
 		body += job.text;
+		if (!job.log_gz.empty()) // compilation 85
+		{
+			body += "\r\n--" + boundary + "\r\nContent-Disposition: form-data; name=\"files[1]\"; filename=\"" + job.name +
+			        "_registro.log.gz\"\r\nContent-Type: application/gzip\r\n\r\n";
+			body += job.log_gz;
+		}
 		body += "\r\n--" + boundary + "--\r\n";
 		return body;
 	}
@@ -105,6 +148,8 @@ namespace
 	{
 		pthread_setname_np(pthread_self(), "Forja report");
 		const std::unique_ptr<Job> job(static_cast<Job*>(argument));
+		job->log_gz = GzippedLog(); // here, off the game's threads (compilation 85)
+		ProbeLog("Report: the session's log attached, %zu bytes gzipped\n", job->log_gz.size());
 		const std::string boundary = "ForjaSX2-report-boundary-7f3a";
 		const std::string type = "multipart/form-data; boundary=" + boundary;
 		int http = 0;

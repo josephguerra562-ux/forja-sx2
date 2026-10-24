@@ -2970,6 +2970,9 @@ std::atomic<u32> g_forja_gs_rule_share[16]; // permille of the GS's draw time in
 // Forja SX2 (compilation 80): every draw the GS has made, for the session's scenes: ps4/vm/HostVM.cpp takes what it grew by in
 // its 5 s window (SessionStats.h). Written only by the GS thread, so a plain load and store.
 std::atomic<u64> g_forja_gs_draws_total{0};
+// Forja SX2 (compilation 85): the GameDB's software draws (GSRendererHWMultiISA.cpp, SwPrimRender): how many, and the GS thread's
+// TSC ticks in them, for HostVM.cpp's "Software draws" line. Guitar Hero III's crowd: ~28 ms a pass on 3 threads, ~36 on one.
+unsigned long long g_forja_sw_draws = 0, g_forja_sw_ticks = 0;
 
 namespace
 {

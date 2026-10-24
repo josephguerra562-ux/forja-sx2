@@ -118,6 +118,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     y X lo manda al canal de reportes del Discord de Forja: el resumen de la partida, los ajustes del juego, los medidores
     de los últimos minutos y el `crash.log` si hay. **Nada de tu cuenta de PSN.** Te da un número (por ejemplo `F-3A2C`)
     para mencionarlo en el Discord. Si no hay internet, el reporte queda en `/data/ForjaSX2/reportes/`. Uno por minuto.
+    **Desde la 85 el reporte lleva también el registro completo de la partida**, comprimido (un segundo archivo,
+    `..._registro.log.gz`, de ~50-150 KB): cómo arrancó el juego, sus arreglos y parches y todos sus medidores, no solo los
+    de los últimos 2 minutos.
     Desde la 80, debajo está **Qué falló** (desde la 82, **X ahí también lo manda**) (Nada en especial, Va lento, Fallos de imagen, Fallos de sonido, Los controles,
     Se cuelga o se cierra): se manda con el reporte, junto con lo que midieron los medidores. La velocidad la miden ellos;
     la imagen, el sonido y los controles solo los ves tú.
@@ -188,7 +191,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     soltó, fue al 78-89 %. Si algo parpadea, vuelve a "1 de 2". **Desde la 84 el guardián es más listo:** una carga
     termina su pausa (la pelea que viene después arranca saltando cuadros; antes una pausa de 30 s se comía su primer medio
     minuto), y con **dos mandos** sus pausas son de 2, 8 y 15 s en vez de 2, 8 y 30. El menú de pausa y el mensaje de
-    derrota siguen protegidos. En Dragon Ball a dos, con la 84 conviene volver a **"1 de 2"** (con guardián).
+    derrota siguen protegidos. En Dragon Ball a dos, con la 84 conviene volver a **"1 de 2"** (con guardián). **Desde la
+    85, después de una carga espera ~3 s de escena pesada** antes de saltar (antes ~1 s): las palabras del inicio de la
+    pelea ya no parpadean, con o sin guardián.
   - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
     cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
     60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %

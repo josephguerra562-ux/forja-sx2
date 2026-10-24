@@ -26,6 +26,8 @@ void CURRENT_ISA::GSRendererHWPopulateFunctions(GSRendererHW& renderer)
 	GSRendererHWFunctions::Populate(renderer);
 }
 
+extern unsigned long long g_forja_sw_draws, g_forja_sw_ticks; // GSRendererHW.cpp (compilation 85)
+
 // since there's no overlapping draws, we can just keep this intact
 static GSVector4i s_dimx_storage[8];
 static GIFRegDIMX s_last_dimx;
@@ -36,6 +38,16 @@ bool GSRendererHWFunctions::SwPrimRender(GSRendererHW& hw, bool invalidate_tc, b
 	// (AI-assisted) Keep synthetic GIF draws on the GPU; the optional SW/JIT fallback is outside this probe.
 	return false;
 #else
+	// Forja SX2 (compilation 85): the draw's whole time on the GS thread, setup and waits included (HostVM.cpp's meter).
+	struct ForjaSwTimer
+	{
+		unsigned long long t0 = __builtin_ia32_rdtsc();
+		~ForjaSwTimer()
+		{
+			g_forja_sw_ticks += __builtin_ia32_rdtsc() - t0;
+			g_forja_sw_draws++;
+		}
+	} forja_sw_timer;
 	GSVertexTrace& vt = hw.m_vt;
 	const GIFRegPRIM* PRIM = hw.PRIM;
 	const GSDrawingContext* context = hw.m_context;

@@ -26,6 +26,9 @@ namespace forja_skip
 	public:
 		static constexpr uint32_t kHeavyDraws = 400;     // draws into la pantalla that make a frame heavy (FORJA_SKIP_MIN_PREVIOUS)
 		static constexpr uint32_t kWarmupFrames = 30;    // heavy frames in a row before one is left out
+		// Compilation 85: after a load (Reset), three times as many: a fight's opening words ("ready", "go") come in its first
+		// seconds and flickered with Saltar cuadros on, in Dragon Ball for two players (2026-10-24).
+		static constexpr uint32_t kWarmupAfterLoad = 90;
 		static constexpr uint32_t kGroup = 3;            // frames left out judged together
 		static constexpr uint32_t kLagFrames = 3;        // frames after the group's last one before it is judged
 		static constexpr uint32_t kMinHidden = 2;        // pictures hidden a group needs (the fights: ~2 a frame left out)
@@ -48,7 +51,9 @@ namespace forja_skip
 		bool FrameStart(uint32_t previous_draws, uint32_t hidden_total, uint32_t vsync, bool quick = false)
 		{
 			m_frame++;
-			m_heavy = previous_draws >= kHeavyDraws ? std::min(m_heavy + 1, kWarmupFrames) : 0;
+			m_heavy = previous_draws >= kHeavyDraws ? std::min(m_heavy + 1, kWarmupAfterLoad) : 0;
+			if (m_heavy >= m_warmup)
+				m_warmup = kWarmupFrames; // warmed up: the next warm-up (after a pause) is the usual one
 			if (m_group_count < kGroup || m_frame - m_group_last_frame < kLagFrames)
 				return false;
 			m_last_hidden = hidden_total - m_group_mark;
@@ -71,9 +76,9 @@ namespace forja_skip
 		}
 
 		// Whether a frame may be left out now: warmed up and not in a pause.
-		bool MayChoose(uint32_t vsync) const { return m_heavy >= kWarmupFrames && !Paused(vsync); }
+		bool MayChoose(uint32_t vsync) const { return m_heavy >= m_warmup && !Paused(vsync); }
 		// Compilation 82: warmed up only, for "1 de 2 sin guardián" (no frame left out is judged, so it never pauses).
-		bool WarmedUp() const { return m_heavy >= kWarmupFrames; }
+		bool WarmedUp() const { return m_heavy >= m_warmup; }
 
 		// A frame was chosen to be left out. It joins the group being judged unless that one is full (it waits its lag; the
 		// pictures hidden meanwhile still count for it).
@@ -95,6 +100,7 @@ namespace forja_skip
 			m_heavy = 0;
 			m_group_count = 0;
 			m_paused_until = 0;
+			m_warmup = kWarmupAfterLoad; // compilation 85
 		}
 
 		bool Paused(uint32_t vsync) const { return static_cast<int32_t>(vsync - m_paused_until) < 0; }
@@ -105,6 +111,7 @@ namespace forja_skip
 	private:
 		uint32_t m_frame = 0;
 		uint32_t m_heavy = 0;
+		uint32_t m_warmup = kWarmupAfterLoad; // heavy frames needed now (compilation 85)
 		uint32_t m_group_count = 0;
 		uint32_t m_group_mark = 0;
 		uint32_t m_group_last_frame = 0;
