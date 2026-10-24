@@ -157,7 +157,7 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     canciones van al 40 % con todos, 56 % con 1 de 2, 73 % con 1 de 4 y 86 % con 1 de 8. **En la 82 se pixelaba**: el
     juego también dibuja con la gráfica en esas imágenes cada cuadro, y quedaban a medias. Desde la 83, en los cuadros sin
     público esos dibujos tampoco se hacen, y queda entero el público anterior. Sin elegir nada va en **1 de cada 2**;
-    Guitar Hero III viene de fábrica en **1 de cada 4**.
+    Guitar Hero III viene de fábrica en **1 de cada 8** desde la 83 (en la 82, 1 de cada 4).
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 82 **1 de 2 sin guardián** (abajo). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
