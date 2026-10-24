@@ -382,8 +382,14 @@ tr: Pokazuje w 60 grę stabilną w 30 (eksperyment).
 es: 1 de 2
 tr: 1 z 2
 
+es: 1 de 2 sin guardián
+tr: 1 z 2 bez strażnika
+
 es: Saltar cuadros (GS):  < %s >
 tr: Pomijanie klatek (GS):  < %s >
+
+es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
+tr: 1 na 2 klatki bez strażnika, który wstrzymuje tam, gdzie byłoby widać: szybciej (Dragon Ball we dwóch), ale może migać  ·  teraz: %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Zawsze 1 klatka z 2, nawet gdy GS tego nie potrzebuje: lepiej Auto  ·  teraz: %s  ·  %s

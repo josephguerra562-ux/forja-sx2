@@ -336,6 +336,7 @@ extern std::atomic<unsigned> g_forja_gs_skipped_frames;
 extern std::atomic<unsigned> g_forja_gs_skip_stats[6]; // compilation 62: GSRendererPS4.cpp, VSync and ForjaGsSkipNote
 extern std::atomic<bool> g_forja_gs_skip_paused;      // Forja 1.06: its guard has it paused (ForjaSkipGuard.h)
 extern std::atomic<unsigned> g_forja_gs_skip_every;    // compilation 63: one frame in N left out
+extern std::atomic<bool> g_forja_gs_skip_guard;       // compilation 82: off for "1 de 2 sin guardián" (SaltarCuadros 3)
 // Compilation 82: the Guitar Hero games' crowd, drawn in software once every N of its passes (GSHwHack.cpp, GSC_GuitarHero;
 // [Forja] PublicoCada). Without a value, one in two: every one is PCSX2's, and cost Guitar Hero III ~36 ms a frame.
 extern std::atomic<u32> g_forja_crowd_every;
@@ -410,7 +411,7 @@ static void ForjaMovieSettings(bool movie)
 	{
 		g_forja_gs_skip_active.store(false, std::memory_order_relaxed);
 	}
-	else if (s_gs_skip_mode == 2)
+	else if (s_gs_skip_mode >= 2) // compilation 82: 3 too, without the guard
 	{
 		g_forja_gs_skip_active.store(true, std::memory_order_relaxed);
 	}
@@ -427,7 +428,7 @@ static void ForjaMovieSettings(bool movie)
 	ProbeLog("Movie settings: %s (frame generation %s%s; Saltar cuadros %s)\n", movie ? "on" : "off",
 		!g_orbis_fg_wanted ? "off" : g_orbis_fg_held ? "held, a PAL movie on a 59.94 Hz TV" : g_orbis_fg_fluid ? "fluid" : "steady",
 		fluid_before != g_orbis_fg_fluid ? ", changed" : "",
-		movie ? "paused" : s_gs_skip_mode == 2 ? "one in two again" : s_gs_skip_mode == 1 ? "auto from every frame" : "off");
+		movie ? "paused" : s_gs_skip_mode >= 2 ? "one in two again" : s_gs_skip_mode == 1 ? "auto from every frame" : "off");
 }
 
 // Compilation 67: a movie cut short by the menu (a state loaded, the game restarted, its settings reset or recommended): what it
@@ -1989,8 +1990,9 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 			s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
 			s_gs_skip_samples = 0;
 			g_forja_gs_skip_every.store(2u, std::memory_order_relaxed);
-			g_forja_gs_skip_active.store(gs_skip == 2 && !s_movie_settings, std::memory_order_relaxed); // compilation 65
+			g_forja_gs_skip_active.store(gs_skip >= 2 && !s_movie_settings, std::memory_order_relaxed); // compilation 65
 		}
+		g_forja_gs_skip_guard.store(gs_skip != 3, std::memory_order_relaxed); // compilation 82
 	}
 	// Compilation 82: the Guitar Hero games' crowd (GSC_GuitarHero reads the atomic on the GS thread).
 	s_crowd_every = s_profile.crowd_every > 0 ? static_cast<unsigned>(s_profile.crowd_every) : CROWD_EVERY_DEFAULT;
@@ -2790,8 +2792,9 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		}
 		case PS4GameMenu::ROW_GS_SKIP:
 		{
-			// No, auto, one frame in two ([Forja] SaltarCuadros 0, 1, 2; compilation 47). ApplyGameProfile takes it from the file.
-			const int next = (s_gs_skip_mode + delta + 3) % 3;
+			// No, auto, one frame in two ([Forja] SaltarCuadros 0, 1, 2; compilation 47), and without the guard (3, compilation 82).
+			// ApplyGameProfile takes it from the file.
+			const int next = (s_gs_skip_mode + delta + 4) % 4;
 			SavePlayerProfile("GS skip", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "SaltarCuadros", next); }, false);
 			break;
 		}
@@ -3011,7 +3014,7 @@ static void ForjaSessionLines(std::string& header_text, std::string& settings_te
 		std::snprintf(cpu_auto, sizeof(cpu_auto), "hasta %d %%%s", EERatePercent(s_cpu_auto_floor),
 			CpuAutoIdle() ? ", no actúa: la CPU del juego ya está igual o más baja" : ""); // compilation 76
 	const char* frame_gen = !g_orbis_fg_wanted ? "No" : s_fg_fluid_profile ? "Fluida" : "Sí";
-	const char* gs_skip = s_gs_skip_mode == 2 ? "1 de 2" :
+	const char* gs_skip = s_gs_skip_mode == 3 ? "1 de 2 sin guardián" : s_gs_skip_mode == 2 ? "1 de 2" :
 	                      s_gs_skip_mode == 1 ? (s_gs_skip_useless ? "Auto (se apagó: el juego dibuja fuera de la pantalla y no hay cuadros que saltar)" :
 	                                                                 "Auto") :
 	                                            "No";

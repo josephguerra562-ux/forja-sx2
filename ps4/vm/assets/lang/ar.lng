@@ -382,8 +382,14 @@ tr: يعرض بـ 60 لعبة ثابتة على 30 (تجريبي).
 es: 1 de 2
 tr: 1 من 2
 
+es: 1 de 2 sin guardián
+tr: 1 من 2 بدون الحارس
+
 es: Saltar cuadros (GS):  < %s >
 tr: تخطي الإطارات (GS):  < %s >
+
+es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
+tr: إطار واحد من كل 2 بدون الحارس الذي يوقفه حيث سيظهر: سرعة أكبر (Dragon Ball للاعبين)، لكن قد يومض  ·  الآن: %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: دائمًا إطار من كل 2، حتى عندما لا يحتاج GS لذلك: الأفضل تلقائي  ·  الآن: %s  ·  %s

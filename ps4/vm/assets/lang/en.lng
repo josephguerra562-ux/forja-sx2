@@ -382,8 +382,14 @@ tr: Shows a game steady at 30 at 60 (experimental).
 es: 1 de 2
 tr: 1 of 2
 
+es: 1 de 2 sin guardián
+tr: 1 of 2 without the guard
+
 es: Saltar cuadros (GS):  < %s >
 tr: Frame skip (GS):  < %s >
+
+es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
+tr: 1 of every 2 frames without the guard that pauses it where it would show: more speed (Dragon Ball for two players), but it may flicker  ·  now: %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Always 1 frame in 2, even when the GS doesn't need it: Auto is better  ·  now: %s  ·  %s

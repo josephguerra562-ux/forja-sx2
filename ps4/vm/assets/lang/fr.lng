@@ -382,8 +382,14 @@ tr: Affiche à 60 un jeu stable à 30 (expérimental).
 es: 1 de 2
 tr: 1 sur 2
 
+es: 1 de 2 sin guardián
+tr: 1 sur 2 sans gardien
+
 es: Saltar cuadros (GS):  < %s >
 tr: Saut d'images (GS) :  < %s >
+
+es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
+tr: 1 image sur 2 sans le gardien qui le met en pause là où ça se verrait : plus de vitesse (Dragon Ball à deux joueurs), mais ça peut clignoter  ·  maintenant : %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Toujours 1 image sur 2, même quand le GS n'en a pas besoin : mieux vaut Auto  ·  actuel : %s  ·  %s

@@ -64,7 +64,7 @@ namespace ForjaGameProfile
 		std::string gs_filter;
 		Origin gs_filter_origin = Origin::Global;
 		// [Forja] SaltarCuadros (compilation 47): the GS frame skip, -1 not set (off), 0 off, 1 auto, 2 always (one frame in
-		// two). main.cpp, UpdateGsSkip; GSRendererPS4.cpp, VSync.
+		// two), 3 always without the guard (compilation 82). main.cpp, UpdateGsSkip; GSRendererPS4.cpp, VSync.
 		int gs_skip = -1;
 		Origin gs_skip_origin = Origin::Global;
 		// [Forja] Huellas (compilation 55): the draw fingerprint rules turned on for the game, their huellas.ini ids with commas
@@ -211,7 +211,7 @@ namespace ForjaGameProfile
 		else
 			v.cpu_auto = 0;
 		if (v.gs_skip >= 0)
-			v.gs_skip = std::min(v.gs_skip, 2);
+			v.gs_skip = std::min(v.gs_skip, 3); // compilation 82: 3, one in two without the guard
 		if (v.crowd_every != 0)
 			v.crowd_every = v.crowd_every >= 8 ? 8 : v.crowd_every >= 4 ? 4 : v.crowd_every >= 2 ? 2 : 1;
 		return v;

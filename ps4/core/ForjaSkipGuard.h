@@ -62,6 +62,8 @@ namespace forja_skip
 
 		// Whether a frame may be left out now: warmed up and not in a pause.
 		bool MayChoose(uint32_t vsync) const { return m_heavy >= kWarmupFrames && !Paused(vsync); }
+		// Compilation 82: warmed up only, for "1 de 2 sin guardián" (no frame left out is judged, so it never pauses).
+		bool WarmedUp() const { return m_heavy >= kWarmupFrames; }
 
 		// A frame was chosen to be left out. It joins the group being judged unless that one is full (it waits its lag; the
 		// pictures hidden meanwhile still count for it).

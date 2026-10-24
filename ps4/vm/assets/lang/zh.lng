@@ -382,8 +382,14 @@ tr: 将稳定 30 帧的游戏以 60 帧显示（实验）。
 es: 1 de 2
 tr: 2 取 1
 
+es: 1 de 2 sin guardián
+tr: 2 取 1，不用保护
+
 es: Saltar cuadros (GS):  < %s >
 tr: 跳帧（GS）：  < %s >
+
+es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
+tr: 每 2 帧画 1 帧，不用在会被看出的地方暂停它的保护：速度更快（Dragon Ball 双人），但可能会闪烁  ·  当前：%s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: 始终每 2 帧只画 1 帧，即使 GS 不需要：建议用自动  ·  当前：%s  ·  %s

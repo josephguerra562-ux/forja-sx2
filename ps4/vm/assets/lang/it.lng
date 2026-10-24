@@ -382,8 +382,14 @@ tr: Mostra a 60 un gioco stabile a 30 (sperimentale).
 es: 1 de 2
 tr: 1 su 2
 
+es: 1 de 2 sin guardián
+tr: 1 su 2 senza guardiano
+
 es: Saltar cuadros (GS):  < %s >
 tr: Salta fotogrammi (GS):  < %s >
+
+es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
+tr: 1 fotogramma su 2 senza il guardiano che lo mette in pausa dove si noterebbe: più velocità (Dragon Ball a due giocatori), ma può sfarfallare  ·  ora: %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Sempre 1 fotogramma su 2, anche quando il GS non ne ha bisogno: meglio Auto  ·  ora: %s  ·  %s

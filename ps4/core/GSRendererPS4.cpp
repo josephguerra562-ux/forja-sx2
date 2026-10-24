@@ -61,6 +61,10 @@ static unsigned s_forja_skip_count = 0;
 // guard paused), vsyncs the guard kept Saltar cuadros paused.
 std::atomic<unsigned> g_forja_gs_skip_stats[6];
 std::atomic<bool> g_forja_gs_skip_paused{false}; // Forja 1.06: the guard has it paused (main.cpp's Auto waits it out)
+// Compilation 82: the guard on (main.cpp; off for Saltar cuadros "1 de 2 sin guardián"). Dragon Ball Z Budokai Tenkaichi 4 for
+// two players (2026-10-24): the guard kept "1 de 2" paused 165-231 vsyncs of every 250 in the fights, at 52-65 %; in the seconds
+// it let it skip, 78-89 %. The warm-up after a load or a light frame stays.
+std::atomic<bool> g_forja_gs_skip_guard{true};
 static forja_skip::Guard s_forja_guard; // Forja 1.06 (ForjaSkipGuard.h)
 static u32 s_forja_hidden_total = 0;    // Forja 1.06: pictures hidden, for the guard's checks
 namespace
@@ -1070,13 +1074,15 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				}
 				const unsigned every = std::max(g_forja_gs_skip_every.load(std::memory_order_relaxed), 2u);
 				s_forja_skip_count = (s_forja_skip_count + 1) % every;
+				const bool guard = g_forja_gs_skip_guard.load(std::memory_order_relaxed); // compilation 82
 				g_forja_gs_skip_drawing = forja_want && !g_forja_gs_skip_drawing && !force && s_forja_skip_count == 0 &&
 					s_forja_previous_frame_draws >= FORJA_SKIP_MIN_PREVIOUS && // compilation 68: never after a light frame
-					s_forja_guard.MayChoose(s_forja_vsync); // Forja 1.06
+					(guard ? s_forja_guard.MayChoose(s_forja_vsync) : s_forja_guard.WarmedUp()); // Forja 1.06
 				if (g_forja_gs_skip_drawing)
 				{
 					g_forja_gs_skipped_frames.fetch_add(1, std::memory_order_relaxed);
-					s_forja_guard.Chosen(s_forja_hidden_total);
+					if (guard)
+						s_forja_guard.Chosen(s_forja_hidden_total);
 				}
 			}
 			else if (++s_forja_vsyncs_since_frame > 8)
@@ -1109,7 +1115,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 			s_forja_guard.Reset(); // Forja 1.06: off, it warms up again when it comes back
 		}
 		// Forja 1.06: the guard's pause, for main.cpp's Auto and the 5 s report.
-		const bool forja_paused = forja_want && s_forja_guard.Paused(s_forja_vsync);
+		const bool forja_paused = forja_want && g_forja_gs_skip_guard.load(std::memory_order_relaxed) && s_forja_guard.Paused(s_forja_vsync);
 		g_forja_gs_skip_paused.store(forja_paused, std::memory_order_relaxed);
 		if (forja_paused)
 			g_forja_gs_skip_stats[5].fetch_add(1, std::memory_order_relaxed);

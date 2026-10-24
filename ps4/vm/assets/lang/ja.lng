@@ -382,8 +382,14 @@ tr: 30で安定したゲームを60で表示（実験的）。
 es: 1 de 2
 tr: 2回に1回
 
+es: 1 de 2 sin guardián
+tr: 2フレームに1回（ガードなし）
+
 es: Saltar cuadros (GS):  < %s >
 tr: フレームスキップ（GS）：  < %s >
+
+es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
+tr: 目立つ場面で一時停止させるガードなしで、2フレームに1回だけ描画：より速くなります（Dragon Ball の2人プレイ）が、ちらつくことがあります  ·  現在：%s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: GSに余裕があっても常に2フレームに1回だけ描画します：自動のほうがおすすめ  ·  現在：%s  ·  %s

@@ -382,8 +382,14 @@ tr: 30'da sabit bir oyunu 60'ta gösterir (deneysel).
 es: 1 de 2
 tr: 2'de 1
 
+es: 1 de 2 sin guardián
+tr: 2'de 1, korumasız
+
 es: Saltar cuadros (GS):  < %s >
 tr: Kare atlama (GS):  < %s >
+
+es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
+tr: Fark edileceği yerde duraklatan koruma olmadan 2 karede 1: daha hızlı (iki oyunculu Dragon Ball), ama titreyebilir  ·  şimdi: %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: GS'nin ihtiyacı olmasa da her zaman 2 kareden 1'ini çizer: Otomatik daha iyi  ·  şu an: %s  ·  %s

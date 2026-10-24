@@ -155,7 +155,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     el público se sigue dibujando bien, pero solo en uno de cada N cuadros; en los demás queda el anterior. Cuesta la
     N-ésima parte y el público se mueve menos fluido. Sin elegir nada va en **1 de cada 2**; Guitar Hero III viene de
     fábrica en **1 de cada 4**.
-  - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2. Para juegos en los que el GS de la PS4 no da
+  - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
+    la 82 **1 de 2 sin guardián** (abajo). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
     1 de cada 2 cuadros del juego y la tele sigue mostrando el último dibujado: el juego, su música y sus movimientos van
     a su velocidad, con la mitad de cuadros en pantalla. **Auto** (desde la 1.06) lo prende solo cuando el GS es el que
@@ -175,7 +176,10 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     necesite: casi siempre conviene más Auto, que solo salta cuando hace falta. **En God of War II, mejor en No** (su
     perfil ya lo trae así): el que frena es el VU1, y además no salta ningún cuadro porque arma su imagen de otra forma.
     **Dragon Ball Z Budokai Tenkaichi 4 lo trae en Auto de fábrica desde la 75** (en la 73: 100 % de velocidad a 30
-    cuadros en las peleas).
+    cuadros en las peleas). **"1 de 2 sin guardián"** (desde la 82) salta igual, pero sin las pausas del guardián (sí
+    espera el segundo de escena pesada después de una carga). Es para los juegos donde el guardián frena de más: en
+    Dragon Ball a dos jugadores tuvo "1 de 2" en pausa casi todo el tiempo (52-65 % de velocidad) y, en los ratos que lo
+    soltó, fue al 78-89 %. Si algo parpadea, vuelve a "1 de 2".
   - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
     cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
     60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %

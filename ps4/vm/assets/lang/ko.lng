@@ -382,8 +382,14 @@ tr: 30으로 안정된 게임을 60으로 표시합니다 (실험).
 es: 1 de 2
 tr: 2개 중 1개
 
+es: 1 de 2 sin guardián
+tr: 2개 중 1개 (보호 없음)
+
 es: Saltar cuadros (GS):  < %s >
 tr: 프레임 스킵 (GS):  < %s >
+
+es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
+tr: 눈에 띄는 곳에서 멈추게 하는 보호 없이 2프레임 중 1프레임: 더 빠름 (Dragon Ball 2인용), 하지만 깜빡일 수 있음  ·  현재: %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: GS에 여유가 있어도 항상 2프레임 중 1프레임만 그립니다: 자동이 더 좋습니다  ·  현재: %s  ·  %s

@@ -382,8 +382,14 @@ tr: Mostra a 60 um jogo estável a 30 (experimental).
 es: 1 de 2
 tr: 1 de 2
 
+es: 1 de 2 sin guardián
+tr: 1 de 2 sem guardião
+
 es: Saltar cuadros (GS):  < %s >
 tr: Pular quadros (GS):  < %s >
+
+es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
+tr: 1 a cada 2 quadros sem o guardião que o pausa onde apareceria: mais velocidade (Dragon Ball para dois jogadores), mas pode piscar  ·  agora: %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Sempre 1 de cada 2 quadros, mesmo quando o GS não precisa: melhor em Auto  ·  agora: %s  ·  %s

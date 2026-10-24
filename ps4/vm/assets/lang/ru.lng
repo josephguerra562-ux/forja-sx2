@@ -382,8 +382,14 @@ tr: Показывает игру со стабильными 30 в 60 (эксп
 es: 1 de 2
 tr: 1 из 2
 
+es: 1 de 2 sin guardián
+tr: 1 из 2 без защиты
+
 es: Saltar cuadros (GS):  < %s >
 tr: Пропуск кадров (GS):  < %s >
+
+es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
+tr: 1 из 2 кадров без защиты, которая ставит паузу там, где это заметно: быстрее (Dragon Ball на двоих), но может мерцать  ·  сейчас: %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Всегда 1 кадр из 2, даже когда GS это не нужно: лучше Авто  ·  сейчас: %s  ·  %s
