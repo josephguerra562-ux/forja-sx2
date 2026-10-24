@@ -117,6 +117,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     y X lo manda al canal de reportes del Discord de Forja: el resumen de la partida, los ajustes del juego, los medidores
     de los últimos minutos y el `crash.log` si hay. **Nada de tu cuenta de PSN.** Te da un número (por ejemplo `F-3A2C`)
     para mencionarlo en el Discord. Si no hay internet, el reporte queda en `/data/ForjaSX2/reportes/`. Uno por minuto.
+    Desde la 80, debajo está **Qué falló** (Nada en especial, Va lento, Fallos de imagen, Fallos de sonido, Los controles,
+    Se cuelga o se cierra): se manda con el reporte, junto con lo que midieron los medidores. La velocidad la miden ellos;
+    la imagen, el sonido y los controles solo los ves tú.
 - **Todo lo que cambies en L3+R3 se guarda solo para ese juego** (como las propiedades por juego de Dolphin), menos el
   contador de FPS. Se aplica al instante:
   - **Resolución interna** y **relación de aspecto**.
@@ -418,6 +421,13 @@ Algunos hilos secundarios solo cambian al volver a abrir el juego, así que para
   primero (si pasa de 10 MB por minuto, avisa: es una fuga, como la de Crash Nitro Kart). Desde la 77 dice también
   **cuánto más barato tenía que ser lo que frenó** para ir al 100 % (Shadow of the Colossus: "GS 41 %"): cuanto más alto,
   más lejos está ese juego de ir completo en la PS4.
+  **Desde la 80 separa las escenas:** cada tramo de 5 s es juego, pantalla simple (menús y mapas, que dibujan menos de 100
+  cosas por cuadro), video o carga, y el resumen empieza con **la compatibilidad medida** (velocidad completa, casi
+  completa, jugable con bajones, lento o muy lento) contando solo el juego, no los menús. También dice **cuándo apareció
+  el primer cuadro y cuándo llegó al juego**, cuántas cargas hubo y la más larga, **cuántos mandos había** (si jugaste a
+  uno y a dos, la velocidad de cada uno: Dragon Ball va completo a uno y muy lento a dos), si **dos partes frenaban a la
+  vez** (en Guitar Hero el EE y el GS) y **cuántas veces se colgó** (10 s sin cuadros). "El limitador suavizó N picos de
+  volumen" no es un error: solo dice que el juego suena fuerte.
 - **Reportar este juego** (L3+R3 > Sistema, desde la 77): manda todo eso al Discord de Forja sin FTP.
 
 Baja `/data/ForjaSX2/logs` por FTP y arrástrala encima de `Herramientas PC\ANALIZAR LOGS (arrastra la carpeta aqui).bat`.

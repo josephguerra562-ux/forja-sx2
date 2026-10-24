@@ -26,6 +26,9 @@ extern double GetVerticalFrequency(); // pcsx2/GS.h (Counters.cpp): the PS2's re
 #include <future>
 #include <pthread.h>
 #include <atomic>
+#include <algorithm>
+#include <functional>
+#include <iterator>
 
 // (AI-assisted) CPU work is queued to the thread that owns VMManager and its memory.
 static pthread_t s_cpu_thread;
@@ -63,6 +66,10 @@ extern void ProbeLog(const char*, ...);
 extern void ForjaLogFramePacing(); // compilation 65: ps4/core/GSRendererPS4.cpp, the frame pacing meter
 extern bool g_orbis_fg_movie;   // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp: a movie playing (main.cpp sets it)
 extern bool g_orbis_fg_engaged; // ...and frame generation generating now
+// Compilation 80: the session's scenes and controllers (SessionStats.h): every draw of the GS (GSRendererHW.cpp), and the
+// controllers connected (main.cpp, the second pad).
+extern std::atomic<u64> g_forja_gs_draws_total;
+extern std::atomic<int> g_forja_pads;
 // Forja 1.06: what held the last 5 s back (SessionStats.h, ForjaSession::Limit), for UIVM.cpp's HUD.
 std::atomic<int> g_forja_limit{0};
 
@@ -295,6 +302,11 @@ void Host::OnPerformanceMetricsUpdated()
 	const int limit = ForjaSession::ClassifyLimit(PerformanceMetrics::GetSpeed(), ee_usage, vu_usage, gs_usage,
 		PerformanceMetrics::GetGPUUsage());
 	g_forja_limit.store(limit, std::memory_order_relaxed);
+	// Compilation 80: the GS's draws in these 5 s, for the scene.
+	static u64 last_draws = 0;
+	const u64 draws = g_forja_gs_draws_total.load(std::memory_order_relaxed);
+	const double draws_per_s = profile_interval > 0.0 ? static_cast<double>(draws - last_draws) / profile_interval : 0.0;
+	last_draws = draws;
 	if (profile_interval > 0.0)
 	{
 		// Compilation 77: the limiting part's time per PS2 refresh against a refresh at the game's own rate (the summary's "cuánto
@@ -305,8 +317,22 @@ void Host::OnPerformanceMetricsUpdated()
 		                        limit == ForjaSession::LimitVU1 ? PerformanceMetrics::GetVUThreadAverageTime() :
 		                        limit == ForjaSession::LimitGS  ? PerformanceMetrics::GetGSThreadAverageTime() :
 		                        limit == ForjaSession::LimitGPU ? static_cast<double>(gpu_ms) : 0.0;
-		ForjaSession::AddWindow(PerformanceMetrics::GetSpeed(), PerformanceMetrics::GetInternalFPS(), limit, g_orbis_fg_movie,
-			g_orbis_fg_engaged, limit_ms, budget_ms);
+		ForjaSession::Window window;
+		window.speed = PerformanceMetrics::GetSpeed();
+		window.fps = PerformanceMetrics::GetInternalFPS();
+		window.limit = limit;
+		window.movie = g_orbis_fg_movie;
+		window.fg_generating = g_orbis_fg_engaged;
+		window.limit_ms = limit_ms;
+		window.budget_ms = budget_ms;
+		// Compilation 80: the scene (game, menu, movie, load), the controllers, and whether a second part was at its limit too:
+		// Guitar Hero's EE at 99 % and GS at 93 % (2026-10-23) said only "EE".
+		window.scene = ForjaSession::ClassifyScene(g_orbis_fg_movie, PerformanceMetrics::GetFPS(), window.fps, draws_per_s);
+		window.pads = g_forja_pads.load(std::memory_order_relaxed);
+		double usages[] = {ee_usage, vu_usage, gs_usage, PerformanceMetrics::GetGPUUsage()};
+		std::sort(std::begin(usages), std::end(usages), std::greater<double>());
+		window.two_at_limit = window.speed < 97.0 && usages[1] >= 80.0 && usages[0] - usages[1] <= 10.0;
+		ForjaSession::AddWindow(window);
 	}
 	ProbeLog("Performance: seconds=%.1f PS2_Hz=%.2f Speed_pct=%.2f Game_FPS=%.2f FPS_method=%s "
 		"Frame_ms=%.2f Frame_max_ms=%.2f EE_pct=%.2f EE_ms=%.2f GS_pct=%.2f GS_ms=%.2f "

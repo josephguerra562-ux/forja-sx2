@@ -853,6 +853,24 @@ tr: İyi
 es: Perfecto
 tr: Mükemmel
 
+es: Nada en especial
+tr: Özel bir şey yok
+
+es: Va lento
+tr: Yavaş çalışıyor
+
+es: Fallos de imagen
+tr: Görüntü hataları
+
+es: Fallos de sonido
+tr: Ses hataları
+
+es: Los controles
+tr: Kontroller
+
+es: Se cuelga o se cierra
+tr: Donuyor veya kapanıyor
+
 es: %d/%m a las %H:%M
 tr: %d.%m, %H:%M
 
@@ -879,6 +897,12 @@ tr: X: bu oyunun nasıl çalıştığını /data/ForjaSX2/reportes içine kayded
 
 es: Ya mandaste uno hace poco: espera un minuto para mandar otro
 tr: Az önce bir tane gönderdin: bir tane daha göndermek için bir dakika bekle
+
+es: Qué falló:  < %s >
+tr: Sorun neydi:  < %s >
+
+es: Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú
+tr: Fark ettiğini seç ve raporu gönder. Hızı ölçerler ölçer; görüntüyü, sesi ve kontrolleri yalnızca sen görürsün
 
 es: Preparando la BIOS de la PS2...
 tr: PS2 BIOS'u hazırlanıyor...

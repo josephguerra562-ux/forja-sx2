@@ -165,6 +165,8 @@ static OrbisUserServiceUserId s_pad1_user = ORBIS_USER_SERVICE_USER_ID_INVALID;
 static OrbisUserServiceUserId s_pad2_user = ORBIS_USER_SERVICE_USER_ID_INVALID;
 static u32 s_previous_pad2_buttons = 0;
 static double s_pad2_last_check = -10.0;
+// Compilation 80: the controllers playing (1, or 2 with the second port open), for the session's summary (HostVM.cpp).
+std::atomic<int> g_forja_pads{1};
 static u32 s_blocked_pad_buttons = 0;
 static bool s_menu_chord_latched = false;
 // Forja SX2 (compilation 53): what opens this menu (ajustes.ini menu_boton): 0 L3+R3, 1 the touchpad's right half, 2 both. The
@@ -575,6 +577,7 @@ static void UpdateSecondPad(double elapsed)
 			s_pad2_user = candidate;
 		}
 	}
+	g_forja_pads.store(s_pad2 >= 0 ? 2 : 1, std::memory_order_relaxed);
 }
 
 // (AI-assisted) Called only with the VM paused. Device limits and GSConfig belong
@@ -1149,6 +1152,7 @@ static void* HangWatch(void*)
 		if (++still < 10 || reported)
 			continue;
 		reported = true;
+		ForjaSession::AddHang(); // compilation 80: the summary's "Cuelgues"
 		char when[32] = "?";
 		const std::time_t now = std::time(nullptr);
 		std::tm local{};
@@ -1807,6 +1811,11 @@ static void PublishAutoNotes()
 static constexpr const char* REPORT_RATINGS[] = {N_("Pésimo"), N_("Mal"), N_("Regular"), N_("Bien"), N_("Perfecto")};
 static constexpr int REPORT_RATING_COUNT = static_cast<int>(std::size(REPORT_RATINGS));
 static int s_report_rating = 2; // "Regular"
+// Compilation 80: what went wrong, the half of "compatible" no meter sees (the picture, the sound, the controls).
+static constexpr const char* REPORT_ISSUES[] = {N_("Nada en especial"), N_("Va lento"), N_("Fallos de imagen"),
+	N_("Fallos de sonido"), N_("Los controles"), N_("Se cuelga o se cierra")};
+static constexpr int REPORT_ISSUE_COUNT = static_cast<int>(std::size(REPORT_ISSUES));
+static int s_report_issue = 0;
 static double s_report_last_sent = -1000.0;
 static bool s_report_too_soon = false;
 static ForjaReport::Status s_report_shown = ForjaReport::Status::Idle;
@@ -2723,6 +2732,9 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		case PS4GameMenu::ROW_REPORT: // compilation 77: the player's word for the report, not saved
 			s_report_rating = (s_report_rating + REPORT_RATING_COUNT + delta) % REPORT_RATING_COUNT;
 			break;
+		case PS4GameMenu::ROW_REPORT_ISSUE: // compilation 80: what went wrong, not saved either
+			s_report_issue = (s_report_issue + REPORT_ISSUE_COUNT + delta) % REPORT_ISSUE_COUNT;
+			break;
 		case PS4GameMenu::ROW_GS_SKIP:
 		{
 			// No, auto, one frame in two ([Forja] SaltarCuadros 0, 1, 2; compilation 47). ApplyGameProfile takes it from the file.
@@ -3047,10 +3059,13 @@ static void SendReport(double elapsed)
 	char id[16];
 	std::snprintf(id, sizeof(id), "F-%04X", hash & 0xffffu);
 	const char* rating = REPORT_RATINGS[std::clamp(s_report_rating, 0, REPORT_RATING_COUNT - 1)];
+	const char* issue = REPORT_ISSUES[std::clamp(s_report_issue, 0, REPORT_ISSUE_COUNT - 1)]; // compilation 80
+	const std::string measured = ForjaSession::Verdict();
 
 	std::string header, settings;
 	ForjaSessionLines(header, settings);
-	std::string text = "Reporte " + std::string(id) + " de un jugador: " + rating + "\n";
+	std::string text = "Reporte " + std::string(id) + " de un jugador: " + rating + "; qué falló: " + issue + "\n";
+	text += "Medido: " + measured + "\n";
 	text += ForjaSession::Text(header, settings, false);
 	text += "\n--- Ahora\n";
 	{
@@ -3067,14 +3082,16 @@ static void SendReport(double elapsed)
 	text += ReportSmallFile("/data/ForjaSX2/logs/crash.log", 4096);
 	text += ReportSmallFile("/data/ForjaSX2/logs/hang.log", 2048);
 
-	char summary[512];
-	std::snprintf(summary, sizeof(summary), "Reporte %s · %s · %s · %s · Forja %d.%02d (%d) · %s · velocidad %.0f %%", id,
-		ForjaGameTitle().c_str(), serial.empty() ? "?" : serial.c_str(), rating, FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR,
-		FORJA_BUILD_NUMBER, s_console_fast_cpu ? "PS4 Pro con Boost" : "PS4 normal o Slim", PerformanceMetrics::GetSpeed());
+	// Compilation 80: with what went wrong and what the meters measured, so the channel's line says it without the file.
+	char summary[768];
+	std::snprintf(summary, sizeof(summary), "Reporte %s · %s · %s · %s · falló: %s · Forja %d.%02d (%d) · %s · velocidad %.0f %% · "
+		"medido: %s", id, ForjaGameTitle().c_str(), serial.empty() ? "?" : serial.c_str(), rating, issue, FORJA_VERSION_MAJOR,
+		FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER, s_console_fast_cpu ? "PS4 Pro con Boost" : "PS4 normal o Slim",
+		PerformanceMetrics::GetSpeed(), measured.c_str());
 	if (ForjaReport::Send(std::string(id) + "_" + name, summary, text))
 	{
 		s_report_last_sent = elapsed;
-		ProbeLog("Report: %s (%s, %zu bytes) %s\n", id, rating, text.size(),
+		ProbeLog("Report: %s (%s, %s, %zu bytes) %s\n", id, rating, issue, text.size(),
 			ForjaReport::HasChannel() ? "sending to the reports channel" : "kept in reportes/ (no channel in this build)");
 	}
 }
@@ -3114,6 +3131,11 @@ static void PublishReportText()
 	if (s_report_too_soon && s_run_timer.GetTimeSeconds() - s_report_last_sent < 60.0)
 		std::snprintf(description, sizeof(description), "%s", T("Ya mandaste uno hace poco: espera un minuto para mandar otro"));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_REPORT, label, description);
+	// Compilation 80: what went wrong, sent with the report.
+	std::snprintf(label, sizeof(label), TF("Qué falló:  < %s >"),
+		T(REPORT_ISSUES[std::clamp(s_report_issue, 0, REPORT_ISSUE_COUNT - 1)]));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_REPORT_ISSUE, label,
+		T("Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú"));
 }
 
 void VMHostPoll()
@@ -3616,7 +3638,8 @@ void VMHostPoll()
 				s_game_menu_selection = first + (row - first + 1) % count;
 			// Compilation 79: and the report's word, the one row of Sistema with values (in the 77 Left/Right did nothing there, so
 			// every report said "Perfecto").
-			else if (row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT) // compilation 44
+			else if (row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
+					 row == PS4GameMenu::ROW_REPORT_ISSUE) // compilation 44; 80: what went wrong
 				ChangeGameMenuRow(row, navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1);
 			else if (row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE)
 			{

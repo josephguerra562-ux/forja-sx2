@@ -853,6 +853,24 @@ tr: Хорошо
 es: Perfecto
 tr: Идеально
 
+es: Nada en especial
+tr: Ничего особенного
+
+es: Va lento
+tr: Тормозит
+
+es: Fallos de imagen
+tr: Ошибки изображения
+
+es: Fallos de sonido
+tr: Ошибки звука
+
+es: Los controles
+tr: Управление
+
+es: Se cuelga o se cierra
+tr: Зависает или закрывается
+
 es: %d/%m a las %H:%M
 tr: %d.%m в %H:%M
 
@@ -879,6 +897,12 @@ tr: X: сохраняет в /data/ForjaSX2/reportes, как идёт игра (
 
 es: Ya mandaste uno hace poco: espera un minuto para mandar otro
 tr: Вы только что отправили отчёт: подождите минуту, чтобы отправить ещё
+
+es: Qué falló:  < %s >
+tr: Что не так:  < %s >
+
+es: Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú
+tr: Выберите, что вы заметили, и отправьте отчёт. Скорость измеряют датчики; изображение, звук и управление видите только вы
 
 es: Preparando la BIOS de la PS2...
 tr: Подготовка BIOS PS2...

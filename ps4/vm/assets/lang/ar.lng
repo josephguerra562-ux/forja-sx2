@@ -853,6 +853,24 @@ tr: جيد
 es: Perfecto
 tr: ممتاز
 
+es: Nada en especial
+tr: لا شيء محدد
+
+es: Va lento
+tr: بطيئة
+
+es: Fallos de imagen
+tr: أخطاء في الصورة
+
+es: Fallos de sonido
+tr: أخطاء في الصوت
+
+es: Los controles
+tr: التحكم
+
+es: Se cuelga o se cierra
+tr: تتجمد أو تُغلق
+
 es: %d/%m a las %H:%M
 tr: %d/%m الساعة %H:%M
 
@@ -879,6 +897,12 @@ tr: X: يحفظ في /data/ForjaSX2/reportes كيف تعمل هذه اللعبة
 
 es: Ya mandaste uno hace poco: espera un minuto para mandar otro
 tr: أرسلت تقريرًا قبل قليل: انتظر دقيقة لإرسال آخر
+
+es: Qué falló:  < %s >
+tr: ما المشكلة:  < %s >
+
+es: Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú
+tr: اختر ما لاحظته وأرسل التقرير. السرعة تقيسها أدوات القياس؛ أما الصورة والصوت والتحكم فلا يراها غيرك
 
 es: Preparando la BIOS de la PS2...
 tr: جارٍ تجهيز BIOS الخاص بـ PS2...

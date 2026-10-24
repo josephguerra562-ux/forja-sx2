@@ -853,6 +853,24 @@ tr: Gut
 es: Perfecto
 tr: Perfekt
 
+es: Nada en especial
+tr: Nichts Besonderes
+
+es: Va lento
+tr: Läuft langsam
+
+es: Fallos de imagen
+tr: Bildfehler
+
+es: Fallos de sonido
+tr: Tonfehler
+
+es: Los controles
+tr: Die Steuerung
+
+es: Se cuelga o se cierra
+tr: Hängt oder schließt sich
+
 es: %d/%m a las %H:%M
 tr: %d.%m. um %H:%M
 
@@ -879,6 +897,12 @@ tr: X: speichert in /data/ForjaSX2/reportes, wie dieses Spiel läuft (diese Vers
 
 es: Ya mandaste uno hace poco: espera un minuto para mandar otro
 tr: Du hast gerade einen gesendet: warte eine Minute für den nächsten
+
+es: Qué falló:  < %s >
+tr: Was war falsch:  < %s >
+
+es: Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú
+tr: Wähle, was dir aufgefallen ist, und sende den Bericht. Die Geschwindigkeit messen die Messwerte; Bild, Ton und Steuerung siehst nur du
 
 es: Preparando la BIOS de la PS2...
 tr: PS2-BIOS wird vorbereitet...

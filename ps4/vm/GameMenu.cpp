@@ -2084,6 +2084,11 @@ namespace PS4GameMenu
 						draw->AddLine(ip(-15, -10), ip(0, 2), icon_line, lw);
 						draw->AddLine(ip(15, -10), ip(0, 2), icon_line, lw);
 						break;
+					case ROW_REPORT_ISSUE: // a warning sign (compilation 80)
+						draw->AddTriangle(ip(0, -15), ip(16, 13), ip(-16, 13), icon_line, lw);
+						draw->AddLine(ip(0, -5), ip(0, 4), icon_line, lw);
+						draw->AddCircleFilled(ip(0, 9), 1.8f * scale, icon_line, 8);
+						break;
 					case ROW_RESET_PROFILE: // sliders back at their start
 						draw->AddLine(ip(-13, -7), ip(13, -7), icon_line, lw);
 						draw->AddLine(ip(-13, 7), ip(13, 7), icon_line, lw);
@@ -2146,7 +2151,7 @@ namespace PS4GameMenu
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
 					action = T("AJUSTAR");
 				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
-				         row == ROW_SHARPNESS || row == ROW_GS_SKIP)
+				         row == ROW_SHARPNESS || row == ROW_GS_SKIP || row == ROW_REPORT_ISSUE)
 					action = T("ELEGIR");
 				else if (row == ROW_VU1_FILTER || row == ROW_GS_FILTER)
 					action = T("ELEGIR  ·  X  ·  CUADRADO"); // compilation 52: Cuadrado brings everything back

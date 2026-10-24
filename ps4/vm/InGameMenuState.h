@@ -48,6 +48,8 @@ namespace PS4GameMenu
 		ROW_CHEATS, // compilation 58
 		// Sistema
 		ROW_REPORT, // compilation 77: "Reportar este juego" (main.cpp, SendReport; ForjaReport.cpp)
+		// Compilation 80: what went wrong, for the report: the picture, the sound and the controls are what no meter sees.
+		ROW_REPORT_ISSUE,
 		ROW_RESET_PROFILE,
 		ROW_LIBRARY,
 		ROW_EXIT,

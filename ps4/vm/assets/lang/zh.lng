@@ -853,6 +853,24 @@ tr: 好
 es: Perfecto
 tr: 完美
 
+es: Nada en especial
+tr: 没有特别的问题
+
+es: Va lento
+tr: 运行很慢
+
+es: Fallos de imagen
+tr: 画面错误
+
+es: Fallos de sonido
+tr: 声音错误
+
+es: Los controles
+tr: 手柄操作
+
+es: Se cuelga o se cierra
+tr: 卡住或自动关闭
+
 es: %d/%m a las %H:%M
 tr: %m月%d日 %H:%M
 
@@ -879,6 +897,12 @@ tr: X：把这个游戏的运行情况保存到 /data/ForjaSX2/reportes（此版
 
 es: Ya mandaste uno hace poco: espera un minuto para mandar otro
 tr: 你刚刚发送过一次：请等一分钟再发送
+
+es: Qué falló:  < %s >
+tr: 出了什么问题：  < %s >
+
+es: Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú
+tr: 选择你注意到的问题并发送报告。速度由测量工具记录；画面、声音和操作只有你能看到
 
 es: Preparando la BIOS de la PS2...
 tr: 正在准备 PS2 BIOS...

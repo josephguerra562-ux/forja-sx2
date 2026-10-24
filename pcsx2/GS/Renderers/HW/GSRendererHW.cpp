@@ -2967,6 +2967,10 @@ std::atomic<u32> g_forja_gs_rule_count{0};
 std::atomic<u32> g_forja_gs_rules_off{0}; // a bit per rule: the player left it out
 std::atomic<u32> g_forja_gs_rule_share[16]; // permille of the GS's draw time in the last ~5 s
 
+// Forja SX2 (compilation 80): every draw the GS has made, for the session's scenes: ps4/vm/HostVM.cpp takes what it grew by in
+// its 5 s window (SessionStats.h). Written only by the GS thread, so a plain load and store.
+std::atomic<u64> g_forja_gs_draws_total{0};
+
 namespace
 {
 	struct ForjaGsGroup
@@ -3172,6 +3176,7 @@ namespace
 					ForjaGsGroupsLog(t0);
 			}
 			s_forja_gs_draws++;
+			g_forja_gs_draws_total.store(g_forja_gs_draws_total.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
 			group = ForjaGsGroupOf(key);
 			if (group)
 				group->draws++;
