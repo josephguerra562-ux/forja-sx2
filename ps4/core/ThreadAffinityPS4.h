@@ -11,6 +11,9 @@ namespace PS4ThreadAffinity
 	// cores 0-1, which are idle while a game runs (the launcher thread only waits), instead of
 	// floating onto the EE/VU1/GS/Audio cores. nucleos.txt can move them with AYUDANTES=<core>.
 	void PinCurrentThreadToHelpers(const char* role);
+	// Forja SX2 (compilation 84): the software draw's worker threads (GSRasterizerList, for the GameDB's software draws such as
+	// Guitar Hero's crowd): the game's cores the EE, the VU1 and the audio don't use, the GS's last (it only waits for them).
+	void PinCurrentThreadToSoftwareDraw(int index);
 	// Forja SX2: the running game's cores, from its profile ([Forja] Nucleos, nucleos.txt's syntax on one line, e.g.
 	// "EE=1 VU1=2 GS=3 AUDIO=5 AYUDANTES=4"); empty or "global" = nucleos.txt (or the built-in cores). Each thread takes
 	// it the next time it pins itself: PinCurrentThread, or RepinIfPlanChanged from a long-lived thread's loop.

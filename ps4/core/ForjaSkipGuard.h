@@ -31,11 +31,21 @@ namespace forja_skip
 		static constexpr uint32_t kMinHidden = 2;        // pictures hidden a group needs (the fights: ~2 a frame left out)
 		static constexpr uint32_t kPauses[3] = {120, 480, 1800}; // vsyncs: 2 s, 8 s, 30 s at 60 Hz
 		static constexpr uint32_t kForgiveVsyncs = 1800; // 30 s of groups all hidden: the next pause is the first again
+		// Compilation 84: with two controllers (quick), short pauses and a quick pardon. Dragon Ball Z Budokai Tenkaichi 4 for two
+		// players (2026-10-24): the screens before and after a fight hid none of the frames left out, so the guard rightly paused,
+		// but for 30 s by then, and the fight that followed ran its first half minute without Saltar cuadros, at 43-64 %; with
+		// Saltar cuadros, 76-90 %, every frame left out hidden twice. Without the guard the pause menu and the defeat message
+		// flickered.
+		// 2, 8 and 15 s and a pardon after 10 s. A load ends the pause too (Reset): the fight after a screen with one starts with
+		// Saltar cuadros, with one or two controllers; these shorter pauses are for a fight that follows a screen without a load.
+		// In the PC test 2-4 s pauses showed a burst every ~4 s in a long menu (~60 frames left out a minute).
+		static constexpr uint32_t kQuickPauses[3] = {120, 480, 900}; // vsyncs: 2 s, 8 s, 15 s
+		static constexpr uint32_t kQuickForgiveVsyncs = 600;         // 10 s
 
 		// A new frame of the game starts (VSync, the privileged registers written). previous_draws: the draws into la pantalla
 		// of the frame that ended; hidden_total: the pictures hidden so far (it only grows); vsync: the vsync count now. True if
-		// a pause began now.
-		bool FrameStart(uint32_t previous_draws, uint32_t hidden_total, uint32_t vsync)
+		// a pause began now. quick: the short pauses (two controllers, compilation 84).
+		bool FrameStart(uint32_t previous_draws, uint32_t hidden_total, uint32_t vsync, bool quick = false)
 		{
 			m_frame++;
 			m_heavy = previous_draws >= kHeavyDraws ? std::min(m_heavy + 1, kWarmupFrames) : 0;
@@ -47,12 +57,12 @@ namespace forja_skip
 			{
 				if (m_masked_since == 0)
 					m_masked_since = vsync | 1u;
-				else if (vsync - m_masked_since >= kForgiveVsyncs)
+				else if (vsync - m_masked_since >= (quick ? kQuickForgiveVsyncs : kForgiveVsyncs))
 					m_strike = 0;
 				return false;
 			}
 			m_unmasked++;
-			m_last_pause = kPauses[std::min<uint32_t>(m_strike, 2)];
+			m_last_pause = (quick ? kQuickPauses : kPauses)[std::min<uint32_t>(m_strike, 2)];
 			m_strike = std::min<uint32_t>(m_strike + 1, 2);
 			m_paused_until = vsync + m_last_pause;
 			m_masked_since = 0;
@@ -78,11 +88,13 @@ namespace forja_skip
 		}
 
 		// No new frame for a while (a load, a pause), or Saltar cuadros off: the warm-up starts over, and the group being
-		// judged is dropped. The pauses' length stays.
+		// judged is dropped. The pauses' length stays. Compilation 84: and a pause going on ends, since what follows a load is
+		// another scene (a pause menu or a result screen keeps drawing frames, so it never gets here and stays guarded).
 		void Reset()
 		{
 			m_heavy = 0;
 			m_group_count = 0;
+			m_paused_until = 0;
 		}
 
 		bool Paused(uint32_t vsync) const { return static_cast<int32_t>(vsync - m_paused_until) < 0; }

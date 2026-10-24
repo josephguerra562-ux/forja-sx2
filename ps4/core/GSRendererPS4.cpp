@@ -65,6 +65,8 @@ std::atomic<bool> g_forja_gs_skip_paused{false}; // Forja 1.06: the guard has it
 // two players (2026-10-24): the guard kept "1 de 2" paused 165-231 vsyncs of every 250 in the fights, at 52-65 %; in the seconds
 // it let it skip, 78-89 %. The warm-up after a load or a light frame stays.
 std::atomic<bool> g_forja_gs_skip_guard{true};
+// Compilation 84: the controllers playing (ps4/vm/main.cpp); with two, the guard's pauses are short (ForjaSkipGuard.h).
+extern std::atomic<int> g_forja_pads;
 static forja_skip::Guard s_forja_guard; // Forja 1.06 (ForjaSkipGuard.h)
 static u32 s_forja_hidden_total = 0;    // Forja 1.06: pictures hidden, for the guard's checks
 namespace
@@ -1065,7 +1067,8 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 					g_forja_gs_skip_stats[3].fetch_add(1, std::memory_order_relaxed);
 				// Forja 1.06: the guard (ForjaSkipGuard.h): frames left out whose pictures the TV didn't hide pause Saltar cuadros, and
 				// after a load or a light frame it waits for a second of heavy frames.
-				if (s_forja_guard.FrameStart(s_forja_previous_frame_draws, s_forja_hidden_total, s_forja_vsync) && forja_want)
+				if (s_forja_guard.FrameStart(s_forja_previous_frame_draws, s_forja_hidden_total, s_forja_vsync,
+						g_forja_pads.load(std::memory_order_relaxed) >= 2) && forja_want)
 				{
 					g_forja_gs_skip_stats[4].fetch_add(1, std::memory_order_relaxed);
 					ProbeLog("GS skip: paused for %u vsyncs: the TV hid %u pictures for the last %u frames left out, so they showed "

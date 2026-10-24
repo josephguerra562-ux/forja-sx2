@@ -231,6 +231,30 @@ namespace PS4ThreadAffinity
 		std::fflush(stdout);
 	}
 
+	void PinCurrentThreadToSoftwareDraw(int index)
+	{
+		if (!IsEnabled())
+			return;
+		// Cores 0-5 are the game's. Plan B (EE=1 VU1=2 GS=3 AUDIO=5) leaves 0, 4 and the GS's 3; the built-in cores (EE=2 VU1=3
+		// GS=4 AUDIO=5) leave 0, 1 and the GS's 4.
+		const int ee = ResolveCore("EE", 2), vu1 = ResolveCore("VU1", 3), gs = ResolveCore("GS", 4), audio = ResolveCore("Audio", 5);
+		int cores[6];
+		int count = 0;
+		for (int core = 0; core < 6; core++)
+		{
+			if (core != ee && core != vu1 && core != audio && core != gs)
+				cores[count++] = core;
+		}
+		if (gs >= 0 && gs < 6 && gs != ee && gs != vu1 && gs != audio)
+			cores[count++] = gs;
+		if (count == 0)
+			return;
+		const int core = cores[index % count];
+		const int result = scePthreadSetaffinity(scePthreadSelf(), 1ULL << core);
+		std::printf("PS4 thread affinity: software draw %d core=%d sce_result=0x%x\n", index, core, result);
+		std::fflush(stdout);
+	}
+
 	void SetGamePlan(const char* plan)
 	{
 		std::call_once(s_file_loaded, LoadOverrides);

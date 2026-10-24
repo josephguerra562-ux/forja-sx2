@@ -157,7 +157,10 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     canciones van al 40 % con todos, 56 % con 1 de 2, 73 % con 1 de 4 y 86 % con 1 de 8. **En la 82 se pixelaba**: el
     juego también dibuja con la gráfica en esas imágenes cada cuadro, y quedaban a medias. Desde la 83, en los cuadros sin
     público esos dibujos tampoco se hacen, y queda entero el público anterior. Sin elegir nada va en **1 de cada 2**;
-    Guitar Hero III viene de fábrica en **1 de cada 8** desde la 83 (en la 82, 1 de cada 4).
+    Guitar Hero III viene de fábrica en **1 de cada 8** desde la 83 (en la 82, 1 de cada 4). Con 1 de 8, el cuadro que
+    dibuja el público costaba ~55 ms y los demás ~20: un tirón cada 8 cuadros cuando la cámara mira al público. **Desde la
+    84 el público se dibuja con 3 núcleos de la PS4** en vez de uno (los que no usan el EE, el VU1 ni el sonido): cada
+    pasada cuesta menos y el tirón es más chico.
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 82 **1 de 2 sin guardián** (abajo). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
@@ -182,7 +185,10 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     cuadros en las peleas). **"1 de 2 sin guardián"** (desde la 82) salta igual, pero sin las pausas del guardián (sí
     espera el segundo de escena pesada después de una carga). Es para los juegos donde el guardián frena de más: en
     Dragon Ball a dos jugadores tuvo "1 de 2" en pausa casi todo el tiempo (52-65 % de velocidad) y, en los ratos que lo
-    soltó, fue al 78-89 %. Si algo parpadea, vuelve a "1 de 2".
+    soltó, fue al 78-89 %. Si algo parpadea, vuelve a "1 de 2". **Desde la 84 el guardián es más listo:** una carga
+    termina su pausa (la pelea que viene después arranca saltando cuadros; antes una pausa de 30 s se comía su primer medio
+    minuto), y con **dos mandos** sus pausas son de 2, 8 y 15 s en vez de 2, 8 y 30. El menú de pausa y el mensaje de
+    derrota siguen protegidos. En Dragon Ball a dos, con la 84 conviene volver a **"1 de 2"** (con guardián).
   - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
     cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
     60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %

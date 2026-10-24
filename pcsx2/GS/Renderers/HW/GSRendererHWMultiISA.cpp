@@ -5,6 +5,8 @@
 
 #include "GS/Renderers/SW/GSTextureCacheSW.h"
 #include "GS/Renderers/SW/GSRasterizer.h"
+#include "common/Console.h"
+#include "common/FileSystem.h"
 
 class CURRENT_ISA::GSRendererHWFunctions
 {
@@ -543,10 +545,36 @@ bool GSRendererHWFunctions::SwPrimRender(GSRendererHW& hw, bool invalidate_tc, b
 		}
 	}
 
+	// Forja SX2 (compilation 84): on the PS4, rasterized by 3 worker threads instead of the GS thread alone, on the cores the EE,
+	// the VU1 and the audio don't use (PS4ThreadAffinity::PinCurrentThreadToSoftwareDraw); the GS thread waits for them before
+	// going on, so nothing after it reads the GS's memory early, and every pointer in the draw's data stays valid. Guitar Hero
+	// III's crowd (2026-10-24): ~36 ms a frame on the GS thread alone, the songs at 40 %; at 1 in 8, a frame of ~55 ms every
+	// 8th one, 30 hitches every 5 s. /data/ForjaSX2/vm-sw-un-hilo goes back to one thread.
+	static IRasterizer* s_threaded = nullptr;
 	if (!hw.m_sw_rasterizer)
-		hw.m_sw_rasterizer = std::make_unique<GSSingleRasterizer>();
+	{
+#if defined(PCSX2_PS4_VM_BOOT)
+		const int threads = FileSystem::FileExists("/data/ForjaSX2/vm-sw-un-hilo") ? 0 : 3;
+#else
+		const int threads = 0;
+#endif
+		std::unique_ptr<IRasterizer> rasterizer = threads > 0 ? GSRasterizerList::Create(threads) :
+		                                                        std::unique_ptr<IRasterizer>(new GSSingleRasterizer());
+		s_threaded = threads > 0 ? rasterizer.get() : nullptr;
+		Console.WriteLn("Forja: software draws on %d thread%s", threads > 0 ? threads : 1, threads > 1 ? "s" : "");
+		hw.m_sw_rasterizer = std::move(rasterizer);
+	}
 
-	static_cast<GSSingleRasterizer*>(hw.m_sw_rasterizer.get())->Draw(data);
+	if (s_threaded && hw.m_sw_rasterizer.get() == s_threaded)
+	{
+		static GSRingHeap s_heap;
+		GSRingHeap::SharedPtr<GSRasterizerData> shared = s_heap.make_shared<GSRasterizerData>();
+		*shared.get() = data;
+		s_threaded->Queue(shared);
+		s_threaded->Sync();
+	}
+	else
+		static_cast<GSSingleRasterizer*>(hw.m_sw_rasterizer.get())->Draw(data);
 
 	if (invalidate_tc)
 	{

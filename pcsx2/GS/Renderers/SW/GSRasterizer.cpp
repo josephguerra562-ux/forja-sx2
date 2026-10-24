@@ -9,6 +9,9 @@
 #include "PerformanceMetrics.h"
 #include "VMManager.h"
 
+#if defined(PCSX2_PS4_VM_BOOT)
+#include "ps4/core/ThreadAffinityPS4.h"
+#endif
 #include "common/AlignedMalloc.h"
 #include "common/Console.h"
 #include "common/StringUtil.h"
@@ -1537,6 +1540,10 @@ void GSRasterizerList::OnWorkerStartup(int i, u64 affinity)
 		INFO_LOG("Pinning GS thread {} to CPU {} (0x{:x})", i, std::countr_zero(affinity), affinity);
 		handle.SetAffinity(affinity);
 	}
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2 (compilation 84): onto the cores the EE, the VU1 and the audio don't use.
+	PS4ThreadAffinity::PinCurrentThreadToSoftwareDraw(i);
+#endif
 
 	PerformanceMetrics::SetGSSWThread(i, std::move(handle));
 }
