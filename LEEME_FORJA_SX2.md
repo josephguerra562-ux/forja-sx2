@@ -206,6 +206,13 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     público enseguida en vez de esperar N cuadros. Probado en la PC (`herramientas/simulaciones/simular_publico_gh.py`,
     calibrado contra los contadores de la 90 en la PS4): en 1 de 2 a 1 de 32 queda a lo mucho **un cuadro** con puntos,
     cuando aparecen personajes que no se veían en el cuadro dibujado; la 90 dejaba ~21 % de las lecturas mal.
+    **La 91 se ponía lenta y los personajes parpadeaban**: su regla "si falta una foto, dibujar enseguida" se disparaba
+    sin parar, porque el juego arma el público en **tres** secuencias por cuadro en esas escenas y la tercera (que lee solo
+    el desenfoque) nunca quedaba en la ventana. **Desde la 92** esa regla no existe; cada secuencia se reconoce por su
+    **firma** (dónde y en qué formato la gráfica lee primero lo armado), la ventana sigue hasta dar una vuelta completa, y
+    las fotos son solo de las páginas que el software escribió. Además, una vez por minuto el registro guarda tres cuadros
+    completos del público (`Crowd trace`: cada dibujo con su tamaño y cada envío del EE), para arreglar lo que quede con
+    datos exactos.
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 86 **1 de 2 rápido** (abajo; en la 82-85 ese lugar era "1 de 2 sin guardián"). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja

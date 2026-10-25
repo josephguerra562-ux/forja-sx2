@@ -2286,6 +2286,23 @@ void GSState::GIFRegHandlerTRXDIR(const GIFReg* RESTRICT r)
 
 	m_env.TRXDIR = r->TRXDIR;
 
+#if defined(PCSX2_PS4)
+	// Forja SX2 (compilation 92): the transfers into the GS's memory while Guitar Hero's crowd is being traced (GSHwHack.cpp).
+	{
+		extern u32 g_forja_crowd_trace;
+		extern void ProbeLog(const char* format, ...);
+		if (g_forja_crowd_trace > 0 && (m_env.TRXDIR.XDIR == 0 || m_env.TRXDIR.XDIR == 2)) [[unlikely]]
+		{
+			g_forja_crowd_trace--;
+			ProbeLog("Crowd trace send: %s dbp=%05x dbw=%u dpsm=%02x at %u,%u size %ux%u\n",
+				m_env.TRXDIR.XDIR == 0 ? "from the EE" : "inside the GS", static_cast<unsigned>(m_env.BITBLTBUF.DBP),
+				static_cast<unsigned>(m_env.BITBLTBUF.DBW), static_cast<unsigned>(m_env.BITBLTBUF.DPSM),
+				static_cast<unsigned>(m_env.TRXPOS.DSAX), static_cast<unsigned>(m_env.TRXPOS.DSAY),
+				static_cast<unsigned>(m_env.TRXREG.RRW), static_cast<unsigned>(m_env.TRXREG.RRH));
+		}
+	}
+#endif
+
 	switch (m_env.TRXDIR.XDIR)
 	{
 		case 0: // host -> local
