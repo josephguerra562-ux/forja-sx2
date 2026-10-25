@@ -259,26 +259,33 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 	// times, as part of a frame-wide one (read as a 1024x1024 texture by 033c0/008c0 and the screen), and those wide draws were
 	// left out with the crowd. The crowd's software draws are 256 wide at most (FBW 4), so a wide draw at the same block is
 	// never taken for the crowd's.
-	static int s_pass_frame = -1;
-	static u32 s_passes = 0;
+	// Compilation 89: a pass is the crowd's own sequence, not a GS frame. It starts at the first software draw of its sprites
+	// (8-bit textures, from the EE) and lasts until the next one: the sprites into 008c0's scratch, the copy over 02bc0, the
+	// blur into 03bc0 and the GPU's reads of 02bc0, 02dc0 and 02fc0 between them. Joseph's test of the 88 (2026-10-25, report
+	// F-0887: "Se ve pixelado · En el fondo o el escenario", at 1 in 32): the sequence often runs over two or three GS frames
+	// (sprites in one, the copy and the blur in the next, the GPU's reads in the one after), so a pass by GS frame cut it in
+	// two: a copy of a half-made crowd, or reads in a pass left out with no copy to put back (13-106 copies taken in 47 drawn
+	// passes, put back in a quarter of the passes left out). Now the whole sequence is drawn or left out. Sequences that start
+	// in the same GS frame share its decision, so "1 in N" stays one GS frame in N.
+	static int s_frame = -1;           // the GS frame of the last draw (meters, dump)
+	static int s_pass_frame = -1;      // the GS frame the last pass was decided in
+	static u32 s_passes = 0;           // crowd passes decided (0: no sprite sequence seen yet)
 	static u32 s_every = 1;
 	static bool s_leave_out = false;
+	static bool s_in_sprites = false;  // the last software draw drew sprites (an 8-bit texture)
+	static int s_last_sprites_frame = -1000;
 	static u32 s_crowd_fbps[16]; // block | FBW << 16
 	static u32 s_crowd_fbp_count = 0;
 	static u32 s_crowd_pass = 0; // the pass whose software draws noted the buffers (0: none yet)
-	// Compilation 86: every ~30 s, one drawn pass's draws into the crowd's blocks (any width), in order, into the log: what is
-	// the crowd's and what isn't, for the next fix.
-	static u32 s_draw_in_frame = 0, s_dump_left = 0, s_last_dump_pass = 0;
-	// Compilation 87: the crowd's finished picture, kept from the drawn pass and put back in the passes left out. Joseph's
-	// test of the 86 (2026-10-25): the notes back, but the crowd pixelated again (blue and purple dots) at 1 in 4 and 1 in 8.
-	// Its log (the 86's dump) says why: each frame the game sends its crowd's sprites into 02bc0 (8 bits, from the EE), the
-	// software draws build the crowd with them and copy it over those same blocks (32 bits, 256 wide, draw 15), and the GPU
-	// then reads it into the frame (02bc0, 02dc0, 02fc0: 21, 25, 29). In a pass left out the sprites arrive as always, nothing
-	// copies the crowd over them, and the GPU reads the sprites as if they were the crowd: dots. 83-85 left those GPU draws out
-	// with the rest of 008c0 (the frame), so the crowd stayed whole and the notes went (shown 1 frame in 8: "transparent").
-	// So: in a drawn pass, what a GPU draw reads as 32 bits from what the software draws wrote (not from their scratch, the
-	// blocks the GPU also draws into: 008c0) is copied aside, just before it reads it; in a pass left out, it is put back in
-	// the GS's memory at that same draw, and the texture cache told, so the GPU reads the last whole crowd.
+	// Compilation 86: every ~30 s, one GS frame's draws into the crowd's blocks (any width), in order, into the log.
+	static u32 s_draw_in_frame = 0, s_dump_left = 0;
+	static int s_last_dump_frame = -100000;
+	// Compilation 87: the crowd's finished picture, kept from the drawn pass and put back in the passes left out. Each frame the
+	// game sends its crowd's sprites into 02bc0 (8 bits, from the EE), the software draws build the crowd with them and copy it
+	// over those same blocks (32 bits, 256 wide), and the GPU then reads it into the frame (02bc0, 02dc0, 02fc0). In a pass left
+	// out the sprites arrive as always and nothing copies the crowd over them: the GPU read the sprites as the crowd (dots). So
+	// in a drawn pass what a GPU draw reads as 32 bits from what the software draws wrote (not their scratch: blocks the GPU
+	// also draws into, 008c0) is copied aside just before the read; in a pass left out it is put back at that same read.
 	struct CrowdOut
 	{
 		u32 begin, end; // blocks the software draw wrote
@@ -291,47 +298,42 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 	};
 	static CrowdOut s_out[16];
 	static u32 s_out_count = 0;
-	static u32 s_gpu_fbps[16];
+	static u32 s_gpu_fbps[16]; // compilation 89: kept across passes (the GPU's clear of 008c0 comes before the sprites)
 	static u32 s_gpu_fbp_count = 0;
 	static CrowdKept s_kept[6];
-	static u32 s_kept_put_back = 0, s_kept_copied = 0; // for the log
-	// Compilation 88: what each kind of frame costs the GS thread, from a frame's first draw to the next one's (its waits
-	// included): one that draws the crowd, one left out while there is a crowd, and frames without it; with the crowd's own
-	// work in them (the software draws, the copy put back). With 1 in 8 the software draws were ~0.7 ms a frame, yet the GS
-	// took 17-19 ms a frame with the crowd on screen against ~12 without it (the 87, 2026-10-25): this says where the rest is.
+	static u32 s_kept_put_back = 0, s_kept_copied = 0, s_kept_missed = 0; // for the log
+	// Compilation 88: what each kind of GS frame costs the GS thread, from its first draw to the next frame's (waits included):
+	// one with the crowd's software draws, one without them while there is a crowd, and frames without a crowd; with the
+	// crowd's own work in them. The 88 at 1 in 32: ~40 ms (21 of them the software draws) and ~20 ms, the PAL budget.
 	static u64 s_frame_t0 = 0, s_work_this_frame = 0;
+	static bool s_sw_this_frame = false;
 	static u64 s_kind_ticks[3] = {}, s_kind_work[3] = {};
 	static u32 s_kind_frames[3] = {};
-	if (const int frame = g_perfmon.GetFrame(); frame != s_pass_frame)
+	const int frame = g_perfmon.GetFrame();
+	const bool crowd_on = s_crowd_pass != 0 && frame - s_last_sprites_frame < 150; // a song, not a menu after it
+	if (frame != s_frame)
 	{
+		const u64 now = Common::Timer::GetCurrentValue();
+		const unsigned kind = s_sw_this_frame ? 0u : crowd_on ? 1u : 2u;
+		if (s_frame_t0 != 0 && Common::Timer::ConvertValueToMilliseconds(now - s_frame_t0) < 250.0)
 		{
-			// Compilation 88: the frame that just ended, by kind (s_passes is still its pass).
-			const u64 now = Common::Timer::GetCurrentValue();
-			const unsigned kind = s_crowd_pass == s_passes && s_passes != 0 ? 0u :
-			                      s_leave_out && s_crowd_pass != 0 && s_passes - s_crowd_pass <= 2 * s_every ? 1u : 2u;
-			if (s_frame_t0 != 0 && Common::Timer::ConvertValueToMilliseconds(now - s_frame_t0) < 250.0)
-			{
-				s_kind_ticks[kind] += now - s_frame_t0;
-				s_kind_work[kind] += s_work_this_frame;
-				s_kind_frames[kind]++;
-			}
-			s_frame_t0 = now;
-			s_work_this_frame = 0;
+			s_kind_ticks[kind] += now - s_frame_t0;
+			s_kind_work[kind] += s_work_this_frame;
+			s_kind_frames[kind]++;
 		}
-		s_pass_frame = frame;
-		s_every = std::max(g_forja_crowd_every.load(std::memory_order_relaxed), 1u);
-		s_leave_out = s_every > 1 && (s_passes++ % s_every) != 0;
+		s_frame_t0 = now;
+		s_work_this_frame = 0;
+		s_sw_this_frame = false;
+		s_frame = frame;
 		s_draw_in_frame = 0;
-		s_out_count = 0;
-		s_gpu_fbp_count = 0;
 		s_dump_left = 0;
-		if (!s_leave_out && s_crowd_fbp_count > 0 && s_passes - s_last_dump_pass >= 1500)
+		if (crowd_on && frame - s_last_dump_frame >= 1500)
 		{
-			s_last_dump_pass = s_passes;
+			s_last_dump_frame = frame;
 			s_dump_left = 48;
-			ProbeLog("Crowd kept (87): %u copies of the finished crowd taken, %u put back in passes left out, since the last dump\n",
-				s_kept_copied, s_kept_put_back);
-			s_kept_copied = s_kept_put_back = 0;
+			ProbeLog("Crowd kept (89): %u copies of the finished crowd taken, %u put back in passes left out, %u reads left out "
+				"with no copy, since the last dump\n", s_kept_copied, s_kept_put_back, s_kept_missed);
+			s_kept_copied = s_kept_put_back = s_kept_missed = 0;
 			const auto ms = [](u64 ticks, u32 frames) { return frames ? Common::Timer::ConvertValueToMilliseconds(ticks) / frames : 0.0; };
 			ProbeLog("Crowd frames (88): drawing the crowd %u, %.1f ms each (its software work %.1f); left out %u, %.1f ms each "
 				"(the copy put back %.2f); without a crowd %u, %.1f ms each\n",
@@ -340,7 +342,7 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 				ms(s_kind_ticks[2], s_kind_frames[2]));
 			for (unsigned i = 0; i < 3; i++)
 				s_kind_ticks[i] = s_kind_work[i] = s_kind_frames[i] = 0;
-			ProbeLog("Crowd draws: pass %u (1 in %u), the draws into its blocks in order:\n", s_passes, s_every);
+			ProbeLog("Crowd draws: GS frame %d, pass %u (1 in %u), the draws into its blocks in order:\n", frame, s_passes, s_every);
 		}
 	}
 	const u32 draw_index = s_draw_in_frame++;
@@ -348,6 +350,24 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 	const u32 key = fbp | (static_cast<u32>(RFBW) << 16);
 	const auto noted = [key]() { return std::find(s_crowd_fbps, s_crowd_fbps + s_crowd_fbp_count, key) != s_crowd_fbps + s_crowd_fbp_count; };
 	const bool software = RTBW <= 4 && RTME && RFBW <= 4 && (r.m_context->TEX1.MMIN & 1) == 0;
+	// Compilation 89: a software draw of the crowd's sprites starts a pass (the first after any other software draw).
+	if (software && skip == 0)
+	{
+		const bool sprites = GSLocalMemory::m_psm[RTPSM].pal > 0;
+		if (sprites && !s_in_sprites)
+		{
+			s_last_sprites_frame = frame;
+			if (frame != s_pass_frame || s_passes == 0)
+			{
+				s_pass_frame = frame;
+				s_every = std::max(g_forja_crowd_every.load(std::memory_order_relaxed), 1u);
+				s_leave_out = s_every > 1 && (s_passes++ % s_every) != 0;
+				if (!s_leave_out)
+					s_out_count = 0; // a pass left out keeps the last drawn one's outputs (for the log's missed reads)
+			}
+		}
+		s_in_sprites = sprites;
+	}
 	if (s_dump_left > 0 && skip == 0)
 	{
 		bool block_noted = false;
@@ -356,10 +376,10 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 		if (block_noted || software)
 		{
 			s_dump_left--;
-			ProbeLog("Crowd draw %u: %s fb=%05x fbw=%u fpsm=%02x tex=%s%05x tbw=%u tpsm=%02x prim=%u\n", draw_index,
-				software ? "software" : "gpu", fbp, static_cast<unsigned>(RFBW), static_cast<unsigned>(RFPSM), RTME ? "" : "-",
-				RTME ? static_cast<unsigned>(RTBP0) : 0u, RTME ? static_cast<unsigned>(RTBW) : 0u, RTME ? static_cast<unsigned>(RTPSM) : 0u,
-				static_cast<unsigned>(r.m_vt.m_primclass));
+			ProbeLog("Crowd draw %u: %s%s fb=%05x fbw=%u fpsm=%02x tex=%s%05x tbw=%u tpsm=%02x prim=%u\n", draw_index,
+				software ? "software" : "gpu", s_leave_out ? " (pass left out)" : "", fbp, static_cast<unsigned>(RFBW),
+				static_cast<unsigned>(RFPSM), RTME ? "" : "-", RTME ? static_cast<unsigned>(RTBP0) : 0u,
+				RTME ? static_cast<unsigned>(RTBW) : 0u, RTME ? static_cast<unsigned>(RTPSM) : 0u, static_cast<unsigned>(r.m_vt.m_primclass));
 		}
 	}
 
@@ -373,25 +393,29 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 				skip = 1;
 				return true;
 			}
-			if (s_crowd_pass != s_passes)
+			if (s_passes != 0) // before the first sprites (the very start of a song) it is only drawn, as in PCSX2
 			{
-				s_crowd_pass = s_passes; // this pass's buffers replace the last one's
-				s_crowd_fbp_count = 0;
-			}
-			if (!noted() && s_crowd_fbp_count < std::size(s_crowd_fbps))
-				s_crowd_fbps[s_crowd_fbp_count++] = key;
-			if (s_out_count < std::size(s_out)) // compilation 87: what it writes, and whether the GPU draws into that block too
-			{
-				const u32 rows = (static_cast<u32>(std::max(r.m_r.w, 0)) + 31) / 32;
-				bool scratch = false;
-				for (u32 i = 0; i < s_gpu_fbp_count; i++)
-					scratch |= s_gpu_fbps[i] == fbp;
-				s_out[s_out_count++] = {fbp, fbp + std::max<u32>(RFBW, 1) * rows * 32, scratch};
+				if (s_crowd_pass != s_passes)
+				{
+					s_crowd_pass = s_passes; // this pass's buffers replace the last one's
+					s_crowd_fbp_count = 0;
+				}
+				if (!noted() && s_crowd_fbp_count < std::size(s_crowd_fbps))
+					s_crowd_fbps[s_crowd_fbp_count++] = key;
+				if (s_out_count < std::size(s_out)) // compilation 87: what it writes, and whether the GPU draws into that block too
+				{
+					const u32 rows = (static_cast<u32>(std::max(r.m_r.w, 0)) + 31) / 32;
+					bool scratch = false;
+					for (u32 i = 0; i < s_gpu_fbp_count; i++)
+						scratch |= s_gpu_fbps[i] == fbp;
+					s_out[s_out_count++] = {fbp, fbp + std::max<u32>(RFBW, 1) * rows * 32, scratch};
+				}
 			}
 			const u64 work_t0 = Common::Timer::GetCurrentValue(); // compilation 88
 			r.ClearGSLocalMemory(r.m_context->offset.zb, r.m_r, 0);
 			r.SwPrimRender(r, RFBP != 0x2DC0, false);
 			s_work_this_frame += Common::Timer::GetCurrentValue() - work_t0;
+			s_sw_this_frame = true;
 			skip = 1;
 		}
 		else
@@ -402,16 +426,16 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 				s_gpu_fbps[s_gpu_fbp_count++] = fbp;
 			for (u32 i = 0; i < s_out_count; i++)
 				s_out[i].scratch |= s_out[i].begin == fbp;
-			const bool recent = s_crowd_pass != 0 && s_passes - s_crowd_pass <= 2 * s_every;
+			const bool recent = crowd_on && s_passes - s_crowd_pass <= 2 * s_every + 1;
 			if (s_leave_out && recent && noted())
 			{
 				skip = 1; // the GPU's draw into a crowd buffer (compilation 83), of the crowd's width (86)
 			}
-			else if (RTME && RTPSM == PSMCT32 && recent)
+			else if (RTME && RTPSM == PSMCT32 && recent && s_every > 1)
 			{
 				const u32 tbp = RTBP0, tbw = std::max<u32>(RTBW, 1);
 				u8* const vm = r.m_mem.vm8();
-				if (!s_leave_out && s_every > 1 && s_crowd_pass == s_passes)
+				if (!s_leave_out && s_crowd_pass == s_passes)
 				{
 					// Drawn pass: the GPU is about to read the crowd the software draws just made. Copied aside.
 					for (u32 i = 0; i < s_out_count; i++)
@@ -451,12 +475,17 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 				}
 				else if (s_leave_out)
 				{
-					// Pass left out: the same read gets the last whole crowd back first.
+					// Pass left out: the same read gets the last whole crowd back first. Compilation 89: the newest copy of
+					// that read, from the last drawn pass or one before it.
+					bool put = false;
 					for (CrowdKept& kept : s_kept)
 					{
-						if (kept.tbp != tbp || kept.tbw != tbw || kept.pass != s_crowd_pass || kept.put_back == s_passes ||
-							kept.data.empty() || kept.height == 0)
+						if (kept.tbp != tbp || kept.tbw != tbw || kept.data.empty() || kept.height == 0 ||
+							s_passes - kept.pass > 3 * s_every + 2)
 							continue;
+						put = true;
+						if (kept.put_back == s_passes)
+							break;
 						const u64 work_t0 = Common::Timer::GetCurrentValue(); // compilation 88
 						std::memcpy(vm + static_cast<size_t>(tbp) * 256, kept.data.data(), kept.data.size());
 						g_texture_cache->InvalidateVideoMem(r.m_mem.GetOffset(tbp, tbw, PSMCT32),
@@ -465,6 +494,12 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 						kept.put_back = s_passes;
 						s_kept_put_back++;
 						break;
+					}
+					// A 32-bit read inside what the last drawn pass's software draws wrote, with no copy: noted for the log.
+					if (!put)
+					{
+						for (u32 i = 0; i < s_out_count; i++)
+							s_kept_missed += !s_out[i].scratch && tbp >= s_out[i].begin && tbp < s_out[i].end ? 1u : 0u;
 					}
 				}
 			}

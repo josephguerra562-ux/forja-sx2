@@ -190,7 +190,11 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     87, además, los dibujos por software chiquitos (64x64, como los de Dragon Ball) los hace el hilo del GS solo, sin
     esperar a los otros núcleos: esa espera costaba más que el dibujo. **Desde la 88 el público también va 1 de cada 16
     y 1 de cada 32** (se mueve menos, pero hay menos tirones), y el registro dice cuánto cuesta cada tipo de cuadro (con el
-    público dibujado, sin dibujarlo y sin público), para buscar lo que todavía lo frena.
+    público dibujado, sin dibujarlo y sin público), para buscar lo que todavía lo frena. **En la 88, con 1 de 32 el público
+    se pixelaba otra vez**: el juego arma su público en dos o tres cuadros seguidos (las figuritas en uno, la copia y el
+    desenfoque en otro, la lectura de la gráfica en otro), y Forja decidía "dibujar o no" por cuadro, así que partía la
+    secuencia. **Desde la 89 decide por secuencia del público**: toda entera se dibuja o se deja afuera, y la copia siempre
+    está.
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 86 **1 de 2 rápido** (abajo; en la 82-85 ese lugar era "1 de 2 sin guardián"). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
@@ -224,7 +228,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     guardián, pero con sus pausas cortas (2, 8 y 15 s) con uno o dos mandos. Sin guardián, el menú de pausa y las palabras
     del inicio y del fin de la pelea parpadeaban. Quien lo tenía elegido pasa solo al nuevo. **Desde la 88 hay "2 de 3"**:
     dibuja 1 cuadro de cada 3 (con el guardián rápido), para las peleas pesadas donde ni 1 de 2 alcanza (Dragon Ball a dos:
-    48-95 % con 1 de 2 en la 87). Va más rápido, pero la imagen va más a saltos.
+    48-95 % con 1 de 2 en la 87). Va más rápido, pero la imagen va más a saltos. **En la 88 saltaba lo mismo que 1 de 2**
+    (Dragon Ball muestra cada imagen un cuadro después, y el seguro que obliga a dibujar saltaba justo en el segundo
+    cuadro); desde la 89 ese seguro espera tres imágenes escondidas en "2 de 3".
   - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
     cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
     60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %

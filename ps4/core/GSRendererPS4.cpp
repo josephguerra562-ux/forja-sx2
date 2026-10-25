@@ -1070,7 +1070,11 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				s_forja_vsyncs_since_frame = 0;
 				s_forja_hidden_frames = s_forja_shown_this_frame ? 0 : s_forja_hidden_frames + 1;
 				s_forja_shown_this_frame = false;
-				const bool force = s_forja_hidden_frames >= 2;
+				// Compilation 89: with "2 de 3", after three hidden frames. Dragon Ball shows each picture a frame after drawing it, so
+				// two frames left out in a row hide two pictures in a row, the very thing "2 de 3" means: in the 88 the force drew
+				// the second frame to leave out about every other time, and it left out ~53 frames in 5 s, as "1 de 2" (Joseph:
+				// "no le siento diferencia", 2026-10-25).
+				const bool force = s_forja_hidden_frames >= (g_forja_gs_skip_two.load(std::memory_order_relaxed) ? 3u : 2u);
 				if (force && forja_want)
 					g_forja_gs_skip_stats[3].fetch_add(1, std::memory_order_relaxed);
 				// Forja 1.06: the guard (ForjaSkipGuard.h): frames left out whose pictures the TV didn't hide pause Saltar cuadros, and
