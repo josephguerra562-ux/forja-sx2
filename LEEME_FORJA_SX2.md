@@ -199,6 +199,10 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     los personajes, que la gráfica lee como textura de 8 bits; después el fondo del público, que lee en 32 bits), y solo se
     reponía la copia de las lecturas de 32 bits. **Desde la 90**, cada N cuadros se dibujan las dos partes seguidas, se
     guarda una foto de todo lo que arma el software (en cualquier formato que se lea) y se repone en cada lectura que la tomó.
+    **En la 90 todavía quedaba ~1 personaje de cada 4 pixelado** (más en 1 de 32): la foto se reponía solo en la lectura
+    exacta que la tomó, y los personajes que lee la gráfica cambian con la cámara. **Desde la 91** se repone en la primera
+    lectura que caiga en esa zona, cualquiera sea, eligiendo la foto de los personajes (8 bits) o la del fondo (32 bits).
+    Probado en la PC con `herramientas/simulaciones/simular_publico_gh.py`: sin puntos en 1 de 1, 2, 4, 8, 16 y 32.
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 86 **1 de 2 rápido** (abajo; en la 82-85 ese lugar era "1 de 2 sin guardián"). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja

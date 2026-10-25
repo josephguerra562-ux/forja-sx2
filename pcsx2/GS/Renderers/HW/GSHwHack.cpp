@@ -276,8 +276,14 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 	//   by their read until a drawn sequence takes that read again.
 	// - in a sequence left out, each read that took a snapshot puts it back first, once a sequence (the EE sends its sprites
 	//   over those blocks again each time).
-	// Checked on the PC with the 89's order of draws, the sequences over 1-3 GS frames, at 1 in 2, 8 and 32: no read without
-	// its snapshot.
+	// Compilation 91: a snapshot is kept by its blocks and by the kind of read that took it (8 bits: the people; 32 bits:
+	// the crowd behind them), and a sequence left out puts it back at its FIRST read inside those blocks, whichever texture
+	// that is. The 90 kept it by the exact read (block and format) and put it back only at that same read: the people the GPU
+	// reads change with the camera (03340 first in one frame, 03180 in the next), the read that took it often came late or not
+	// at all, and the people read before it were the EE's sprites (Joseph, 2026-10-25: about a quarter of them still
+	// pixelated at 1 in 32; 257-692 reads every 30 s with nothing put back). herramientas/simulaciones/simular_publico_gh.py
+	// runs both on the logs' order of draws, the people read in a new order every frame: the 90 left 1.3 % of the reads wrong
+	// at 1 in 2 and 14.3 % at 1 in 32; this one none, at 1 in 2, 4, 8, 16 and 32, frames cut anywhere.
 	static int s_frame = -1;           // the GS frame of the last draw (meters, dump)
 	static u32 s_every = 1;
 	static bool s_leave_out = false;
@@ -299,12 +305,11 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 		u32 seq, begin, end, fbw, rows;
 		bool scratch, dirty; // dirty: written since its last snapshot
 	};
-	// The snapshots, kept by the read that took them.
+	// The snapshots, kept by their blocks and the kind of their first read (8 or 32 bits).
 	struct CrowdShot
 	{
-		u32 begin = 0, end = 0, fbw = 0, rows = 0, read_tbp = 0, read_psm = 0;
+		u32 begin = 0, end = 0, fbw = 0, rows = 0, bits = 0;
 		int frame = -100000;
-		bool put_back = false; // in the sequence left out now
 		std::vector<u8> data;
 	};
 	static CrowdOut s_out[16];
@@ -324,6 +329,9 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 		return false;
 	};
 	static CrowdShot s_shots[12];
+	static u32 s_restored[8]; // compilation 91: the blocks (begin) already put back in this sequence left out
+	static u32 s_restored_count = 0;
+	static u32 s_missed_logged = 0; // compilation 91: the first missed reads of each ~30 s go in the log, with their texture
 	static u32 s_kept_put_back = 0, s_kept_copied = 0, s_kept_missed = 0; // for the log
 	// Compilation 88: what each kind of GS frame costs the GS thread, from its first draw to the next frame's (waits included):
 	// one with the crowd's software draws, one without them while there is a crowd, and frames without a crowd; with the
@@ -354,9 +362,10 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 		{
 			s_last_dump_frame = frame;
 			s_dump_left = 48;
-			ProbeLog("Crowd kept (90): %u snapshots of the crowd taken, %u put back in sequences left out, %u reads left out "
+			ProbeLog("Crowd kept (91): %u snapshots of the crowd taken, %u put back in sequences left out, %u reads left out "
 				"with nothing put back, since the last dump\n", s_kept_copied, s_kept_put_back, s_kept_missed);
 			s_kept_copied = s_kept_put_back = s_kept_missed = 0;
+			s_missed_logged = 0;
 			const auto ms = [](u64 ticks, u32 frames) { return frames ? Common::Timer::ConvertValueToMilliseconds(ticks) / frames : 0.0; };
 			ProbeLog("Crowd frames (88): drawing the crowd %u, %.1f ms each (its software work %.1f); left out %u, %.1f ms each "
 				"(the copy put back %.2f); without a crowd %u, %.1f ms each\n",
@@ -401,8 +410,7 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 				s_leave_out = true;
 			if (!s_leave_out)
 				s_drawn_frame = frame;
-			for (CrowdShot& shot : s_shots) // the EE sends its sprites over those blocks again: all of them may go back
-				shot.put_back = false;
+			s_restored_count = 0; // the EE sends its sprites over those blocks again: all of them may go back
 		}
 		s_in_sprites = sprites;
 	}
@@ -491,11 +499,12 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 			else if (RTME && recent && s_every > 1)
 			{
 				const u32 tbp = RTBP0;
+				const u32 bits = GSLocalMemory::m_psm[RTPSM].pal > 0 ? 8u : 32u; // compilation 91: the kind of read
 				u8* const vm = r.m_mem.vm8();
 				if (!s_leave_out)
 				{
 					// A drawn sequence: the GPU is about to read what its software draws wrote. A snapshot of it, all its
-					// blocks, if they were written since the last one, kept by this read.
+					// blocks, if they were written since the last one, kept by its blocks and this read's kind.
 					for (u32 i = 0; i < s_out_count; i++)
 					{
 						CrowdOut& out = s_out[i];
@@ -506,7 +515,7 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 						CrowdShot* slot = nullptr;
 						for (CrowdShot& shot : s_shots)
 						{
-							if (shot.read_tbp == tbp && shot.read_psm == RTPSM && !shot.data.empty())
+							if (shot.begin == out.begin && shot.bits == bits && !shot.data.empty())
 								slot = &shot;
 						}
 						if (!slot)
@@ -522,41 +531,64 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 						slot->end = out.end;
 						slot->fbw = out.fbw;
 						slot->rows = out.rows;
-						slot->read_tbp = tbp;
-						slot->read_psm = RTPSM;
+						slot->bits = bits;
 						slot->frame = frame;
-						slot->put_back = false;
 						slot->data.assign(vm + static_cast<size_t>(out.begin) * 256, vm + static_cast<size_t>(out.end) * 256);
 						s_kept_copied++;
 					}
 				}
 				else
 				{
-					// A sequence left out: the snapshot this same read took (block and format), once a sequence.
-					bool covered = false, put = false;
-					for (CrowdShot& shot : s_shots)
+					// A sequence left out: at the first read inside some snapshot's blocks in this sequence, whatever its
+					// texture, the snapshot of those blocks for this kind of read goes back; the reads after it there find it.
+					u32 begin = 0;
+					bool inside = false;
+					for (const CrowdShot& shot : s_shots)
 					{
-						covered |= shot.put_back && tbp >= shot.begin && tbp < shot.end;
-						if (shot.read_tbp != tbp || shot.read_psm != RTPSM || shot.put_back || shot.data.empty() ||
-							frame - shot.frame > 4 * static_cast<int>(s_every) + 8)
-							continue;
-						const u64 work_t0 = Common::Timer::GetCurrentValue(); // compilation 88
-						std::memcpy(vm + static_cast<size_t>(shot.begin) * 256, shot.data.data(), shot.data.size());
-						g_texture_cache->InvalidateVideoMem(r.m_mem.GetOffset(shot.begin, shot.fbw, PSMCT32),
-							GSVector4i(0, 0, static_cast<int>(shot.fbw * 64), static_cast<int>(shot.rows * 32)));
-						s_work_this_frame += Common::Timer::GetCurrentValue() - work_t0;
-						shot.put_back = true;
-						s_kept_put_back++;
-						put = true;
-						break;
+						if (!shot.data.empty() && tbp >= shot.begin && tbp < shot.end)
+						{
+							inside = true;
+							begin = shot.begin;
+						}
 					}
-					// A read inside what the last window's software draws wrote, with nothing put back there.
-					if (!put && !covered)
+					for (u32 i = 0; !inside && i < s_out_count; i++)
 					{
-						bool inside = false;
-						for (u32 i = 0; i < s_out_count; i++)
-							inside |= !s_out[i].scratch && tbp >= s_out[i].begin && tbp < s_out[i].end;
-						s_kept_missed += inside ? 1u : 0u;
+						if (!s_out[i].scratch && tbp >= s_out[i].begin && tbp < s_out[i].end)
+						{
+							inside = true;
+							begin = s_out[i].begin;
+						}
+					}
+					if (inside && std::find(s_restored, s_restored + s_restored_count, begin) == s_restored + s_restored_count)
+					{
+						bool put = false;
+						for (CrowdShot& shot : s_shots)
+						{
+							if (shot.begin != begin || shot.bits != bits || shot.data.empty() ||
+								frame - shot.frame > 4 * static_cast<int>(s_every) + 8)
+								continue;
+							const u64 work_t0 = Common::Timer::GetCurrentValue(); // compilation 88
+							std::memcpy(vm + static_cast<size_t>(shot.begin) * 256, shot.data.data(), shot.data.size());
+							g_texture_cache->InvalidateVideoMem(r.m_mem.GetOffset(shot.begin, shot.fbw, PSMCT32),
+								GSVector4i(0, 0, static_cast<int>(shot.fbw * 64), static_cast<int>(shot.rows * 32)));
+							s_work_this_frame += Common::Timer::GetCurrentValue() - work_t0;
+							s_kept_put_back++;
+							put = true;
+							break;
+						}
+						if (put && s_restored_count < std::size(s_restored))
+							s_restored[s_restored_count++] = begin;
+						if (!put)
+						{
+							// Nothing of this kind for these blocks: noted, and the first ones go in the log with their texture.
+							s_kept_missed++;
+							if (s_missed_logged < 8)
+							{
+								s_missed_logged++;
+								ProbeLog("Crowd read with nothing to put back: seq %u tex=%05x tbw=%u tpsm=%02x (%u bits) inside %05x\n", s_seq,
+									tbp, static_cast<unsigned>(RTBW), static_cast<unsigned>(RTPSM), bits, begin);
+							}
+						}
 					}
 				}
 			}
