@@ -382,14 +382,14 @@ tr: Shows a game steady at 30 at 60 (experimental).
 es: 1 de 2
 tr: 1 of 2
 
-es: 1 de 2 sin guardián
-tr: 1 of 2 without the guard
+es: 1 de 2 rápido
+tr: 1 of 2, quick
 
 es: Saltar cuadros (GS):  < %s >
 tr: Frame skip (GS):  < %s >
 
-es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
-tr: 1 of every 2 frames without the guard that pauses it where it would show: more speed (Dragon Ball for two players), but it may flicker  ·  now: %s  ·  %s
+es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
+tr: 1 of every 2 frames with the quick guard: it pauses briefly where it would show, so fights run fast (Dragon Ball for two). Opening a menu may show a short burst  ·  now: %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Always 1 frame in 2, even when the GS doesn't need it: Auto is better  ·  now: %s  ·  %s
@@ -541,6 +541,9 @@ tr: Extras
 es: No tocar
 tr: Don't touch
 
+es: Reportes
+tr: Reports
+
 es: Sistema
 tr: System
 
@@ -555,6 +558,9 @@ tr: CHOOSE
 
 es: ELEGIR  ·  X
 tr: CHOOSE  ·  X
+
+es: X  ·  CUADRADO
+tr: X  ·  SQUARE
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: CHOOSE  ·  X  ·  SQUARE
@@ -898,14 +904,14 @@ tr: %d/%m at %H:%M
 es: Reportar este juego:  < %s >
 tr: Report this game:  < %s >
 
-es: Mandando el reporte...
-tr: Sending the report...
+es: Mandando el reporte... %d s. Con internet lento puede tardar hasta un minuto; puedes seguir jugando
+tr: Sending the report... %d s. With slow internet it can take up to a minute; you can keep playing
 
 es: Mandado: reporte %s. Gracias. Si quieres, cuéntanos más en el Discord de Forja
 tr: Sent: report %s. Thank you! If you like, tell us more on Forja's Discord
 
-es: No se pudo mandar (¿sin internet?): el reporte %s quedó en /data/ForjaSX2/reportes
-tr: Could not send it (no internet?): report %s was kept in /data/ForjaSX2/reportes
+es: No se pudo mandar (¿sin internet?): el reporte %s quedó guardado y se vuelve a mandar solo al abrir otro juego
+tr: It couldn't be sent (no internet?): report %s was kept and will be sent again by itself when you open another game
 
 es: Esta versión no tiene el canal de reportes: el reporte %s quedó en /data/ForjaSX2/reportes
 tr: This version has no reports channel: report %s was kept in /data/ForjaSX2/reportes
@@ -924,6 +930,24 @@ tr: What went wrong:  < %s >
 
 es: Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú
 tr: Choose what you noticed and send the report. The meters measure the speed; only you can see the picture, the sound and the controls
+
+es: Comentario:  ninguno
+tr: Comment:  none
+
+es: Comentario:  %s
+tr: Comment:  %s
+
+es: El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario
+tr: The PS4 keyboard couldn't be opened in this version: the report is sent without a comment
+
+es: X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte
+tr: X: write with the PS4 keyboard what happened and where (for example: the volcano stage looks black). It's sent with the report
+
+es: X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
+tr: X: change it  ·  Square: delete it. It's sent with the next report
+
+es: Comentario para el reporte
+tr: Comment for the report
 
 es: Preparando la BIOS de la PS2...
 tr: Preparing the PS2 BIOS...

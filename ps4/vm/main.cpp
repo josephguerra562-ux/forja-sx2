@@ -336,7 +336,8 @@ extern std::atomic<unsigned> g_forja_gs_skipped_frames;
 extern std::atomic<unsigned> g_forja_gs_skip_stats[6]; // compilation 62: GSRendererPS4.cpp, VSync and ForjaGsSkipNote
 extern std::atomic<bool> g_forja_gs_skip_paused;      // Forja 1.06: its guard has it paused (ForjaSkipGuard.h)
 extern std::atomic<unsigned> g_forja_gs_skip_every;    // compilation 63: one frame in N left out
-extern std::atomic<bool> g_forja_gs_skip_guard;       // compilation 82: off for "1 de 2 sin guardián" (SaltarCuadros 3)
+extern std::atomic<bool> g_forja_gs_skip_guard;       // compilation 82: the guard on (always since 86)
+extern std::atomic<bool> g_forja_gs_skip_quick;       // compilation 86: "1 de 2 rápido" (SaltarCuadros 3), short pauses
 // Compilation 82: the Guitar Hero games' crowd, drawn in software once every N of its passes (GSHwHack.cpp, GSC_GuitarHero;
 // [Forja] PublicoCada). Without a value, one in two: every one is PCSX2's, and cost Guitar Hero III ~36 ms a frame.
 extern std::atomic<u32> g_forja_crowd_every;
@@ -1849,6 +1850,174 @@ static constexpr const char* REPORT_ISSUES[] = {N_("Nada en especial"), N_("Va l
 	N_("Fallos de sonido"), N_("Los controles"), N_("Se cuelga o se cierra")};
 static constexpr int REPORT_ISSUE_COUNT = static_cast<int>(std::size(REPORT_ISSUES));
 static int s_report_issue = 0;
+// Compilation 86: the player's own words for the report (Joseph, 2026-10-24: "para agregar comentarios, un comentario
+// adicional"), UTF-8, 200 characters at most; it goes with the next report and is cleared after it.
+static std::string s_report_comment;
+
+// Compilation 86: the PS4's own keyboard (the system's IME dialog) for the comment. The SDK has no stub library for it
+// (libSceImeDialog), so its module and the common dialogs' are loaded and their functions found by name the first time; if
+// anything fails the row says so, and the report goes without a comment. While it is open the menu reads no buttons.
+namespace ForjaKeyboard
+{
+	// OrbisImeDialogSetting (orbis/_types/ime_dialog.h) with the PS4's 16-bit characters: the header's wchar_t is 32-bit here.
+	struct Setting
+	{
+		uint32_t user_id;
+		int32_t type;
+		uint64_t supported_languages;
+		int32_t enter_label;
+		int32_t input_method;
+		void* filter;
+		uint32_t option;
+		uint32_t max_text_length;
+		char16_t* input_text_buffer;
+		float posx, posy;
+		int32_t horizontal_alignment, vertical_alignment;
+		const char16_t* placeholder;
+		const char16_t* title;
+		int8_t reserved[16];
+	};
+	static_assert(sizeof(Setting) == 96, "the IME dialog's setting");
+	struct Result
+	{
+		int32_t end_status; // 0 OK, 1 cancelled, 2 aborted
+		int8_t reserved[12];
+	};
+
+	static constexpr uint32_t MaxLength = 200;
+	static int32_t (*s_init)(const Setting*, void*) = nullptr;
+	static int32_t (*s_status)() = nullptr; // 0 none, 1 running, 2 finished
+	static int32_t (*s_result)(Result*) = nullptr;
+	static int32_t (*s_term)() = nullptr;
+	static bool s_loaded = false, s_failed = false, s_open = false;
+	static char16_t s_buffer[MaxLength + 1];
+	static char16_t s_title[64];
+
+	static void ToUtf16(const std::string& in, char16_t* out, size_t capacity)
+	{
+		size_t n = 0;
+		for (size_t i = 0; i < in.size() && n + 2 < capacity;)
+		{
+			const unsigned char c = static_cast<unsigned char>(in[i]);
+			uint32_t code = c;
+			int extra = c >= 0xF0 ? 3 : c >= 0xE0 ? 2 : c >= 0xC0 ? 1 : 0;
+			if (extra)
+				code = c & (0x3F >> extra);
+			i++;
+			for (; extra > 0 && i < in.size(); extra--, i++)
+				code = (code << 6) | (static_cast<unsigned char>(in[i]) & 0x3F);
+			if (code >= 0x10000)
+			{
+				code -= 0x10000;
+				out[n++] = static_cast<char16_t>(0xD800 + (code >> 10));
+				out[n++] = static_cast<char16_t>(0xDC00 + (code & 0x3FF));
+			}
+			else
+				out[n++] = static_cast<char16_t>(code);
+		}
+		out[n] = 0;
+	}
+
+	static std::string ToUtf8(const char16_t* in)
+	{
+		std::string out;
+		for (size_t i = 0; in[i] != 0; i++)
+		{
+			uint32_t code = in[i];
+			if (code >= 0xD800 && code < 0xDC00 && in[i + 1] >= 0xDC00 && in[i + 1] < 0xE000)
+				code = 0x10000 + ((code - 0xD800) << 10) + (in[++i] - 0xDC00);
+			if (code < 0x80)
+				out += static_cast<char>(code);
+			else if (code < 0x800)
+			{
+				out += static_cast<char>(0xC0 | (code >> 6));
+				out += static_cast<char>(0x80 | (code & 0x3F));
+			}
+			else if (code < 0x10000)
+			{
+				out += static_cast<char>(0xE0 | (code >> 12));
+				out += static_cast<char>(0x80 | ((code >> 6) & 0x3F));
+				out += static_cast<char>(0x80 | (code & 0x3F));
+			}
+			else
+			{
+				out += static_cast<char>(0xF0 | (code >> 18));
+				out += static_cast<char>(0x80 | ((code >> 12) & 0x3F));
+				out += static_cast<char>(0x80 | ((code >> 6) & 0x3F));
+				out += static_cast<char>(0x80 | (code & 0x3F));
+			}
+		}
+		return out;
+	}
+
+	static bool Load()
+	{
+		if (s_loaded || s_failed)
+			return s_loaded;
+		const int common = static_cast<int>(sceKernelLoadStartModule("/system/common/lib/libSceCommonDialog.sprx", 0, nullptr, 0, nullptr, nullptr));
+		const int ime = static_cast<int>(sceKernelLoadStartModule("/system/common/lib/libSceImeDialog.sprx", 0, nullptr, 0, nullptr, nullptr));
+		void* common_init = nullptr;
+		if (common >= 0)
+			sceKernelDlsym(common, "sceCommonDialogInitialize", &common_init);
+		if (ime >= 0)
+		{
+			sceKernelDlsym(ime, "sceImeDialogInit", reinterpret_cast<void**>(&s_init));
+			sceKernelDlsym(ime, "sceImeDialogGetStatus", reinterpret_cast<void**>(&s_status));
+			sceKernelDlsym(ime, "sceImeDialogGetResult", reinterpret_cast<void**>(&s_result));
+			sceKernelDlsym(ime, "sceImeDialogTerm", reinterpret_cast<void**>(&s_term));
+		}
+		const bool found = common_init && s_init && s_status && s_result && s_term;
+		const int32_t common_result = found ? reinterpret_cast<int32_t (*)()>(common_init)() : -1;
+		ProbeLog("Keyboard: common dialog module %#x, keyboard module %#x, functions %s, common dialogs %#x\n",
+			static_cast<unsigned>(common), static_cast<unsigned>(ime), found ? "found" : "missing", static_cast<unsigned>(common_result));
+		s_loaded = found;
+		s_failed = !found;
+		return s_loaded;
+	}
+
+	// Opens the keyboard over the menu with `current` in it. False if it can't.
+	static bool Open(OrbisUserServiceUserId user, const char* title, const std::string& current)
+	{
+		if (s_open || !Load())
+			return false;
+		ToUtf16(current, s_buffer, MaxLength + 1);
+		ToUtf16(title, s_title, std::size(s_title));
+		Setting setting{};
+		setting.user_id = static_cast<uint32_t>(user);
+		setting.max_text_length = MaxLength;
+		setting.input_text_buffer = s_buffer;
+		setting.posx = 960.0f;
+		setting.posy = 540.0f;
+		setting.horizontal_alignment = 1; // centre
+		setting.vertical_alignment = 1;
+		setting.title = s_title;
+		const int32_t result = s_init(&setting, nullptr);
+		ProbeLog("Keyboard: open %#x\n", static_cast<unsigned>(result));
+		s_open = result == 0;
+		return s_open;
+	}
+
+	// While open, and on the poll it closes on: true. When it closes with OK, `text` gets what was written (`done` true).
+	static bool Busy(std::string& text, bool& done)
+	{
+		done = false;
+		if (!s_open)
+			return false;
+		if (s_status() == 1)
+			return true;
+		Result result{};
+		const int32_t got = s_result(&result);
+		s_term();
+		s_open = false;
+		done = got == 0 && result.end_status == 0;
+		if (done)
+			text = ToUtf8(s_buffer);
+		ProbeLog("Keyboard: closed (result %#x, end %d, %zu bytes)\n", static_cast<unsigned>(got), result.end_status, done ? text.size() : 0);
+		return true; // the button that closed it is not the menu's
+	}
+
+	static bool Failed() { return s_failed; }
+} // namespace ForjaKeyboard
 static double s_report_last_sent = -1000.0;
 static bool s_report_too_soon = false;
 static ForjaReport::Status s_report_shown = ForjaReport::Status::Idle;
@@ -1992,7 +2161,9 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 			g_forja_gs_skip_every.store(2u, std::memory_order_relaxed);
 			g_forja_gs_skip_active.store(gs_skip >= 2 && !s_movie_settings, std::memory_order_relaxed); // compilation 65
 		}
-		g_forja_gs_skip_guard.store(gs_skip != 3, std::memory_order_relaxed); // compilation 82
+		// Compilation 86: 3 is "1 de 2 rápido", the guard with its short pauses (until 85 it had none: flicker in menus).
+		g_forja_gs_skip_guard.store(true, std::memory_order_relaxed);
+		g_forja_gs_skip_quick.store(gs_skip == 3, std::memory_order_relaxed);
 	}
 	// Compilation 82: the Guitar Hero games' crowd (GSC_GuitarHero reads the atomic on the GS thread).
 	s_crowd_every = s_profile.crowd_every > 0 ? static_cast<unsigned>(s_profile.crowd_every) : CROWD_EVERY_DEFAULT;
@@ -3014,7 +3185,7 @@ static void ForjaSessionLines(std::string& header_text, std::string& settings_te
 		std::snprintf(cpu_auto, sizeof(cpu_auto), "hasta %d %%%s", EERatePercent(s_cpu_auto_floor),
 			CpuAutoIdle() ? ", no actúa: la CPU del juego ya está igual o más baja" : ""); // compilation 76
 	const char* frame_gen = !g_orbis_fg_wanted ? "No" : s_fg_fluid_profile ? "Fluida" : "Sí";
-	const char* gs_skip = s_gs_skip_mode == 3 ? "1 de 2 sin guardián" : s_gs_skip_mode == 2 ? "1 de 2" :
+	const char* gs_skip = s_gs_skip_mode == 3 ? "1 de 2 rápido" : s_gs_skip_mode == 2 ? "1 de 2" :
 	                      s_gs_skip_mode == 1 ? (s_gs_skip_useless ? "Auto (se apagó: el juego dibuja fuera de la pantalla y no hay cuadros que saltar)" :
 	                                                                 "Auto") :
 	                                            "No";
@@ -3128,6 +3299,8 @@ static void SendReport(double elapsed)
 	std::string header, settings;
 	ForjaSessionLines(header, settings);
 	std::string text = "Reporte " + std::string(id) + " de un jugador: " + rating + "; qué falló: " + issue + "\n";
+	if (!s_report_comment.empty()) // compilation 86
+		text += "Comentario del jugador: " + s_report_comment + "\n";
 	text += "Medido: " + measured + "\n";
 	text += ForjaSession::Text(header, settings, false);
 	text += "\n--- Ahora\n";
@@ -3151,11 +3324,16 @@ static void SendReport(double elapsed)
 		"medido: %s", id, ForjaGameTitle().c_str(), serial.empty() ? "?" : serial.c_str(), rating, issue, FORJA_VERSION_MAJOR,
 		FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER, s_console_fast_cpu ? "PS4 Pro con Boost" : "PS4 normal o Slim",
 		PerformanceMetrics::GetSpeed(), measured.c_str());
-	if (ForjaReport::Send(std::string(id) + "_" + name, summary, text))
+	// Compilation 86: and the player's comment, its first 300 bytes in the line (Discord's message takes 2,000).
+	std::string line = summary;
+	if (!s_report_comment.empty())
+		line += " · comentario: " + ForjaLang::Cut(s_report_comment, 300);
+	if (ForjaReport::Send(std::string(id) + "_" + name, line, text))
 	{
 		s_report_last_sent = elapsed;
-		ProbeLog("Report: %s (%s, %s, %zu bytes) %s\n", id, rating, issue, text.size(),
+		ProbeLog("Report: %s (%s, %s, %zu bytes, comment %zu bytes) %s\n", id, rating, issue, text.size(), s_report_comment.size(),
 			ForjaReport::HasChannel() ? "sending to the reports channel" : "kept in reportes/ (no channel in this build)");
+		s_report_comment.clear(); // it went with this one
 	}
 }
 
@@ -3173,7 +3351,11 @@ static void PublishReportText()
 	switch (ForjaReport::GetStatus())
 	{
 		case ForjaReport::Status::Sending:
-			std::snprintf(description, sizeof(description), "%s", T("Mandando el reporte..."));
+			// Compilation 86: with its seconds. Joseph (2026-10-24) didn't know whether it had gone: one took ~7 s, another
+			// hadn't answered after 35 s when he closed the game.
+			std::snprintf(description, sizeof(description),
+				TF("Mandando el reporte... %d s. Con internet lento puede tardar hasta un minuto; puedes seguir jugando"),
+				ForjaReport::SendingSeconds());
 			break;
 		case ForjaReport::Status::Sent:
 			std::snprintf(description, sizeof(description), TF("Mandado: reporte %s. Gracias. Si quieres, cuéntanos más en el Discord de Forja"),
@@ -3181,7 +3363,7 @@ static void PublishReportText()
 			break;
 		case ForjaReport::Status::Kept:
 			std::snprintf(description, sizeof(description),
-				channel ? TF("No se pudo mandar (¿sin internet?): el reporte %s quedó en /data/ForjaSX2/reportes") :
+				channel ? TF("No se pudo mandar (¿sin internet?): el reporte %s quedó guardado y se vuelve a mandar solo al abrir otro juego") :
 						  TF("Esta versión no tiene el canal de reportes: el reporte %s quedó en /data/ForjaSX2/reportes"),
 				id.c_str());
 			break;
@@ -3199,6 +3381,15 @@ static void PublishReportText()
 		T(REPORT_ISSUES[std::clamp(s_report_issue, 0, REPORT_ISSUE_COUNT - 1)]));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_REPORT_ISSUE, label,
 		T("Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú"));
+	// Compilation 86: the comment, written with the PS4's keyboard.
+	if (s_report_comment.empty())
+		std::snprintf(label, sizeof(label), "%s", T("Comentario:  ninguno"));
+	else
+		std::snprintf(label, sizeof(label), TF("Comentario:  %s"), ForjaLang::Cut(s_report_comment, 70).c_str());
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_REPORT_COMMENT, label,
+		ForjaKeyboard::Failed() ? T("El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario") :
+		s_report_comment.empty() ? T("X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte") :
+		                           T("X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte"));
 }
 
 void VMHostPoll()
@@ -3559,11 +3750,32 @@ void VMHostPoll()
 		PublishRecommendedText();
 		PublishGameMenu();
 	}
-	// Compilation 77: the report's row follows its sending (ForjaReport.cpp's thread).
-	if (const ForjaReport::Status status = ForjaReport::GetStatus(); status != s_report_shown)
+	// Compilation 77: the report's row follows its sending (ForjaReport.cpp's thread); compilation 86: every second of it.
 	{
-		s_report_shown = status;
-		PublishGameMenu();
+		static int s_report_shown_seconds = -1;
+		const ForjaReport::Status status = ForjaReport::GetStatus();
+		const int seconds = status == ForjaReport::Status::Sending ? ForjaReport::SendingSeconds() : -1;
+		if (status != s_report_shown || seconds != s_report_shown_seconds)
+		{
+			s_report_shown = status;
+			s_report_shown_seconds = seconds;
+			PublishGameMenu();
+		}
+	}
+
+	// Compilation 86: the PS4's keyboard open over the menu: the menu reads no buttons until it closes.
+	{
+		std::string written;
+		bool done = false;
+		if (ForjaKeyboard::Busy(written, done))
+		{
+			if (done)
+			{
+				s_report_comment = written.substr(0, 600); // 200 characters at most, up to 3 bytes each
+				PublishGameMenu();
+			}
+			return;
+		}
 	}
 
 	const bool cancel = (pressed & ORBIS_PAD_BUTTON_CIRCLE) != 0 || chord_edge;
@@ -3606,10 +3818,18 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
 						   row == PS4GameMenu::ROW_TEXTURES ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
-						   row == PS4GameMenu::ROW_REPORT_ISSUE))
+						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT))
 		{
 			if (row == PS4GameMenu::ROW_SAVE_STATE)
 				SaveGameState();
+			else if (row == PS4GameMenu::ROW_REPORT_COMMENT) // compilation 86: the PS4's keyboard
+			{
+				OrbisUserServiceUserId user = s_pad1_user;
+				if (user == ORBIS_USER_SERVICE_USER_ID_INVALID)
+					sceUserServiceGetInitialUser(&user);
+				if (!ForjaKeyboard::Open(user, ForjaLang::T("Comentario para el reporte"), s_report_comment))
+					ProbeLog("Keyboard: could not open it\n");
+			}
 			// Compilation 77; 82: from "Qué falló" too. Joseph chose what went wrong in Guitar Hero (2026-10-24) and pressed X there,
 			// on the row below the one that sent, and nothing went.
 			else if (row == PS4GameMenu::ROW_REPORT || row == PS4GameMenu::ROW_REPORT_ISSUE)
@@ -3661,11 +3881,15 @@ void VMHostPoll()
 			s_game_menu_direction = 0;
 			return;
 		}
-		// Forja SX2 (compilation 52): Cuadrado on a filter's row brings everything it left out back.
-		if ((pressed & ORBIS_PAD_BUTTON_SQUARE) != 0 && (row == PS4GameMenu::ROW_GS_FILTER || row == PS4GameMenu::ROW_VU1_FILTER))
+		// Forja SX2 (compilation 52): Cuadrado on a filter's row brings everything it left out back. Compilation 86: on the
+		// comment's, it clears it.
+		if ((pressed & ORBIS_PAD_BUTTON_SQUARE) != 0 &&
+			(row == PS4GameMenu::ROW_GS_FILTER || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_REPORT_COMMENT))
 		{
 			if (row == PS4GameMenu::ROW_GS_FILTER)
 				BringBackGsGroups();
+			else if (row == PS4GameMenu::ROW_REPORT_COMMENT)
+				s_report_comment.clear();
 			else
 				BringBackVu1Programs();
 			PublishGameMenu();
@@ -4062,6 +4286,7 @@ static void* RunVM(void*)
 			g_orbis_fg_held = false; // Forja 1.06
 			g_orbis_fg_gave_up = false; // Forja 1.06: a new game gets its frame generation back (OrbisFrameGenPacing.h, NewGame)
 			ForjaSession::Begin(); // Forja 1.06: and its own summary
+			ForjaReport::ResendPending(); // compilation 86: a report that didn't reach the channel goes again
 			s_session_beats = 0;
 			g_orbis_fg_restart.fetch_add(1, std::memory_order_relaxed);
 			g_forja_iop_sleep = false; // compilation 67

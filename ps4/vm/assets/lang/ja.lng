@@ -382,14 +382,14 @@ tr: 30で安定したゲームを60で表示（実験的）。
 es: 1 de 2
 tr: 2回に1回
 
-es: 1 de 2 sin guardián
-tr: 2フレームに1回（ガードなし）
+es: 1 de 2 rápido
+tr: 2回に1回（速い）
 
 es: Saltar cuadros (GS):  < %s >
 tr: フレームスキップ（GS）：  < %s >
 
-es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
-tr: 目立つ場面で一時停止させるガードなしで、2フレームに1回だけ描画：より速くなります（Dragon Ball の2人プレイ）が、ちらつくことがあります  ·  現在：%s  ·  %s
+es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
+tr: 速いガード付きで2フレームに1回描画：目立つ場面では短く一時停止し、対戦は速いままです（Dragon Ball の2人プレイ）。メニューを開くと一瞬ちらつくことがあります  ·  現在：%s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: GSに余裕があっても常に2フレームに1回だけ描画します：自動のほうがおすすめ  ·  現在：%s  ·  %s
@@ -541,6 +541,9 @@ tr: エクストラ
 es: No tocar
 tr: さわらない
 
+es: Reportes
+tr: レポート
+
 es: Sistema
 tr: システム
 
@@ -555,6 +558,9 @@ tr: 選択
 
 es: ELEGIR  ·  X
 tr: 選択  ·  X
+
+es: X  ·  CUADRADO
+tr: X  ·  □
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: 選択  ·  X  ·  □
@@ -898,14 +904,14 @@ tr: %m月%d日 %H:%M
 es: Reportar este juego:  < %s >
 tr: このゲームを報告：  < %s >
 
-es: Mandando el reporte...
-tr: レポートを送信中...
+es: Mandando el reporte... %d s. Con internet lento puede tardar hasta un minuto; puedes seguir jugando
+tr: レポートを送信中... %d 秒。回線が遅いと1分ほどかかることがあります。そのまま遊べます
 
 es: Mandado: reporte %s. Gracias. Si quieres, cuéntanos más en el Discord de Forja
 tr: 送信しました：レポート %s。ありがとうございます！よければ Forja の Discord でもっと教えてください
 
-es: No se pudo mandar (¿sin internet?): el reporte %s quedó en /data/ForjaSX2/reportes
-tr: 送信できませんでした（ネット未接続？）：レポート %s は /data/ForjaSX2/reportes に保存されました
+es: No se pudo mandar (¿sin internet?): el reporte %s quedó guardado y se vuelve a mandar solo al abrir otro juego
+tr: 送信できませんでした（インターネットなし？）：レポート %s は保存され、別のゲームを開くと自動で再送されます
 
 es: Esta versión no tiene el canal de reportes: el reporte %s quedó en /data/ForjaSX2/reportes
 tr: このバージョンにはレポート用チャンネルがありません：レポート %s は /data/ForjaSX2/reportes に保存されました
@@ -924,6 +930,24 @@ tr: 問題点：  < %s >
 
 es: Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú
 tr: 気づいたことを選んでレポートを送ってください。速度は計測で分かりますが、画面・音・操作はあなたにしか分かりません
+
+es: Comentario:  ninguno
+tr: コメント：  なし
+
+es: Comentario:  %s
+tr: コメント：  %s
+
+es: El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario
+tr: このバージョンでは PS4 のキーボードを開けませんでした：レポートはコメントなしで送られます
+
+es: X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte
+tr: X：PS4 のキーボードで何がどこで起きたかを書きます（例：火山のステージが黒く見える）。レポートと一緒に送られます
+
+es: X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
+tr: X：変更  ·  □：削除。次のレポートと一緒に送られます
+
+es: Comentario para el reporte
+tr: レポートへのコメント
 
 es: Preparando la BIOS de la PS2...
 tr: PS2のBIOSを準備中...

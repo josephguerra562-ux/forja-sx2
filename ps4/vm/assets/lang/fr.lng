@@ -382,14 +382,14 @@ tr: Affiche à 60 un jeu stable à 30 (expérimental).
 es: 1 de 2
 tr: 1 sur 2
 
-es: 1 de 2 sin guardián
-tr: 1 sur 2 sans gardien
+es: 1 de 2 rápido
+tr: 1 sur 2 rapide
 
 es: Saltar cuadros (GS):  < %s >
 tr: Saut d'images (GS) :  < %s >
 
-es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
-tr: 1 image sur 2 sans le gardien qui le met en pause là où ça se verrait : plus de vitesse (Dragon Ball à deux joueurs), mais ça peut clignoter  ·  maintenant : %s  ·  %s
+es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
+tr: 1 image sur 2 avec le gardien rapide : il fait de courtes pauses là où ça se verrait, pour que les combats aillent vite (Dragon Ball à deux). En ouvrant un menu, un court clignotement peut apparaître  ·  maintenant : %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Toujours 1 image sur 2, même quand le GS n'en a pas besoin : mieux vaut Auto  ·  actuel : %s  ·  %s
@@ -541,6 +541,9 @@ tr: Extras
 es: No tocar
 tr: Ne pas toucher
 
+es: Reportes
+tr: Rapports
+
 es: Sistema
 tr: Système
 
@@ -555,6 +558,9 @@ tr: CHOISIR
 
 es: ELEGIR  ·  X
 tr: CHOISIR  ·  X
+
+es: X  ·  CUADRADO
+tr: X  ·  CARRÉ
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: CHOISIR  ·  X  ·  CARRÉ
@@ -898,14 +904,14 @@ tr: %d/%m à %H:%M
 es: Reportar este juego:  < %s >
 tr: Signaler ce jeu :  < %s >
 
-es: Mandando el reporte...
-tr: Envoi du rapport...
+es: Mandando el reporte... %d s. Con internet lento puede tardar hasta un minuto; puedes seguir jugando
+tr: Envoi du rapport... %d s. Avec une connexion lente, cela peut prendre jusqu'à une minute ; vous pouvez continuer à jouer
 
 es: Mandado: reporte %s. Gracias. Si quieres, cuéntanos más en el Discord de Forja
 tr: Envoyé : rapport %s. Merci ! Si vous voulez, dites-nous-en plus sur le Discord de Forja
 
-es: No se pudo mandar (¿sin internet?): el reporte %s quedó en /data/ForjaSX2/reportes
-tr: Envoi impossible (pas d'internet ?) : le rapport %s est gardé dans /data/ForjaSX2/reportes
+es: No se pudo mandar (¿sin internet?): el reporte %s quedó guardado y se vuelve a mandar solo al abrir otro juego
+tr: Envoi impossible (pas d'internet ?) : le rapport %s est gardé et sera renvoyé tout seul à l'ouverture d'un autre jeu
 
 es: Esta versión no tiene el canal de reportes: el reporte %s quedó en /data/ForjaSX2/reportes
 tr: Cette version n'a pas de canal de rapports : le rapport %s est gardé dans /data/ForjaSX2/reportes
@@ -924,6 +930,24 @@ tr: Ce qui n'allait pas :  < %s >
 
 es: Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú
 tr: Choisissez ce que vous avez remarqué et envoyez le rapport. Les mesures voient la vitesse ; l'image, le son et les commandes, vous seul les voyez
+
+es: Comentario:  ninguno
+tr: Commentaire :  aucun
+
+es: Comentario:  %s
+tr: Commentaire :  %s
+
+es: El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario
+tr: Le clavier de la PS4 n'a pas pu s'ouvrir dans cette version : le rapport est envoyé sans commentaire
+
+es: X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte
+tr: X : écrivez avec le clavier de la PS4 ce qui s'est passé et où (par exemple : le décor du volcan est noir). Il part avec le rapport
+
+es: X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
+tr: X : le modifier  ·  Carré : l'effacer. Il part avec le prochain rapport
+
+es: Comentario para el reporte
+tr: Commentaire pour le rapport
 
 es: Preparando la BIOS de la PS2...
 tr: Préparation du BIOS de la PS2...

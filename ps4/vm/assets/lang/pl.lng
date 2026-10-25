@@ -382,14 +382,14 @@ tr: Pokazuje w 60 grę stabilną w 30 (eksperyment).
 es: 1 de 2
 tr: 1 z 2
 
-es: 1 de 2 sin guardián
-tr: 1 z 2 bez strażnika
+es: 1 de 2 rápido
+tr: 1 z 2, szybko
 
 es: Saltar cuadros (GS):  < %s >
 tr: Pomijanie klatek (GS):  < %s >
 
-es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
-tr: 1 na 2 klatki bez strażnika, który wstrzymuje tam, gdzie byłoby widać: szybciej (Dragon Ball we dwóch), ale może migać  ·  teraz: %s  ·  %s
+es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
+tr: 1 na 2 klatki z szybkim strażnikiem: krótkie pauzy tam, gdzie byłoby widać, by walki szły szybko (Dragon Ball we dwóch). Przy otwieraniu menu może krótko mignąć  ·  teraz: %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Zawsze 1 klatka z 2, nawet gdy GS tego nie potrzebuje: lepiej Auto  ·  teraz: %s  ·  %s
@@ -541,6 +541,9 @@ tr: Dodatki
 es: No tocar
 tr: Nie ruszać
 
+es: Reportes
+tr: Zgłoszenia
+
 es: Sistema
 tr: System
 
@@ -555,6 +558,9 @@ tr: WYBIERZ
 
 es: ELEGIR  ·  X
 tr: WYBIERZ  ·  X
+
+es: X  ·  CUADRADO
+tr: X  ·  KWADRAT
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: WYBIERZ  ·  X  ·  KWADRAT
@@ -898,14 +904,14 @@ tr: %d.%m o %H:%M
 es: Reportar este juego:  < %s >
 tr: Zgłoś tę grę:  < %s >
 
-es: Mandando el reporte...
-tr: Wysyłanie zgłoszenia...
+es: Mandando el reporte... %d s. Con internet lento puede tardar hasta un minuto; puedes seguir jugando
+tr: Wysyłanie zgłoszenia... %d s. Przy wolnym internecie może to potrwać do minuty; możesz grać dalej
 
 es: Mandado: reporte %s. Gracias. Si quieres, cuéntanos más en el Discord de Forja
 tr: Wysłano: zgłoszenie %s. Dziękujemy! Jeśli chcesz, opowiedz nam więcej na Discordzie Forja
 
-es: No se pudo mandar (¿sin internet?): el reporte %s quedó en /data/ForjaSX2/reportes
-tr: Nie udało się wysłać (brak internetu?): zgłoszenie %s zostało w /data/ForjaSX2/reportes
+es: No se pudo mandar (¿sin internet?): el reporte %s quedó guardado y se vuelve a mandar solo al abrir otro juego
+tr: Nie udało się wysłać (brak internetu?): zgłoszenie %s zostało zapisane i wyśle się samo ponownie po otwarciu innej gry
 
 es: Esta versión no tiene el canal de reportes: el reporte %s quedó en /data/ForjaSX2/reportes
 tr: Ta wersja nie ma kanału zgłoszeń: zgłoszenie %s zostało w /data/ForjaSX2/reportes
@@ -924,6 +930,24 @@ tr: Co nie działało:  < %s >
 
 es: Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú
 tr: Wybierz, co zauważyłeś, i wyślij zgłoszenie. Prędkość mierzą liczniki; obraz, dźwięk i sterowanie widzisz tylko ty
+
+es: Comentario:  ninguno
+tr: Komentarz:  brak
+
+es: Comentario:  %s
+tr: Komentarz:  %s
+
+es: El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario
+tr: W tej wersji nie udało się otworzyć klawiatury PS4: zgłoszenie zostanie wysłane bez komentarza
+
+es: X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte
+tr: X: napisz klawiaturą PS4, co się stało i gdzie (na przykład: arena z wulkanem jest czarna). Zostanie wysłane ze zgłoszeniem
+
+es: X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
+tr: X: zmień  ·  Kwadrat: usuń. Zostanie wysłany z następnym zgłoszeniem
+
+es: Comentario para el reporte
+tr: Komentarz do zgłoszenia
 
 es: Preparando la BIOS de la PS2...
 tr: Przygotowywanie BIOS-u PS2...

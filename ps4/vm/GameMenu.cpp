@@ -1839,13 +1839,14 @@ namespace PS4GameMenu
 				origin(menu_state.frame_gen_origin));
 			// Forja SX2 (compilation 47): "Saltar cuadros" (main.cpp, UpdateGsSkip; GSRendererPS4.cpp, VSync). 1.06: back in
 			// Rendimiento without "(experimental)", and "1 de 2" says it skips even where the GS needs no help.
-			// Compilation 82: and "1 de 2 sin guardián", for the games whose guard holds it back where nothing would show.
-			static constexpr const char* gs_skip_names[] = {N_("No"), N_("Auto"), N_("1 de 2"), N_("1 de 2 sin guardián")};
+			// Compilation 82: and a fourth value, "1 de 2 sin guardián"; compilation 86: "1 de 2 rápido", the guard with short pauses
+			// (without it, Dragon Ball's menus and the words at a fight's start and end flickered).
+			static constexpr const char* gs_skip_names[] = {N_("No"), N_("Auto"), N_("1 de 2"), N_("1 de 2 rápido")};
 			char gs_skip_label[256];
 			std::snprintf(gs_skip_label, sizeof(gs_skip_label), TF("Saltar cuadros (GS):  < %s >"), T(gs_skip_names[std::min(menu_state.gs_skip, 3u)]));
 			char gs_skip_description[512];
 			std::snprintf(gs_skip_description, sizeof(gs_skip_description),
-				menu_state.gs_skip == 3 ? TF("1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s") :
+				menu_state.gs_skip == 3 ? TF("1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s") :
 				menu_state.gs_skip == 2 ? TF("Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s") :
 										  TF("Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s"),
 				menu_state.gs_skip_active ? T("saltando") : T("dibuja todos"), origin(menu_state.gs_skip_origin));
@@ -2093,7 +2094,13 @@ namespace PS4GameMenu
 							draw->AddLine(ip(i * 10.0f - 5, 11), ip(i * 10.0f + 5, 11), icon_line, lw);
 						}
 						break;
-					case ROW_REPORT_ISSUE: // a warning sign (compilation 80)
+					case ROW_REPORT_COMMENT: // a speech bubble (compilation 86)
+					draw->AddRect(ip(-15, -12), ip(15, 7), icon_line, 4 * scale, lw, 0);
+					draw->AddTriangleFilled(ip(-8, 7), ip(2, 7), ip(-9, 15), icon_line);
+					draw->AddLine(ip(-9, -4), ip(9, -4), icon_line, lw);
+					draw->AddLine(ip(-9, 1), ip(4, 1), icon_line, lw);
+					break;
+				case ROW_REPORT_ISSUE: // a warning sign (compilation 80)
 						draw->AddTriangle(ip(0, -15), ip(16, 13), ip(-16, 13), icon_line, lw);
 						draw->AddLine(ip(0, -5), ip(0, 4), icon_line, lw);
 						draw->AddCircleFilled(ip(0, 9), 1.8f * scale, icon_line, 8);
@@ -2117,8 +2124,9 @@ namespace PS4GameMenu
 			};
 			// Forja SX2 (compilation 35): the rows in four tabs, as Dolphin's quick menu (Joseph, 2026-10-16: one list of fifteen
 			// rows was hard to follow). L1/R1 move between the tabs (main.cpp); each tab fits without scrolling.
+			// Compilation 86: "Reportes", between No tocar and Sistema.
 			static constexpr const char* tab_names[TAB_COUNT] = {N_("Partida"), N_("Imagen"), N_("Rendimiento"), N_("Extras"),
-				N_("No tocar"), N_("Sistema")};
+				N_("No tocar"), N_("Reportes"), N_("Sistema")};
 			const unsigned active_tab = TabOfRow(selected_row);
 			draw->AddText(font, 20.0f * scale, point(112, 198), muted, "L1");
 			// The tabs shrink together when a language's names don't fit between L1 and R1 (2026-10-19).
@@ -2164,6 +2172,8 @@ namespace PS4GameMenu
 					action = T("ELEGIR");
 				else if (row == ROW_REPORT_ISSUE) // compilation 82: X sends the report from here too
 					action = T("ELEGIR  ·  X");
+				else if (row == ROW_REPORT_COMMENT) // compilation 86: X writes, Cuadrado clears
+					action = T("X  ·  CUADRADO");
 				else if (row == ROW_VU1_FILTER || row == ROW_GS_FILTER)
 					action = T("ELEGIR  ·  X  ·  CUADRADO"); // compilation 52: Cuadrado brings everything back
 				else if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)

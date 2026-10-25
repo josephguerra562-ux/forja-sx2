@@ -6,13 +6,18 @@
 #include "ForjaReport.h"
 #include "CoverDownload.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cerrno>
+#include <chrono>
 #include <cstdio>
+#include <dirent.h>
 #include <memory>
 #include <mutex>
 #include <pthread.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <vector>
 #include <zlib.h>
 
 extern void ProbeLog(const char* format, ...);
@@ -74,7 +79,23 @@ namespace
 	{
 		std::string name, summary, text;
 		std::string log_gz; // compilation 85: the session's whole log, gzipped (Run fills it)
+		bool resend = false; // compilation 86: a pending report sent again (no log: that session is over)
 	};
+
+	// Compilation 86: when the report being sent started (steady clock, ms; 0: none), and whether a pending one is being sent
+	// again in the background (that one doesn't show in the menu).
+	std::atomic<long long> s_send_started_ms{0};
+	std::atomic<bool> s_resending{false};
+
+	long long NowMs()
+	{
+		return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+	}
+
+	std::string PendingPath(const std::string& name)
+	{
+		return std::string(Folder) + "/" + name + ".pendiente";
+	}
 
 	// Compilation 85: the session's whole log goes with the report, gzipped, as a second file. Until 84 a report carried the
 	// summary and the meters' lines of its last ~2 minutes (~50 KB): not how the game started, its fixes and patches, nor
@@ -148,8 +169,11 @@ namespace
 	{
 		pthread_setname_np(pthread_self(), "Forja report");
 		const std::unique_ptr<Job> job(static_cast<Job*>(argument));
-		job->log_gz = GzippedLog(); // here, off the game's threads (compilation 85)
-		ProbeLog("Report: the session's log attached, %zu bytes gzipped\n", job->log_gz.size());
+		if (!job->resend)
+		{
+			job->log_gz = GzippedLog(); // here, off the game's threads (compilation 85)
+			ProbeLog("Report: the session's log attached, %zu bytes gzipped\n", job->log_gz.size());
+		}
 		const std::string boundary = "ForjaSX2-report-boundary-7f3a";
 		const std::string type = "multipart/form-data; boundary=" + boundary;
 		int http = 0;
@@ -160,9 +184,50 @@ namespace
 			ProbeLog("Report: the channel is a forum, sending it as a new post\n");
 			sent = PS4CoverHttp::Post(ChannelUrl() + "?wait=true", "ForjaSX2 reports", type, Body(*job, boundary, true), http, response);
 		}
-		ProbeLog("Report: %s %s (http %d)\n", job->name.c_str(), sent ? "sent to the reports channel" : "not sent, kept in reportes/", http);
-		s_status.store(sent ? ForjaReport::Status::Sent : ForjaReport::Status::Kept, std::memory_order_release);
+		ProbeLog("Report: %s %s%s (http %d)\n", job->name.c_str(), job->resend ? "sent again: " : "",
+			sent ? "sent to the reports channel" : "not sent, kept in reportes/ to send again", http);
+		if (sent)
+			unlink(PendingPath(job->name).c_str()); // compilation 86: it arrived, nothing pending
+		if (job->resend)
+			s_resending.store(false, std::memory_order_release);
+		else
+		{
+			s_send_started_ms.store(0, std::memory_order_relaxed);
+			s_status.store(sent ? ForjaReport::Status::Sent : ForjaReport::Status::Kept, std::memory_order_release);
+		}
 		return nullptr;
+	}
+
+	// The report thread, detached, with the stack size the app's other threads use. False if it could not start.
+	bool StartThread(Job* job)
+	{
+		pthread_t thread{};
+		pthread_attr_t attr;
+		int result = pthread_attr_init(&attr);
+		if (result == 0)
+		{
+			pthread_attr_setstacksize(&attr, 256 * 1024);
+			pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+			result = pthread_create(&thread, &attr, Run, job);
+			pthread_attr_destroy(&attr);
+		}
+		if (result != 0)
+			ProbeLog("Report: the thread could not start (error %d); %s kept in reportes/\n", result, job->name.c_str());
+		return result == 0;
+	}
+
+	std::string ReadFile(const std::string& path)
+	{
+		std::string text;
+		if (std::FILE* file = std::fopen(path.c_str(), "rb"))
+		{
+			char buffer[4096];
+			size_t count;
+			while ((count = std::fread(buffer, 1, sizeof(buffer), file)) > 0)
+				text.append(buffer, count);
+			std::fclose(file);
+		}
+		return text;
 	}
 } // namespace
 
@@ -196,25 +261,73 @@ namespace ForjaReport
 			s_status.store(Status::Kept, std::memory_order_release);
 			return true;
 		}
-		s_status.store(Status::Sending, std::memory_order_release);
-		auto* job = new Job{name, summary, text};
-		pthread_t thread{};
-		pthread_attr_t attr;
-		int result = pthread_attr_init(&attr);
-		if (result == 0)
+		// Compilation 86: pending until the channel takes it; the marker holds the message's line, for ResendPending.
+		if (std::FILE* file = std::fopen(PendingPath(name).c_str(), "wb"))
 		{
-			pthread_attr_setstacksize(&attr, 256 * 1024);
-			pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-			result = pthread_create(&thread, &attr, Run, job);
-			pthread_attr_destroy(&attr);
+			std::fwrite(summary.data(), 1, summary.size(), file);
+			std::fclose(file);
 		}
-		if (result != 0)
+		s_status.store(Status::Sending, std::memory_order_release);
+		s_send_started_ms.store(NowMs(), std::memory_order_relaxed);
+		auto* job = new Job{name, summary, text};
+		if (!StartThread(job))
 		{
 			delete job;
-			ProbeLog("Report: the thread could not start (error %d); %s kept in reportes/\n", result, name.c_str());
+			s_send_started_ms.store(0, std::memory_order_relaxed);
 			s_status.store(Status::Kept, std::memory_order_release);
 		}
 		return true;
+	}
+
+	int SendingSeconds()
+	{
+		const long long started = s_send_started_ms.load(std::memory_order_relaxed);
+		return started > 0 ? static_cast<int>((NowMs() - started) / 1000) : 0;
+	}
+
+	void ResendPending()
+	{
+		if (!HasChannel() || s_status.load(std::memory_order_acquire) == Status::Sending || s_resending.load(std::memory_order_acquire))
+			return;
+		// The oldest pending one: the names start with the serial and end with the date, so the oldest by its file's time.
+		std::string oldest;
+		time_t oldest_time = 0;
+		if (DIR* dir = opendir(Folder))
+		{
+			while (const dirent* entry = readdir(dir))
+			{
+				const std::string file = entry->d_name;
+				const std::string suffix = ".pendiente";
+				if (file.size() <= suffix.size() || file.compare(file.size() - suffix.size(), suffix.size(), suffix) != 0)
+					continue;
+				struct stat info{};
+				const std::string path = std::string(Folder) + "/" + file;
+				if (stat(path.c_str(), &info) == 0 && (oldest.empty() || info.st_mtime < oldest_time))
+				{
+					oldest = file.substr(0, file.size() - suffix.size());
+					oldest_time = info.st_mtime;
+				}
+			}
+			closedir(dir);
+		}
+		if (oldest.empty())
+			return;
+		const std::string text = ReadFile(std::string(Folder) + "/" + oldest + ".txt");
+		if (text.empty())
+		{
+			unlink(PendingPath(oldest).c_str()); // its report is gone: nothing to send
+			return;
+		}
+		const std::string summary = "(reenviado) " + ReadFile(PendingPath(oldest));
+		auto* job = new Job{oldest, summary, text};
+		job->resend = true;
+		s_resending.store(true, std::memory_order_release);
+		ProbeLog("Report: sending %s again (it didn't reach the channel before)\n", oldest.c_str());
+		if (!StartThread(job))
+		{
+			delete job;
+			s_resending.store(false, std::memory_order_release);
+		}
 	}
 
 	Status GetStatus()

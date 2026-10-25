@@ -49,22 +49,25 @@ namespace PS4GameMenu
 		ROW_GS_FILTER, // compilation 51
 		ROW_TEXTURES,
 		ROW_CHEATS, // compilation 58
-		// Sistema
+		// Reportes (compilation 86, Joseph, 2026-10-24: "entre no tocar y sistema ... para que diga reportes"; until 85 in Sistema)
 		ROW_REPORT, // compilation 77: "Reportar este juego" (main.cpp, SendReport; ForjaReport.cpp)
 		// Compilation 80: what went wrong, for the report: the picture, the sound and the controls are what no meter sees.
 		ROW_REPORT_ISSUE,
+		ROW_REPORT_COMMENT, // compilation 86: the player's comment, written with the PS4's keyboard (main.cpp, ForjaKeyboard)
+		// Sistema
 		ROW_RESET_PROFILE,
 		ROW_LIBRARY,
 		ROW_EXIT,
 		ROW_COUNT
 	};
 
-	constexpr unsigned TAB_COUNT = 6;
+	constexpr unsigned TAB_COUNT = 7;
 	constexpr unsigned TAB_PATCHES = 3;
-	constexpr unsigned TAB_LAB = 4; // compilation 53: "No tocar"
+	constexpr unsigned TAB_LAB = 4;     // compilation 53: "No tocar"
+	constexpr unsigned TAB_REPORTS = 5; // compilation 86: "Reportes"
 	// The first row of each tab, and ROW_COUNT after the last.
 	constexpr unsigned TAB_FIRST_ROW[TAB_COUNT + 1] = {ROW_RESUME, ROW_RESOLUTION, ROW_EE_RATE, ROW_PATCH, ROW_VU1_FILTER,
-		ROW_REPORT, ROW_COUNT};
+		ROW_REPORT, ROW_RESET_PROFILE, ROW_COUNT};
 
 	constexpr unsigned TabOfRow(unsigned row)
 	{

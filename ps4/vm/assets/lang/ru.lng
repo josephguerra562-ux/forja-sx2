@@ -382,14 +382,14 @@ tr: Показывает игру со стабильными 30 в 60 (эксп
 es: 1 de 2
 tr: 1 из 2
 
-es: 1 de 2 sin guardián
-tr: 1 из 2 без защиты
+es: 1 de 2 rápido
+tr: 1 из 2, быстро
 
 es: Saltar cuadros (GS):  < %s >
 tr: Пропуск кадров (GS):  < %s >
 
-es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
-tr: 1 из 2 кадров без защиты, которая ставит паузу там, где это заметно: быстрее (Dragon Ball на двоих), но может мерцать  ·  сейчас: %s  ·  %s
+es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
+tr: 1 из 2 кадров с быстрой защитой: короткие паузы там, где заметно, чтобы бои шли быстро (Dragon Ball на двоих). При открытии меню возможно короткое мерцание  ·  сейчас: %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: Всегда 1 кадр из 2, даже когда GS это не нужно: лучше Авто  ·  сейчас: %s  ·  %s
@@ -541,6 +541,9 @@ tr: Дополнительно
 es: No tocar
 tr: Не трогать
 
+es: Reportes
+tr: Отчёты
+
 es: Sistema
 tr: Система
 
@@ -555,6 +558,9 @@ tr: ВЫБРАТЬ
 
 es: ELEGIR  ·  X
 tr: ВЫБРАТЬ  ·  X
+
+es: X  ·  CUADRADO
+tr: X  ·  КВАДРАТ
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: ВЫБРАТЬ  ·  X  ·  КВАДРАТ
@@ -898,14 +904,14 @@ tr: %d.%m в %H:%M
 es: Reportar este juego:  < %s >
 tr: Сообщить об игре:  < %s >
 
-es: Mandando el reporte...
-tr: Отправка отчёта...
+es: Mandando el reporte... %d s. Con internet lento puede tardar hasta un minuto; puedes seguir jugando
+tr: Отправка отчёта... %d с. При медленном интернете это может занять до минуты; можно продолжать играть
 
 es: Mandado: reporte %s. Gracias. Si quieres, cuéntanos más en el Discord de Forja
 tr: Отправлено: отчёт %s. Спасибо! Если хотите, расскажите подробнее в Discord Forja
 
-es: No se pudo mandar (¿sin internet?): el reporte %s quedó en /data/ForjaSX2/reportes
-tr: Не удалось отправить (нет интернета?): отчёт %s сохранён в /data/ForjaSX2/reportes
+es: No se pudo mandar (¿sin internet?): el reporte %s quedó guardado y se vuelve a mandar solo al abrir otro juego
+tr: Не удалось отправить (нет интернета?): отчёт %s сохранён и отправится сам при запуске другой игры
 
 es: Esta versión no tiene el canal de reportes: el reporte %s quedó en /data/ForjaSX2/reportes
 tr: В этой версии нет канала отчётов: отчёт %s сохранён в /data/ForjaSX2/reportes
@@ -924,6 +930,24 @@ tr: Что не так:  < %s >
 
 es: Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú
 tr: Выберите, что вы заметили, и отправьте отчёт. Скорость измеряют датчики; изображение, звук и управление видите только вы
+
+es: Comentario:  ninguno
+tr: Комментарий:  нет
+
+es: Comentario:  %s
+tr: Комментарий:  %s
+
+es: El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario
+tr: Клавиатура PS4 не открылась в этой версии: отчёт отправляется без комментария
+
+es: X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte
+tr: X: напишите клавиатурой PS4, что случилось и где (например: арена с вулканом чёрная). Отправится вместе с отчётом
+
+es: X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
+tr: X: изменить  ·  Квадрат: удалить. Отправится со следующим отчётом
+
+es: Comentario para el reporte
+tr: Комментарий к отчёту
 
 es: Preparando la BIOS de la PS2...
 tr: Подготовка BIOS PS2...

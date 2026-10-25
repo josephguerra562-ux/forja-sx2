@@ -382,14 +382,14 @@ tr: 将稳定 30 帧的游戏以 60 帧显示（实验）。
 es: 1 de 2
 tr: 2 取 1
 
-es: 1 de 2 sin guardián
-tr: 2 取 1，不用保护
+es: 1 de 2 rápido
+tr: 2 取 1，快速
 
 es: Saltar cuadros (GS):  < %s >
 tr: 跳帧（GS）：  < %s >
 
-es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
-tr: 每 2 帧画 1 帧，不用在会被看出的地方暂停它的保护：速度更快（Dragon Ball 双人），但可能会闪烁  ·  当前：%s  ·  %s
+es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
+tr: 每 2 帧画 1 帧，使用快速保护：在会被看出的地方只短暂暂停，让对战保持速度（Dragon Ball 双人）。打开菜单时可能会短暂闪烁  ·  当前：%s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: 始终每 2 帧只画 1 帧，即使 GS 不需要：建议用自动  ·  当前：%s  ·  %s
@@ -541,6 +541,9 @@ tr: 附加
 es: No tocar
 tr: 勿动
 
+es: Reportes
+tr: 报告
+
 es: Sistema
 tr: 系统
 
@@ -555,6 +558,9 @@ tr: 选择
 
 es: ELEGIR  ·  X
 tr: 选择  ·  X
+
+es: X  ·  CUADRADO
+tr: X  ·  方块键
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: 选择  ·  X  ·  方块键
@@ -898,14 +904,14 @@ tr: %m月%d日 %H:%M
 es: Reportar este juego:  < %s >
 tr: 报告此游戏：  < %s >
 
-es: Mandando el reporte...
-tr: 正在发送报告...
+es: Mandando el reporte... %d s. Con internet lento puede tardar hasta un minuto; puedes seguir jugando
+tr: 正在发送报告... %d 秒。网速慢时可能需要一分钟；你可以继续玩
 
 es: Mandado: reporte %s. Gracias. Si quieres, cuéntanos más en el Discord de Forja
 tr: 已发送：报告 %s。谢谢！如果愿意，可以在 Forja 的 Discord 告诉我们更多
 
-es: No se pudo mandar (¿sin internet?): el reporte %s quedó en /data/ForjaSX2/reportes
-tr: 无法发送（没有网络？）：报告 %s 已保存在 /data/ForjaSX2/reportes
+es: No se pudo mandar (¿sin internet?): el reporte %s quedó guardado y se vuelve a mandar solo al abrir otro juego
+tr: 发送失败（没有网络？）：报告 %s 已保存，打开另一个游戏时会自动重新发送
 
 es: Esta versión no tiene el canal de reportes: el reporte %s quedó en /data/ForjaSX2/reportes
 tr: 此版本没有报告频道：报告 %s 已保存在 /data/ForjaSX2/reportes
@@ -924,6 +930,24 @@ tr: 出了什么问题：  < %s >
 
 es: Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú
 tr: 选择你注意到的问题并发送报告。速度由测量工具记录；画面、声音和操作只有你能看到
+
+es: Comentario:  ninguno
+tr: 评论：  无
+
+es: Comentario:  %s
+tr: 评论：  %s
+
+es: El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario
+tr: 此版本无法打开 PS4 键盘：报告将不带评论发送
+
+es: X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte
+tr: X：用 PS4 键盘写下发生了什么、在哪里（例如：火山的场景是黑的）。会随报告一起发送
+
+es: X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
+tr: X：修改  ·  方块键：删除。随下一份报告发送
+
+es: Comentario para el reporte
+tr: 报告的评论
 
 es: Preparando la BIOS de la PS2...
 tr: 正在准备 PS2 BIOS...

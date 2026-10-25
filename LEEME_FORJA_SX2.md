@@ -113,7 +113,12 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
       cuerpo de Kratos y cambiaba el color del Coloso); y **la lista no se reordena**: cada grupo se queda en su número
       mientras juegas (antes el 1 y el 2 podían cambiarse de lugar al volver a abrir el menú). Lo quitado con la 51-53 se
       devuelve solo al pasar a la 54.
-  - **Sistema:** **Reportar este juego** (desde la 77), restablecer los ajustes del juego, volver a la biblioteca y salir.
+  - **Reportes** (pestaña propia desde la 86, entre No tocar y Sistema; hasta la 85 estaba en Sistema): **Reportar este
+    juego** (desde la 77), **Qué falló** y, desde la 86, **Comentario**: X abre el teclado de la PS4 para escribir qué pasó y
+    dónde (200 letras); Cuadrado lo borra; se manda con el próximo reporte, en el archivo y en la línea del canal. Mientras se
+    manda, la fila cuenta los segundos (suele tardar ~5-10 s; con internet lento, hasta un minuto). Si no llega (sin internet,
+    o se cerró el juego mientras se mandaba), queda pendiente y **se vuelve a mandar solo al abrir otro juego**.
+  - **Sistema:** restablecer los ajustes del juego, volver a la biblioteca y salir.
     En "Reportar este juego" eliges con Izquierda/Derecha cómo te va (desde la 79: Pésimo, Mal, Regular, Bien, Perfecto)
     y X lo manda al canal de reportes del Discord de Forja: el resumen de la partida, los ajustes del juego, los medidores
     de los últimos minutos y el `crash.log` si hay. **Nada de tu cuenta de PSN.** Te da un número (por ejemplo `F-3A2C`)
@@ -163,9 +168,12 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     Guitar Hero III viene de fábrica en **1 de cada 8** desde la 83 (en la 82, 1 de cada 4). Con 1 de 8, el cuadro que
     dibuja el público costaba ~55 ms y los demás ~20: un tirón cada 8 cuadros cuando la cámara mira al público. **Desde la
     84 el público se dibuja con 3 núcleos de la PS4** en vez de uno (los que no usan el EE, el VU1 ni el sonido): cada
-    pasada cuesta menos y el tirón es más chico.
+    pasada cuesta menos y el tirón es más chico. **En la 83-85 las notas de la guitarra se volvían transparentes** con
+    "1 de cada N": el juego usa la misma dirección de memoria como imagen chica del público y como parte de una imagen ancha
+    donde arma la guitarra, y en los cuadros sin público se saltaban también los dibujos de la guitarra. Desde la 86 cada
+    imagen del público se reconoce por su dirección **y su ancho**, y la guitarra no se toca.
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
-    la 82 **1 de 2 sin guardián** (abajo). Para juegos en los que el GS de la PS4 no da
+    la 86 **1 de 2 rápido** (abajo; en la 82-85 ese lugar era "1 de 2 sin guardián"). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
     1 de cada 2 cuadros del juego y la tele sigue mostrando el último dibujado: el juego, su música y sus movimientos van
     a su velocidad, con la mitad de cuadros en pantalla. **Auto** (desde la 1.06) lo prende solo cuando el GS es el que
@@ -185,7 +193,7 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     necesite: casi siempre conviene más Auto, que solo salta cuando hace falta. **En God of War II, mejor en No** (su
     perfil ya lo trae así): el que frena es el VU1, y además no salta ningún cuadro porque arma su imagen de otra forma.
     **Dragon Ball Z Budokai Tenkaichi 4 lo trae en Auto de fábrica desde la 75** (en la 73: 100 % de velocidad a 30
-    cuadros en las peleas). **"1 de 2 sin guardián"** (desde la 82) salta igual, pero sin las pausas del guardián (sí
+    cuadros en las peleas). **"1 de 2 sin guardián"** (82-85; desde la 86 es "1 de 2 rápido", abajo) saltaba igual, pero sin las pausas del guardián (sí
     espera el segundo de escena pesada después de una carga). Es para los juegos donde el guardián frena de más: en
     Dragon Ball a dos jugadores tuvo "1 de 2" en pausa casi todo el tiempo (52-65 % de velocidad) y, en los ratos que lo
     soltó, fue al 78-89 %. Si algo parpadea, vuelve a "1 de 2". **Desde la 84 el guardián es más listo:** una carga
@@ -193,7 +201,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     minuto), y con **dos mandos** sus pausas son de 2, 8 y 15 s en vez de 2, 8 y 30. El menú de pausa y el mensaje de
     derrota siguen protegidos. En Dragon Ball a dos, con la 84 conviene volver a **"1 de 2"** (con guardián). **Desde la
     85, después de una carga espera ~3 s de escena pesada** antes de saltar (antes ~1 s): las palabras del inicio de la
-    pelea ya no parpadean, con o sin guardián.
+    pelea ya no parpadean, con o sin guardián. **Desde la 86, "1 de 2 sin guardián" pasa a ser "1 de 2 rápido"**: con
+    guardián, pero con sus pausas cortas (2, 8 y 15 s) con uno o dos mandos. Sin guardián, el menú de pausa y las palabras
+    del inicio y del fin de la pelea parpadeaban. Quien lo tenía elegido pasa solo al nuevo.
   - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
     cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
     60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %
@@ -452,7 +462,8 @@ Algunos hilos secundarios solo cambian al volver a abrir el juego, así que para
   uno y a dos, la velocidad de cada uno: Dragon Ball va completo a uno y muy lento a dos), si **dos partes frenaban a la
   vez** (en Guitar Hero el EE y el GS) y **cuántas veces se colgó** (10 s sin cuadros). "El limitador suavizó N picos de
   volumen" no es un error: solo dice que el juego suena fuerte.
-- **Reportar este juego** (L3+R3 > Sistema, desde la 77): manda todo eso al Discord de Forja sin FTP.
+- **Reportar este juego** (L3+R3 > Reportes desde la 86; Sistema de la 77 a la 85): manda todo eso al Discord de Forja
+  sin FTP, con tu comentario si escribiste uno.
 
 Baja `/data/ForjaSX2/logs` por FTP y arrástrala encima de `Herramientas PC\ANALIZAR LOGS (arrastra la carpeta aqui).bat`.
 Te dice los FPS, la velocidad, los tirones y qué parte frenó el juego, y crea `INFORME_RENDIMIENTO.md`.

@@ -67,6 +67,10 @@ std::atomic<bool> g_forja_gs_skip_paused{false}; // Forja 1.06: the guard has it
 std::atomic<bool> g_forja_gs_skip_guard{true};
 // Compilation 84: the controllers playing (ps4/vm/main.cpp); with two, the guard's pauses are short (ForjaSkipGuard.h).
 extern std::atomic<int> g_forja_pads;
+// Compilation 86: Saltar cuadros "1 de 2 rápido" (SaltarCuadros 3, main.cpp): the guard's short pauses with any controllers.
+// In 82-85 the value 3 had no guard, and Dragon Ball's pause menu and the words at a fight's start and end flickered
+// (Joseph played two sessions with it, 2026-10-24).
+std::atomic<bool> g_forja_gs_skip_quick{false};
 static forja_skip::Guard s_forja_guard; // Forja 1.06 (ForjaSkipGuard.h)
 static u32 s_forja_hidden_total = 0;    // Forja 1.06: pictures hidden, for the guard's checks
 namespace
@@ -1068,7 +1072,8 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				// Forja 1.06: the guard (ForjaSkipGuard.h): frames left out whose pictures the TV didn't hide pause Saltar cuadros, and
 				// after a load or a light frame it waits for a second of heavy frames.
 				if (s_forja_guard.FrameStart(s_forja_previous_frame_draws, s_forja_hidden_total, s_forja_vsync,
-						g_forja_pads.load(std::memory_order_relaxed) >= 2) && forja_want)
+						g_forja_pads.load(std::memory_order_relaxed) >= 2 || g_forja_gs_skip_quick.load(std::memory_order_relaxed)) &&
+					forja_want)
 				{
 					g_forja_gs_skip_stats[4].fetch_add(1, std::memory_order_relaxed);
 					ProbeLog("GS skip: paused for %u vsyncs: the TV hid %u pictures for the last %u frames left out, so they showed "

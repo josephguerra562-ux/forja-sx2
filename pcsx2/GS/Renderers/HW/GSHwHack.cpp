@@ -237,6 +237,7 @@ bool GSHwHack::GSC_SacredBlaze(GSRendererHW& r, int& skip)
 // draw on average and 36 ms a frame, the song at 40 %; drawn on the GPU instead (render fixes off) it ran at 81 % with the GS
 // at 14 ms, but the crowd came out as blocks of noise.
 std::atomic<u32> g_forja_crowd_every{1};
+extern void ProbeLog(const char* format, ...); // ps4/core/ProbeLoggerPS4.cpp (compilation 86: the crowd's draws)
 
 bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 {
@@ -250,26 +251,59 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 	// 4, 86 % at 1 in 8.
 	// The buffers are those of the last pass that drew the crowd, and they lapse after two rounds without one (a menu after a
 	// song draws no crowd, and its draws into those buffers aren't left out).
+	// Compilation 86: a buffer is its block AND its width. With the block alone (83-85) the notes of the guitar went
+	// transparent in the passes left out (Joseph, 2026-10-24): the game uses 008c0 as a 128-wide crowd buffer and, at other
+	// times, as part of a frame-wide one (read as a 1024x1024 texture by 033c0/008c0 and the screen), and those wide draws were
+	// left out with the crowd. The crowd's software draws are 256 wide at most (FBW 4), so a wide draw at the same block is
+	// never taken for the crowd's.
 	static int s_pass_frame = -1;
 	static u32 s_passes = 0;
 	static u32 s_every = 1;
 	static bool s_leave_out = false;
-	static u32 s_crowd_fbps[16];
+	static u32 s_crowd_fbps[16]; // block | FBW << 16
 	static u32 s_crowd_fbp_count = 0;
 	static u32 s_crowd_pass = 0; // the pass whose software draws noted the buffers (0: none yet)
+	// Compilation 86: every ~30 s, one drawn pass's draws into the crowd's blocks (any width), in order, into the log: what is
+	// the crowd's and what isn't, for the next fix.
+	static u32 s_draw_in_frame = 0, s_dump_left = 0, s_last_dump_pass = 0;
 	if (const int frame = g_perfmon.GetFrame(); frame != s_pass_frame)
 	{
 		s_pass_frame = frame;
 		s_every = std::max(g_forja_crowd_every.load(std::memory_order_relaxed), 1u);
 		s_leave_out = s_every > 1 && (s_passes++ % s_every) != 0;
+		s_draw_in_frame = 0;
+		s_dump_left = 0;
+		if (!s_leave_out && s_crowd_fbp_count > 0 && s_passes - s_last_dump_pass >= 1500)
+		{
+			s_last_dump_pass = s_passes;
+			s_dump_left = 48;
+			ProbeLog("Crowd draws: pass %u (1 in %u), the draws into its blocks in order:\n", s_passes, s_every);
+		}
 	}
+	const u32 draw_index = s_draw_in_frame++;
 	const u32 fbp = RFBP;
-	const auto noted = [fbp]() { return std::find(s_crowd_fbps, s_crowd_fbps + s_crowd_fbp_count, fbp) != s_crowd_fbps + s_crowd_fbp_count; };
+	const u32 key = fbp | (static_cast<u32>(RFBW) << 16);
+	const auto noted = [key]() { return std::find(s_crowd_fbps, s_crowd_fbps + s_crowd_fbp_count, key) != s_crowd_fbps + s_crowd_fbp_count; };
+	const bool software = RTBW <= 4 && RTME && RFBW <= 4 && (r.m_context->TEX1.MMIN & 1) == 0;
+	if (s_dump_left > 0 && skip == 0)
+	{
+		bool block_noted = false;
+		for (u32 i = 0; i < s_crowd_fbp_count; i++)
+			block_noted |= (s_crowd_fbps[i] & 0xffffu) == fbp;
+		if (block_noted || software)
+		{
+			s_dump_left--;
+			ProbeLog("Crowd draw %u: %s fb=%05x fbw=%u fpsm=%02x tex=%s%05x tbw=%u tpsm=%02x prim=%u\n", draw_index,
+				software ? "software" : "gpu", fbp, static_cast<unsigned>(RFBW), static_cast<unsigned>(RFPSM), RTME ? "" : "-",
+				RTME ? static_cast<unsigned>(RTBP0) : 0u, RTME ? static_cast<unsigned>(RTBW) : 0u, RTME ? static_cast<unsigned>(RTPSM) : 0u,
+				static_cast<unsigned>(r.m_vt.m_primclass));
+		}
+	}
 
 	// Crowd sprite generation is a mess, better done in software.
 	if (skip == 0)
 	{
-		if (RTBW <= 4 && RTME && RFBW <= 4 && (r.m_context->TEX1.MMIN & 1) == 0)
+		if (software)
 		{
 			if (s_leave_out)
 			{
@@ -282,14 +316,14 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 				s_crowd_fbp_count = 0;
 			}
 			if (!noted() && s_crowd_fbp_count < std::size(s_crowd_fbps))
-				s_crowd_fbps[s_crowd_fbp_count++] = fbp;
+				s_crowd_fbps[s_crowd_fbp_count++] = key;
 			r.ClearGSLocalMemory(r.m_context->offset.zb, r.m_r, 0);
 			r.SwPrimRender(r, RFBP != 0x2DC0, false);
 			skip = 1;
 		}
 		else if (s_leave_out && s_crowd_pass != 0 && s_passes - s_crowd_pass <= 2 * s_every && noted())
 		{
-			skip = 1; // the GPU's draw into a crowd buffer (compilation 83)
+			skip = 1; // the GPU's draw into a crowd buffer (compilation 83), of the crowd's width (86)
 		}
 	}
 

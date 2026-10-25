@@ -25,4 +25,10 @@ namespace ForjaReport
 	Status GetStatus();
 	// The name of the last report, for the menu.
 	std::string LastName();
+	// Compilation 86: seconds since the report being sent started (0 when none is), for the menu's "Mandando... 12 s".
+	int SendingSeconds();
+	// Compilation 86: a report that didn't reach the channel (no network, the channel refused it, or the game closed while it
+	// was being sent) keeps a <name>.pendiente beside its .txt; this sends the oldest one again in the background (CPU thread,
+	// at a game's start). Nothing when none is pending, one is being sent, or the build has no channel.
+	void ResendPending();
 } // namespace ForjaReport

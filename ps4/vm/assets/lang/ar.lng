@@ -382,14 +382,14 @@ tr: يعرض بـ 60 لعبة ثابتة على 30 (تجريبي).
 es: 1 de 2
 tr: 1 من 2
 
-es: 1 de 2 sin guardián
-tr: 1 من 2 بدون الحارس
+es: 1 de 2 rápido
+tr: 1 من 2 سريع
 
 es: Saltar cuadros (GS):  < %s >
 tr: تخطي الإطارات (GS):  < %s >
 
-es: 1 de cada 2 cuadros sin el guardián que lo pausa donde se notaría: más velocidad (Dragon Ball a dos jugadores), pero puede parpadear  ·  ahora: %s  ·  %s
-tr: إطار واحد من كل 2 بدون الحارس الذي يوقفه حيث سيظهر: سرعة أكبر (Dragon Ball للاعبين)، لكن قد يومض  ·  الآن: %s  ·  %s
+es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
+tr: إطار واحد من كل 2 مع الحارس السريع: يتوقف قليلًا حيث سيظهر، لتبقى المعارك سريعة (Dragon Ball للاعبين). عند فتح قائمة قد يظهر وميض قصير  ·  الآن: %s  ·  %s
 
 es: Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s
 tr: دائمًا إطار من كل 2، حتى عندما لا يحتاج GS لذلك: الأفضل تلقائي  ·  الآن: %s  ·  %s
@@ -541,6 +541,9 @@ tr: إضافات
 es: No tocar
 tr: لا تلمس
 
+es: Reportes
+tr: التقارير
+
 es: Sistema
 tr: النظام
 
@@ -555,6 +558,9 @@ tr: اختيار
 
 es: ELEGIR  ·  X
 tr: اختيار  ·  X
+
+es: X  ·  CUADRADO
+tr: X  ·  المربع
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: اختيار  ·  X  ·  المربع
@@ -898,14 +904,14 @@ tr: %d/%m الساعة %H:%M
 es: Reportar este juego:  < %s >
 tr: الإبلاغ عن هذه اللعبة:  < %s >
 
-es: Mandando el reporte...
-tr: جارٍ إرسال التقرير...
+es: Mandando el reporte... %d s. Con internet lento puede tardar hasta un minuto; puedes seguir jugando
+tr: جارٍ إرسال التقرير... %d ث. مع إنترنت بطيء قد يستغرق حتى دقيقة؛ يمكنك متابعة اللعب
 
 es: Mandado: reporte %s. Gracias. Si quieres, cuéntanos más en el Discord de Forja
 tr: تم الإرسال: التقرير %s. شكرًا! إن أردت، أخبرنا بالمزيد في ديسكورد Forja
 
-es: No se pudo mandar (¿sin internet?): el reporte %s quedó en /data/ForjaSX2/reportes
-tr: تعذر الإرسال (لا يوجد إنترنت؟): حُفظ التقرير %s في /data/ForjaSX2/reportes
+es: No se pudo mandar (¿sin internet?): el reporte %s quedó guardado y se vuelve a mandar solo al abrir otro juego
+tr: تعذر الإرسال (لا يوجد إنترنت؟): حُفظ التقرير %s وسيُرسل مجددًا تلقائيًا عند فتح لعبة أخرى
 
 es: Esta versión no tiene el canal de reportes: el reporte %s quedó en /data/ForjaSX2/reportes
 tr: هذا الإصدار بلا قناة تقارير: حُفظ التقرير %s في /data/ForjaSX2/reportes
@@ -924,6 +930,24 @@ tr: ما المشكلة:  < %s >
 
 es: Elige lo que notaste y manda el reporte. La velocidad la miden los medidores; la imagen, el sonido y los controles solo los ves tú
 tr: اختر ما لاحظته وأرسل التقرير. السرعة تقيسها أدوات القياس؛ أما الصورة والصوت والتحكم فلا يراها غيرك
+
+es: Comentario:  ninguno
+tr: تعليق:  لا يوجد
+
+es: Comentario:  %s
+tr: تعليق:  %s
+
+es: El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario
+tr: تعذر فتح لوحة مفاتيح PS4 في هذا الإصدار: يُرسل التقرير بدون تعليق
+
+es: X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte
+tr: X: اكتب بلوحة مفاتيح PS4 ما حدث وأين (مثلًا: مرحلة البركان تظهر سوداء). يُرسل مع التقرير
+
+es: X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
+tr: X: تغييره  ·  المربع: حذفه. يُرسل مع التقرير القادم
+
+es: Comentario para el reporte
+tr: تعليق للتقرير
 
 es: Preparando la BIOS de la PS2...
 tr: جارٍ تجهيز BIOS الخاص بـ PS2...
