@@ -282,8 +282,14 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 	// reads change with the camera (03340 first in one frame, 03180 in the next), the read that took it often came late or not
 	// at all, and the people read before it were the EE's sprites (Joseph, 2026-10-25: about a quarter of them still
 	// pixelated at 1 in 32; 257-692 reads every 30 s with nothing put back). herramientas/simulaciones/simular_publico_gh.py
-	// runs both on the logs' order of draws, the people read in a new order every frame: the 90 left 1.3 % of the reads wrong
-	// at 1 in 2 and 14.3 % at 1 in 32; this one none, at 1 in 2, 4, 8, 16 and 32, frames cut anywhere.
+	// runs both on the logs' order of draws, the people read in a new order every frame.
+	// Compilation 91 (its validation, the simulator matched against the 90's own counters on the PS4): two more rules. A
+	// zone a sequence wrote and nobody read before the next sequence's software draws write it again (the people's blur
+	// when they weren't in sight) gets its snapshot just before that, with the kind of its sequence's reads; never the copy,
+	// where the EE has already sent the next sprites. And a read in a sequence left out that finds nothing to put back
+	// starts a window at the next sequence, not N frames later: the people coming into sight after a window that didn't see
+	// them were dots for up to N frames, now for one. On 20 runs of every setting (1 in 2 to 32), frames cut every way:
+	// the 90 ~21-24 % of the reads wrong (Joseph saw "about 23 %"), this one at most 6 reads in a run (that one frame).
 	static int s_frame = -1;           // the GS frame of the last draw (meters, dump)
 	static u32 s_every = 1;
 	static bool s_leave_out = false;
@@ -304,6 +310,7 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 	{
 		u32 seq, begin, end, fbw, rows;
 		bool scratch, dirty; // dirty: written since its last snapshot
+		u32 bits;            // compilation 91: the kind of its sequence's first read (0: none yet)
 	};
 	// The snapshots, kept by their blocks and the kind of their first read (8 or 32 bits).
 	struct CrowdShot
@@ -332,6 +339,10 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 	static u32 s_restored[8]; // compilation 91: the blocks (begin) already put back in this sequence left out
 	static u32 s_restored_count = 0;
 	static u32 s_missed_logged = 0; // compilation 91: the first missed reads of each ~30 s go in the log, with their texture
+	static u32 s_seq_bits = 0;      // compilation 91: the kind of this sequence's first read inside a zone (0: none yet)
+	static bool s_heal = false;     // compilation 91: a read found nothing to put back: the next sequence starts a window
+	static u32 s_sprite_tex[4] = {}; // compilation 91: where the sprites come from (the EE's blocks: never snapshotted late)
+	static u32 s_sprite_tex_count = 0;
 	static u32 s_kept_put_back = 0, s_kept_copied = 0, s_kept_missed = 0; // for the log
 	// Compilation 88: what each kind of GS frame costs the GS thread, from its first draw to the next frame's (waits included):
 	// one with the crowd's software draws, one without them while there is a crowd, and frames without a crowd; with the
@@ -398,8 +409,9 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 				s_leave_out = false;
 				s_window_left--;
 			}
-			else if (s_window == 0 || frame - s_window_frame >= static_cast<int>(s_every))
+			else if (s_window == 0 || frame - s_window_frame >= static_cast<int>(s_every) || s_heal)
 			{
+				s_heal = false;
 				s_leave_out = false;
 				s_window++;
 				s_window_left = 1; // this sequence and the next: the people and the crowd behind them
@@ -411,8 +423,12 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 			if (!s_leave_out)
 				s_drawn_frame = frame;
 			s_restored_count = 0; // the EE sends its sprites over those blocks again: all of them may go back
+			s_seq_bits = 0;
 		}
 		s_in_sprites = sprites;
+		if (sprites && s_sprite_tex_count < std::size(s_sprite_tex) &&
+			std::find(s_sprite_tex, s_sprite_tex + s_sprite_tex_count, static_cast<u32>(RTBP0)) == s_sprite_tex + s_sprite_tex_count)
+			s_sprite_tex[s_sprite_tex_count++] = RTBP0;
 	}
 	if (s_dump_left > 0 && skip == 0)
 	{
@@ -463,7 +479,46 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 					for (u32 i = 0; i < s_gpu_fbp_count; i++)
 						scratch |= s_gpu_fbps[i] == fbp;
 					out = &s_out[s_out_count++];
-					*out = {s_seq, fbp, fbp, fbw, 0, scratch, false};
+					*out = {s_seq, fbp, fbp, fbw, 0, scratch, false, 0};
+				}
+				// Compilation 91: a zone another sequence wrote and nobody read, about to be written again: its snapshot now
+				// (not the EE's sprite blocks: those already hold the next sprites).
+				for (u32 i = 0; i < s_out_count; i++)
+				{
+					CrowdOut& prev = s_out[i];
+					if (prev.seq == s_seq || prev.begin != fbp || !prev.dirty || prev.scratch || prev.bits == 0 ||
+						static_cast<size_t>(prev.end) * 256 > static_cast<size_t>(GSLocalMemory::m_vmsize))
+						continue;
+					bool sprites_here = false;
+					for (u32 k = 0; k < s_sprite_tex_count; k++)
+						sprites_here |= s_sprite_tex[k] >= prev.begin && s_sprite_tex[k] < prev.end;
+					prev.dirty = false;
+					if (sprites_here)
+						continue;
+					CrowdShot* slot = nullptr;
+					for (CrowdShot& shot : s_shots)
+					{
+						if (shot.begin == prev.begin && shot.bits == prev.bits && !shot.data.empty())
+							slot = &shot;
+					}
+					if (!slot)
+					{
+						slot = &s_shots[0];
+						for (CrowdShot& shot : s_shots)
+						{
+							if (shot.frame < slot->frame)
+								slot = &shot;
+						}
+					}
+					u8* const vm = r.m_mem.vm8();
+					slot->begin = prev.begin;
+					slot->end = prev.end;
+					slot->fbw = prev.fbw;
+					slot->rows = prev.rows;
+					slot->bits = prev.bits;
+					slot->frame = frame;
+					slot->data.assign(vm + static_cast<size_t>(prev.begin) * 256, vm + static_cast<size_t>(prev.end) * 256);
+					s_kept_copied++;
 				}
 				if (out)
 				{
@@ -503,6 +558,17 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 				u8* const vm = r.m_mem.vm8();
 				if (!s_leave_out)
 				{
+					// Compilation 91: the kind of this sequence (its first read inside one of its zones), for all its zones.
+					for (u32 i = 0; i < s_out_count; i++)
+					{
+						if (s_out[i].seq == s_seq && !s_out[i].scratch && tbp >= s_out[i].begin && tbp < s_out[i].end && s_seq_bits == 0)
+							s_seq_bits = bits;
+					}
+					for (u32 i = 0; i < s_out_count && s_seq_bits != 0; i++)
+					{
+						if (s_out[i].seq == s_seq && s_out[i].bits == 0)
+							s_out[i].bits = s_seq_bits;
+					}
 					// A drawn sequence: the GPU is about to read what its software draws wrote. A snapshot of it, all its
 					// blocks, if they were written since the last one, kept by its blocks and this read's kind.
 					for (u32 i = 0; i < s_out_count; i++)
@@ -580,8 +646,10 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 							s_restored[s_restored_count++] = begin;
 						if (!put)
 						{
-							// Nothing of this kind for these blocks: noted, and the first ones go in the log with their texture.
+							// Nothing of this kind for these blocks: noted, the next sequence starts a window (91), and the first
+							// ones go in the log with their texture.
 							s_kept_missed++;
+							s_heal = true;
 							if (s_missed_logged < 8)
 							{
 								s_missed_logged++;

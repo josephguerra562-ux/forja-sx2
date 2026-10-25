@@ -202,7 +202,10 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     **En la 90 todavía quedaba ~1 personaje de cada 4 pixelado** (más en 1 de 32): la foto se reponía solo en la lectura
     exacta que la tomó, y los personajes que lee la gráfica cambian con la cámara. **Desde la 91** se repone en la primera
     lectura que caiga en esa zona, cualquiera sea, eligiendo la foto de los personajes (8 bits) o la del fondo (32 bits).
-    Probado en la PC con `herramientas/simulaciones/simular_publico_gh.py`: sin puntos en 1 de 1, 2, 4, 8, 16 y 32.
+    Además guarda la foto del desenfoque justo antes de que la otra secuencia lo pise, y si falta una foto dibuja el
+    público enseguida en vez de esperar N cuadros. Probado en la PC (`herramientas/simulaciones/simular_publico_gh.py`,
+    calibrado contra los contadores de la 90 en la PS4): en 1 de 2 a 1 de 32 queda a lo mucho **un cuadro** con puntos,
+    cuando aparecen personajes que no se veían en el cuadro dibujado; la 90 dejaba ~21 % de las lecturas mal.
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 86 **1 de 2 rápido** (abajo; en la 82-85 ese lugar era "1 de 2 sin guardián"). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
