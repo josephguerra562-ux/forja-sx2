@@ -898,6 +898,30 @@ tr: Os controles
 es: Se cuelga o se cierra
 tr: Trava ou fecha
 
+es: Se ve pixelado
+tr: Fica pixelado
+
+es: La imagen parpadea
+tr: A imagem pisca
+
+es: Faltan cosas en la pantalla
+tr: Faltam coisas na tela
+
+es: Colores raros
+tr: Cores estranhas
+
+es: Va lento en las peleas o en el juego
+tr: Fica lento nas lutas ou no jogo
+
+es: Va lento en los menús o en los videos
+tr: Fica lento nos menus ou nos vídeos
+
+es: Da tirones
+tr: Dá engasgos
+
+es: Se corta el sonido
+tr: O som corta
+
 es: %d/%m a las %H:%M
 tr: %d/%m às %H:%M
 
@@ -937,14 +961,14 @@ tr: Comentário:  nenhum
 es: Comentario:  %s
 tr: Comentário:  %s
 
-es: El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario
-tr: O teclado do PS4 não pôde ser aberto nesta versão: o relatório é enviado sem comentário
+es: El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra
+tr: O teclado do PS4 não abriu: escolha uma frase com Esquerda/Direita. Quadrado apaga
 
-es: X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte
-tr: X: escreva com o teclado do PS4 o que aconteceu e onde (por exemplo: o cenário do vulcão fica preto). Vai junto com o relatório
+es: X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte
+tr: X: escreva com o teclado do PS4 o que aconteceu e onde. Esquerda/Direita: uma frase pronta. Vai junto com o relatório
 
-es: X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
-tr: X: mudar  ·  Quadrado: apagar. Vai junto com o próximo relatório
+es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
+tr: X: mudar  ·  Esquerda/Direita: outra frase  ·  Quadrado: apagar. Vai junto com o próximo relatório
 
 es: Comentario para el reporte
 tr: Comentário para o relatório

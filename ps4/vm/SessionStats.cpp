@@ -39,6 +39,7 @@ namespace
 		uint64_t audio_cuts_movie = 0; // compilation 79: of audio_cuts, the ones while a movie played
 		// Compilation 79: the heap after the first minute (the game's load is in it), and the heartbeats since, for its growth.
 		uint64_t heap_at_minute = 0;
+		uint32_t heap_base_heartbeat = 0; // compilation 87: the heartbeat heap_at_minute was taken at
 		uint32_t heartbeats = 0;
 		bool audio_seen = false;
 		uint64_t skipped = 0, guard_pauses = 0;
@@ -313,8 +314,15 @@ namespace ForjaSession
 		s.flexible_min = s.memory_seen ? std::min(s.flexible_min, flexible_free) : flexible_free;
 		s.heap_max = std::max(s.heap_max, heap_high);
 		s.memory_seen = true;
-		if (++s.heartbeats == 12) // a heartbeat every 5 s
+		// Compilation 87: from 30 s after reaching the game (a heartbeat every 5 s), not from the first minute. FIFA Street 2
+		// (report F-3420, 2026-10-25) reached its match at 1:30 and loaded it in the next 15 s (285 to 343 MB): "53 MB a
+		// minute, too much" was the load, not a leak.
+		++s.heartbeats;
+		if (s.heap_at_minute == 0 && s.first_game_window >= 0 && s.windows >= static_cast<uint32_t>(s.first_game_window) + 6)
+		{
 			s.heap_at_minute = heap_high;
+			s.heap_base_heartbeat = s.heartbeats;
+		}
 		// The sound's counters start over when its stream opens again: what they grew by, or all of it after a restart.
 		if (s.audio_seen)
 		{
@@ -465,12 +473,13 @@ namespace ForjaSession
 			Append(text, "Memoria: mínimo %llu MB libres de la flexible normal; el heap llegó a %llu MB",
 				static_cast<unsigned long long>(s.flexible_min >> 20), static_cast<unsigned long long>(s.heap_max >> 20));
 			// Compilation 79: how fast it grew after the first minute. Crash Nitro Kart's went from 283 to 500 MB in 5.5 minutes
-			// (~40 MB a minute) and filled the main heap; the other games stay within a few MB.
-			if (s.heartbeats > 24 && s.heap_at_minute > 0)
+			// (~40 MB a minute) and filled the main heap; the other games stay within a few MB. Compilation 87: from 30 s after
+			// reaching the game, and with a minute of it at least.
+			if (s.heap_at_minute > 0 && s.heartbeats >= s.heap_base_heartbeat + 12)
 			{
 				const double grown_mb = static_cast<double>(s.heap_max - std::min(s.heap_max, s.heap_at_minute)) / (1024.0 * 1024.0);
-				const double after_minutes = (s.heartbeats - 12) * 5.0 / 60.0;
-				Append(text, " (después del primer minuto creció %.1f MB por minuto%s)", grown_mb / after_minutes,
+				const double after_minutes = (s.heartbeats - s.heap_base_heartbeat) * 5.0 / 60.0;
+				Append(text, " (desde poco después de llegar al juego creció %.1f MB por minuto%s)", grown_mb / after_minutes,
 					grown_mb / after_minutes > 10.0 ? ": demasiado, puede llenarse" : "");
 			}
 			text += "\n";

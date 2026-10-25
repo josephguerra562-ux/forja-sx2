@@ -898,6 +898,30 @@ tr: Die Steuerung
 es: Se cuelga o se cierra
 tr: Hängt oder schließt sich
 
+es: Se ve pixelado
+tr: Es sieht verpixelt aus
+
+es: La imagen parpadea
+tr: Das Bild flackert
+
+es: Faltan cosas en la pantalla
+tr: Auf dem Bildschirm fehlt etwas
+
+es: Colores raros
+tr: Seltsame Farben
+
+es: Va lento en las peleas o en el juego
+tr: Langsam in Kämpfen oder im Spiel
+
+es: Va lento en los menús o en los videos
+tr: Langsam in Menüs oder Videos
+
+es: Da tirones
+tr: Es ruckelt
+
+es: Se corta el sonido
+tr: Der Ton setzt aus
+
 es: %d/%m a las %H:%M
 tr: %d.%m. um %H:%M
 
@@ -937,14 +961,14 @@ tr: Kommentar:  keiner
 es: Comentario:  %s
 tr: Kommentar:  %s
 
-es: El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario
-tr: Die PS4-Tastatur ließ sich in dieser Version nicht öffnen: Der Bericht wird ohne Kommentar gesendet
+es: El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra
+tr: Die PS4-Tastatur ging nicht auf: Wähle einen Satz mit Links/Rechts. Quadrat löscht ihn
 
-es: X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte
-tr: X: Schreib mit der PS4-Tastatur, was passiert ist und wo (zum Beispiel: die Vulkan-Arena ist schwarz). Wird mit dem Bericht gesendet
+es: X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte
+tr: X: Schreibe mit der PS4-Tastatur, was wo passiert ist. Links/Rechts: ein fertiger Satz. Wird mit dem Bericht gesendet
 
-es: X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
-tr: X: ändern  ·  Quadrat: löschen. Wird mit dem nächsten Bericht gesendet
+es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
+tr: X: ändern  ·  Links/Rechts: anderer Satz  ·  Quadrat: löschen. Wird mit dem nächsten Bericht gesendet
 
 es: Comentario para el reporte
 tr: Kommentar für den Bericht

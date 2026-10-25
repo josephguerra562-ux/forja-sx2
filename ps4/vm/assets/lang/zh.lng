@@ -898,6 +898,30 @@ tr: 手柄操作
 es: Se cuelga o se cierra
 tr: 卡住或自动关闭
 
+es: Se ve pixelado
+tr: 画面有马赛克
+
+es: La imagen parpadea
+tr: 画面闪烁
+
+es: Faltan cosas en la pantalla
+tr: 画面上缺少东西
+
+es: Colores raros
+tr: 颜色奇怪
+
+es: Va lento en las peleas o en el juego
+tr: 对战或游戏中变慢
+
+es: Va lento en los menús o en los videos
+tr: 菜单或视频中变慢
+
+es: Da tirones
+tr: 有卡顿
+
+es: Se corta el sonido
+tr: 声音断断续续
+
 es: %d/%m a las %H:%M
 tr: %m月%d日 %H:%M
 
@@ -937,14 +961,14 @@ tr: 评论：  无
 es: Comentario:  %s
 tr: 评论：  %s
 
-es: El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario
-tr: 此版本无法打开 PS4 键盘：报告将不带评论发送
+es: El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra
+tr: PS4 键盘没有打开：用左/右选择一句话。方块键删除
 
-es: X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte
-tr: X：用 PS4 键盘写下发生了什么、在哪里（例如：火山的场景是黑的）。会随报告一起发送
+es: X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte
+tr: X：用 PS4 键盘写下发生了什么、在哪里。左/右：现成的句子。随报告发送
 
-es: X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
-tr: X：修改  ·  方块键：删除。随下一份报告发送
+es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
+tr: X：修改  ·  左/右：换一句  ·  方块键：删除。随下一份报告发送
 
 es: Comentario para el reporte
 tr: 报告的评论

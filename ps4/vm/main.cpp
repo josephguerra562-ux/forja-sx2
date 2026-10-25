@@ -196,6 +196,21 @@ static double s_console_cpu_ghz = 0.0;
 static std::string s_console_system; // Forja 1.06: the system software's version (main), for the session's summary
 static int s_console_neo = 0;        // ...and the Pro mode
 static bool s_console_fast_cpu = false;
+// Compilation 87: whether the console itself is a Pro, Boost Mode or not. The first report from another player (F-3420,
+// FIFA Street 2, 2026-10-25) said "PS4 normal o Slim (o una Pro sin el Modo Boost)": the clock alone can't tell a Pro
+// without Boost Mode from a Slim. The system says it: sceKernelHasNeoMode and sceKernelIsAuthenticNeo (both in the report,
+// to check them against Joseph's Pro).
+static int s_console_has_neo = 0, s_console_authentic_neo = 0;
+
+// The console's name for the report and the channel's line.
+static const char* ConsoleName()
+{
+	if (s_console_fast_cpu)
+		return "PS4 Pro con el Modo Boost";
+	if (s_console_has_neo > 0 || s_console_authentic_neo > 0)
+		return "PS4 Pro sin el Modo Boost";
+	return "PS4 normal o Slim";
+}
 // Compilation 59: for VMManager.cpp (LoadCoreSettings), which keeps a slow console at 2x at most. True until measured.
 bool g_forja_console_fast_cpu = true;
 
@@ -223,6 +238,9 @@ static u64 s_video_last_decodes = 0;
 static double s_video_last_check = 0.0;
 static double s_video_last_busy = -100.0;
 static double s_video_since = 0.0;
+// Compilation 87: when the last movie ended, and whether movies come and go (menus with movies behind them).
+static double s_video_last_off = -100.0;
+static bool s_video_flapping = false;
 static unsigned s_video_busy_checks = 0;
 static constexpr int VIDEO_EE_RATE = -3;
 // Compilation 49: Modo video "Auto" ([Forja] VideoMode = 2, and the global "Sí" for a game whose profile does not set it).
@@ -1853,6 +1871,13 @@ static int s_report_issue = 0;
 // Compilation 86: the player's own words for the report (Joseph, 2026-10-24: "para agregar comentarios, un comentario
 // adicional"), UTF-8, 200 characters at most; it goes with the next report and is cleared after it.
 static std::string s_report_comment;
+// Compilation 87: ready phrases for the comment, with Left/Right on its row, for when the keyboard doesn't open (in the 86
+// it never did) or for a quick one. In the player's language.
+static constexpr const char* REPORT_PHRASES[] = {N_("Se ve pixelado"), N_("La imagen parpadea"), N_("Faltan cosas en la pantalla"),
+	N_("Colores raros"), N_("Va lento en las peleas o en el juego"), N_("Va lento en los menús o en los videos"), N_("Da tirones"),
+	N_("Se corta el sonido")};
+static constexpr int REPORT_PHRASE_COUNT = static_cast<int>(std::size(REPORT_PHRASES));
+static int s_report_phrase = -1;
 
 // Compilation 86: the PS4's own keyboard (the system's IME dialog) for the comment. The SDK has no stub library for it
 // (libSceImeDialog), so its module and the common dialogs' are loaded and their functions found by name the first time; if
@@ -1950,12 +1975,43 @@ namespace ForjaKeyboard
 		return out;
 	}
 
+	// Compilation 87: a loaded module's handle, found among the app's modules by its name ("libSceImeDialog" is
+	// "libSceImeDialog.sprx" there). -1 if it isn't loaded.
+	static int FindModule(const char* name)
+	{
+		OrbisKernelModule handles[256];
+		size_t count = 0;
+		if (sceKernelGetModuleList(handles, std::size(handles), &count) != 0)
+			return -1;
+		const size_t length = std::strlen(name);
+		for (size_t i = 0; i < std::min(count, std::size(handles)); i++)
+		{
+			OrbisKernelModuleInfo info{};
+			info.size = sizeof(info);
+			if (sceKernelGetModuleInfo(handles[i], &info) == 0 && std::strncmp(info.name, name, length) == 0 &&
+				(info.name[length] == '.' || info.name[length] == '\0'))
+				return static_cast<int>(handles[i]);
+		}
+		return -1;
+	}
+
 	static bool Load()
 	{
 		if (s_loaded || s_failed)
 			return s_loaded;
-		const int common = static_cast<int>(sceKernelLoadStartModule("/system/common/lib/libSceCommonDialog.sprx", 0, nullptr, 0, nullptr, nullptr));
-		const int ime = static_cast<int>(sceKernelLoadStartModule("/system/common/lib/libSceImeDialog.sprx", 0, nullptr, 0, nullptr, nullptr));
+		// Compilation 87: through the system's module loader, as the PS4's own apps load them, and then found by name. The 86
+		// loaded them from /system/common/lib, and that path isn't there for this app (0x80020002, "no such file", both;
+		// Joseph, 2026-10-25): the keyboard never opened. That way stays as the last try.
+		const int common_load = sceSysmoduleLoadModuleInternal(ORBIS_SYSMODULE_INTERNAL_COMMON_DIALOG);
+		const int ime_load = sceSysmoduleLoadModule(ORBIS_SYSMODULE_IME_DIALOG);
+		int common = FindModule("libSceCommonDialog");
+		int ime = FindModule("libSceImeDialog");
+		if (common < 0)
+			common = static_cast<int>(sceKernelLoadStartModule("/system/common/lib/libSceCommonDialog.sprx", 0, nullptr, 0, nullptr, nullptr));
+		if (ime < 0)
+			ime = static_cast<int>(sceKernelLoadStartModule("/system/common/lib/libSceImeDialog.sprx", 0, nullptr, 0, nullptr, nullptr));
+		ProbeLog("Keyboard: system loader %#x (common dialogs) and %#x (keyboard)\n", static_cast<unsigned>(common_load),
+			static_cast<unsigned>(ime_load));
 		void* common_init = nullptr;
 		if (common >= 0)
 			sceKernelDlsym(common, "sceCommonDialogInitialize", &common_init);
@@ -2481,13 +2537,20 @@ static void UpdateVideoMode(double elapsed)
 	// On after two busy checks in a row (~1 s of movie); off 4 s after the last busy check (2 s until compilation 62), and never
 	// sooner than 3 s after switching on, so short decode bursts (loading screens) and the gaps between the short movies of an
 	// intro (Crash Nitro Kart's) don't flip it back and forth, each flip a reset of the EE recompiler.
+	// Compilation 87: a movie that comes back within 20 s of the last one's end makes the next end wait 12 s. FIFA Street 2
+	// (report F-3420, 2026-10-25): its menus play movies with gaps of a few seconds, and the mode went on and off 4 times in
+	// a minute, each one a reset of the EE recompiler and a hitch.
 	bool want = s_video_active;
 	if (!s_video_active && s_video_busy_checks >= 2)
 		want = true;
-	else if (s_video_active && elapsed - s_video_last_busy >= 4.0 && elapsed - s_video_since >= 3.0)
+	else if (s_video_active && elapsed - s_video_last_busy >= (s_video_flapping ? 12.0 : 4.0) && elapsed - s_video_since >= 3.0)
 		want = false;
 	if (want == s_video_active)
 		return;
+	if (want)
+		s_video_flapping = elapsed - s_video_last_off < 20.0;
+	else
+		s_video_last_off = elapsed;
 	ForjaVideoMeter(want); // compilation 65
 	ForjaMovieSettings(want); // compilation 65
 
@@ -2764,8 +2827,17 @@ static void UpdateCpuAuto(double elapsed)
 		return;
 	if (s_cpu_auto_slow_checks >= 6 && rate > s_cpu_auto_floor)
 	{
-		s_cpu_auto_steps++;
-		SetCpuAutoRate(rate - 1, "slow", speed, busiest);
+		// Compilation 87: as far down as the speed says, up to 4 steps at once. Each change resets the EE's recompiler: a
+		// hitch of 100-600 ms, and then every block of the game compiled again. FIFA Street 2 (report F-3420, another
+		// player's PS4, 2026-10-25) started at 300 % (its PCSX2 database entry) and 13 % speed; one step every 6-10 s took 11
+		// changes and 2 minutes to get to 31 %, with 105 hitches. Less work a second goes with fewer cycles, so the rate that
+		// would reach ~95 % is about this one times the speed.
+		const double wanted = EERatePercent(rate) * std::max(speed, 1.0) / 95.0;
+		int next = rate - 1;
+		while (next > s_cpu_auto_floor && rate - next < 4 && EERatePercent(next) > wanted)
+			next--;
+		s_cpu_auto_steps += rate - next;
+		SetCpuAutoRate(next, rate - next > 1 ? "slow, several steps at once" : "slow", speed, busiest);
 	}
 	else if (s_cpu_auto_room_checks >= 16)
 	{
@@ -2945,6 +3017,11 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			break;
 		case PS4GameMenu::ROW_REPORT_ISSUE: // compilation 80: what went wrong, not saved either
 			s_report_issue = (s_report_issue + REPORT_ISSUE_COUNT + delta) % REPORT_ISSUE_COUNT;
+			break;
+		case PS4GameMenu::ROW_REPORT_COMMENT: // compilation 87: a ready phrase as the comment
+			s_report_phrase = s_report_phrase < 0 ? (delta > 0 ? 0 : REPORT_PHRASE_COUNT - 1) :
+			                                        (s_report_phrase + REPORT_PHRASE_COUNT + delta) % REPORT_PHRASE_COUNT;
+			s_report_comment = ForjaLang::T(REPORT_PHRASES[s_report_phrase]);
 			break;
 		case PS4GameMenu::ROW_CROWD: // compilation 82: the crowd in software every 1, 2, 4 or 8 passes ([Forja] PublicoCada)
 		{
@@ -3174,13 +3251,12 @@ static void ForjaSessionLines(std::string& header_text, std::string& settings_te
 	std::snprintf(header, sizeof(header),
 		"Forja SX2 %d.%02d (compilación %d): resumen de la partida\n"
 		"Juego: %s (%s, CRC %08X)\n"
-		"Consola: %s (CPU ~%.2f GHz, modo Pro %d), sistema %s\n",
+		"Consola: %s (CPU ~%.2f GHz, modo Pro %d, aparato Pro %d/%d), sistema %s\n",
 		FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER, title.c_str(),
-		VMManager::GetDiscSerial().c_str(), VMManager::GetDiscCRC(),
-		s_console_fast_cpu ? "PS4 Pro con el Modo Boost" : "PS4 normal o Slim (o una Pro sin el Modo Boost)", s_console_cpu_ghz,
-		s_console_neo, s_console_system.empty() ? "?" : s_console_system.c_str());
+		VMManager::GetDiscSerial().c_str(), VMManager::GetDiscCRC(), ConsoleName(), s_console_cpu_ghz, s_console_neo,
+		s_console_has_neo, s_console_authentic_neo, s_console_system.empty() ? "?" : s_console_system.c_str());
 	const int rate = s_video_active ? s_video_saved_rate : static_cast<int>(EmuConfig.Speedhacks.EECycleRate);
-	char cpu_auto[96] = "apagado";
+	char cpu_auto[256] = "apagado";
 	if (s_cpu_auto_floor != 0)
 		std::snprintf(cpu_auto, sizeof(cpu_auto), "hasta %d %%%s", EERatePercent(s_cpu_auto_floor),
 			CpuAutoIdle() ? ", no actúa: la CPU del juego ya está igual o más baja" : ""); // compilation 76
@@ -3189,6 +3265,13 @@ static void ForjaSessionLines(std::string& header_text, std::string& settings_te
 	                      s_gs_skip_mode == 1 ? (s_gs_skip_useless ? "Auto (se apagó: el juego dibuja fuera de la pantalla y no hay cuadros que saltar)" :
 	                                                                 "Auto") :
 	                                            "No";
+	// Compilation 87: where the CPU started when the automatic one moved it (F-3420: "31 %" was the end; it began at 300 %).
+	if (s_cpu_auto_steps > 0 && s_cpu_auto_base != rate)
+	{
+		const size_t used = std::strlen(cpu_auto);
+		std::snprintf(cpu_auto + used, sizeof(cpu_auto) - used, "; empezó en %d %%%s", EERatePercent(s_cpu_auto_base),
+			s_cpu_auto_base > 0 ? ", lo que pide la base de datos de PCSX2 para este juego: si se ve raro, súbela" : "");
+	}
 	char settings[768];
 	std::snprintf(settings, sizeof(settings),
 		"Ajustes: CPU de la PS2 %d %% (CPU automático %s), resolución %ux, generación de cuadros %s%s, Saltar cuadros %s, "
@@ -3322,7 +3405,7 @@ static void SendReport(double elapsed)
 	char summary[768];
 	std::snprintf(summary, sizeof(summary), "Reporte %s · %s · %s · %s · falló: %s · Forja %d.%02d (%d) · %s · velocidad %.0f %% · "
 		"medido: %s", id, ForjaGameTitle().c_str(), serial.empty() ? "?" : serial.c_str(), rating, issue, FORJA_VERSION_MAJOR,
-		FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER, s_console_fast_cpu ? "PS4 Pro con Boost" : "PS4 normal o Slim",
+		FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER, ConsoleName(),
 		PerformanceMetrics::GetSpeed(), measured.c_str());
 	// Compilation 86: and the player's comment, its first 300 bytes in the line (Discord's message takes 2,000).
 	std::string line = summary;
@@ -3334,6 +3417,7 @@ static void SendReport(double elapsed)
 		ProbeLog("Report: %s (%s, %s, %zu bytes, comment %zu bytes) %s\n", id, rating, issue, text.size(), s_report_comment.size(),
 			ForjaReport::HasChannel() ? "sending to the reports channel" : "kept in reportes/ (no channel in this build)");
 		s_report_comment.clear(); // it went with this one
+		s_report_phrase = -1; // compilation 87
 	}
 }
 
@@ -3387,9 +3471,9 @@ static void PublishReportText()
 	else
 		std::snprintf(label, sizeof(label), TF("Comentario:  %s"), ForjaLang::Cut(s_report_comment, 70).c_str());
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_REPORT_COMMENT, label,
-		ForjaKeyboard::Failed() ? T("El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario") :
-		s_report_comment.empty() ? T("X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte") :
-		                           T("X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte"));
+		ForjaKeyboard::Failed() ? T("El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra") :
+		s_report_comment.empty() ? T("X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte") :
+		                           T("X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte"));
 }
 
 void VMHostPoll()
@@ -3889,7 +3973,10 @@ void VMHostPoll()
 			if (row == PS4GameMenu::ROW_GS_FILTER)
 				BringBackGsGroups();
 			else if (row == PS4GameMenu::ROW_REPORT_COMMENT)
+			{
 				s_report_comment.clear();
+				s_report_phrase = -1; // compilation 87
+			}
 			else
 				BringBackVu1Programs();
 			PublishGameMenu();
@@ -3929,7 +4016,7 @@ void VMHostPoll()
 			// Compilation 79: and the report's word, the one row of Sistema with values (in the 77 Left/Right did nothing there, so
 			// every report said "Perfecto").
 			else if (row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
-					 row == PS4GameMenu::ROW_REPORT_ISSUE) // compilation 44; 80: what went wrong
+					 row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT) // 44; 80: what went wrong; 87
 				ChangeGameMenuRow(row, navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1);
 			else if (row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE)
 			{
@@ -4391,6 +4478,8 @@ static void* RunVM(void*)
 		s_video_last_check = 0.0;
 		s_video_last_busy = -100.0;
 		s_video_since = 0.0;
+		s_video_last_off = -100.0; // compilation 87
+		s_video_flapping = false;
 		s_video_last_decodes = g_forja_ipu_decodes;
 		s_profile_last_check = 0.0;
 		// Forja SX2 (compilation 37): the 50 Hz output's guard still here means a game at 50 Hz never closed normally in its
@@ -4710,8 +4799,11 @@ int main()
 			std::memcpy(version, sw.VersionString, sizeof(sw.VersionString));
 		s_console_system = version; // Forja 1.06
 		s_console_neo = sceKernelIsNeoMode();
-		ProbeLog("Console: system software '%s' (0x%08x, result %#x), Pro mode %d, CPU mode 6 (ATTRIBUTE 0)\n", version,
-			sw_result == 0 ? sw.Version : 0u, static_cast<unsigned>(sw_result), sceKernelIsNeoMode());
+		s_console_has_neo = sceKernelHasNeoMode(); // compilation 87
+		s_console_authentic_neo = sceKernelIsAuthenticNeo();
+		ProbeLog("Console: system software '%s' (0x%08x, result %#x), Pro mode %d, Pro console %d/%d, CPU mode 6 (ATTRIBUTE 0)\n",
+			version, sw_result == 0 ? sw.Version : 0u, static_cast<unsigned>(sw_result), sceKernelIsNeoMode(), s_console_has_neo,
+			s_console_authentic_neo);
 	}
 	ProbeLog("Vulkan preflight: SystemService=%#x VideoOut=%#x\n", system_service_result, video_out_result);
 	{

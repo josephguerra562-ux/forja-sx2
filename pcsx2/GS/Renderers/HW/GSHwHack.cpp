@@ -10,7 +10,9 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstring>
 #include <iterator>
+#include <vector>
 
 static bool s_nativeres;
 
@@ -266,17 +268,48 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 	// Compilation 86: every ~30 s, one drawn pass's draws into the crowd's blocks (any width), in order, into the log: what is
 	// the crowd's and what isn't, for the next fix.
 	static u32 s_draw_in_frame = 0, s_dump_left = 0, s_last_dump_pass = 0;
+	// Compilation 87: the crowd's finished picture, kept from the drawn pass and put back in the passes left out. Joseph's
+	// test of the 86 (2026-10-25): the notes back, but the crowd pixelated again (blue and purple dots) at 1 in 4 and 1 in 8.
+	// Its log (the 86's dump) says why: each frame the game sends its crowd's sprites into 02bc0 (8 bits, from the EE), the
+	// software draws build the crowd with them and copy it over those same blocks (32 bits, 256 wide, draw 15), and the GPU
+	// then reads it into the frame (02bc0, 02dc0, 02fc0: 21, 25, 29). In a pass left out the sprites arrive as always, nothing
+	// copies the crowd over them, and the GPU reads the sprites as if they were the crowd: dots. 83-85 left those GPU draws out
+	// with the rest of 008c0 (the frame), so the crowd stayed whole and the notes went (shown 1 frame in 8: "transparent").
+	// So: in a drawn pass, what a GPU draw reads as 32 bits from what the software draws wrote (not from their scratch, the
+	// blocks the GPU also draws into: 008c0) is copied aside, just before it reads it; in a pass left out, it is put back in
+	// the GS's memory at that same draw, and the texture cache told, so the GPU reads the last whole crowd.
+	struct CrowdOut
+	{
+		u32 begin, end; // blocks the software draw wrote
+		bool scratch;
+	};
+	struct CrowdKept
+	{
+		u32 tbp = 0, tbw = 0, height = 0, pass = 0, put_back = 0;
+		std::vector<u8> data;
+	};
+	static CrowdOut s_out[16];
+	static u32 s_out_count = 0;
+	static u32 s_gpu_fbps[16];
+	static u32 s_gpu_fbp_count = 0;
+	static CrowdKept s_kept[6];
+	static u32 s_kept_put_back = 0, s_kept_copied = 0; // for the log
 	if (const int frame = g_perfmon.GetFrame(); frame != s_pass_frame)
 	{
 		s_pass_frame = frame;
 		s_every = std::max(g_forja_crowd_every.load(std::memory_order_relaxed), 1u);
 		s_leave_out = s_every > 1 && (s_passes++ % s_every) != 0;
 		s_draw_in_frame = 0;
+		s_out_count = 0;
+		s_gpu_fbp_count = 0;
 		s_dump_left = 0;
 		if (!s_leave_out && s_crowd_fbp_count > 0 && s_passes - s_last_dump_pass >= 1500)
 		{
 			s_last_dump_pass = s_passes;
 			s_dump_left = 48;
+			ProbeLog("Crowd kept (87): %u copies of the finished crowd taken, %u put back in passes left out, since the last dump\n",
+				s_kept_copied, s_kept_put_back);
+			s_kept_copied = s_kept_put_back = 0;
 			ProbeLog("Crowd draws: pass %u (1 in %u), the draws into its blocks in order:\n", s_passes, s_every);
 		}
 	}
@@ -317,13 +350,90 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 			}
 			if (!noted() && s_crowd_fbp_count < std::size(s_crowd_fbps))
 				s_crowd_fbps[s_crowd_fbp_count++] = key;
+			if (s_out_count < std::size(s_out)) // compilation 87: what it writes, and whether the GPU draws into that block too
+			{
+				const u32 rows = (static_cast<u32>(std::max(r.m_r.w, 0)) + 31) / 32;
+				bool scratch = false;
+				for (u32 i = 0; i < s_gpu_fbp_count; i++)
+					scratch |= s_gpu_fbps[i] == fbp;
+				s_out[s_out_count++] = {fbp, fbp + std::max<u32>(RFBW, 1) * rows * 32, scratch};
+			}
 			r.ClearGSLocalMemory(r.m_context->offset.zb, r.m_r, 0);
 			r.SwPrimRender(r, RFBP != 0x2DC0, false);
 			skip = 1;
 		}
-		else if (s_leave_out && s_crowd_pass != 0 && s_passes - s_crowd_pass <= 2 * s_every && noted())
+		else
 		{
-			skip = 1; // the GPU's draw into a crowd buffer (compilation 83), of the crowd's width (86)
+			// Compilation 87: a block the GPU draws into is scratch for the software draws that write it too.
+			if (std::find(s_gpu_fbps, s_gpu_fbps + s_gpu_fbp_count, fbp) == s_gpu_fbps + s_gpu_fbp_count &&
+				s_gpu_fbp_count < std::size(s_gpu_fbps))
+				s_gpu_fbps[s_gpu_fbp_count++] = fbp;
+			for (u32 i = 0; i < s_out_count; i++)
+				s_out[i].scratch |= s_out[i].begin == fbp;
+			const bool recent = s_crowd_pass != 0 && s_passes - s_crowd_pass <= 2 * s_every;
+			if (s_leave_out && recent && noted())
+			{
+				skip = 1; // the GPU's draw into a crowd buffer (compilation 83), of the crowd's width (86)
+			}
+			else if (RTME && RTPSM == PSMCT32 && recent)
+			{
+				const u32 tbp = RTBP0, tbw = std::max<u32>(RTBW, 1);
+				u8* const vm = r.m_mem.vm8();
+				if (!s_leave_out && s_every > 1 && s_crowd_pass == s_passes)
+				{
+					// Drawn pass: the GPU is about to read the crowd the software draws just made. Copied aside.
+					for (u32 i = 0; i < s_out_count; i++)
+					{
+						if (s_out[i].scratch || tbp < s_out[i].begin || tbp >= s_out[i].end)
+							continue;
+						const u32 rows = ((1u << RTEX0.TH) + 31) / 32;
+						const u32 blocks = std::min(tbw * rows * 32, s_out[i].end - tbp);
+						if (blocks < tbw * 32 || static_cast<size_t>(tbp + blocks) * 256 > static_cast<size_t>(GSLocalMemory::m_vmsize))
+							break;
+						CrowdKept* slot = nullptr;
+						for (CrowdKept& kept : s_kept)
+						{
+							if (kept.tbp == tbp && kept.tbw == tbw)
+								slot = &kept;
+						}
+						if (!slot)
+						{
+							slot = &s_kept[0];
+							for (CrowdKept& kept : s_kept)
+							{
+								if (kept.pass < slot->pass)
+									slot = &kept;
+							}
+						}
+						if (slot->pass != s_passes || slot->tbp != tbp)
+						{
+							slot->tbp = tbp;
+							slot->tbw = tbw;
+							slot->height = blocks / 32 / tbw * 32; // whole pages, 32 rows each
+							slot->pass = s_passes;
+							slot->data.assign(vm + static_cast<size_t>(tbp) * 256, vm + static_cast<size_t>(tbp + blocks) * 256);
+							s_kept_copied++;
+						}
+						break;
+					}
+				}
+				else if (s_leave_out)
+				{
+					// Pass left out: the same read gets the last whole crowd back first.
+					for (CrowdKept& kept : s_kept)
+					{
+						if (kept.tbp != tbp || kept.tbw != tbw || kept.pass != s_crowd_pass || kept.put_back == s_passes ||
+							kept.data.empty() || kept.height == 0)
+							continue;
+						std::memcpy(vm + static_cast<size_t>(tbp) * 256, kept.data.data(), kept.data.size());
+						g_texture_cache->InvalidateVideoMem(r.m_mem.GetOffset(tbp, tbw, PSMCT32),
+							GSVector4i(0, 0, static_cast<int>(tbw * 64), static_cast<int>(kept.height)));
+						kept.put_back = s_passes;
+						s_kept_put_back++;
+						break;
+					}
+				}
+			}
 		}
 	}
 

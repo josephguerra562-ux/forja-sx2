@@ -115,7 +115,11 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
       devuelve solo al pasar a la 54.
   - **Reportes** (pestaña propia desde la 86, entre No tocar y Sistema; hasta la 85 estaba en Sistema): **Reportar este
     juego** (desde la 77), **Qué falló** y, desde la 86, **Comentario**: X abre el teclado de la PS4 para escribir qué pasó y
-    dónde (200 letras); Cuadrado lo borra; se manda con el próximo reporte, en el archivo y en la línea del canal. Mientras se
+    dónde (200 letras); Cuadrado lo borra; se manda con el próximo reporte, en el archivo y en la línea del canal. **En la 86
+    el teclado no abría** (la PS4 no le dejaba cargarlo desde esa carpeta); desde la 87 se carga como lo hacen las apps de la
+    PS4, y además **Izquierda/Derecha elige una frase lista** ("Se ve pixelado", "La imagen parpadea", "Da tirones"...), que
+    sirve aunque el teclado no abra. Desde la 87 el reporte también dice si la consola es una **Pro** aunque no tenga el Modo
+    Boost (antes solo se sabía con el Modo Boost). Mientras se
     manda, la fila cuenta los segundos (suele tardar ~5-10 s; con internet lento, hasta un minuto). Si no llega (sin internet,
     o se cerró el juego mientras se mandaba), queda pendiente y **se vuelve a mandar solo al abrir otro juego**.
   - **Sistema:** restablecer los ajustes del juego, volver a la biblioteca y salir.
@@ -141,13 +145,17 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     a 50 % o más. **God of War II va al 27 % de fábrica desde la 37** (medido: 98 % de velocidad media, contra ~70 % en
     las peleas al 100 %).
   - **CPU automático** (desde la 35): No / Hasta 75 % / Hasta 60 % / Hasta 50 % (desde la 36 también hasta 36, 31 y 27 %,
-    experimental). Si el juego va por debajo del 92 % unos 3 segundos, baja un paso el CPU de la PS2. Cuando hay margen
-    otra vez, vuelve a subir. Cada cambio da un tironcito, así que hay como mucho uno cada 6 s. La fila dice a qué velocidad
+    experimental). Si el juego va por debajo del 92 % unos 3 segundos, baja un paso el CPU de la PS2 (desde la 87, si va
+    muy lento, **baja varios pasos de una vez**, hasta 4: un juego que la base de datos pone al 300 % y va al 13 % ya no da
+    11 tirones para llegar). Cuando hay margen otra vez, vuelve a subir. Cada cambio da un tironcito, así que hay como
+    mucho uno cada 6 s. La fila dice a qué velocidad
     va **ahora**. En God of War II viene apagado desde la 36: medido, las peleas pesadas iban igual al 50, 60, 75 y 100 %.
     Desde la 45, un juego sin ajuste propio usa el de la pestaña Ajustes (de fábrica, "Hasta 27 %"): si le subes el CPU y se
     pone lento en una escena pesada, baja solo, como mucho hasta el 27 %. Solo **baja**: si el CPU de la PS2 del juego ya
     está igual o más bajo que el límite, no tiene nada que hacer, y desde la 76 la fila lo dice ("No actúa…").
   - **Modo video:** No / **Auto** / 100 % / 75 % / 60 % / 50 % / 36 %. Es el CPU de la PS2 durante las cinemáticas.
+    Desde la 87, si los videos van y vienen (menús con video de fondo, como los de FIFA Street 2), espera 12 s en vez de 4
+    antes de apagarse: así no se prende y se apaga a cada rato, que era un tirón cada vez.
     **Auto** busca solo el punto justo de cada video: desde la 51 mide cuántos cuadros salen, prueba un paso más arriba
     (y si no mejora, uno más abajo) y se queda con el que da más cuadros, entre 31 y 100 %. Vuelve a medir cada 40 s y
     recuerda dónde quedó para el siguiente video del juego. Arranca desde el último valor fijo que elegiste para el juego:
@@ -171,7 +179,12 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     pasada cuesta menos y el tirón es más chico. **En la 83-85 las notas de la guitarra se volvían transparentes** con
     "1 de cada N": el juego usa la misma dirección de memoria como imagen chica del público y como parte de una imagen ancha
     donde arma la guitarra, y en los cuadros sin público se saltaban también los dibujos de la guitarra. Desde la 86 cada
-    imagen del público se reconoce por su dirección **y su ancho**, y la guitarra no se toca.
+    imagen del público se reconoce por su dirección **y su ancho**, y la guitarra no se toca. **En la 86 el público volvió a
+    pixelarse** (puntos azules y morados): en los cuadros sin público, el juego manda sus figuritas del público a la misma
+    memoria donde guarda el público ya armado, y la gráfica las leía como si fueran el público. **Desde la 87 se guarda una
+    copia del público armado** y en los cuadros sin público se vuelve a poner justo antes de que la gráfica lo lea. Desde la
+    87, además, los dibujos por software chiquitos (64x64, como los de Dragon Ball) los hace el hilo del GS solo, sin
+    esperar a los otros núcleos: esa espera costaba más que el dibujo.
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 86 **1 de 2 rápido** (abajo; en la 82-85 ese lugar era "1 de 2 sin guardián"). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja

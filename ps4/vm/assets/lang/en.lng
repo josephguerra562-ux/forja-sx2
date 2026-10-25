@@ -898,6 +898,30 @@ tr: The controls
 es: Se cuelga o se cierra
 tr: Freezes or closes
 
+es: Se ve pixelado
+tr: It looks pixelated
+
+es: La imagen parpadea
+tr: The picture flickers
+
+es: Faltan cosas en la pantalla
+tr: Things are missing on screen
+
+es: Colores raros
+tr: Odd colours
+
+es: Va lento en las peleas o en el juego
+tr: Slow in fights or in the game
+
+es: Va lento en los menús o en los videos
+tr: Slow in menus or videos
+
+es: Da tirones
+tr: It stutters
+
+es: Se corta el sonido
+tr: The sound cuts out
+
 es: %d/%m a las %H:%M
 tr: %d/%m at %H:%M
 
@@ -937,14 +961,14 @@ tr: Comment:  none
 es: Comentario:  %s
 tr: Comment:  %s
 
-es: El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario
-tr: The PS4 keyboard couldn't be opened in this version: the report is sent without a comment
+es: El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra
+tr: The PS4 keyboard didn't open: pick a phrase with Left/Right. Square deletes it
 
-es: X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte
-tr: X: write with the PS4 keyboard what happened and where (for example: the volcano stage looks black). It's sent with the report
+es: X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte
+tr: X: write with the PS4 keyboard what happened and where. Left/Right: a ready phrase. It's sent with the report
 
-es: X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
-tr: X: change it  ·  Square: delete it. It's sent with the next report
+es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
+tr: X: change it  ·  Left/Right: another phrase  ·  Square: delete it. It's sent with the next report
 
 es: Comentario para el reporte
 tr: Comment for the report

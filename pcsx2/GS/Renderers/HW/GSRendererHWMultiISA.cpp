@@ -577,7 +577,20 @@ bool GSRendererHWFunctions::SwPrimRender(GSRendererHW& hw, bool invalidate_tc, b
 		hw.m_sw_rasterizer = std::move(rasterizer);
 	}
 
-	if (s_threaded && hw.m_sw_rasterizer.get() == s_threaded)
+	// Compilation 87: small draws stay on the GS thread. Dragon Ball Z Budokai Tenkaichi 4 (2026-10-25): ~470 software draws a
+	// second in its fights, nearly all 64x64 or 16x16; with the 3 threads the GS thread spent ~100 ms a second on them, 86 of
+	// them waiting for the workers, who drew for ~54 ms in all. Handing a draw that small over costs more than it saves.
+	// Guitar Hero III's crowd (128x128 sprites, 256x512 copies) keeps the threads: 45 ms a second there against ~56 alone.
+	static GSSingleRasterizer* s_small = nullptr;
+	const GSVector4i forja_box = data.bbox.rintersect(data.scissor);
+	const bool forja_small = (forja_box.z - forja_box.x) * (forja_box.w - forja_box.y) <= 128 * 64;
+	if (s_threaded && hw.m_sw_rasterizer.get() == s_threaded && forja_small)
+	{
+		if (!s_small)
+			s_small = new GSSingleRasterizer();
+		s_small->Draw(data);
+	}
+	else if (s_threaded && hw.m_sw_rasterizer.get() == s_threaded)
 	{
 		static GSRingHeap s_heap;
 		GSRingHeap::SharedPtr<GSRasterizerData> shared = s_heap.make_shared<GSRasterizerData>();

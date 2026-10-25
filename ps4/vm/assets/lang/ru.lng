@@ -898,6 +898,30 @@ tr: Управление
 es: Se cuelga o se cierra
 tr: Зависает или закрывается
 
+es: Se ve pixelado
+tr: Изображение в пикселях
+
+es: La imagen parpadea
+tr: Изображение мерцает
+
+es: Faltan cosas en la pantalla
+tr: На экране чего-то не хватает
+
+es: Colores raros
+tr: Странные цвета
+
+es: Va lento en las peleas o en el juego
+tr: Тормозит в боях или в игре
+
+es: Va lento en los menús o en los videos
+tr: Тормозит в меню или видео
+
+es: Da tirones
+tr: Есть рывки
+
+es: Se corta el sonido
+tr: Пропадает звук
+
 es: %d/%m a las %H:%M
 tr: %d.%m в %H:%M
 
@@ -937,14 +961,14 @@ tr: Комментарий:  нет
 es: Comentario:  %s
 tr: Комментарий:  %s
 
-es: El teclado de la PS4 no se pudo abrir en esta versión: el reporte se manda sin comentario
-tr: Клавиатура PS4 не открылась в этой версии: отчёт отправляется без комментария
+es: El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra
+tr: Клавиатура PS4 не открылась: выберите фразу кнопками Влево/Вправо. Квадрат удаляет её
 
-es: X: escribe con el teclado de la PS4 qué pasó y dónde (por ejemplo: el escenario del volcán se ve negro). Se manda con el reporte
-tr: X: напишите клавиатурой PS4, что случилось и где (например: арена с вулканом чёрная). Отправится вместе с отчётом
+es: X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte
+tr: X: напишите на клавиатуре PS4, что случилось и где. Влево/Вправо: готовая фраза. Отправится с отчётом
 
-es: X: cambiarlo  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
-tr: X: изменить  ·  Квадрат: удалить. Отправится со следующим отчётом
+es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
+tr: X: изменить  ·  Влево/Вправо: другая фраза  ·  Квадрат: удалить. Отправится со следующим отчётом
 
 es: Comentario para el reporte
 tr: Комментарий к отчёту
