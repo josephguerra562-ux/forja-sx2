@@ -195,6 +195,10 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     desenfoque en otro, la lectura de la gráfica en otro), y Forja decidía "dibujar o no" por cuadro, así que partía la
     secuencia. **Desde la 89 decide por secuencia del público**: toda entera se dibuja o se deja afuera, y la copia siempre
     está.
+    **En la 89 los personajes del público seguían pixelados**: el juego arma el público en dos partes por cuadro (primero
+    los personajes, que la gráfica lee como textura de 8 bits; después el fondo del público, que lee en 32 bits), y solo se
+    reponía la copia de las lecturas de 32 bits. **Desde la 90**, cada N cuadros se dibujan las dos partes seguidas, se
+    guarda una foto de todo lo que arma el software (en cualquier formato que se lea) y se repone en cada lectura que la tomó.
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 86 **1 de 2 rápido** (abajo; en la 82-85 ese lugar era "1 de 2 sin guardián"). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
@@ -231,6 +235,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     48-95 % con 1 de 2 en la 87). Va más rápido, pero la imagen va más a saltos. **En la 88 saltaba lo mismo que 1 de 2**
     (Dragon Ball muestra cada imagen un cuadro después, y el seguro que obliga a dibujar saltaba justo en el segundo
     cuadro); desde la 89 ese seguro espera tres imágenes escondidas en "2 de 3".
+    **Desde la 90 hay "Al vuelo"**: salta un cuadro solo cuando el GS se atrasa (cuando ya tiene dos cuadros esperando), hasta
+    dos seguidos. Con "2 de 3" Dragon Ball iba a velocidad completa pero mostraba ~5 imágenes nuevas por segundo (se veía
+    lento); "Al vuelo" salta lo justo, así que muestra muchas más.
   - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
     cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
     60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %

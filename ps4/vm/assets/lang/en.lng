@@ -388,8 +388,14 @@ tr: 1 of 2, quick
 es: 2 de 3
 tr: 2 of 3
 
+es: Al vuelo
+tr: On the fly
+
 es: Saltar cuadros (GS):  < %s >
 tr: Frame skip (GS):  < %s >
+
+es: Salta un cuadro solo cuando el GS se atrasa, y hasta dos seguidos: a velocidad completa con todas las imágenes que se puedan (Dragon Ball a dos)  ·  ahora: %s  ·  %s
+tr: Skips a frame only when the GS falls behind, up to two in a row: full speed with as many pictures as possible (Dragon Ball for two)  ·  now: %s  ·  %s
 
 es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
 tr: Draws 1 frame of every 3, with the quick guard: more speed than 1 of 2 where the GS can't keep up (Dragon Ball for two), but the picture is choppier  ·  now: %s  ·  %s

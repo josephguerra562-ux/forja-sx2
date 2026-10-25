@@ -388,8 +388,14 @@ tr: 2回に1回（速い）
 es: 2 de 3
 tr: 3回に2回
 
+es: Al vuelo
+tr: 必要なときだけ
+
 es: Saltar cuadros (GS):  < %s >
 tr: フレームスキップ（GS）：  < %s >
+
+es: Salta un cuadro solo cuando el GS se atrasa, y hasta dos seguidos: a velocidad completa con todas las imágenes que se puedan (Dragon Ball a dos)  ·  ahora: %s  ·  %s
+tr: GS が遅れたときだけフレームを飛ばし、最大2回連続：全速のまま、できるだけ多くの映像を表示します（Dragon Ball の2人プレイ）  ·  現在：%s  ·  %s
 
 es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
 tr: 速いガード付きで3フレームに1回描画：GS が追いつかない場面で2回に1回より速くなります（Dragon Ball の2人プレイ）が、映像はよりカクつきます  ·  現在：%s  ·  %s

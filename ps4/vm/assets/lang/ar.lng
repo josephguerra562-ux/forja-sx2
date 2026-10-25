@@ -388,8 +388,14 @@ tr: 1 من 2 سريع
 es: 2 de 3
 tr: 2 من 3
 
+es: Al vuelo
+tr: عند الحاجة
+
 es: Saltar cuadros (GS):  < %s >
 tr: تخطي الإطارات (GS):  < %s >
+
+es: Salta un cuadro solo cuando el GS se atrasa, y hasta dos seguidos: a velocidad completa con todas las imágenes que se puedan (Dragon Ball a dos)  ·  ahora: %s  ·  %s
+tr: يتخطى إطارًا فقط عندما يتأخر GS، حتى إطارين متتاليين: سرعة كاملة بأكبر عدد ممكن من الصور (Dragon Ball للاعبين)  ·  الآن: %s  ·  %s
 
 es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
 tr: يرسم إطارًا واحدًا من كل 3 مع الحارس السريع: سرعة أكبر من 1 من 2 حيث لا يلحق GS (Dragon Ball للاعبين)، لكن الصورة أكثر تقطعًا  ·  الآن: %s  ·  %s

@@ -388,8 +388,14 @@ tr: 1 из 2, быстро
 es: 2 de 3
 tr: 2 из 3
 
+es: Al vuelo
+tr: По ходу
+
 es: Saltar cuadros (GS):  < %s >
 tr: Пропуск кадров (GS):  < %s >
+
+es: Salta un cuadro solo cuando el GS se atrasa, y hasta dos seguidos: a velocidad completa con todas las imágenes que se puedan (Dragon Ball a dos)  ·  ahora: %s  ·  %s
+tr: Пропускает кадр только когда GS отстаёт, до двух подряд: полная скорость и как можно больше изображений (Dragon Ball на двоих)  ·  сейчас: %s  ·  %s
 
 es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
 tr: Рисует 1 кадр из 3, с быстрой защитой: быстрее, чем 1 из 2, там, где GS не справляется (Dragon Ball на двоих), но изображение дёрганее  ·  сейчас: %s  ·  %s

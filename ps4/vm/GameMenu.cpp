@@ -1841,11 +1841,12 @@ namespace PS4GameMenu
 			// Rendimiento without "(experimental)", and "1 de 2" says it skips even where the GS needs no help.
 			// Compilation 82: and a fourth value, "1 de 2 sin guardián"; compilation 86: "1 de 2 rápido", the guard with short pauses
 			// (without it, Dragon Ball's menus and the words at a fight's start and end flickered).
-			static constexpr const char* gs_skip_names[] = {N_("No"), N_("Auto"), N_("1 de 2"), N_("1 de 2 rápido"), N_("2 de 3")};
+			static constexpr const char* gs_skip_names[] = {N_("No"), N_("Auto"), N_("1 de 2"), N_("1 de 2 rápido"), N_("2 de 3"), N_("Al vuelo")};
 			char gs_skip_label[256];
-			std::snprintf(gs_skip_label, sizeof(gs_skip_label), TF("Saltar cuadros (GS):  < %s >"), T(gs_skip_names[std::min(menu_state.gs_skip, 4u)]));
+			std::snprintf(gs_skip_label, sizeof(gs_skip_label), TF("Saltar cuadros (GS):  < %s >"), T(gs_skip_names[std::min(menu_state.gs_skip, 5u)]));
 			char gs_skip_description[512];
 			std::snprintf(gs_skip_description, sizeof(gs_skip_description),
+				menu_state.gs_skip == 5 ? TF("Salta un cuadro solo cuando el GS se atrasa, y hasta dos seguidos: a velocidad completa con todas las imágenes que se puedan (Dragon Ball a dos)  ·  ahora: %s  ·  %s") :
 				menu_state.gs_skip == 4 ? TF("Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s") :
 				menu_state.gs_skip == 3 ? TF("1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s") :
 				menu_state.gs_skip == 2 ? TF("Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s") :

@@ -357,6 +357,7 @@ extern std::atomic<unsigned> g_forja_gs_skip_every;    // compilation 63: one fr
 extern std::atomic<bool> g_forja_gs_skip_guard;       // compilation 82: the guard on (always since 86)
 extern std::atomic<bool> g_forja_gs_skip_quick;       // compilation 86: "1 de 2 rápido" (SaltarCuadros 3), short pauses
 extern std::atomic<bool> g_forja_gs_skip_two;         // compilation 88: "2 de 3" (SaltarCuadros 4)
+extern std::atomic<bool> g_forja_gs_skip_lag;         // compilation 90: "Al vuelo" (SaltarCuadros 5)
 // Compilation 82: the Guitar Hero games' crowd, drawn in software once every N of its passes (GSHwHack.cpp, GSC_GuitarHero;
 // [Forja] PublicoCada). Without a value, one in two: every one is PCSX2's, and cost Guitar Hero III ~36 ms a frame.
 extern std::atomic<u32> g_forja_crowd_every;
@@ -449,7 +450,8 @@ static void ForjaMovieSettings(bool movie)
 	ProbeLog("Movie settings: %s (frame generation %s%s; Saltar cuadros %s)\n", movie ? "on" : "off",
 		!g_orbis_fg_wanted ? "off" : g_orbis_fg_held ? "held, a PAL movie on a 59.94 Hz TV" : g_orbis_fg_fluid ? "fluid" : "steady",
 		fluid_before != g_orbis_fg_fluid ? ", changed" : "",
-		movie ? "paused" : s_gs_skip_mode == 4 ? "two in three again" : s_gs_skip_mode >= 2 ? "one in two again" :
+		movie ? "paused" : s_gs_skip_mode == 5 ? "on the fly again" : s_gs_skip_mode == 4 ? "two in three again" :
+		s_gs_skip_mode >= 2 ? "one in two again" :
 		s_gs_skip_mode == 1 ? "auto from every frame" : "off");
 }
 
@@ -2242,8 +2244,10 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		// Compilation 86: 3 is "1 de 2 rápido", the guard with its short pauses (until 85 it had none: flicker in menus).
 		g_forja_gs_skip_guard.store(true, std::memory_order_relaxed);
 		// Compilation 88: 4 is "2 de 3", two frames left out of every three, with the same short pauses.
-		g_forja_gs_skip_quick.store(gs_skip == 3 || gs_skip == 4, std::memory_order_relaxed);
+		g_forja_gs_skip_quick.store(gs_skip >= 3, std::memory_order_relaxed);
 		g_forja_gs_skip_two.store(gs_skip == 4, std::memory_order_relaxed);
+		// Compilation 90: 5 is "Al vuelo", a frame left out only while the GS is behind (GSRendererPS4.cpp).
+		g_forja_gs_skip_lag.store(gs_skip == 5, std::memory_order_relaxed);
 	}
 	// Compilation 82: the Guitar Hero games' crowd (GSC_GuitarHero reads the atomic on the GS thread).
 	s_crowd_every = s_profile.crowd_every > 0 ? static_cast<unsigned>(s_profile.crowd_every) : CROWD_EVERY_DEFAULT;
@@ -3070,7 +3074,7 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		{
 			// No, auto, one frame in two ([Forja] SaltarCuadros 0, 1, 2; compilation 47), and without the guard (3, compilation 82).
 			// ApplyGameProfile takes it from the file.
-			const int next = (s_gs_skip_mode + delta + 5) % 5; // compilation 88: "2 de 3" too
+			const int next = (s_gs_skip_mode + delta + 6) % 6; // compilation 88: "2 de 3" too; 90: "Al vuelo"
 			SavePlayerProfile("GS skip", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "SaltarCuadros", next); }, false);
 			break;
 		}
@@ -3289,7 +3293,7 @@ static void ForjaSessionLines(std::string& header_text, std::string& settings_te
 		std::snprintf(cpu_auto, sizeof(cpu_auto), "hasta %d %%%s", EERatePercent(s_cpu_auto_floor),
 			CpuAutoIdle() ? ", no actúa: la CPU del juego ya está igual o más baja" : ""); // compilation 76
 	const char* frame_gen = !g_orbis_fg_wanted ? "No" : s_fg_fluid_profile ? "Fluida" : "Sí";
-	const char* gs_skip = s_gs_skip_mode == 4 ? "2 de 3" : s_gs_skip_mode == 3 ? "1 de 2 rápido" : s_gs_skip_mode == 2 ? "1 de 2" :
+	const char* gs_skip = s_gs_skip_mode == 5 ? "al vuelo" : s_gs_skip_mode == 4 ? "2 de 3" : s_gs_skip_mode == 3 ? "1 de 2 rápido" : s_gs_skip_mode == 2 ? "1 de 2" :
 	                      s_gs_skip_mode == 1 ? (s_gs_skip_useless ? "Auto (se apagó: el juego dibuja fuera de la pantalla y no hay cuadros que saltar)" :
 	                                                                 "Auto") :
 	                                            "No";

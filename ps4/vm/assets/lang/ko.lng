@@ -388,8 +388,14 @@ tr: 2개 중 1개 (빠름)
 es: 2 de 3
 tr: 3개 중 2개
 
+es: Al vuelo
+tr: 필요할 때만
+
 es: Saltar cuadros (GS):  < %s >
 tr: 프레임 스킵 (GS):  < %s >
+
+es: Salta un cuadro solo cuando el GS se atrasa, y hasta dos seguidos: a velocidad completa con todas las imágenes que se puedan (Dragon Ball a dos)  ·  ahora: %s  ·  %s
+tr: GS가 뒤처질 때만 프레임을 건너뛰고, 최대 두 번 연속: 최대 속도로 가능한 한 많은 화면을 보여 줍니다 (Dragon Ball 2인용)  ·  현재: %s  ·  %s
 
 es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
 tr: 빠른 보호와 함께 3프레임 중 1프레임: GS가 따라가지 못하는 곳에서 2개 중 1개보다 빠르지만 (Dragon Ball 2인용) 화면이 더 끊깁니다  ·  현재: %s  ·  %s

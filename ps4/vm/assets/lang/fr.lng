@@ -388,8 +388,14 @@ tr: 1 sur 2 rapide
 es: 2 de 3
 tr: 2 sur 3
 
+es: Al vuelo
+tr: À la volée
+
 es: Saltar cuadros (GS):  < %s >
 tr: Saut d'images (GS) :  < %s >
+
+es: Salta un cuadro solo cuando el GS se atrasa, y hasta dos seguidos: a velocidad completa con todas las imágenes que se puedan (Dragon Ball a dos)  ·  ahora: %s  ·  %s
+tr: Saute une image seulement quand le GS prend du retard, jusqu'à deux d'affilée : pleine vitesse avec le plus d'images possible (Dragon Ball à deux)  ·  maintenant : %s  ·  %s
 
 es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
 tr: Dessine 1 image sur 3, avec le gardien rapide : plus de vitesse que 1 sur 2 là où le GS ne suit pas (Dragon Ball à deux), mais l'image saccade davantage  ·  maintenant : %s  ·  %s

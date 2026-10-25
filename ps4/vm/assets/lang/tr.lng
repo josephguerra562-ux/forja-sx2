@@ -388,8 +388,14 @@ tr: 2'de 1, hızlı
 es: 2 de 3
 tr: 3'te 2
 
+es: Al vuelo
+tr: Anında
+
 es: Saltar cuadros (GS):  < %s >
 tr: Kare atlama (GS):  < %s >
+
+es: Salta un cuadro solo cuando el GS se atrasa, y hasta dos seguidos: a velocidad completa con todas las imágenes que se puedan (Dragon Ball a dos)  ·  ahora: %s  ·  %s
+tr: Yalnızca GS geride kaldığında bir kare atlar, en fazla arka arkaya iki: mümkün olduğunca çok görüntüyle tam hız (iki oyunculu Dragon Ball)  ·  şimdi: %s  ·  %s
 
 es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
 tr: Hızlı koruma ile her 3 karede 1 kare çizer: GS'nin yetişemediği yerde 2'de 1'den daha hızlı (iki oyunculu Dragon Ball), ama görüntü daha kesik kesik  ·  şimdi: %s  ·  %s

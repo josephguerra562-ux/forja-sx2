@@ -388,8 +388,14 @@ tr: 1 z 2, szybko
 es: 2 de 3
 tr: 2 z 3
 
+es: Al vuelo
+tr: W locie
+
 es: Saltar cuadros (GS):  < %s >
 tr: Pomijanie klatek (GS):  < %s >
+
+es: Salta un cuadro solo cuando el GS se atrasa, y hasta dos seguidos: a velocidad completa con todas las imágenes que se puedan (Dragon Ball a dos)  ·  ahora: %s  ·  %s
+tr: Pomija klatkę tylko wtedy, gdy GS nie nadąża, najwyżej dwie z rzędu: pełna prędkość z jak największą liczbą obrazów (Dragon Ball we dwóch)  ·  teraz: %s  ·  %s
 
 es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
 tr: Rysuje 1 klatkę na 3, z szybkim strażnikiem: szybciej niż 1 na 2 tam, gdzie GS nie nadąża (Dragon Ball we dwóch), ale obraz bardziej przycina  ·  teraz: %s  ·  %s

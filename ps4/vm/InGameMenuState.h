@@ -135,13 +135,13 @@ namespace PS4GameMenu
 				(std::clamp(value.upscale, 1u, limit) << 8) |
 				(limit << 12) |
 				(std::min(value.aspect, 4u) << 16) | // three bits (0-4): bit 19 is the skip mode's third (compilation 88)
-				((std::min(value.gs_skip, 4u) >> 2) << 19) |
+				((std::min(value.gs_skip, 5u) >> 2) << 19) |
 				(value.show_overlay ? (1u << 20) : 0u) |
 				(std::min(value.video, 6u) << 24) |
 				(std::min(value.video_origin, 2u) << 27) |
 				(value.frame_gen != 0 ? (1u << 29) : 0u) |
 				(value.frame_gen >= 2 ? (1u << 21) : 0u) | // compilation 40: fluid; bits 21-23 are free since 36
-				((std::min(value.gs_skip, 4u) & 3u) << 22) | // compilation 47; 82: 3; 88: 4 ("2 de 3"), its third bit at 19
+				((std::min(value.gs_skip, 5u) & 3u) << 22) | // compilation 47; 82: 3; 88: 4 ("2 de 3"), its third bit at 19; 90: 5
 				(std::min(value.frame_gen_origin, 2u) << 30)) |
 			(static_cast<std::uint64_t>(std::min(value.cores, 3u)) << 32) |
 			(static_cast<std::uint64_t>(std::min(value.cores_origin, 2u)) << 34) |
@@ -190,7 +190,7 @@ namespace PS4GameMenu
 		state.cpu_auto_steps = static_cast<unsigned>((value >> 48) & 0x0fu);
 		state.cpu_auto_origin = std::min(static_cast<unsigned>((value >> 52) & 0x03u), 2u);
 		state.sharpness = std::min(static_cast<unsigned>((value >> 58) & 0x07u), 4u);
-		state.gs_skip = std::min(((low >> 22) & 0x03u) | (((low >> 19) & 0x01u) << 2), 4u);
+		state.gs_skip = std::min(((low >> 22) & 0x03u) | (((low >> 19) & 0x01u) << 2), 5u);
 		state.gs_skip_active = (value & (std::uint64_t{1} << 61)) != 0;
 		state.gs_skip_origin = std::min(static_cast<unsigned>((value >> 62) & 0x03u), 2u);
 		return state;

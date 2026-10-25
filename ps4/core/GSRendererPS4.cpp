@@ -12,6 +12,7 @@
 #include "GS/GSPerfMon.h"
 #include "GS/GSUtil.h"
 #include "GSDumpReplayer.h"
+#include "MTGS.h"
 #include "Host.h"
 #include "PerformanceMetrics.h"
 #include "pcsx2/Config.h"
@@ -75,6 +76,12 @@ std::atomic<bool> g_forja_gs_skip_quick{false};
 // Budokai Tenkaichi 4 for two players (2026-10-25, the 87): at one in two its heavy fights still ran at 48-95 %, the GS at
 // 15-31 ms a refresh. The TV is shown one frame in three; a frame is drawn by force after two hidden ones anyway.
 std::atomic<bool> g_forja_gs_skip_two{false};
+// Compilation 90: Saltar cuadros "Al vuelo" (SaltarCuadros 5, main.cpp): a frame is left out only while the GS is behind,
+// at most two in a row. Dragon Ball for two players with "2 de 3" (the 89, 2026-10-25): full speed and more (100-110 %), but
+// it left out 73-98 of ~105 frames every 5 s, ~5 new pictures a second on the TV, and Joseph saw it slow ("se ve lento").
+// Behind: when this frame starts, the EE has already queued two vsyncs or more for the GS (MTGS::GetCurrentVsyncQueueSize;
+// with VsyncQueueSize 2 the EE waits at that point). A frame left out lets the GS catch up, the next one is drawn.
+std::atomic<bool> g_forja_gs_skip_lag{false};
 static forja_skip::Guard s_forja_guard; // Forja 1.06 (ForjaSkipGuard.h)
 static u32 s_forja_hidden_total = 0;    // Forja 1.06: pictures hidden, for the guard's checks
 namespace
@@ -1074,7 +1081,9 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				// two frames left out in a row hide two pictures in a row, the very thing "2 de 3" means: in the 88 the force drew
 				// the second frame to leave out about every other time, and it left out ~53 frames in 5 s, as "1 de 2" (Joseph:
 				// "no le siento diferencia", 2026-10-25).
-				const bool force = s_forja_hidden_frames >= (g_forja_gs_skip_two.load(std::memory_order_relaxed) ? 3u : 2u);
+				const bool lag = g_forja_gs_skip_lag.load(std::memory_order_relaxed); // compilation 90
+				const bool many = lag || g_forja_gs_skip_two.load(std::memory_order_relaxed); // two in a row may be left out
+				const bool force = s_forja_hidden_frames >= (many ? 3u : 2u);
 				if (force && forja_want)
 					g_forja_gs_skip_stats[3].fetch_add(1, std::memory_order_relaxed);
 				// Forja 1.06: the guard (ForjaSkipGuard.h): frames left out whose pictures the TV didn't hide pause Saltar cuadros, and
@@ -1093,9 +1102,10 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				const bool two = g_forja_gs_skip_two.load(std::memory_order_relaxed);
 				const unsigned every = two ? 3u : std::max(g_forja_gs_skip_every.load(std::memory_order_relaxed), 2u);
 				s_forja_skip_count = (s_forja_skip_count + 1) % every;
-				const bool turn = two ? s_forja_skip_count != 0 : s_forja_skip_count == 0;
+				const bool behind = lag && MTGS::GetCurrentVsyncQueueSize() >= 2;
+				const bool turn = lag ? behind : two ? s_forja_skip_count != 0 : s_forja_skip_count == 0;
 				const bool guard = g_forja_gs_skip_guard.load(std::memory_order_relaxed); // compilation 82
-				g_forja_gs_skip_drawing = forja_want && (two || !g_forja_gs_skip_drawing) && !force && turn &&
+				g_forja_gs_skip_drawing = forja_want && (many || !g_forja_gs_skip_drawing) && !force && turn &&
 					s_forja_previous_frame_draws >= FORJA_SKIP_MIN_PREVIOUS && // compilation 68: never after a light frame
 					(guard ? s_forja_guard.MayChoose(s_forja_vsync) : s_forja_guard.WarmedUp()); // Forja 1.06
 				if (g_forja_gs_skip_drawing)
