@@ -385,8 +385,14 @@ tr: 1 de 2
 es: 1 de 2 rápido
 tr: 1 de 2 rápido
 
+es: 2 de 3
+tr: 2 de 3
+
 es: Saltar cuadros (GS):  < %s >
 tr: Pular quadros (GS):  < %s >
+
+es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
+tr: Desenha 1 quadro a cada 3, com o guardião rápido: mais velocidade que 1 de 2 onde o GS não dá conta (Dragon Ball para dois), mas a imagem fica mais travada  ·  agora: %s  ·  %s
 
 es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
 tr: 1 a cada 2 quadros com o guardião rápido: pausa pouco onde apareceria, para as lutas irem rápido (Dragon Ball para dois). Ao abrir um menu pode aparecer uma piscada curta  ·  agora: %s  ·  %s
@@ -558,9 +564,6 @@ tr: ESCOLHER
 
 es: ELEGIR  ·  X
 tr: ESCOLHER  ·  X
-
-es: X  ·  CUADRADO
-tr: X  ·  QUADRADO
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: ESCOLHER  ·  X  ·  QUADRADO
@@ -922,6 +925,30 @@ tr: Dá engasgos
 es: Se corta el sonido
 tr: O som corta
 
+es: En los personajes
+tr: Nos personagens
+
+es: En el fondo o el escenario
+tr: No fundo ou no cenário
+
+es: En el público
+tr: Na plateia
+
+es: En los textos o los menús
+tr: Nos textos ou nos menus
+
+es: En las luces, los brillos o las sombras
+tr: Nas luzes, brilhos ou sombras
+
+es: En toda la pantalla
+tr: Na tela toda
+
+es: Al empezar o al terminar una pelea o canción
+tr: Ao começar ou terminar uma luta ou música
+
+es: En los videos
+tr: Nos vídeos
+
 es: %d/%m a las %H:%M
 tr: %d/%m às %H:%M
 
@@ -961,11 +988,20 @@ tr: Comentário:  nenhum
 es: Comentario:  %s
 tr: Comentário:  %s
 
+es: Dónde se ve:  < sin elegir >
+tr: Onde aparece:  < sem escolher >
+
+es: Dónde se ve:  < %s >
+tr: Onde aparece:  < %s >
+
+es: Izquierda/Derecha: en qué parte de la pantalla o en qué momento se ve lo que falla. Es lo que solo tú ves: va con el reporte
+tr: Esquerda/Direita: em que parte da tela ou em que momento aparece a falha. Só você vê isso: vai junto com o relatório
+
 es: El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra
 tr: O teclado do PS4 não abriu: escolha uma frase com Esquerda/Direita. Quadrado apaga
 
-es: X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte
-tr: X: escreva com o teclado do PS4 o que aconteceu e onde. Esquerda/Direita: uma frase pronta. Vai junto com o relatório
+es: X: escribe con el teclado de la PS4 qué pasó (R2 lo guarda). Izquierda/Derecha: una frase lista. Se manda con el reporte
+tr: X: escreva com o teclado do PS4 o que aconteceu (R2 salva). Esquerda/Direita: uma frase pronta. Vai junto com o relatório
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X: mudar  ·  Esquerda/Direita: outra frase  ·  Quadrado: apagar. Vai junto com o próximo relatório

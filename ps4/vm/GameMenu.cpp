@@ -1841,11 +1841,12 @@ namespace PS4GameMenu
 			// Rendimiento without "(experimental)", and "1 de 2" says it skips even where the GS needs no help.
 			// Compilation 82: and a fourth value, "1 de 2 sin guardián"; compilation 86: "1 de 2 rápido", the guard with short pauses
 			// (without it, Dragon Ball's menus and the words at a fight's start and end flickered).
-			static constexpr const char* gs_skip_names[] = {N_("No"), N_("Auto"), N_("1 de 2"), N_("1 de 2 rápido")};
+			static constexpr const char* gs_skip_names[] = {N_("No"), N_("Auto"), N_("1 de 2"), N_("1 de 2 rápido"), N_("2 de 3")};
 			char gs_skip_label[256];
-			std::snprintf(gs_skip_label, sizeof(gs_skip_label), TF("Saltar cuadros (GS):  < %s >"), T(gs_skip_names[std::min(menu_state.gs_skip, 3u)]));
+			std::snprintf(gs_skip_label, sizeof(gs_skip_label), TF("Saltar cuadros (GS):  < %s >"), T(gs_skip_names[std::min(menu_state.gs_skip, 4u)]));
 			char gs_skip_description[512];
 			std::snprintf(gs_skip_description, sizeof(gs_skip_description),
+				menu_state.gs_skip == 4 ? TF("Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s") :
 				menu_state.gs_skip == 3 ? TF("1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s") :
 				menu_state.gs_skip == 2 ? TF("Siempre 1 de cada 2 cuadros, aunque el GS no lo necesite: mejor en Auto  ·  ahora: %s  ·  %s") :
 										  TF("Si el GS no da abasto, dibuja 1 de cada 2 cuadros: el juego va a su velocidad  ·  ahora: %s  ·  %s"),
@@ -2100,6 +2101,11 @@ namespace PS4GameMenu
 					draw->AddLine(ip(-9, -4), ip(9, -4), icon_line, lw);
 					draw->AddLine(ip(-9, 1), ip(4, 1), icon_line, lw);
 					break;
+				case ROW_REPORT_WHERE: // a target: where it shows (compilation 88)
+						draw->AddCircle(ip(0, 0), 13.0f * scale, icon_line, 20, lw);
+						draw->AddCircle(ip(0, 0), 6.0f * scale, icon_line, 14, lw);
+						draw->AddCircleFilled(ip(0, 0), 2.2f * scale, icon_line, 8);
+						break;
 				case ROW_REPORT_ISSUE: // a warning sign (compilation 80)
 						draw->AddTriangle(ip(0, -15), ip(16, 13), ip(-16, 13), icon_line, lw);
 						draw->AddLine(ip(0, -5), ip(0, 4), icon_line, lw);
@@ -2168,12 +2174,12 @@ namespace PS4GameMenu
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
 					action = T("AJUSTAR");
 				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
-				         row == ROW_SHARPNESS || row == ROW_GS_SKIP || row == ROW_CROWD)
+				         row == ROW_SHARPNESS || row == ROW_GS_SKIP || row == ROW_CROWD || row == ROW_REPORT_WHERE)
 					action = T("ELEGIR");
 				else if (row == ROW_REPORT_ISSUE) // compilation 82: X sends the report from here too
 					action = T("ELEGIR  ·  X");
-				else if (row == ROW_REPORT_COMMENT) // compilation 86: X writes, Cuadrado clears
-					action = T("X  ·  CUADRADO");
+				else if (row == ROW_REPORT_COMMENT) // compilation 86: X writes, Cuadrado clears; 87: Left/Right, a phrase
+					action = T("ELEGIR  ·  X  ·  CUADRADO");
 				else if (row == ROW_VU1_FILTER || row == ROW_GS_FILTER)
 					action = T("ELEGIR  ·  X  ·  CUADRADO"); // compilation 52: Cuadrado brings everything back
 				else if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)

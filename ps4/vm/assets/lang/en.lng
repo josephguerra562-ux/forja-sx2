@@ -385,8 +385,14 @@ tr: 1 of 2
 es: 1 de 2 rápido
 tr: 1 of 2, quick
 
+es: 2 de 3
+tr: 2 of 3
+
 es: Saltar cuadros (GS):  < %s >
 tr: Frame skip (GS):  < %s >
+
+es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
+tr: Draws 1 frame of every 3, with the quick guard: more speed than 1 of 2 where the GS can't keep up (Dragon Ball for two), but the picture is choppier  ·  now: %s  ·  %s
 
 es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
 tr: 1 of every 2 frames with the quick guard: it pauses briefly where it would show, so fights run fast (Dragon Ball for two). Opening a menu may show a short burst  ·  now: %s  ·  %s
@@ -558,9 +564,6 @@ tr: CHOOSE
 
 es: ELEGIR  ·  X
 tr: CHOOSE  ·  X
-
-es: X  ·  CUADRADO
-tr: X  ·  SQUARE
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: CHOOSE  ·  X  ·  SQUARE
@@ -922,6 +925,30 @@ tr: It stutters
 es: Se corta el sonido
 tr: The sound cuts out
 
+es: En los personajes
+tr: On the characters
+
+es: En el fondo o el escenario
+tr: In the background or the stage
+
+es: En el público
+tr: In the crowd
+
+es: En los textos o los menús
+tr: In the text or the menus
+
+es: En las luces, los brillos o las sombras
+tr: In the lights, glows or shadows
+
+es: En toda la pantalla
+tr: On the whole screen
+
+es: Al empezar o al terminar una pelea o canción
+tr: When a fight or song starts or ends
+
+es: En los videos
+tr: In the videos
+
 es: %d/%m a las %H:%M
 tr: %d/%m at %H:%M
 
@@ -961,11 +988,20 @@ tr: Comment:  none
 es: Comentario:  %s
 tr: Comment:  %s
 
+es: Dónde se ve:  < sin elegir >
+tr: Where it shows:  < not chosen >
+
+es: Dónde se ve:  < %s >
+tr: Where it shows:  < %s >
+
+es: Izquierda/Derecha: en qué parte de la pantalla o en qué momento se ve lo que falla. Es lo que solo tú ves: va con el reporte
+tr: Left/Right: in which part of the screen or at what moment the fault shows. Only you can see it: it goes with the report
+
 es: El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra
 tr: The PS4 keyboard didn't open: pick a phrase with Left/Right. Square deletes it
 
-es: X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte
-tr: X: write with the PS4 keyboard what happened and where. Left/Right: a ready phrase. It's sent with the report
+es: X: escribe con el teclado de la PS4 qué pasó (R2 lo guarda). Izquierda/Derecha: una frase lista. Se manda con el reporte
+tr: X: write with the PS4 keyboard what happened (R2 saves it). Left/Right: a ready phrase. It's sent with the report
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X: change it  ·  Left/Right: another phrase  ·  Square: delete it. It's sent with the next report

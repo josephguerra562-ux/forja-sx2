@@ -119,7 +119,11 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     el teclado no abría** (la PS4 no le dejaba cargarlo desde esa carpeta); desde la 87 se carga como lo hacen las apps de la
     PS4, y además **Izquierda/Derecha elige una frase lista** ("Se ve pixelado", "La imagen parpadea", "Da tirones"...), que
     sirve aunque el teclado no abra. Desde la 87 el reporte también dice si la consola es una **Pro** aunque no tenga el Modo
-    Boost (antes solo se sabía con el Modo Boost). Mientras se
+    Boost (antes solo se sabía con el Modo Boost). **Desde la 88:** en el teclado de la PS4, **R2 (o su tecla "Listo")
+    guarda** lo escrito; si se cierra con Círculo, Forja igual se queda con lo escrito si el sistema lo dejó. Y una fila
+    nueva, **Dónde se ve**, elige con Izquierda/Derecha en qué parte o en qué momento se ve lo que falla (en los personajes,
+    en el fondo, en el público, en los textos o menús, en las luces y sombras, en toda la pantalla, al empezar o terminar
+    una pelea o canción, en los videos): lo que solo ve el jugador, sin escribir. Va con el reporte. Mientras se
     manda, la fila cuenta los segundos (suele tardar ~5-10 s; con internet lento, hasta un minuto). Si no llega (sin internet,
     o se cerró el juego mientras se mandaba), queda pendiente y **se vuelve a mandar solo al abrir otro juego**.
   - **Sistema:** restablecer los ajustes del juego, volver a la biblioteca y salir.
@@ -184,7 +188,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     memoria donde guarda el público ya armado, y la gráfica las leía como si fueran el público. **Desde la 87 se guarda una
     copia del público armado** y en los cuadros sin público se vuelve a poner justo antes de que la gráfica lo lea. Desde la
     87, además, los dibujos por software chiquitos (64x64, como los de Dragon Ball) los hace el hilo del GS solo, sin
-    esperar a los otros núcleos: esa espera costaba más que el dibujo.
+    esperar a los otros núcleos: esa espera costaba más que el dibujo. **Desde la 88 el público también va 1 de cada 16
+    y 1 de cada 32** (se mueve menos, pero hay menos tirones), y el registro dice cuánto cuesta cada tipo de cuadro (con el
+    público dibujado, sin dibujarlo y sin público), para buscar lo que todavía lo frena.
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 86 **1 de 2 rápido** (abajo; en la 82-85 ese lugar era "1 de 2 sin guardián"). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
@@ -216,7 +222,9 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     85, después de una carga espera ~3 s de escena pesada** antes de saltar (antes ~1 s): las palabras del inicio de la
     pelea ya no parpadean, con o sin guardián. **Desde la 86, "1 de 2 sin guardián" pasa a ser "1 de 2 rápido"**: con
     guardián, pero con sus pausas cortas (2, 8 y 15 s) con uno o dos mandos. Sin guardián, el menú de pausa y las palabras
-    del inicio y del fin de la pelea parpadeaban. Quien lo tenía elegido pasa solo al nuevo.
+    del inicio y del fin de la pelea parpadeaban. Quien lo tenía elegido pasa solo al nuevo. **Desde la 88 hay "2 de 3"**:
+    dibuja 1 cuadro de cada 3 (con el guardián rápido), para las peleas pesadas donde ni 1 de 2 alcanza (Dragon Ball a dos:
+    48-95 % con 1 de 2 en la 87). Va más rápido, pero la imagen va más a saltos.
   - **Generación de cuadros:** No / Sí / **Fluida** (desde la 40). "Sí" dobla un juego estable a 30. "Fluida" rellena con un
     cuadro generado cada refresco en que la tele repetiría el anterior: es para los juegos PAL (50 cuadros en una tele de
     60 Hz: sin esto, 1 de cada 5 se queda el doble) y para los que alternan entre dos velocidades, como God of War II al 27 %

@@ -385,8 +385,14 @@ tr: 1 من 2
 es: 1 de 2 rápido
 tr: 1 من 2 سريع
 
+es: 2 de 3
+tr: 2 من 3
+
 es: Saltar cuadros (GS):  < %s >
 tr: تخطي الإطارات (GS):  < %s >
+
+es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
+tr: يرسم إطارًا واحدًا من كل 3 مع الحارس السريع: سرعة أكبر من 1 من 2 حيث لا يلحق GS (Dragon Ball للاعبين)، لكن الصورة أكثر تقطعًا  ·  الآن: %s  ·  %s
 
 es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
 tr: إطار واحد من كل 2 مع الحارس السريع: يتوقف قليلًا حيث سيظهر، لتبقى المعارك سريعة (Dragon Ball للاعبين). عند فتح قائمة قد يظهر وميض قصير  ·  الآن: %s  ·  %s
@@ -558,9 +564,6 @@ tr: اختيار
 
 es: ELEGIR  ·  X
 tr: اختيار  ·  X
-
-es: X  ·  CUADRADO
-tr: X  ·  المربع
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: اختيار  ·  X  ·  المربع
@@ -922,6 +925,30 @@ tr: يتقطع
 es: Se corta el sonido
 tr: الصوت ينقطع
 
+es: En los personajes
+tr: في الشخصيات
+
+es: En el fondo o el escenario
+tr: في الخلفية أو المسرح
+
+es: En el público
+tr: في الجمهور
+
+es: En los textos o los menús
+tr: في النصوص أو القوائم
+
+es: En las luces, los brillos o las sombras
+tr: في الأضواء أو اللمعان أو الظلال
+
+es: En toda la pantalla
+tr: في الشاشة كلها
+
+es: Al empezar o al terminar una pelea o canción
+tr: عند بداية أو نهاية قتال أو أغنية
+
+es: En los videos
+tr: في الفيديوهات
+
 es: %d/%m a las %H:%M
 tr: %d/%m الساعة %H:%M
 
@@ -961,11 +988,20 @@ tr: تعليق:  لا يوجد
 es: Comentario:  %s
 tr: تعليق:  %s
 
+es: Dónde se ve:  < sin elegir >
+tr: أين يظهر:  < لم يُختر >
+
+es: Dónde se ve:  < %s >
+tr: أين يظهر:  < %s >
+
+es: Izquierda/Derecha: en qué parte de la pantalla o en qué momento se ve lo que falla. Es lo que solo tú ves: va con el reporte
+tr: يسار/يمين: في أي جزء من الشاشة أو في أي لحظة يظهر الخلل. أنت وحدك تراه: يُرسل مع التقرير
+
 es: El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra
 tr: لم تُفتح لوحة مفاتيح PS4: اختر عبارة بـ يسار/يمين. المربع يحذفها
 
-es: X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte
-tr: X: اكتب بلوحة مفاتيح PS4 ما حدث وأين. يسار/يمين: عبارة جاهزة. يُرسل مع التقرير
+es: X: escribe con el teclado de la PS4 qué pasó (R2 lo guarda). Izquierda/Derecha: una frase lista. Se manda con el reporte
+tr: X: اكتب بلوحة مفاتيح PS4 ما حدث (R2 يحفظه). يسار/يمين: عبارة جاهزة. يُرسل مع التقرير
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X: تغييره  ·  يسار/يمين: عبارة أخرى  ·  المربع: حذفه. يُرسل مع التقرير القادم

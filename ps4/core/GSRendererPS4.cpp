@@ -71,6 +71,10 @@ extern std::atomic<int> g_forja_pads;
 // In 82-85 the value 3 had no guard, and Dragon Ball's pause menu and the words at a fight's start and end flickered
 // (Joseph played two sessions with it, 2026-10-24).
 std::atomic<bool> g_forja_gs_skip_quick{false};
+// Compilation 88: Saltar cuadros "2 de 3" (SaltarCuadros 4, main.cpp): two frames left out of every three. Dragon Ball Z
+// Budokai Tenkaichi 4 for two players (2026-10-25, the 87): at one in two its heavy fights still ran at 48-95 %, the GS at
+// 15-31 ms a refresh. The TV is shown one frame in three; a frame is drawn by force after two hidden ones anyway.
+std::atomic<bool> g_forja_gs_skip_two{false};
 static forja_skip::Guard s_forja_guard; // Forja 1.06 (ForjaSkipGuard.h)
 static u32 s_forja_hidden_total = 0;    // Forja 1.06: pictures hidden, for the guard's checks
 namespace
@@ -1080,10 +1084,14 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 						"(the game builds this picture another way: a menu, a result, a scene that changes); %u so far\n",
 						s_forja_guard.LastPause(), s_forja_guard.LastHidden(), forja_skip::Guard::kGroup, s_forja_guard.Unmasked());
 				}
-				const unsigned every = std::max(g_forja_gs_skip_every.load(std::memory_order_relaxed), 2u);
+				// Compilation 88: "2 de 3" leaves out the frames at counts 1 and 2 of every three, two in a row (the drawn frame,
+				// count 0, comes after them; the force above draws one after two hidden frames all the same).
+				const bool two = g_forja_gs_skip_two.load(std::memory_order_relaxed);
+				const unsigned every = two ? 3u : std::max(g_forja_gs_skip_every.load(std::memory_order_relaxed), 2u);
 				s_forja_skip_count = (s_forja_skip_count + 1) % every;
+				const bool turn = two ? s_forja_skip_count != 0 : s_forja_skip_count == 0;
 				const bool guard = g_forja_gs_skip_guard.load(std::memory_order_relaxed); // compilation 82
-				g_forja_gs_skip_drawing = forja_want && !g_forja_gs_skip_drawing && !force && s_forja_skip_count == 0 &&
+				g_forja_gs_skip_drawing = forja_want && (two || !g_forja_gs_skip_drawing) && !force && turn &&
 					s_forja_previous_frame_draws >= FORJA_SKIP_MIN_PREVIOUS && // compilation 68: never after a light frame
 					(guard ? s_forja_guard.MayChoose(s_forja_vsync) : s_forja_guard.WarmedUp()); // Forja 1.06
 				if (g_forja_gs_skip_drawing)

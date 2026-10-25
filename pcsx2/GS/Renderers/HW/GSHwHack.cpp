@@ -6,6 +6,7 @@
 #include "GS/GSGL.h"
 #include "GS/GSPerfMon.h"
 #include "GS/GSUtil.h"
+#include "common/Timer.h"
 
 #include <algorithm>
 #include <atomic>
@@ -294,8 +295,29 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 	static u32 s_gpu_fbp_count = 0;
 	static CrowdKept s_kept[6];
 	static u32 s_kept_put_back = 0, s_kept_copied = 0; // for the log
+	// Compilation 88: what each kind of frame costs the GS thread, from a frame's first draw to the next one's (its waits
+	// included): one that draws the crowd, one left out while there is a crowd, and frames without it; with the crowd's own
+	// work in them (the software draws, the copy put back). With 1 in 8 the software draws were ~0.7 ms a frame, yet the GS
+	// took 17-19 ms a frame with the crowd on screen against ~12 without it (the 87, 2026-10-25): this says where the rest is.
+	static u64 s_frame_t0 = 0, s_work_this_frame = 0;
+	static u64 s_kind_ticks[3] = {}, s_kind_work[3] = {};
+	static u32 s_kind_frames[3] = {};
 	if (const int frame = g_perfmon.GetFrame(); frame != s_pass_frame)
 	{
+		{
+			// Compilation 88: the frame that just ended, by kind (s_passes is still its pass).
+			const u64 now = Common::Timer::GetCurrentValue();
+			const unsigned kind = s_crowd_pass == s_passes && s_passes != 0 ? 0u :
+			                      s_leave_out && s_crowd_pass != 0 && s_passes - s_crowd_pass <= 2 * s_every ? 1u : 2u;
+			if (s_frame_t0 != 0 && Common::Timer::ConvertValueToMilliseconds(now - s_frame_t0) < 250.0)
+			{
+				s_kind_ticks[kind] += now - s_frame_t0;
+				s_kind_work[kind] += s_work_this_frame;
+				s_kind_frames[kind]++;
+			}
+			s_frame_t0 = now;
+			s_work_this_frame = 0;
+		}
 		s_pass_frame = frame;
 		s_every = std::max(g_forja_crowd_every.load(std::memory_order_relaxed), 1u);
 		s_leave_out = s_every > 1 && (s_passes++ % s_every) != 0;
@@ -310,6 +332,14 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 			ProbeLog("Crowd kept (87): %u copies of the finished crowd taken, %u put back in passes left out, since the last dump\n",
 				s_kept_copied, s_kept_put_back);
 			s_kept_copied = s_kept_put_back = 0;
+			const auto ms = [](u64 ticks, u32 frames) { return frames ? Common::Timer::ConvertValueToMilliseconds(ticks) / frames : 0.0; };
+			ProbeLog("Crowd frames (88): drawing the crowd %u, %.1f ms each (its software work %.1f); left out %u, %.1f ms each "
+				"(the copy put back %.2f); without a crowd %u, %.1f ms each\n",
+				s_kind_frames[0], ms(s_kind_ticks[0], s_kind_frames[0]), ms(s_kind_work[0], s_kind_frames[0]), s_kind_frames[1],
+				ms(s_kind_ticks[1], s_kind_frames[1]), ms(s_kind_work[1], s_kind_frames[1]), s_kind_frames[2],
+				ms(s_kind_ticks[2], s_kind_frames[2]));
+			for (unsigned i = 0; i < 3; i++)
+				s_kind_ticks[i] = s_kind_work[i] = s_kind_frames[i] = 0;
 			ProbeLog("Crowd draws: pass %u (1 in %u), the draws into its blocks in order:\n", s_passes, s_every);
 		}
 	}
@@ -358,8 +388,10 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 					scratch |= s_gpu_fbps[i] == fbp;
 				s_out[s_out_count++] = {fbp, fbp + std::max<u32>(RFBW, 1) * rows * 32, scratch};
 			}
+			const u64 work_t0 = Common::Timer::GetCurrentValue(); // compilation 88
 			r.ClearGSLocalMemory(r.m_context->offset.zb, r.m_r, 0);
 			r.SwPrimRender(r, RFBP != 0x2DC0, false);
+			s_work_this_frame += Common::Timer::GetCurrentValue() - work_t0;
 			skip = 1;
 		}
 		else
@@ -425,9 +457,11 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 						if (kept.tbp != tbp || kept.tbw != tbw || kept.pass != s_crowd_pass || kept.put_back == s_passes ||
 							kept.data.empty() || kept.height == 0)
 							continue;
+						const u64 work_t0 = Common::Timer::GetCurrentValue(); // compilation 88
 						std::memcpy(vm + static_cast<size_t>(tbp) * 256, kept.data.data(), kept.data.size());
 						g_texture_cache->InvalidateVideoMem(r.m_mem.GetOffset(tbp, tbw, PSMCT32),
 							GSVector4i(0, 0, static_cast<int>(tbw * 64), static_cast<int>(kept.height)));
+						s_work_this_frame += Common::Timer::GetCurrentValue() - work_t0;
 						kept.put_back = s_passes;
 						s_kept_put_back++;
 						break;

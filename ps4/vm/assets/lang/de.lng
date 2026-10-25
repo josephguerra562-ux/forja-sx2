@@ -385,8 +385,14 @@ tr: 1 von 2
 es: 1 de 2 rápido
 tr: 1 von 2 schnell
 
+es: 2 de 3
+tr: 2 von 3
+
 es: Saltar cuadros (GS):  < %s >
 tr: Bilder überspringen (GS):  < %s >
+
+es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
+tr: Zeichnet 1 von 3 Bildern, mit dem schnellen Wächter: schneller als 1 von 2, wo der GS nicht mitkommt (Dragon Ball zu zweit), aber das Bild ruckelt mehr  ·  jetzt: %s  ·  %s
 
 es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
 tr: 1 von 2 Bildern mit dem schnellen Wächter: kurze Pausen, wo es auffallen würde, damit Kämpfe schnell laufen (Dragon Ball zu zweit). Beim Öffnen eines Menüs kann es kurz flackern  ·  jetzt: %s  ·  %s
@@ -558,9 +564,6 @@ tr: WÄHLEN
 
 es: ELEGIR  ·  X
 tr: WÄHLEN  ·  X
-
-es: X  ·  CUADRADO
-tr: X  ·  QUADRAT
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: WÄHLEN  ·  X  ·  QUADRAT
@@ -922,6 +925,30 @@ tr: Es ruckelt
 es: Se corta el sonido
 tr: Der Ton setzt aus
 
+es: En los personajes
+tr: An den Figuren
+
+es: En el fondo o el escenario
+tr: Im Hintergrund oder in der Umgebung
+
+es: En el público
+tr: Im Publikum
+
+es: En los textos o los menús
+tr: In Texten oder Menüs
+
+es: En las luces, los brillos o las sombras
+tr: Bei Lichtern, Glanz oder Schatten
+
+es: En toda la pantalla
+tr: Auf dem ganzen Bildschirm
+
+es: Al empezar o al terminar una pelea o canción
+tr: Am Anfang oder Ende eines Kampfes oder Songs
+
+es: En los videos
+tr: In den Videos
+
 es: %d/%m a las %H:%M
 tr: %d.%m. um %H:%M
 
@@ -961,11 +988,20 @@ tr: Kommentar:  keiner
 es: Comentario:  %s
 tr: Kommentar:  %s
 
+es: Dónde se ve:  < sin elegir >
+tr: Wo es auftritt:  < nicht gewählt >
+
+es: Dónde se ve:  < %s >
+tr: Wo es auftritt:  < %s >
+
+es: Izquierda/Derecha: en qué parte de la pantalla o en qué momento se ve lo que falla. Es lo que solo tú ves: va con el reporte
+tr: Links/Rechts: in welchem Teil des Bildschirms oder in welchem Moment der Fehler auftritt. Nur du siehst das: es geht mit dem Bericht
+
 es: El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra
 tr: Die PS4-Tastatur ging nicht auf: Wähle einen Satz mit Links/Rechts. Quadrat löscht ihn
 
-es: X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte
-tr: X: Schreibe mit der PS4-Tastatur, was wo passiert ist. Links/Rechts: ein fertiger Satz. Wird mit dem Bericht gesendet
+es: X: escribe con el teclado de la PS4 qué pasó (R2 lo guarda). Izquierda/Derecha: una frase lista. Se manda con el reporte
+tr: X: Schreibe mit der PS4-Tastatur, was passiert ist (R2 speichert). Links/Rechts: ein fertiger Satz. Wird mit dem Bericht gesendet
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X: ändern  ·  Links/Rechts: anderer Satz  ·  Quadrat: löschen. Wird mit dem nächsten Bericht gesendet

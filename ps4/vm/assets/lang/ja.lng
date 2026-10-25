@@ -385,8 +385,14 @@ tr: 2回に1回
 es: 1 de 2 rápido
 tr: 2回に1回（速い）
 
+es: 2 de 3
+tr: 3回に2回
+
 es: Saltar cuadros (GS):  < %s >
 tr: フレームスキップ（GS）：  < %s >
+
+es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
+tr: 速いガード付きで3フレームに1回描画：GS が追いつかない場面で2回に1回より速くなります（Dragon Ball の2人プレイ）が、映像はよりカクつきます  ·  現在：%s  ·  %s
 
 es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
 tr: 速いガード付きで2フレームに1回描画：目立つ場面では短く一時停止し、対戦は速いままです（Dragon Ball の2人プレイ）。メニューを開くと一瞬ちらつくことがあります  ·  現在：%s  ·  %s
@@ -558,9 +564,6 @@ tr: 選択
 
 es: ELEGIR  ·  X
 tr: 選択  ·  X
-
-es: X  ·  CUADRADO
-tr: X  ·  □
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: 選択  ·  X  ·  □
@@ -922,6 +925,30 @@ tr: カクつく
 es: Se corta el sonido
 tr: 音が途切れる
 
+es: En los personajes
+tr: キャラクター
+
+es: En el fondo o el escenario
+tr: 背景やステージ
+
+es: En el público
+tr: 観客
+
+es: En los textos o los menús
+tr: 文字やメニュー
+
+es: En las luces, los brillos o las sombras
+tr: 光や輝き、影
+
+es: En toda la pantalla
+tr: 画面全体
+
+es: Al empezar o al terminar una pelea o canción
+tr: 対戦や曲の始まりか終わり
+
+es: En los videos
+tr: 動画
+
 es: %d/%m a las %H:%M
 tr: %m月%d日 %H:%M
 
@@ -961,11 +988,20 @@ tr: コメント：  なし
 es: Comentario:  %s
 tr: コメント：  %s
 
+es: Dónde se ve:  < sin elegir >
+tr: どこで起きるか：  < 未選択 >
+
+es: Dónde se ve:  < %s >
+tr: どこで起きるか：  < %s >
+
+es: Izquierda/Derecha: en qué parte de la pantalla o en qué momento se ve lo que falla. Es lo que solo tú ves: va con el reporte
+tr: 左/右：不具合が画面のどこで、どの場面で見えるか。あなたにしか見えないこと：レポートと一緒に送られます
+
 es: El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra
 tr: PS4 のキーボードが開きませんでした：左/右で文を選んでください。□で削除
 
-es: X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte
-tr: X：PS4 のキーボードで何がどこで起きたかを書く。左/右：用意された文。レポートと一緒に送られます
+es: X: escribe con el teclado de la PS4 qué pasó (R2 lo guarda). Izquierda/Derecha: una frase lista. Se manda con el reporte
+tr: X：PS4 のキーボードで何が起きたかを書く（R2 で保存）。左/右：用意された文。レポートと一緒に送られます
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X：変更  ·  左/右：別の文  ·  □：削除。次のレポートと一緒に送られます

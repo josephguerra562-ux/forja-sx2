@@ -385,8 +385,14 @@ tr: 1 из 2
 es: 1 de 2 rápido
 tr: 1 из 2, быстро
 
+es: 2 de 3
+tr: 2 из 3
+
 es: Saltar cuadros (GS):  < %s >
 tr: Пропуск кадров (GS):  < %s >
+
+es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
+tr: Рисует 1 кадр из 3, с быстрой защитой: быстрее, чем 1 из 2, там, где GS не справляется (Dragon Ball на двоих), но изображение дёрганее  ·  сейчас: %s  ·  %s
 
 es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
 tr: 1 из 2 кадров с быстрой защитой: короткие паузы там, где заметно, чтобы бои шли быстро (Dragon Ball на двоих). При открытии меню возможно короткое мерцание  ·  сейчас: %s  ·  %s
@@ -558,9 +564,6 @@ tr: ВЫБРАТЬ
 
 es: ELEGIR  ·  X
 tr: ВЫБРАТЬ  ·  X
-
-es: X  ·  CUADRADO
-tr: X  ·  КВАДРАТ
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: ВЫБРАТЬ  ·  X  ·  КВАДРАТ
@@ -922,6 +925,30 @@ tr: Есть рывки
 es: Se corta el sonido
 tr: Пропадает звук
 
+es: En los personajes
+tr: На персонажах
+
+es: En el fondo o el escenario
+tr: На фоне или на сцене
+
+es: En el público
+tr: В толпе зрителей
+
+es: En los textos o los menús
+tr: В тексте или в меню
+
+es: En las luces, los brillos o las sombras
+tr: В свете, бликах или тенях
+
+es: En toda la pantalla
+tr: На всём экране
+
+es: Al empezar o al terminar una pelea o canción
+tr: В начале или в конце боя или песни
+
+es: En los videos
+tr: В видеороликах
+
 es: %d/%m a las %H:%M
 tr: %d.%m в %H:%M
 
@@ -961,11 +988,20 @@ tr: Комментарий:  нет
 es: Comentario:  %s
 tr: Комментарий:  %s
 
+es: Dónde se ve:  < sin elegir >
+tr: Где видно:  < не выбрано >
+
+es: Dónde se ve:  < %s >
+tr: Где видно:  < %s >
+
+es: Izquierda/Derecha: en qué parte de la pantalla o en qué momento se ve lo que falla. Es lo que solo tú ves: va con el reporte
+tr: Влево/Вправо: в какой части экрана или в какой момент видна ошибка. Это видите только вы: отправится с отчётом
+
 es: El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra
 tr: Клавиатура PS4 не открылась: выберите фразу кнопками Влево/Вправо. Квадрат удаляет её
 
-es: X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte
-tr: X: напишите на клавиатуре PS4, что случилось и где. Влево/Вправо: готовая фраза. Отправится с отчётом
+es: X: escribe con el teclado de la PS4 qué pasó (R2 lo guarda). Izquierda/Derecha: una frase lista. Se manda con el reporte
+tr: X: напишите на клавиатуре PS4, что случилось (R2 сохраняет). Влево/Вправо: готовая фраза. Отправится с отчётом
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X: изменить  ·  Влево/Вправо: другая фраза  ·  Квадрат: удалить. Отправится со следующим отчётом

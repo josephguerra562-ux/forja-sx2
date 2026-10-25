@@ -356,10 +356,12 @@ extern std::atomic<bool> g_forja_gs_skip_paused;      // Forja 1.06: its guard h
 extern std::atomic<unsigned> g_forja_gs_skip_every;    // compilation 63: one frame in N left out
 extern std::atomic<bool> g_forja_gs_skip_guard;       // compilation 82: the guard on (always since 86)
 extern std::atomic<bool> g_forja_gs_skip_quick;       // compilation 86: "1 de 2 rápido" (SaltarCuadros 3), short pauses
+extern std::atomic<bool> g_forja_gs_skip_two;         // compilation 88: "2 de 3" (SaltarCuadros 4)
 // Compilation 82: the Guitar Hero games' crowd, drawn in software once every N of its passes (GSHwHack.cpp, GSC_GuitarHero;
 // [Forja] PublicoCada). Without a value, one in two: every one is PCSX2's, and cost Guitar Hero III ~36 ms a frame.
 extern std::atomic<u32> g_forja_crowd_every;
-static constexpr unsigned CROWD_EVERY_STEPS[] = {1u, 2u, 4u, 8u};
+// Compilation 88: 16 and 32 too (Joseph, 2026-10-25, Guitar Hero III: "el público sigue siendo el problema").
+static constexpr unsigned CROWD_EVERY_STEPS[] = {1u, 2u, 4u, 8u, 16u, 32u};
 static constexpr unsigned CROWD_EVERY_DEFAULT = 2u;
 static unsigned s_crowd_every = CROWD_EVERY_DEFAULT;
 static int s_gs_skip_mode = 0;
@@ -447,7 +449,8 @@ static void ForjaMovieSettings(bool movie)
 	ProbeLog("Movie settings: %s (frame generation %s%s; Saltar cuadros %s)\n", movie ? "on" : "off",
 		!g_orbis_fg_wanted ? "off" : g_orbis_fg_held ? "held, a PAL movie on a 59.94 Hz TV" : g_orbis_fg_fluid ? "fluid" : "steady",
 		fluid_before != g_orbis_fg_fluid ? ", changed" : "",
-		movie ? "paused" : s_gs_skip_mode >= 2 ? "one in two again" : s_gs_skip_mode == 1 ? "auto from every frame" : "off");
+		movie ? "paused" : s_gs_skip_mode == 4 ? "two in three again" : s_gs_skip_mode >= 2 ? "one in two again" :
+		s_gs_skip_mode == 1 ? "auto from every frame" : "off");
 }
 
 // Compilation 67: a movie cut short by the menu (a state loaded, the game restarted, its settings reset or recommended): what it
@@ -1878,6 +1881,13 @@ static constexpr const char* REPORT_PHRASES[] = {N_("Se ve pixelado"), N_("La im
 	N_("Se corta el sonido")};
 static constexpr int REPORT_PHRASE_COUNT = static_cast<int>(std::size(REPORT_PHRASES));
 static int s_report_phrase = -1;
+// Compilation 88: where it shows, the part only the player sees (Joseph, 2026-10-25: "queremos comentarios específicos...
+// lo que nosotros no podemos ver"). Left/Right on its row; it goes in Spanish in the report, as these lists are written.
+static constexpr const char* REPORT_WHERE[] = {N_("En los personajes"), N_("En el fondo o el escenario"), N_("En el público"),
+	N_("En los textos o los menús"), N_("En las luces, los brillos o las sombras"), N_("En toda la pantalla"),
+	N_("Al empezar o al terminar una pelea o canción"), N_("En los videos")};
+static constexpr int REPORT_WHERE_COUNT = static_cast<int>(std::size(REPORT_WHERE));
+static int s_report_where = -1;
 
 // Compilation 86: the PS4's own keyboard (the system's IME dialog) for the comment. The SDK has no stub library for it
 // (libSceImeDialog), so its module and the common dialogs' are loaded and their functions found by name the first time; if
@@ -1917,6 +1927,7 @@ namespace ForjaKeyboard
 	static bool s_loaded = false, s_failed = false, s_open = false;
 	static char16_t s_buffer[MaxLength + 1];
 	static char16_t s_title[64];
+	static std::string s_opened_with; // compilation 88: the text it opened with
 
 	static void ToUtf16(const std::string& in, char16_t* out, size_t capacity)
 	{
@@ -2037,6 +2048,7 @@ namespace ForjaKeyboard
 		if (s_open || !Load())
 			return false;
 		ToUtf16(current, s_buffer, MaxLength + 1);
+		s_opened_with = current; // compilation 88
 		ToUtf16(title, s_title, std::size(s_title));
 		Setting setting{};
 		setting.user_id = static_cast<uint32_t>(user);
@@ -2048,7 +2060,10 @@ namespace ForjaKeyboard
 		setting.vertical_alignment = 1;
 		setting.title = s_title;
 		const int32_t result = s_init(&setting, nullptr);
-		ProbeLog("Keyboard: open %#x\n", static_cast<unsigned>(result));
+		OrbisUserServiceUserId initial = ORBIS_USER_SERVICE_USER_ID_INVALID;
+		sceUserServiceGetInitialUser(&initial);
+		ProbeLog("Keyboard: open %#x (user %#x, the console's first user %#x)\n", static_cast<unsigned>(result),
+			static_cast<unsigned>(user), static_cast<unsigned>(initial)); // compilation 88
 		s_open = result == 0;
 		return s_open;
 	}
@@ -2066,9 +2081,16 @@ namespace ForjaKeyboard
 		s_term();
 		s_open = false;
 		done = got == 0 && result.end_status == 0;
-		if (done)
-			text = ToUtf8(s_buffer);
-		ProbeLog("Keyboard: closed (result %#x, end %d, %zu bytes)\n", static_cast<unsigned>(got), result.end_status, done ? text.size() : 0);
+		// Compilation 88: closed with Circle ("cancel"), what was written stays if the system left it in the buffer. Joseph's
+		// test of the 87 (2026-10-25): the keyboard opened, and 9 of its 10 closes were cancels with nothing kept; on the PS4's
+		// keyboard Circle closes it as a cancel, and only R2 or its "Listo" key closes it with the text.
+		const std::string buffer = ToUtf8(s_buffer);
+		const bool kept = !done && got == 0 && result.end_status == 1 && !buffer.empty() && buffer != s_opened_with;
+		if (done || kept)
+			text = buffer;
+		done = done || kept;
+		ProbeLog("Keyboard: closed (result %#x, end %d, %zu bytes%s)\n", static_cast<unsigned>(got), result.end_status,
+			done ? text.size() : buffer.size(), kept ? ", closed with Circle: kept" : done ? "" : " in the buffer, not kept");
 		return true; // the button that closed it is not the menu's
 	}
 
@@ -2219,7 +2241,9 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		}
 		// Compilation 86: 3 is "1 de 2 rápido", the guard with its short pauses (until 85 it had none: flicker in menus).
 		g_forja_gs_skip_guard.store(true, std::memory_order_relaxed);
-		g_forja_gs_skip_quick.store(gs_skip == 3, std::memory_order_relaxed);
+		// Compilation 88: 4 is "2 de 3", two frames left out of every three, with the same short pauses.
+		g_forja_gs_skip_quick.store(gs_skip == 3 || gs_skip == 4, std::memory_order_relaxed);
+		g_forja_gs_skip_two.store(gs_skip == 4, std::memory_order_relaxed);
 	}
 	// Compilation 82: the Guitar Hero games' crowd (GSC_GuitarHero reads the atomic on the GS thread).
 	s_crowd_every = s_profile.crowd_every > 0 ? static_cast<unsigned>(s_profile.crowd_every) : CROWD_EVERY_DEFAULT;
@@ -3018,6 +3042,10 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		case PS4GameMenu::ROW_REPORT_ISSUE: // compilation 80: what went wrong, not saved either
 			s_report_issue = (s_report_issue + REPORT_ISSUE_COUNT + delta) % REPORT_ISSUE_COUNT;
 			break;
+		case PS4GameMenu::ROW_REPORT_WHERE: // compilation 88: where it shows
+			s_report_where = s_report_where < 0 ? (delta > 0 ? 0 : REPORT_WHERE_COUNT - 1) :
+			                                      (s_report_where + REPORT_WHERE_COUNT + delta) % REPORT_WHERE_COUNT;
+			break;
 		case PS4GameMenu::ROW_REPORT_COMMENT: // compilation 87: a ready phrase as the comment
 			s_report_phrase = s_report_phrase < 0 ? (delta > 0 ? 0 : REPORT_PHRASE_COUNT - 1) :
 			                                        (s_report_phrase + REPORT_PHRASE_COUNT + delta) % REPORT_PHRASE_COUNT;
@@ -3042,7 +3070,7 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		{
 			// No, auto, one frame in two ([Forja] SaltarCuadros 0, 1, 2; compilation 47), and without the guard (3, compilation 82).
 			// ApplyGameProfile takes it from the file.
-			const int next = (s_gs_skip_mode + delta + 4) % 4;
+			const int next = (s_gs_skip_mode + delta + 5) % 5; // compilation 88: "2 de 3" too
 			SavePlayerProfile("GS skip", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "SaltarCuadros", next); }, false);
 			break;
 		}
@@ -3261,7 +3289,7 @@ static void ForjaSessionLines(std::string& header_text, std::string& settings_te
 		std::snprintf(cpu_auto, sizeof(cpu_auto), "hasta %d %%%s", EERatePercent(s_cpu_auto_floor),
 			CpuAutoIdle() ? ", no actúa: la CPU del juego ya está igual o más baja" : ""); // compilation 76
 	const char* frame_gen = !g_orbis_fg_wanted ? "No" : s_fg_fluid_profile ? "Fluida" : "Sí";
-	const char* gs_skip = s_gs_skip_mode == 3 ? "1 de 2 rápido" : s_gs_skip_mode == 2 ? "1 de 2" :
+	const char* gs_skip = s_gs_skip_mode == 4 ? "2 de 3" : s_gs_skip_mode == 3 ? "1 de 2 rápido" : s_gs_skip_mode == 2 ? "1 de 2" :
 	                      s_gs_skip_mode == 1 ? (s_gs_skip_useless ? "Auto (se apagó: el juego dibuja fuera de la pantalla y no hay cuadros que saltar)" :
 	                                                                 "Auto") :
 	                                            "No";
@@ -3384,6 +3412,8 @@ static void SendReport(double elapsed)
 	std::string text = "Reporte " + std::string(id) + " de un jugador: " + rating + "; qué falló: " + issue + "\n";
 	if (!s_report_comment.empty()) // compilation 86
 		text += "Comentario del jugador: " + s_report_comment + "\n";
+	if (s_report_where >= 0) // compilation 88
+		text += std::string("Dónde se ve: ") + REPORT_WHERE[s_report_where] + "\n";
 	text += "Medido: " + measured + "\n";
 	text += ForjaSession::Text(header, settings, false);
 	text += "\n--- Ahora\n";
@@ -3411,6 +3441,8 @@ static void SendReport(double elapsed)
 	std::string line = summary;
 	if (!s_report_comment.empty())
 		line += " · comentario: " + ForjaLang::Cut(s_report_comment, 300);
+	if (s_report_where >= 0) // compilation 88
+		line += std::string(" · dónde: ") + REPORT_WHERE[s_report_where];
 	if (ForjaReport::Send(std::string(id) + "_" + name, line, text))
 	{
 		s_report_last_sent = elapsed;
@@ -3418,6 +3450,7 @@ static void SendReport(double elapsed)
 			ForjaReport::HasChannel() ? "sending to the reports channel" : "kept in reportes/ (no channel in this build)");
 		s_report_comment.clear(); // it went with this one
 		s_report_phrase = -1; // compilation 87
+		s_report_where = -1; // compilation 88
 	}
 }
 
@@ -3470,9 +3503,18 @@ static void PublishReportText()
 		std::snprintf(label, sizeof(label), "%s", T("Comentario:  ninguno"));
 	else
 		std::snprintf(label, sizeof(label), TF("Comentario:  %s"), ForjaLang::Cut(s_report_comment, 70).c_str());
+	{
+		char where[256];
+		if (s_report_where < 0)
+			std::snprintf(where, sizeof(where), "%s", T("Dónde se ve:  < sin elegir >"));
+		else
+			std::snprintf(where, sizeof(where), TF("Dónde se ve:  < %s >"), T(REPORT_WHERE[s_report_where]));
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_REPORT_WHERE, where,
+			T("Izquierda/Derecha: en qué parte de la pantalla o en qué momento se ve lo que falla. Es lo que solo tú ves: va con el reporte"));
+	}
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_REPORT_COMMENT, label,
 		ForjaKeyboard::Failed() ? T("El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra") :
-		s_report_comment.empty() ? T("X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte") :
+		s_report_comment.empty() ? T("X: escribe con el teclado de la PS4 qué pasó (R2 lo guarda). Izquierda/Derecha: una frase lista. Se manda con el reporte") :
 		                           T("X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte"));
 }
 
@@ -3968,7 +4010,8 @@ void VMHostPoll()
 		// Forja SX2 (compilation 52): Cuadrado on a filter's row brings everything it left out back. Compilation 86: on the
 		// comment's, it clears it.
 		if ((pressed & ORBIS_PAD_BUTTON_SQUARE) != 0 &&
-			(row == PS4GameMenu::ROW_GS_FILTER || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_REPORT_COMMENT))
+			(row == PS4GameMenu::ROW_GS_FILTER || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_REPORT_COMMENT ||
+				row == PS4GameMenu::ROW_REPORT_WHERE))
 		{
 			if (row == PS4GameMenu::ROW_GS_FILTER)
 				BringBackGsGroups();
@@ -3977,6 +4020,8 @@ void VMHostPoll()
 				s_report_comment.clear();
 				s_report_phrase = -1; // compilation 87
 			}
+			else if (row == PS4GameMenu::ROW_REPORT_WHERE)
+				s_report_where = -1; // compilation 88
 			else
 				BringBackVu1Programs();
 			PublishGameMenu();
@@ -4016,7 +4061,8 @@ void VMHostPoll()
 			// Compilation 79: and the report's word, the one row of Sistema with values (in the 77 Left/Right did nothing there, so
 			// every report said "Perfecto").
 			else if (row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
-					 row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT) // 44; 80: what went wrong; 87
+					 row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT ||
+					 row == PS4GameMenu::ROW_REPORT_WHERE) // 44; 80: what went wrong; 87; 88
 				ChangeGameMenuRow(row, navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1);
 			else if (row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE)
 			{

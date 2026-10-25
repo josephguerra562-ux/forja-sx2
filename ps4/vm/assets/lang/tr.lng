@@ -385,8 +385,14 @@ tr: 2'de 1
 es: 1 de 2 rápido
 tr: 2'de 1, hızlı
 
+es: 2 de 3
+tr: 3'te 2
+
 es: Saltar cuadros (GS):  < %s >
 tr: Kare atlama (GS):  < %s >
+
+es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
+tr: Hızlı koruma ile her 3 karede 1 kare çizer: GS'nin yetişemediği yerde 2'de 1'den daha hızlı (iki oyunculu Dragon Ball), ama görüntü daha kesik kesik  ·  şimdi: %s  ·  %s
 
 es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
 tr: Hızlı koruma ile 2 karede 1: fark edileceği yerde kısa duraklar, dövüşler hızlı gider (iki oyunculu Dragon Ball). Menü açılırken kısa bir titreme görülebilir  ·  şimdi: %s  ·  %s
@@ -558,9 +564,6 @@ tr: SEÇ
 
 es: ELEGIR  ·  X
 tr: SEÇ  ·  X
-
-es: X  ·  CUADRADO
-tr: X  ·  KARE
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: SEÇ  ·  X  ·  KARE
@@ -922,6 +925,30 @@ tr: Takılıyor
 es: Se corta el sonido
 tr: Ses kesiliyor
 
+es: En los personajes
+tr: Karakterlerde
+
+es: En el fondo o el escenario
+tr: Arka planda veya sahnede
+
+es: En el público
+tr: Seyircilerde
+
+es: En los textos o los menús
+tr: Yazılarda veya menülerde
+
+es: En las luces, los brillos o las sombras
+tr: Işıklarda, parlamalarda veya gölgelerde
+
+es: En toda la pantalla
+tr: Ekranın tamamında
+
+es: Al empezar o al terminar una pelea o canción
+tr: Bir dövüş veya şarkı başlarken ya da biterken
+
+es: En los videos
+tr: Videolarda
+
 es: %d/%m a las %H:%M
 tr: %d.%m, %H:%M
 
@@ -961,11 +988,20 @@ tr: Yorum:  yok
 es: Comentario:  %s
 tr: Yorum:  %s
 
+es: Dónde se ve:  < sin elegir >
+tr: Nerede görülüyor:  < seçilmedi >
+
+es: Dónde se ve:  < %s >
+tr: Nerede görülüyor:  < %s >
+
+es: Izquierda/Derecha: en qué parte de la pantalla o en qué momento se ve lo que falla. Es lo que solo tú ves: va con el reporte
+tr: Sol/Sağ: hatanın ekranın hangi kısmında ya da hangi anda göründüğü. Bunu yalnızca sen görürsün: raporla gönderilir
+
 es: El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra
 tr: PS4 klavyesi açılmadı: Sol/Sağ ile bir cümle seç. Kare siler
 
-es: X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte
-tr: X: PS4 klavyesiyle ne olduğunu ve nerede olduğunu yaz. Sol/Sağ: hazır bir cümle. Raporla gönderilir
+es: X: escribe con el teclado de la PS4 qué pasó (R2 lo guarda). Izquierda/Derecha: una frase lista. Se manda con el reporte
+tr: X: PS4 klavyesiyle ne olduğunu yaz (R2 kaydeder). Sol/Sağ: hazır bir cümle. Raporla gönderilir
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X: değiştir  ·  Sol/Sağ: başka bir cümle  ·  Kare: sil. Bir sonraki raporla gönderilir

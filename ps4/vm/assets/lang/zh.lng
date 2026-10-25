@@ -385,8 +385,14 @@ tr: 2 取 1
 es: 1 de 2 rápido
 tr: 2 取 1，快速
 
+es: 2 de 3
+tr: 3 取 2
+
 es: Saltar cuadros (GS):  < %s >
 tr: 跳帧（GS）：  < %s >
+
+es: Dibuja 1 cuadro de cada 3, con el guardián rápido: más velocidad que 1 de 2 donde el GS no da abasto (Dragon Ball a dos), pero la imagen va más a saltos  ·  ahora: %s  ·  %s
+tr: 每 3 帧画 1 帧，使用快速保护：在 GS 跟不上的地方比 2 取 1 更快（Dragon Ball 双人），但画面更不连贯  ·  当前：%s  ·  %s
 
 es: 1 de cada 2 cuadros con el guardián rápido: pausa poco donde se notaría, para que las peleas vayan rápido (Dragon Ball a dos). Al abrir un menú puede verse una tanda corta  ·  ahora: %s  ·  %s
 tr: 每 2 帧画 1 帧，使用快速保护：在会被看出的地方只短暂暂停，让对战保持速度（Dragon Ball 双人）。打开菜单时可能会短暂闪烁  ·  当前：%s  ·  %s
@@ -558,9 +564,6 @@ tr: 选择
 
 es: ELEGIR  ·  X
 tr: 选择  ·  X
-
-es: X  ·  CUADRADO
-tr: X  ·  方块键
 
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: 选择  ·  X  ·  方块键
@@ -922,6 +925,30 @@ tr: 有卡顿
 es: Se corta el sonido
 tr: 声音断断续续
 
+es: En los personajes
+tr: 在角色上
+
+es: En el fondo o el escenario
+tr: 在背景或场景中
+
+es: En el público
+tr: 在观众中
+
+es: En los textos o los menús
+tr: 在文字或菜单中
+
+es: En las luces, los brillos o las sombras
+tr: 在灯光、光晕或阴影中
+
+es: En toda la pantalla
+tr: 整个画面
+
+es: Al empezar o al terminar una pelea o canción
+tr: 对战或歌曲开始或结束时
+
+es: En los videos
+tr: 在视频中
+
 es: %d/%m a las %H:%M
 tr: %m月%d日 %H:%M
 
@@ -961,11 +988,20 @@ tr: 评论：  无
 es: Comentario:  %s
 tr: 评论：  %s
 
+es: Dónde se ve:  < sin elegir >
+tr: 出现在哪里：  < 未选择 >
+
+es: Dónde se ve:  < %s >
+tr: 出现在哪里：  < %s >
+
+es: Izquierda/Derecha: en qué parte de la pantalla o en qué momento se ve lo que falla. Es lo que solo tú ves: va con el reporte
+tr: 左/右：问题出现在画面的哪个部分或什么时候。只有你看得到：随报告发送
+
 es: El teclado de la PS4 no abrió: elige una frase con Izquierda/Derecha. Cuadrado la borra
 tr: PS4 键盘没有打开：用左/右选择一句话。方块键删除
 
-es: X: escribe con el teclado de la PS4 qué pasó y dónde. Izquierda/Derecha: una frase lista. Se manda con el reporte
-tr: X：用 PS4 键盘写下发生了什么、在哪里。左/右：现成的句子。随报告发送
+es: X: escribe con el teclado de la PS4 qué pasó (R2 lo guarda). Izquierda/Derecha: una frase lista. Se manda con el reporte
+tr: X：用 PS4 键盘写下发生了什么（R2 保存）。左/右：现成的句子。随报告发送
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X：修改  ·  左/右：换一句  ·  方块键：删除。随下一份报告发送

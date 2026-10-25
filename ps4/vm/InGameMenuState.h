@@ -54,6 +54,7 @@ namespace PS4GameMenu
 		// Compilation 80: what went wrong, for the report: the picture, the sound and the controls are what no meter sees.
 		ROW_REPORT_ISSUE,
 		ROW_REPORT_COMMENT, // compilation 86: the player's comment, written with the PS4's keyboard (main.cpp, ForjaKeyboard)
+		ROW_REPORT_WHERE, // compilation 88: where on the screen or when it shows, chosen with Left/Right (main.cpp, REPORT_WHERE)
 		// Sistema
 		ROW_RESET_PROFILE,
 		ROW_LIBRARY,
@@ -133,13 +134,14 @@ namespace PS4GameMenu
 		return static_cast<std::uint64_t>((std::min(value.selected, ROW_COUNT - 1u) + 1u) |
 				(std::clamp(value.upscale, 1u, limit) << 8) |
 				(limit << 12) |
-				(std::min(value.aspect, 4u) << 16) |
+				(std::min(value.aspect, 4u) << 16) | // three bits (0-4): bit 19 is the skip mode's third (compilation 88)
+				((std::min(value.gs_skip, 4u) >> 2) << 19) |
 				(value.show_overlay ? (1u << 20) : 0u) |
 				(std::min(value.video, 6u) << 24) |
 				(std::min(value.video_origin, 2u) << 27) |
 				(value.frame_gen != 0 ? (1u << 29) : 0u) |
 				(value.frame_gen >= 2 ? (1u << 21) : 0u) | // compilation 40: fluid; bits 21-23 are free since 36
-				(std::min(value.gs_skip, 3u) << 22) | // compilation 47; 82: 3, without the guard
+				((std::min(value.gs_skip, 4u) & 3u) << 22) | // compilation 47; 82: 3; 88: 4 ("2 de 3"), its third bit at 19
 				(std::min(value.frame_gen_origin, 2u) << 30)) |
 			(static_cast<std::uint64_t>(std::min(value.cores, 3u)) << 32) |
 			(static_cast<std::uint64_t>(std::min(value.cores_origin, 2u)) << 34) |
@@ -170,7 +172,7 @@ namespace PS4GameMenu
 		state.selected = selection ? std::min(selection - 1u, ROW_COUNT - 1u) : 0u;
 		state.upscale = std::clamp((low >> 8) & 0x0fu, 1u, limit);
 		state.max_upscale = limit;
-		state.aspect = std::min((low >> 16) & 0x0fu, 4u);
+		state.aspect = std::min((low >> 16) & 0x07u, 4u);
 		state.show_overlay = (low & (1u << 20)) != 0;
 		state.ee_rate = static_cast<int>(std::min(static_cast<unsigned>((value >> 54) & 0x0fu), 9u)) - 6;
 		state.video = std::min((low >> 24) & 0x07u, 6u);
@@ -188,7 +190,7 @@ namespace PS4GameMenu
 		state.cpu_auto_steps = static_cast<unsigned>((value >> 48) & 0x0fu);
 		state.cpu_auto_origin = std::min(static_cast<unsigned>((value >> 52) & 0x03u), 2u);
 		state.sharpness = std::min(static_cast<unsigned>((value >> 58) & 0x07u), 4u);
-		state.gs_skip = (low >> 22) & 0x03u;
+		state.gs_skip = std::min(((low >> 22) & 0x03u) | (((low >> 19) & 0x01u) << 2), 4u);
 		state.gs_skip_active = (value & (std::uint64_t{1} << 61)) != 0;
 		state.gs_skip_origin = std::min(static_cast<unsigned>((value >> 62) & 0x03u), 2u);
 		return state;
