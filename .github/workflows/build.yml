@@ -130,9 +130,17 @@ jobs:
           name: ps4-executable-${{ github.run_id }}
           path: ps4/vm/build
 
+      # Forja SX2 (2026-10-25, run 92): Microsoft's download server answered 409 and the whole package failed. The
+      # windows-2022 image already has a .NET 8 SDK: if the download fails, that one is used (DOTNET_ROLL_FORWARD above).
       - uses: actions/setup-dotnet@v5
+        continue-on-error: true
         with:
           dotnet-version: '8.0.x'
+
+      - name: Check the .NET SDK
+        run: |
+          dotnet --list-sdks
+          if ($LASTEXITCODE -ne 0 -or -not (dotnet --list-sdks)) { throw 'No .NET SDK on this runner.' }
 
       - name: Build and validate PKG
         run: |
