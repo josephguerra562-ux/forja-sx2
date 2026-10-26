@@ -227,6 +227,16 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     la 92 deja mal el 43 % de las lecturas del público en 1 de 8 y el 62 % en 1 de 32 (lo que se ve en la PS4); la 94,
     ninguna. Queda una duda que el rastro de la 94 va a resolver: el tamaño real del desenfoque (si pisa una textura del
     escenario en 03b60, cosa que pasa igual desde la 83).
+    **En la 94 seguía pixelado "en ciertos ángulos, la mayor parte"** (reportes F-6281 y F-84ED). La foto ya tenía sus 64
+    páginas, pero muchas veces era **vieja** (de 600 a 1600 cuadros, hasta medio minuto): la ventana solo la tomaba en una
+    lectura que reconociera como del público, y el **brillo** que la gráfica dibuja en `02dc0` también contaba como público.
+    **Desde la 95 cambia la idea**, y es más simple: en un cuadro sin público solo se saltan las figuritas (lo caro); la
+    copia no se dibuja sino que **se pone la foto en el mismo momento en que el juego la haría**, y todo lo demás
+    (desenfoque, brillo, texturas del EE, la gráfica) pasa exactamente igual que en PCSX2. La foto se toma **justo después
+    de cada copia dibujada**, así que nunca es más vieja que la ventana; si lo es (después de un tramo sin figuritas), el
+    público se dibuja. Probado con los cuadros reales de la 94
+    (`herramientas/simulaciones/simular_publico_gh_copia.py`): en 1 de 2, 8 y 32, **0** lecturas del público con puntos o
+    viejas y **0** errores en el escenario o el brillo (la 94: hasta 0,9 % y 231 lecturas del escenario mal).
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 86 **1 de 2 rápido** (abajo; en la 82-85 ese lugar era "1 de 2 sin guardián"). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja
