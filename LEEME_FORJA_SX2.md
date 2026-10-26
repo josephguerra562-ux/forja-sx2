@@ -237,6 +237,14 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     público se dibuja. Probado con los cuadros reales de la 94
     (`herramientas/simulaciones/simular_publico_gh_copia.py`): en 1 de 2, 8 y 32, **0** lecturas del público con puntos o
     viejas y **0** errores en el escenario o el brillo (la 94: hasta 0,9 % y 231 lecturas del escenario mal).
+    **La 95 fue muy lenta (51-56 %)** y en 1 de 8 y 1 de 32 todavía se veía pixelado ("en el fondo o el escenario"); **en
+    "todos los cuadros" se vio bien** ("Nada en especial"). Lo lento: antes de cada dibujo del público, PCSX2 borra su
+    zona de profundidad con el rectángulo del dibujo **anterior** (casi toda la pantalla), y como esos búferes son
+    angostos ese borrado va **píxel por píxel**: ~25 por cuadro, ~4 millones de píxeles, **~15 ms de los ~20 que cuesta
+    el público** (la 95 los hacía también en los cuadros sin público). **Desde la 96** ese borrado se hace por bloques de
+    8x8: los mismos píxeles con los mismos valores, de a 256 bytes. Las 4 primeras veces de cada partida se hace de las
+    dos formas, se comparan los 4 MB de memoria byte por byte y el registro dice si quedó igual ("Crowd clear check");
+    si alguna vez difiere, vuelve el de PCSX2. Esto acelera también "todos los cuadros".
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 86 **1 de 2 rápido** (abajo; en la 82-85 ese lugar era "1 de 2 sin guardián"). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja

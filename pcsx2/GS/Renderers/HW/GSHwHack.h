@@ -10,6 +10,9 @@ public:
 	static bool GSC_Manhunt2(GSRendererHW& r, int& skip);
 	static bool GSC_SacredBlaze(GSRendererHW& r, int& skip);
 	static bool GSC_GuitarHero(GSRendererHW& r, int& skip);
+	// Forja SX2 (compilation 96): Guitar Hero's depth clears by 8x8 blocks (GSHwHack.cpp).
+	static void ForjaClearZ(GSRendererHW& r, const GSOffset& off, const GSVector4i& rect);
+	static void ForjaClearZByBlocks(GSRendererHW& r, const GSOffset& off, const GSVector4i& rect);
 	static bool GSC_SFEX3(GSRendererHW& r, int& skip);
 	static bool GSC_DTGames(GSRendererHW& r, int& skip);
 	static bool GSC_NamcoGames(GSRendererHW& r, int& skip);

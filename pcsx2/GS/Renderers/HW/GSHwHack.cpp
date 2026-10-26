@@ -244,6 +244,129 @@ std::atomic<u32> g_forja_crowd_every{1};
 u32 g_forja_crowd_trace = 0;
 extern void ProbeLog(const char* format, ...); // ps4/core/ProbeLoggerPS4.cpp (compilation 86: the crowd's draws)
 
+// Compilation 96: PCSX2 clears the depth buffer before each of the crowd's software draws, with r.m_r, which in IsBadFrame
+// is still the LAST drawn draw's rectangle, often the whole screen (GSC_GuitarHero below; upstream does the same). When
+// that rectangle is wider than the buffer (the sprites' buffers are 2 pages wide, the blur's 1, r.m_r 640) its clear goes
+// pixel by pixel: ~25 clears and ~4 million pixels a frame, ~15 ms of the ~20 the crowd costs the GS thread (the 95,
+// 2026-10-26: 16-20 ms in its frames without the crowd, which did only these clears and the small blur). This clears the
+// same pixels with the same values, by 8x8 blocks: a block whose 64 pixels are all inside is one 256-byte write. The first
+// 4 clears of a session are done both ways on the whole memory and compared byte by byte, into the log; PCSX2's result is
+// the one kept then.
+void GSHwHack::ForjaClearZByBlocks(GSRendererHW& r, const GSOffset& off, const GSVector4i& rect)
+{
+	const GSLocalMemory::psm_t& psm = GSLocalMemory::m_psm[off.psm()];
+	u32* const vm = r.m_mem.vm32();
+	const u32 keep = psm.fmt == GSLocalMemory::PSM_FMT_24 ? 0xff000000u : 0u; // what ClearGSLocalMemory keeps of a depth word
+	const GSOffset o = off.assertSizesMatch(GSLocalMemory::swizzle32);
+	const auto clear_pixel = [vm, keep](u32 at) { vm[at] &= keep; };
+	for (int yb = rect.y & ~7; yb < rect.w; yb += 8)
+	{
+		const int y0 = std::max(yb, rect.y), y1 = std::min(yb + 8, rect.w);
+		if (y0 == yb && y1 == yb + 8)
+		{
+			GSOffset::PAHelper rows[8];
+			for (int i = 0; i < 8; i++)
+				rows[i] = o.paMulti(0, yb + i);
+			for (int x = rect.x; x < rect.z;)
+			{
+				if ((x & 7) == 0 && x + 8 <= rect.z)
+				{
+					u32* const block = vm + (rows[0].value(x) & ~63u);
+					if (keep == 0)
+						std::memset(block, 0, 256);
+					else
+					{
+						for (int i = 0; i < 64; i++)
+							block[i] &= keep;
+					}
+					x += 8;
+				}
+				else
+				{
+					for (int i = 0; i < 8; i++)
+						clear_pixel(rows[i].value(x));
+					x++;
+				}
+			}
+		}
+		else
+		{
+			for (int y = y0; y < y1; y++)
+			{
+				const GSOffset::PAHelper pa = o.paMulti(0, y);
+				for (int x = rect.x; x < rect.z; x++)
+					clear_pixel(pa.value(x));
+			}
+		}
+	}
+}
+
+void GSHwHack::ForjaClearZ(GSRendererHW& r, const GSOffset& off, const GSVector4i& rect)
+{
+	static bool s_blocks_ok = true; // false after a check that differed: PCSX2's clear from then on
+	const GSLocalMemory::psm_t& psm = GSLocalMemory::m_psm[off.psm()];
+	// PCSX2's own whole-page path when it applies (it is fast), and anything but a 32 or 24-bit depth buffer: as PCSX2.
+	const bool whole_pages = rect.x == 0 && rect.y == 0 && (rect.z & (psm.pgs.x - 1)) == 0 &&
+		static_cast<u32>(std::max(rect.z, 0)) / 64u <= r.m_cached_ctx.FRAME.FBW;
+	if (!s_blocks_ok || whole_pages || !psm.depth || rect.rempty() ||
+		(psm.fmt != GSLocalMemory::PSM_FMT_32 && psm.fmt != GSLocalMemory::PSM_FMT_24))
+	{
+		r.ClearGSLocalMemory(off, rect, 0);
+		return;
+	}
+	// The blocks must be aligned 64-word runs in this format: checked on one whole block, else PCSX2's clear.
+	const int bx = (rect.x + 7) & ~7, by = (rect.y + 7) & ~7;
+	if (bx + 8 <= rect.z && by + 8 <= rect.w)
+	{
+		const GSOffset o = off.assertSizesMatch(GSLocalMemory::swizzle32);
+		const u32 base = o.paMulti(0, by).value(bx) & ~63u;
+		for (int y = by; y < by + 8; y++)
+		{
+			const GSOffset::PAHelper pa = o.paMulti(0, y);
+			for (int x = bx; x < bx + 8; x++)
+			{
+				if ((pa.value(x) & ~63u) != base)
+				{
+					r.ClearGSLocalMemory(off, rect, 0);
+					return;
+				}
+			}
+		}
+	}
+	static u32 s_checks = 0;
+	if (s_checks < 4)
+	{
+		s_checks++;
+		u8* const vm8 = r.m_mem.vm8();
+		const size_t size = static_cast<size_t>(GSLocalMemory::m_vmsize);
+		std::vector<u8> before(vm8, vm8 + size);
+		ForjaClearZByBlocks(r, off, rect);
+		std::vector<u8> mine(vm8, vm8 + size);
+		std::memcpy(vm8, before.data(), size);
+		const u64 t0 = Common::Timer::GetCurrentValue();
+		r.ClearGSLocalMemory(off, rect, 0);
+		const double pcsx2_ms = Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - t0);
+		size_t differ = 0, changed = 0;
+		for (size_t i = 0; i < size; i++)
+		{
+			differ += mine[i] != vm8[i] ? 1u : 0u;
+			changed += before[i] != vm8[i] ? 1u : 0u;
+		}
+		const u64 t1 = Common::Timer::GetCurrentValue();
+		ForjaClearZByBlocks(r, off, rect); // the same again (idempotent), timed
+		const double mine_ms = Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - t1);
+		std::memcpy(vm8, before.data(), size);
+		r.ClearGSLocalMemory(off, rect, 0); // PCSX2's result is the one kept
+		s_blocks_ok = differ == 0;
+		ProbeLog("Crowd clear check (96): zb=%05x bw=%u psm=%02x rect=%d,%d-%d,%d: %s (%zu bytes differ, %zu changed by the "
+			"clear), PCSX2's %.3f ms, by blocks %.3f ms\n", static_cast<unsigned>(off.bp()), static_cast<unsigned>(off.bw()),
+			static_cast<unsigned>(off.psm()), rect.x, rect.y, rect.z, rect.w, differ == 0 ? "the same" : "DIFFERENT", differ,
+			changed, pcsx2_ms, mine_ms);
+		return;
+	}
+	ForjaClearZByBlocks(r, off, rect);
+}
+
 bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 {
 	// Forja SX2: how Guitar Hero III builds its crowd, from the 93's and 94's traces (2026-10-25/26: 46 traces, 152 sequences,
@@ -495,9 +618,9 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 		if (s_leave_out && sprites)
 		{
 			// Compilation 95: the only thing a sequence left out leaves out. Its clear of the depth buffer still happens, as
-			// PCSX2 does it before each of these draws (82-94 left it out too).
+			// PCSX2 does it before each of these draws (82-94 left it out too); 96: by blocks (ForjaClearZ).
 			const u64 work_t0 = Common::Timer::GetCurrentValue();
-			r.ClearGSLocalMemory(r.m_context->offset.zb, r.m_r, 0);
+			ForjaClearZ(r, r.m_context->offset.zb, r.m_r);
 			s_work_this_frame += Common::Timer::GetCurrentValue() - work_t0;
 			skip = 1;
 			return true;
@@ -512,7 +635,7 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 				if (shot.data.empty() || shot.fbp != fbp || shot.fbw != fbw || shot.sprites != s_seq_sprites || (pages & ~shot.pages) != 0)
 					continue;
 				const u64 work_t0 = Common::Timer::GetCurrentValue();
-				r.ClearGSLocalMemory(r.m_context->offset.zb, r.m_r, 0); // as PCSX2 before the copy
+				ForjaClearZ(r, r.m_context->offset.zb, r.m_r); // as PCSX2 before the copy
 				u8* const vm = r.m_mem.vm8();
 				size_t from = 0;
 				for (u32 bit = 0; bit < 64; bit++)
@@ -549,7 +672,7 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 			}
 		}
 		const u64 work_t0 = Common::Timer::GetCurrentValue(); // compilation 88
-		r.ClearGSLocalMemory(r.m_context->offset.zb, r.m_r, 0);
+		ForjaClearZ(r, r.m_context->offset.zb, r.m_r);
 		r.SwPrimRender(r, RFBP != 0x2DC0, false);
 		if (copy && !s_leave_out)
 		{
