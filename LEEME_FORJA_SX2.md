@@ -213,6 +213,20 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     las fotos son solo de las páginas que el software escribió. Además, una vez por minuto el registro guarda tres cuadros
     completos del público (`Crowd trace`: cada dibujo con su tamaño y cada envío del EE), para arreglar lo que quede con
     datos exactos.
+    **En la 92 (prueba 93) seguía muy pixelado**, y el rastro mostró por qué. El juego arma el público en **una** secuencia
+    por cuadro: las figuritas en cuatro búferes chicos, **una copia de 256x512 en 02bc0** que la gráfica lee como cuatro
+    tiras de 32 bits, y después el EE manda encima las texturas del escenario. Lo que se tomaba por "personajes de 8 bits"
+    y por "tres secuencias" eran esas texturas del escenario: **la explicación de la 89 a la 92 estaba equivocada**. Y la
+    92 calculaba las páginas con el rectángulo del dibujo **anterior** (el emulador todavía no calculó el del dibujo en ese
+    punto): la foto guardaba 28 de las 64 páginas de la copia, y en los cuadros sin público dos de las cuatro tiras
+    mostraban las figuritas del EE como colores. **Desde la 94**: el rectángulo de cada dibujo es el suyo; solo cuenta como
+    público una lectura en el formato que escribió el software (32 bits); lo que el EE escribe encima deja de ser público;
+    en los tramos en que el juego no redibuja las figuritas (la 93 tuvo uno de 33 s al 57 %) el público también se deja
+    afuera; la ventana dibuja solo lo necesario (1 de cada N secuencias, no 2 o más); y la foto dura toda la canción.
+    Probado en la PC repitiendo los cuadros reales del rastro (`herramientas/simulaciones/simular_publico_gh_rastro.py`):
+    la 92 deja mal el 43 % de las lecturas del público en 1 de 8 y el 62 % en 1 de 32 (lo que se ve en la PS4); la 94,
+    ninguna. Queda una duda que el rastro de la 94 va a resolver: el tamaño real del desenfoque (si pisa una textura del
+    escenario en 03b60, cosa que pasa igual desde la 83).
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 86 **1 de 2 rápido** (abajo; en la 82-85 ese lugar era "1 de 2 sin guardián"). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja

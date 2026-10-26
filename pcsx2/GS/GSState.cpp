@@ -2962,6 +2962,16 @@ void GSState::Write(const u8* mem, int len)
 		GSVector4i r;
 
 		r = m_tr.rect;
+#if defined(PCSX2_PS4)
+		// Forja SX2 (compilation 94): Guitar Hero's crowd (GSHwHack.cpp, GSC_GuitarHero) is told which of the pages its
+		// software draws wrote the EE writes over: those are the game's textures then, not the crowd.
+		{
+			extern bool g_forja_crowd_live;
+			extern void ForjaCrowdTransfer(u32 dbp, u32 dbw, u32 dpsm, const GSVector4i& rc);
+			if (g_forja_crowd_live) [[unlikely]]
+				ForjaCrowdTransfer(blit.DBP, blit.DBW, blit.DPSM, r);
+		}
+#endif
 
 		s_last_transfer_draw_n = s_n;
 		// Store the transfer for preloading new RT's.
