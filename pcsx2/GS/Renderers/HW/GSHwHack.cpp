@@ -637,11 +637,9 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 		const bool copy = !sprites && s_sprite_hi != 0 && RTBP0 >= s_sprite_lo && RTBP0 < s_sprite_hi;
 		if (s_leave_out && sprites)
 		{
-			// Compilation 95: the only thing a sequence left out leaves out. Its clear of the depth buffer still happens, as
-			// PCSX2 does it before each of these draws (82-94 left it out too); 96: by blocks (ForjaClearZ).
-			const u64 work_t0 = Common::Timer::GetCurrentValue();
-			ForjaClearZ(r, r.m_context->offset.zb, r.m_r);
-			s_work_this_frame += Common::Timer::GetCurrentValue() - work_t0;
+			// Compilation 95: the only thing a sequence left out leaves out. Compilation 98: its clears of the depth buffer too.
+			// Only these software draws use it, and a drawn sequence clears it first. They were 11 % of the GS thread (2 ms a
+			// frame, 2026-10-30), and the EE was waiting 3 ms a frame for the GS, with 3 ms too many of its own.
 			skip = 1;
 			return true;
 		}
@@ -655,7 +653,6 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 				if (shot.data.empty() || shot.fbp != fbp || shot.fbw != fbw || shot.sprites != s_seq_sprites || (pages & ~shot.pages) != 0)
 					continue;
 				const u64 work_t0 = Common::Timer::GetCurrentValue();
-				ForjaClearZ(r, r.m_context->offset.zb, r.m_r); // as PCSX2 before the copy
 				u8* const vm = r.m_mem.vm8();
 				size_t from = 0;
 				for (u32 bit = 0; bit < 64; bit++)

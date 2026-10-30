@@ -50,6 +50,7 @@ struct ThreadSamples {
     std::atomic<pthread_t> thread{};
     const char* name = nullptr;
     uint64_t samples[kMaxSamples];
+    uint32_t callers[kMaxSamples];  // Forja SX2 (compilation 98): who called into a system module (see profHandler)
     std::atomic<int> count{0};
 };
 
@@ -71,9 +72,21 @@ void profHandler(int, siginfo_t*, void* context) {
             // top of samples.log maps it to a module offset, which the decrypted modules' symbol
             // tables name. (Blaming "the first eboot address on the stack" picked up stale
             // values and named the wrong callers.)
-            if (sample >= kSystemLibs && sample < 2 * kSystemLibs)
+            // Forja SX2 (compilation 98): a kernel call's samples say nothing by themselves: 24 % of the EE's time in Guitar Hero
+            // was two of them (2026-10-30). Their caller, for the window's summary: the nearest eboot address on the stack. It can
+            // be stale, so it is a lead, not a proof.
+            uint32_t caller = 0;
+            if (sample >= kSystemLibs && sample < 2 * kSystemLibs) {
                 sample |= kCallerTag;
+                const uintptr_t text = reinterpret_cast<uintptr_t>(__text_start);
+                const auto* stack = reinterpret_cast<const uint64_t*>(regs[kRspIndex]);
+                for (int word = 0; word < 48 && !caller; word++) {
+                    if (stack[word] >= text && stack[word] < text + kTextWindow)
+                        caller = static_cast<uint32_t>(stack[word] - text);
+                }
+            }
             t.samples[n] = sample;
+            t.callers[n] = caller;
             t.count.store(n + 1, std::memory_order_release);
         }
         return;
@@ -96,9 +109,15 @@ void noteHotJit(uint64_t address, int count);
 // Aggregates one thread's window: sorts the samples in place and prints the top entries.
 void report(int fd, ThreadSamples& t, double window_start) {
     // Copy first: the handler keeps writing into t.samples once count is reset.
-    static uint64_t s[kMaxSamples];
+    static uint64_t s[kMaxSamples], pairs[kMaxSamples];
     const int n = std::min(t.count.load(std::memory_order_acquire), kMaxSamples);
     memcpy(s, t.samples, sizeof(uint64_t) * n);
+    // Forja SX2 (compilation 98): system address and caller, one key, before s is bucketed below.
+    int pair_count = 0;
+    for (int i = 0; i < n; i++) {
+        if (s[i] & kCallerTag)
+            pairs[pair_count++] = (((s[i] & ~kCallerTag) - kSystemLibs) >> 4 << 36) | (t.callers[i] >> 4);
+    }
     t.count.store(0, std::memory_order_release);
     if (n == 0)
         return;
@@ -150,6 +169,23 @@ void report(int fd, ThreadSamples& t, double window_start) {
         else
             snprintf(line, sizeof(line), "  %5.1f%% elf 0x%llx\n", 100.0 * entries[i].count / n,
                      static_cast<unsigned long long>(entries[i].key));
+        writeLine(fd, line);
+    }
+    // Forja SX2 (compilation 98): the commonest kernel calls with their callers ("caller", so perfil_funciones.py skips them).
+    std::sort(pairs, pairs + pair_count);
+    unique = 0;
+    for (int i = 0; i < pair_count;) {
+        int j = i;
+        while (j < pair_count && pairs[j] == pairs[i])
+            j++;
+        entries[unique++] = {pairs[i], j - i};
+        i = j;
+    }
+    std::sort(entries, entries + unique, [](const Entry& a, const Entry& b) { return a.count > b.count; });
+    for (int i = 0; i < unique && i < 12 && entries[i].count >= 2; i++) {
+        snprintf(line, sizeof(line), "  %5.1f%% caller sys 0x%llx from elf 0x%llx\n", 100.0 * entries[i].count / n,
+                 static_cast<unsigned long long>(((entries[i].key >> 36) << 4) + kSystemLibs),
+                 static_cast<unsigned long long>((entries[i].key & 0xFFFFFFFFFULL) << 4));
         writeLine(fd, line);
     }
 }
