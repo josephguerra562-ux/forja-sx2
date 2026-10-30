@@ -638,8 +638,10 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 		if (s_leave_out && sprites)
 		{
 			// Compilation 95: the only thing a sequence left out leaves out. Compilation 98: its clears of the depth buffer too.
-			// Only these software draws use it, and a drawn sequence clears it first. They were 11 % of the GS thread (2 ms a
-			// frame, 2026-10-30), and the EE was waiting 3 ms a frame for the GS, with 3 ms too many of its own.
+			// A drawn sequence clears it first. 01a40 is also the GPU's depth buffer (FBW 10), but that one lives in the texture
+			// cache; in the traces the EE never sends into these blocks and the GPU only reads them as that target. Not proved for
+			// a target made anew from memory; 82-94 left these clears out too, with no depth fault reported. They were 11 % of the
+			// GS thread (2 ms a frame, 2026-10-30), and the EE was waiting 3 ms a frame for the GS, with 3 ms too many of its own.
 			skip = 1;
 			return true;
 		}

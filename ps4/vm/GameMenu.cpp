@@ -215,6 +215,7 @@ namespace PS4GameMenu
 			SET_VIDEO_MODE,
 			SET_FRAME_GEN,
 			SET_MENU_BUTTON,
+			SET_GAMES_SOURCE, // compilation 98
 			SET_INTERNAL_GAMES, // compilation 97: these three only show a number
 			SET_FOLDER_GAMES,
 			SET_USB_DRIVES,
@@ -223,7 +224,7 @@ namespace PS4GameMenu
 
 		// Compilation 97: which settings each of the three pages has, in their order on the page. The ones that apply to the games
 		// have a page of their own; a page's cursor (settings_row) is an index into these.
-		constexpr SettingRow StorageRows[] = {SET_GAMES_FOLDER, SET_INTERNAL_GAMES, SET_FOLDER_GAMES, SET_USB_DRIVES};
+		constexpr SettingRow StorageRows[] = {SET_GAMES_SOURCE, SET_GAMES_FOLDER, SET_INTERNAL_GAMES, SET_FOLDER_GAMES, SET_USB_DRIVES};
 		constexpr SettingRow GameSettingsRows[] = {SET_EE_RATE, SET_CPU_AUTO, SET_UPSCALE, SET_ASPECT, SET_FAST_CDVD, SET_READBACK,
 			SET_VIDEO_MODE, SET_FRAME_GEN};
 		constexpr SettingRow EmulatorSettingsRows[] = {SET_LANGUAGE, SET_ASK_LANGUAGE, SET_FAST_BOOT, SET_MENU_BUTTON, SET_OVERLAY, SET_STICK};
@@ -250,7 +251,7 @@ namespace PS4GameMenu
 				N_("Carpeta de juegos"), N_("Velocidad del CPU de la PS2"), N_("CPU automático"), N_("Resolución interna"), N_("Relación de aspecto"),
 				N_("Contador de FPS al jugar"), N_("Sensibilidad de la palanca"), N_("Cargas rápidas del disco"),
 				N_("Saltar el logo de la PS2"), N_("Lecturas de la gráfica (readbacks)"), N_("Modo video automático"),
-				N_("Generación de cuadros (30 a 60 FPS)"), N_("Botón del menú del emulador"), N_("Juegos en la memoria interna"), N_("Juegos en la carpeta elegida"),
+				N_("Generación de cuadros (30 a 60 FPS)"), N_("Botón del menú del emulador"), N_("Qué juegos mostrar"), N_("Juegos en la memoria interna"), N_("Juegos en la carpeta elegida"),
 				N_("Memorias USB conectadas")};
 			return T(labels[std::min(row, SettingsRows - 1)]);
 		}
@@ -260,7 +261,7 @@ namespace PS4GameMenu
 			static constexpr const char* help[SettingsRows] = {
 				N_("El idioma de todo el emulador. X abre la lista de idiomas"),
 				N_("Sí: la lista de idiomas sale cada vez que abres Forja SX2"),
-				N_("Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla"),
+				N_("Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla"),
 				N_("Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla"),
 				N_("Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso"),
 				N_("1x es la de la PS2. En PS4 Pro aguanta 2x-4x en juegos ligeros"),
@@ -273,7 +274,8 @@ namespace PS4GameMenu
 				N_("En los videos del juego busca el CPU de la PS2 que da más cuadros (31 a 100 %) y lo devuelve al terminar"),
 				N_("EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso"),
 				N_("Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2"),
-				N_("Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca"),
+				N_("Todas: la memoria interna y la carpeta elegida. También puedes ver solo una de las dos"),
+				N_("Los que están en /data/ForjaSX2/roms"),
 				N_("Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas"),
 				N_("Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT")};
 			return T(help[std::min(row, SettingsRows - 1)]);
@@ -291,7 +293,13 @@ namespace PS4GameMenu
 			{
 				case SET_LANGUAGE: std::snprintf(out, size, "%s", ForjaLang::Languages[ForjaLang::Current()].name); break;
 				case SET_ASK_LANGUAGE: std::snprintf(out, size, "%s", yes_no(v.ask_language)); break;
-				case SET_GAMES_FOLDER: std::snprintf(out, size, "%s", v.games_folder[0] ? v.games_folder : T("Solo la interna")); break;
+				case SET_GAMES_FOLDER: std::snprintf(out, size, "%s", v.games_folder[0] ? v.games_folder : T("Ninguna")); break;
+				case SET_GAMES_SOURCE:
+				{
+					static constexpr const char* source_names[] = {N_("Todas"), N_("Solo la interna"), N_("Solo la carpeta elegida")};
+					std::snprintf(out, size, "%s", T(source_names[std::clamp(v.games_source, 0, 2)]));
+					break;
+				}
 				case SET_EE_RATE: std::snprintf(out, size, "%s", T(ee_names[std::clamp(v.ee_rate, -6, 3) + 6])); break;
 				case SET_CPU_AUTO: std::snprintf(out, size, "%s", T(cpu_auto_names[-std::clamp(v.cpu_auto, -6, 0)])); break;
 				case SET_UPSCALE: std::snprintf(out, size, v.upscale == 1 ? TF("%dx (nativa)") : "%dx", v.upscale); break;
@@ -313,7 +321,7 @@ namespace PS4GameMenu
 					if (v.games_folder[0])
 						std::snprintf(out, size, "%u", s_storage_folder_gs);
 					else
-						std::snprintf(out, size, "%s", T("Solo la interna"));
+						std::snprintf(out, size, "%s", T("Ninguna"));
 					break;
 				case SET_USB_DRIVES: std::snprintf(out, size, "%u", s_storage_usb_gs); break;
 				default:
@@ -338,6 +346,7 @@ namespace PS4GameMenu
 			switch (row)
 			{
 				case SET_LANGUAGE: break;
+				case SET_GAMES_SOURCE: v.games_source = step(v.games_source, 0, 2); break;
 				case SET_GAMES_FOLDER:
 				case SET_INTERNAL_GAMES:
 				case SET_FOLDER_GAMES:
@@ -769,10 +778,12 @@ namespace PS4GameMenu
 		std::vector<Item> Scan()
 		{
 			std::vector<Item> items;
-			ScanFolder(Directory, items);
 			// Compilation 97: the folder picked in Settings, besides the internal one. A drive not plugged in just lists nothing.
+			// Compilation 98: or only one of the two.
 			const ForjaSettings::Values settings = ForjaSettings::Load();
-			if (settings.games_folder[0] && std::strcmp(settings.games_folder, Directory) != 0)
+			if (settings.games_source != 2)
+				ScanFolder(Directory, items);
+			if (settings.games_source != 1 && settings.games_folder[0] && std::strcmp(settings.games_folder, Directory) != 0)
 				ScanFolder(settings.games_folder, items);
 			std::sort(items.begin(), items.end(), [](const Item& a, const Item& b) { return a.name < b.name; });
 			orbis_stage("game library listed (covers loaded)");
@@ -1286,16 +1297,36 @@ namespace PS4GameMenu
 		};
 		// Compilation 97: the Storage page's numbers.
 		const auto publish_storage = [&]() {
-			unsigned internal_games = 0;
-			for (const Item& item : library)
-				internal_games += item.path.rfind(Directory, 0) == 0 ? 1u : 0u;
-			const unsigned folder_games = static_cast<unsigned>(library.size()) - internal_games;
+			unsigned internal_games = 0, folder_games = 0;
+			ListFolders(Directory, internal_games);
+			if (settings.games_folder[0])
+				ListFolders(settings.games_folder, folder_games);
 			const unsigned usb_drives = static_cast<unsigned>(ListFolderRoots().size()) - 2;
 			MTGS::RunOnGSThread([internal_games, folder_games, usb_drives]() {
 				s_storage_internal_gs = internal_games;
 				s_storage_folder_gs = folder_games;
 				s_storage_usb_gs = usb_drives;
 			});
+		};
+		const auto rescan_library = [&]() {
+			library = Scan();
+			library_cover_index = 0;
+			items = BuildView(library, view, favorites, recent);
+			pump_library_cover();
+			selected = 0;
+			Publish(items, view);
+			publish_storage();
+			save_settings(ForjaLang::F(TF("Guardado. %u juegos en la biblioteca."), static_cast<unsigned>(library.size())).c_str());
+		};
+		// Compilation 98: "Qué juegos mostrar". With no folder chosen yet, "Solo la carpeta" opens the picker.
+		const auto change_source = [&](int delta, bool wrap) {
+			ChangeSetting(settings, SET_GAMES_SOURCE, delta, wrap);
+			ProbeLog("Game menu: games shown now %d\n", settings.games_source);
+			std::snprintf(settings.language, sizeof(settings.language), "%s", ForjaLang::CurrentCode());
+			ForjaSettings::Save(settings);
+			rescan_library();
+			if (settings.games_source == 2 && !settings.games_folder[0])
+				open_folder(std::string());
 		};
 		const auto set_view = [&](LibraryView next) {
 			boot_disc_when_ready = false;
@@ -1522,15 +1553,13 @@ namespace PS4GameMenu
 				const auto choose_folder = [&](const std::string& folder) {
 					close_picker();
 					std::snprintf(settings.games_folder, sizeof(settings.games_folder), "%s", folder.c_str());
-					ProbeLog("Game menu: game folder is now '%s'\n", settings.games_folder);
-					library = Scan();
-					library_cover_index = 0;
-					items = BuildView(library, view, favorites, recent);
-					pump_library_cover();
-					selected = 0;
-					Publish(items, view);
-					publish_storage();
-					save_settings(ForjaLang::F(TF("Guardado. %u juegos en la biblioteca."), static_cast<unsigned>(library.size())).c_str());
+					// Compilation 98: a folder chosen while only the internal one is shown would not show; no folder, nothing to show.
+					if ((settings.games_source == 1 && !folder.empty()) || (settings.games_source == 2 && folder.empty()))
+						settings.games_source = 0;
+					ProbeLog("Game menu: game folder is now '%s', games shown %d\n", settings.games_folder, settings.games_source);
+					std::snprintf(settings.language, sizeof(settings.language), "%s", ForjaLang::CurrentCode());
+					ForjaSettings::Save(settings);
+					rescan_library();
 				};
 				u32 dialog_navigation = buttons & ORBIS_PAD_BUTTON_UP ? ORBIS_PAD_BUTTON_UP : buttons & ORBIS_PAD_BUTTON_DOWN ? ORBIS_PAD_BUTTON_DOWN : 0;
 				if (connected && !dialog_navigation)
@@ -1723,8 +1752,10 @@ namespace PS4GameMenu
 						               ForjaLang::LanguageCount);
 					else if (view == LibraryView::Storage)
 					{
-						// Nothing to adjust here: the folder opens with X, and the rest are numbers.
-						if (navigation == ORBIS_PAD_BUTTON_LEFT)
+						// Compilation 98: what to show is adjusted; the folder opens with X, and the rest are numbers.
+						if (row == SET_GAMES_SOURCE && (navigation == ORBIS_PAD_BUTTON_LEFT || navigation == ORBIS_PAD_BUTTON_RIGHT))
+							change_source(navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1, false);
+						else if (navigation == ORBIS_PAD_BUTTON_LEFT)
 							sidebar_focused = true;
 					}
 					else if (navigation == ORBIS_PAD_BUTTON_LEFT)
@@ -1814,6 +1845,8 @@ namespace PS4GameMenu
 					}
 					else if (row == SET_GAMES_FOLDER)
 						open_folder(std::string());
+					else if (row == SET_GAMES_SOURCE)
+						change_source(1, true);
 					else if (view != LibraryView::Storage)
 						change_setting(1, true);
 					Present(selected, status, connected, false, false, false);
@@ -2625,7 +2658,7 @@ namespace PS4GameMenu
 				char value[128];
 				SettingValue(s_settings_gs, row, value, sizeof(value));
 				char shown[160];
-				std::snprintf(shown, sizeof(shown), focused && s_library_view != LibraryView::Storage ? "<  %s  >" : "%s", value);
+				std::snprintf(shown, sizeof(shown), focused && (s_library_view != LibraryView::Storage || row == SET_GAMES_SOURCE) ? "<  %s  >" : "%s", value);
 				const float value_w = std::min(text_width(28, shown), 640.0f);
 				text(1766 - value_w, y + 42, 28, focused ? white : accent, shown, 640);
 				text(380, y + 42, 28, white, SettingLabel(row), 1766 - value_w - 40 - 380);
@@ -2707,8 +2740,7 @@ namespace PS4GameMenu
 			// Forja SX2: the Settings page's own buttons.
 			image("controle_x", 346, 1001, 30, 30);
 			text(384, 1023, 16, white, T("Cambiar"), 126);
-			if (s_library_view != LibraryView::Storage)
-				text(520, 1023, 16, white, T("Izq./Der.: ajustar   Arriba/Abajo: elegir"), 500);
+			text(520, 1023, 16, white, T("Izq./Der.: ajustar   Arriba/Abajo: elegir"), 500);
 			image("controle_bola", 1035, 1001, 30, 30);
 			text(1073, 1023, 16, muted, T("Menú lateral"), 400);
 		}
@@ -2833,7 +2865,7 @@ namespace PS4GameMenu
 				fill(490, y, 940, 60, active ? IM_COL32(18, 88, 153, 255) : IM_COL32(11, 34, 54, 255), 10);
 				draw->AddRect(point(490, y), point(1430, y + 60), active ? IM_COL32(48, 170, 255, 255) : IM_COL32(37, 80, 113, 190),
 					10 * scale, active ? 2.0f * scale : 1.0f * scale, 0);
-				text(516, y + 40, 24, active ? white : muted, at_roots && name.empty() ? T("Solo la interna") : name.c_str(), 890);
+				text(516, y + 40, 24, active ? white : muted, at_roots && name.empty() ? T("Quitar la carpeta") : name.c_str(), 890);
 			}
 			float hint_x = 640;
 			image("controle_x", hint_x, 878, 28, 28);

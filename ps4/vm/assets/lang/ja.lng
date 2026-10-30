@@ -49,6 +49,9 @@ tr: フレーム生成（30→60 FPS）
 es: Botón del menú del emulador
 tr: エミュレーターメニューのボタン
 
+es: Qué juegos mostrar
+tr: 表示するゲーム
+
 es: Juegos en la memoria interna
 tr: 内部メモリーのゲーム
 
@@ -64,8 +67,8 @@ tr: エミュレーター全体の言語。Xで言語の一覧を開きます
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: はい：Forja SX2を開くたびに言語の一覧が出ます
 
-es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
-tr: USB メモリーなど、別のゲームフォルダー。内部フォルダーのゲームも表示されます。X で選択
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
+tr: USB メモリーなど、別のゲームフォルダー。X で選択
 
 es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
 tr: % を上げても速くなりません。本体の負担が増え、ほとんどの場合悪化します。ゲームがスローになる、または不具合が出るときだけ L3+R3 で上げてください
@@ -103,8 +106,11 @@ tr: 実験的：30 FPSで安定したゲームを60で表示（GPUが中間フ�
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: タッチパッド：右半分を押します。左半分はPS2のSELECTのままです
 
-es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
-tr: /data/ForjaSX2/roms のゲーム。常にライブラリに表示されます
+es: Todas: la memoria interna y la carpeta elegida. También puedes ver solo una de las dos
+tr: すべて: 内部メモリーと選択したフォルダー。どちらか一方だけも表示できます
+
+es: Los que están en /data/ForjaSX2/roms
+tr: /data/ForjaSX2/roms のゲーム
 
 es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
 tr: PS4 にコピーせず、そこから直接読み込みます。プレイ中はメモリーを抜かないでください
@@ -145,8 +151,17 @@ tr: 自動
 es: Sí
 tr: はい
 
+es: Ninguna
+tr: なし
+
+es: Todas
+tr: すべて
+
 es: Solo la interna
 tr: 内部のみ
+
+es: Solo la carpeta elegida
+tr: 選択したフォルダーのみ
 
 es: %dx (nativa)
 tr: %dx（ネイティブ）
@@ -232,6 +247,9 @@ tr: ディスクの検出に失敗しました
 es: Leyendo la unidad. Puedes seguir navegando.
 tr: ドライブを読み込み中。操作を続けられます。
 
+es: Guardado. %u juegos en la biblioteca.
+tr: 保存しました。ライブラリのゲーム: %u 本。
+
 es: Idioma guardado.
 tr: 言語を保存しました。
 
@@ -258,9 +276,6 @@ tr: DVDを使用できません
 
 es:  Descargando portada...
 tr:  ジャケット画像をダウンロード中...
-
-es: Guardado. %u juegos en la biblioteca.
-tr: 保存しました。ライブラリのゲーム: %u 本。
 
 es: Cancelando la copia...
 tr: コピーを中止しています...
@@ -732,6 +747,9 @@ tr: このフォルダーのゲーム: %u 本
 
 es: No hay más carpetas aquí
 tr: ここに他のフォルダーはありません
+
+es: Quitar la carpeta
+tr: フォルダーを解除
 
 es: Entrar
 tr: 開く

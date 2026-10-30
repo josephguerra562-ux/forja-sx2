@@ -51,6 +51,9 @@ namespace ForjaSettings
 		// Compilation 97: a second folder the library lists games from, besides /data/ForjaSX2/roms ("" none). Inside the app
 		// the USB drives are /usb0../usb7.
 		char games_folder[192] = "";
+		// Compilation 98: which games the library lists: 0 all, 1 the internal folder's, 2 the chosen folder's (Joseph, 2026-10-30:
+		// "solo interno, solo son los juegos internos; los USB, solo los de USB, o jugar en todas").
+		int games_source = 0;
 		bool from_file = false;
 	};
 
@@ -63,6 +66,7 @@ namespace ForjaSettings
 		v.stick = std::clamp(v.stick, 100, 200);
 		v.readback = std::clamp(v.readback, 0, 2);
 		v.menu_button = std::clamp(v.menu_button, 0, 2);
+		v.games_source = std::clamp(v.games_source, 0, 2);
 		return v;
 	}
 
@@ -118,6 +122,8 @@ namespace ForjaSettings
 				v.menu_button = value;
 			else if (!std::strcmp(key, "preguntar_idioma"))
 				v.ask_language = value != 0;
+			else if (!std::strcmp(key, "origen_juegos"))
+				v.games_source = value;
 		}
 		std::fclose(file);
 		return Clamp(v);
@@ -134,10 +140,10 @@ namespace ForjaSettings
 		std::fprintf(file,
 			"; Forja SX2: ajustes para todos los juegos (pestaña Ajustes de la biblioteca)\n"
 			"ee_rate=%d\nupscale=%d\naspect=%d\noverlay=%d\nstick=%d\nfast_cdvd=%d\nfast_boot=%d\nreadback=%d\nvideo_mode=%d\n"
-			"frame_gen=%d\ncpu_auto=%d\nmenu_boton=%d\nidioma=%s\npreguntar_idioma=%d\ncarpeta_juegos=%s\n",
+			"frame_gen=%d\ncpu_auto=%d\nmenu_boton=%d\nidioma=%s\npreguntar_idioma=%d\ncarpeta_juegos=%s\norigen_juegos=%d\n",
 			v.ee_rate, v.upscale, v.aspect, v.overlay ? 1 : 0, v.stick, v.fast_cdvd ? 1 : 0, v.fast_boot ? 1 : 0,
 			v.readback, v.video_mode ? 1 : 0, v.frame_gen ? 1 : 0, v.cpu_auto, v.menu_button, v.language, v.ask_language ? 1 : 0,
-			v.games_folder);
+			v.games_folder, v.games_source);
 		const bool written = std::fclose(file) == 0;
 		return written && std::rename(temporary, Path) == 0;
 	}

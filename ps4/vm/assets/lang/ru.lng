@@ -49,6 +49,9 @@ tr: Генерация кадров (с 30 до 60 FPS)
 es: Botón del menú del emulador
 tr: Кнопка меню эмулятора
 
+es: Qué juegos mostrar
+tr: Какие игры показывать
+
 es: Juegos en la memoria interna
 tr: Игры во внутренней памяти
 
@@ -64,8 +67,8 @@ tr: Язык всего эмулятора. X открывает список я
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: Да: список языков появляется при каждом запуске Forja SX2
 
-es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
-tr: Другая папка с играми, например на USB-накопителе. Игры из внутренней папки тоже останутся. X — выбрать
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
+tr: Другая папка с играми, например на USB-накопителе. X — выбрать
 
 es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
 tr: Больше % НЕ значит быстрее: нагрузка растёт, и почти всегда становится хуже. Повышайте в L3+R3, только если игра замедлена или работает с ошибками
@@ -103,8 +106,11 @@ tr: ЭКСПЕРИМЕНТ: игра со стабильными 30 FPS пока
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: Сенсорная панель: нажмите её ПРАВУЮ половину. Левая остаётся SELECT PS2
 
-es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
-tr: Игры в /data/ForjaSX2/roms. Они всегда показаны в библиотеке
+es: Todas: la memoria interna y la carpeta elegida. También puedes ver solo una de las dos
+tr: Все: внутренняя память и выбранная папка. Можно показывать только одно из двух
+
+es: Los que están en /data/ForjaSX2/roms
+tr: Игры в /data/ForjaSX2/roms
 
 es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
 tr: Они читаются прямо оттуда, без копирования на PS4. Не извлекайте накопитель во время игры
@@ -145,8 +151,17 @@ tr: Авто
 es: Sí
 tr: Да
 
+es: Ninguna
+tr: Нет
+
+es: Todas
+tr: Все
+
 es: Solo la interna
 tr: Только внутренняя
+
+es: Solo la carpeta elegida
+tr: Только выбранная папка
 
 es: %dx (nativa)
 tr: %dx (родное)
@@ -232,6 +247,9 @@ tr: Не удалось обнаружить диск
 es: Leyendo la unidad. Puedes seguir navegando.
 tr: Чтение привода. Можно продолжать просмотр.
 
+es: Guardado. %u juegos en la biblioteca.
+tr: Сохранено. Игр в библиотеке: %u.
+
 es: Idioma guardado.
 tr: Язык сохранён.
 
@@ -258,9 +276,6 @@ tr: DVD недоступен
 
 es:  Descargando portada...
 tr:  Загрузка обложки...
-
-es: Guardado. %u juegos en la biblioteca.
-tr: Сохранено. Игр в библиотеке: %u.
 
 es: Cancelando la copia...
 tr: Отмена копирования...
@@ -732,6 +747,9 @@ tr: Игр в этой папке: %u
 
 es: No hay más carpetas aquí
 tr: Здесь больше нет папок
+
+es: Quitar la carpeta
+tr: Убрать папку
 
 es: Entrar
 tr: Открыть

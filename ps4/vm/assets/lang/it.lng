@@ -49,6 +49,9 @@ tr: Generazione fotogrammi (da 30 a 60 FPS)
 es: Botón del menú del emulador
 tr: Pulsante del menu dell'emulatore
 
+es: Qué juegos mostrar
+tr: Giochi da mostrare
+
 es: Juegos en la memoria interna
 tr: Giochi nella memoria interna
 
@@ -64,8 +67,8 @@ tr: La lingua di tutto l'emulatore. X apre l'elenco delle lingue
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: Sì: l'elenco delle lingue appare ogni volta che apri Forja SX2
 
-es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
-tr: Un'altra cartella di giochi, ad esempio su una chiavetta USB. Quelli della cartella interna restano visibili. X per sceglierla
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
+tr: Un'altra cartella di giochi, ad esempio su una chiavetta USB. X per sceglierla
 
 es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
 tr: Più % NON è più veloce: chiede di più alla console e quasi sempre va peggio. Alzalo in L3+R3 solo se il gioco va al rallentatore o dà problemi
@@ -103,8 +106,11 @@ tr: SPERIMENTALE: un gioco stabile a 30 FPS si vede a 60 (la GPU inventa il foto
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: Touchpad: premi la metà DESTRA. La sinistra resta il SELECT della PS2
 
-es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
-tr: Quelli in /data/ForjaSX2/roms. Appaiono sempre nella libreria
+es: Todas: la memoria interna y la carpeta elegida. También puedes ver solo una de las dos
+tr: Tutte: la memoria interna e la cartella scelta. Puoi anche vederne solo una
+
+es: Los que están en /data/ForjaSX2/roms
+tr: Quelli in /data/ForjaSX2/roms
 
 es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
 tr: Vengono letti da lì, senza copiarli sulla PS4. Non togliere la chiavetta mentre giochi
@@ -145,8 +151,17 @@ tr: Auto
 es: Sí
 tr: Sì
 
+es: Ninguna
+tr: Nessuna
+
+es: Todas
+tr: Tutte
+
 es: Solo la interna
 tr: Solo interna
+
+es: Solo la carpeta elegida
+tr: Solo la cartella scelta
 
 es: %dx (nativa)
 tr: %dx (nativa)
@@ -232,6 +247,9 @@ tr: Rilevamento del disco non riuscito
 es: Leyendo la unidad. Puedes seguir navegando.
 tr: Lettura dell'unità. Puoi continuare a navigare.
 
+es: Guardado. %u juegos en la biblioteca.
+tr: Salvato. %u giochi nella libreria.
+
 es: Idioma guardado.
 tr: Lingua salvata.
 
@@ -258,9 +276,6 @@ tr: DVD non disponibile
 
 es:  Descargando portada...
 tr:  Scaricamento copertina...
-
-es: Guardado. %u juegos en la biblioteca.
-tr: Salvato. %u giochi nella libreria.
 
 es: Cancelando la copia...
 tr: Annullamento della copia...
@@ -732,6 +747,9 @@ tr: %u giochi in questa cartella
 
 es: No hay más carpetas aquí
 tr: Non ci sono altre cartelle qui
+
+es: Quitar la carpeta
+tr: Rimuovi la cartella
 
 es: Entrar
 tr: Apri

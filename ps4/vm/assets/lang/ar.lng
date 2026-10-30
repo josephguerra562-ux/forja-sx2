@@ -49,6 +49,9 @@ tr: توليد الإطارات (من 30 إلى 60 FPS)
 es: Botón del menú del emulador
 tr: زر قائمة المحاكي
 
+es: Qué juegos mostrar
+tr: الألعاب المعروضة
+
 es: Juegos en la memoria interna
 tr: الألعاب في الذاكرة الداخلية
 
@@ -64,8 +67,8 @@ tr: لغة المحاكي كله. X يفتح قائمة اللغات
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: نعم: تظهر قائمة اللغات في كل مرة تفتح فيها Forja SX2
 
-es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
-tr: مجلد آخر للألعاب، مثل ذاكرة USB. تبقى ألعاب المجلد الداخلي ظاهرة. X للاختيار
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
+tr: مجلد آخر للألعاب، مثل ذاكرة USB. X للاختيار
 
 es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
 tr: زيادة النسبة لا تعني سرعة أكبر: تزيد الحمل على الجهاز وغالبا تجعل الأداء أسوأ. ارفعها من L3+R3 فقط إذا كانت اللعبة بطيئة الحركة أو بها أخطاء
@@ -103,8 +106,11 @@ tr: تجريبي: لعبة ثابتة على 30 FPS تُعرض بـ 60 (بطاق
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: لوحة اللمس: اضغط نصفها الأيمن. يبقى النصف الأيسر زر SELECT في PS2
 
-es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
-tr: الموجودة في /data/ForjaSX2/roms. تظهر دائما في المكتبة
+es: Todas: la memoria interna y la carpeta elegida. También puedes ver solo una de las dos
+tr: الكل: الذاكرة الداخلية والمجلد المختار. يمكنك أيضا عرض واحد منهما فقط
+
+es: Los que están en /data/ForjaSX2/roms
+tr: الموجودة في /data/ForjaSX2/roms
 
 es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
 tr: تتم قراءتها من هناك دون نسخها إلى PS4. لا تنزع الذاكرة أثناء اللعب
@@ -145,8 +151,17 @@ tr: تلقائي
 es: Sí
 tr: نعم
 
+es: Ninguna
+tr: لا يوجد
+
+es: Todas
+tr: الكل
+
 es: Solo la interna
 tr: الداخلي فقط
+
+es: Solo la carpeta elegida
+tr: المجلد المختار فقط
 
 es: %dx (nativa)
 tr: %dx (الأصلية)
@@ -232,6 +247,9 @@ tr: فشل اكتشاف القرص
 es: Leyendo la unidad. Puedes seguir navegando.
 tr: جارٍ قراءة المشغّل. يمكنك متابعة التصفح.
 
+es: Guardado. %u juegos en la biblioteca.
+tr: تم الحفظ. عدد الألعاب في المكتبة: %u.
+
 es: Idioma guardado.
 tr: تم حفظ اللغة.
 
@@ -258,9 +276,6 @@ tr: قرص DVD غير متاح
 
 es:  Descargando portada...
 tr:  جارٍ تنزيل الغلاف...
-
-es: Guardado. %u juegos en la biblioteca.
-tr: تم الحفظ. عدد الألعاب في المكتبة: %u.
 
 es: Cancelando la copia...
 tr: جارٍ إلغاء النسخ...
@@ -732,6 +747,9 @@ tr: عدد الألعاب في هذا المجلد: %u
 
 es: No hay más carpetas aquí
 tr: لا توجد مجلدات أخرى هنا
+
+es: Quitar la carpeta
+tr: إزالة المجلد
 
 es: Entrar
 tr: فتح

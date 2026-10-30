@@ -49,6 +49,9 @@ tr: Kare üretimi (30'dan 60 FPS'ye)
 es: Botón del menú del emulador
 tr: Emülatör menüsü düğmesi
 
+es: Qué juegos mostrar
+tr: Gösterilecek oyunlar
+
 es: Juegos en la memoria interna
 tr: Dahili bellekteki oyunlar
 
@@ -64,8 +67,8 @@ tr: Tüm emülatörün dili. X dil listesini açar
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: Evet: Forja SX2'yi her açtığında dil listesi çıkar
 
-es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
-tr: Oyunların olduğu başka bir klasör, örneğin bir USB bellekte. Dahili klasördekiler de görünmeye devam eder. Seçmek için X
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
+tr: Oyunların olduğu başka bir klasör, örneğin bir USB bellekte. Seçmek için X
 
 es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
 tr: Daha yüksek % daha hızlı DEĞİLDİR: konsolu daha çok zorlar ve neredeyse her zaman daha kötü çalışır. Yalnızca oyun ağır çekimde gidiyor veya hata veriyorsa L3+R3 ile artırın
@@ -103,8 +106,11 @@ tr: DENEYSEL: 30 FPS'de sabit bir oyun 60'ta görünür (GPU aradaki kareyi üre
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: Dokunmatik yüzey: SAĞ yarısına bas. Sol yarısı PS2'nin SELECT'i olarak kalır
 
-es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
-tr: /data/ForjaSX2/roms içindekiler. Kitaplıkta her zaman görünür
+es: Todas: la memoria interna y la carpeta elegida. También puedes ver solo una de las dos
+tr: Tümü: dahili bellek ve seçilen klasör. Yalnızca birini de gösterebilirsiniz
+
+es: Los que están en /data/ForjaSX2/roms
+tr: /data/ForjaSX2/roms içindekiler
 
 es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
 tr: PS4'e kopyalanmadan oradan okunur. Oynarken belleği çıkarmayın
@@ -145,8 +151,17 @@ tr: Otomatik
 es: Sí
 tr: Evet
 
+es: Ninguna
+tr: Yok
+
+es: Todas
+tr: Tümü
+
 es: Solo la interna
 tr: Yalnızca dahili
+
+es: Solo la carpeta elegida
+tr: Yalnızca seçilen klasör
 
 es: %dx (nativa)
 tr: %dx (yerel)
@@ -232,6 +247,9 @@ tr: Disk algılanamadı
 es: Leyendo la unidad. Puedes seguir navegando.
 tr: Sürücü okunuyor. Gezinmeye devam edebilirsin.
 
+es: Guardado. %u juegos en la biblioteca.
+tr: Kaydedildi. Kitaplıkta %u oyun var.
+
 es: Idioma guardado.
 tr: Dil kaydedildi.
 
@@ -258,9 +276,6 @@ tr: DVD kullanılamıyor
 
 es:  Descargando portada...
 tr:  Kapak indiriliyor...
-
-es: Guardado. %u juegos en la biblioteca.
-tr: Kaydedildi. Kitaplıkta %u oyun var.
 
 es: Cancelando la copia...
 tr: Kopyalama iptal ediliyor...
@@ -732,6 +747,9 @@ tr: Bu klasörde %u oyun var
 
 es: No hay más carpetas aquí
 tr: Burada başka klasör yok
+
+es: Quitar la carpeta
+tr: Klasörü kaldır
 
 es: Entrar
 tr: Aç

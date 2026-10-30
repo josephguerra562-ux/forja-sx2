@@ -49,6 +49,9 @@ tr: Generowanie klatek (z 30 do 60 FPS)
 es: Botón del menú del emulador
 tr: Przycisk menu emulatora
 
+es: Qué juegos mostrar
+tr: Jakie gry pokazywać
+
 es: Juegos en la memoria interna
 tr: Gry w pamięci wewnętrznej
 
@@ -64,8 +67,8 @@ tr: Język całego emulatora. X otwiera listę języków
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: Tak: lista języków pojawia się przy każdym uruchomieniu Forja SX2
 
-es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
-tr: Inny folder z grami, np. na pamięci USB. Gry z folderu wewnętrznego nadal będą widoczne. X, aby wybrać
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
+tr: Inny folder z grami, np. na pamięci USB. X, aby wybrać
 
 es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
 tr: Więcej % NIE znaczy szybciej: to większe obciążenie konsoli i prawie zawsze działa gorzej. Zwiększ w L3+R3 tylko, gdy gra działa w zwolnionym tempie lub ma błędy
@@ -103,8 +106,11 @@ tr: EKSPERYMENT: gra stabilna w 30 FPS wyświetla się w 60 (GPU dorabia klatkę
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: Panel dotykowy: naciśnij PRAWĄ połowę. Lewa to nadal SELECT z PS2
 
-es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
-tr: Te w /data/ForjaSX2/roms. Zawsze widoczne w bibliotece
+es: Todas: la memoria interna y la carpeta elegida. También puedes ver solo una de las dos
+tr: Wszystkie: pamięć wewnętrzna i wybrany folder. Możesz też pokazać tylko jedno z nich
+
+es: Los que están en /data/ForjaSX2/roms
+tr: Te w /data/ForjaSX2/roms
 
 es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
 tr: Są czytane stamtąd, bez kopiowania na PS4. Nie wyjmuj pamięci podczas gry
@@ -145,8 +151,17 @@ tr: Auto
 es: Sí
 tr: Tak
 
+es: Ninguna
+tr: Brak
+
+es: Todas
+tr: Wszystkie
+
 es: Solo la interna
 tr: Tylko wewnętrzny
+
+es: Solo la carpeta elegida
+tr: Tylko wybrany folder
 
 es: %dx (nativa)
 tr: %dx (natywna)
@@ -232,6 +247,9 @@ tr: Wykrywanie płyty nie powiodło się
 es: Leyendo la unidad. Puedes seguir navegando.
 tr: Odczyt napędu. Możesz dalej przeglądać.
 
+es: Guardado. %u juegos en la biblioteca.
+tr: Zapisano. Gier w bibliotece: %u.
+
 es: Idioma guardado.
 tr: Zapisano język.
 
@@ -258,9 +276,6 @@ tr: DVD niedostępne
 
 es:  Descargando portada...
 tr:  Pobieranie okładki...
-
-es: Guardado. %u juegos en la biblioteca.
-tr: Zapisano. Gier w bibliotece: %u.
 
 es: Cancelando la copia...
 tr: Anulowanie kopiowania...
@@ -732,6 +747,9 @@ tr: Gier w tym folderze: %u
 
 es: No hay más carpetas aquí
 tr: Nie ma tu więcej folderów
+
+es: Quitar la carpeta
+tr: Usuń folder
 
 es: Entrar
 tr: Otwórz

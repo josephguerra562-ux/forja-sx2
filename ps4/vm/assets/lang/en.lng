@@ -49,6 +49,9 @@ tr: Frame generation (30 to 60 FPS)
 es: Botón del menú del emulador
 tr: Emulator menu button
 
+es: Qué juegos mostrar
+tr: Games to show
+
 es: Juegos en la memoria interna
 tr: Games in internal memory
 
@@ -64,8 +67,8 @@ tr: The language of the whole emulator. X opens the list of languages
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: Yes: the list of languages shows up every time you open Forja SX2
 
-es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
-tr: Another folder with games, for example on a USB drive. The ones in the internal folder still appear. X to choose it
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
+tr: Another folder with games, for example on a USB drive. X to choose it
 
 es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
 tr: More % is NOT faster: it asks more of the console and almost always runs worse. Raise it in L3+R3 only if the game runs in slow motion or fails
@@ -103,8 +106,11 @@ tr: EXPERIMENTAL: a game steady at 30 FPS is shown at 60 (the GPU makes up the f
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: Touchpad: press its RIGHT half. The left half is still the PS2's SELECT
 
-es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
-tr: The ones in /data/ForjaSX2/roms. They always appear in the library
+es: Todas: la memoria interna y la carpeta elegida. También puedes ver solo una de las dos
+tr: All: internal memory and the chosen folder. You can also show only one of them
+
+es: Los que están en /data/ForjaSX2/roms
+tr: The ones in /data/ForjaSX2/roms
 
 es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
 tr: They are read from there, without copying them to the PS4. Don't remove the drive while playing
@@ -145,8 +151,17 @@ tr: Auto
 es: Sí
 tr: Yes
 
+es: Ninguna
+tr: None
+
+es: Todas
+tr: All
+
 es: Solo la interna
 tr: Internal only
+
+es: Solo la carpeta elegida
+tr: Chosen folder only
 
 es: %dx (nativa)
 tr: %dx (native)
@@ -232,6 +247,9 @@ tr: Disc detection failed
 es: Leyendo la unidad. Puedes seguir navegando.
 tr: Reading the drive. You can keep browsing.
 
+es: Guardado. %u juegos en la biblioteca.
+tr: Saved. %u games in the library.
+
 es: Idioma guardado.
 tr: Language saved.
 
@@ -258,9 +276,6 @@ tr: DVD not available
 
 es:  Descargando portada...
 tr:  Downloading cover...
-
-es: Guardado. %u juegos en la biblioteca.
-tr: Saved. %u games in the library.
 
 es: Cancelando la copia...
 tr: Cancelling the copy...
@@ -732,6 +747,9 @@ tr: %u games in this folder
 
 es: No hay más carpetas aquí
 tr: No more folders here
+
+es: Quitar la carpeta
+tr: Remove the folder
 
 es: Entrar
 tr: Open

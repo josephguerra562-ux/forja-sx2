@@ -49,6 +49,9 @@ tr: Geração de quadros (30 para 60 FPS)
 es: Botón del menú del emulador
 tr: Botão do menu do emulador
 
+es: Qué juegos mostrar
+tr: Quais jogos mostrar
+
 es: Juegos en la memoria interna
 tr: Jogos na memória interna
 
@@ -64,8 +67,8 @@ tr: O idioma de todo o emulador. X abre a lista de idiomas
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: Sim: a lista de idiomas aparece sempre que você abre o Forja SX2
 
-es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
-tr: Outra pasta com jogos, por exemplo em um pendrive. Os da pasta interna continuam aparecendo. X para escolher
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
+tr: Outra pasta com jogos, por exemplo em um pendrive. X para escolher
 
 es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
 tr: Mais % NÃO é mais rápido: exige mais do console e quase sempre fica pior. Aumente em L3+R3 só se o jogo ficar em câmera lenta ou falhar
@@ -103,8 +106,11 @@ tr: EXPERIMENTAL: um jogo estável a 30 FPS aparece a 60 (a GPU inventa o quadro
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: Touchpad: aperte a metade DIREITA. A esquerda continua sendo o SELECT do PS2
 
-es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
-tr: Os que estão em /data/ForjaSX2/roms. Sempre aparecem na biblioteca
+es: Todas: la memoria interna y la carpeta elegida. También puedes ver solo una de las dos
+tr: Todas: a memória interna e a pasta escolhida. Também pode ver só uma das duas
+
+es: Los que están en /data/ForjaSX2/roms
+tr: Os que estão em /data/ForjaSX2/roms
 
 es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
 tr: São lidos dali mesmo, sem copiar para o PS4. Não tire o pendrive enquanto joga
@@ -145,8 +151,17 @@ tr: Auto
 es: Sí
 tr: Sim
 
+es: Ninguna
+tr: Nenhuma
+
+es: Todas
+tr: Todas
+
 es: Solo la interna
 tr: Só a interna
+
+es: Solo la carpeta elegida
+tr: Só a pasta escolhida
 
 es: %dx (nativa)
 tr: %dx (nativa)
@@ -232,6 +247,9 @@ tr: Falha na detecção do disco
 es: Leyendo la unidad. Puedes seguir navegando.
 tr: Lendo a unidade. Você pode continuar navegando.
 
+es: Guardado. %u juegos en la biblioteca.
+tr: Salvo. %u jogos na biblioteca.
+
 es: Idioma guardado.
 tr: Idioma salvo.
 
@@ -258,9 +276,6 @@ tr: DVD indisponível
 
 es:  Descargando portada...
 tr:  Baixando capa...
-
-es: Guardado. %u juegos en la biblioteca.
-tr: Salvo. %u jogos na biblioteca.
 
 es: Cancelando la copia...
 tr: Cancelando a cópia...
@@ -732,6 +747,9 @@ tr: %u jogos nesta pasta
 
 es: No hay más carpetas aquí
 tr: Não há mais pastas aqui
+
+es: Quitar la carpeta
+tr: Remover a pasta
 
 es: Entrar
 tr: Entrar

@@ -49,6 +49,9 @@ tr: 프레임 생성 (30에서 60 FPS로)
 es: Botón del menú del emulador
 tr: 에뮬레이터 메뉴 버튼
 
+es: Qué juegos mostrar
+tr: 표시할 게임
+
 es: Juegos en la memoria interna
 tr: 내부 메모리의 게임
 
@@ -64,8 +67,8 @@ tr: 에뮬레이터 전체의 언어. X로 언어 목록을 엽니다
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: 예: Forja SX2를 열 때마다 언어 목록이 나옵니다
 
-es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
-tr: USB 메모리 등 다른 게임 폴더. 내부 폴더의 게임도 계속 표시됩니다. X로 선택
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
+tr: USB 메모리 등 다른 게임 폴더. X로 선택
 
 es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
 tr: %가 높다고 빨라지지 않습니다. 콘솔 부담이 커져 대부분 더 나빠집니다. 게임이 느리게 돌아가거나 오류가 날 때만 L3+R3에서 올리세요
@@ -103,8 +106,11 @@ tr: 실험 기능: 30 FPS로 안정된 게임을 60으로 표시 (GPU가 중간 
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: 터치패드: 오른쪽 절반을 누르세요. 왼쪽은 여전히 PS2의 SELECT입니다
 
-es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
-tr: /data/ForjaSX2/roms의 게임. 항상 라이브러리에 표시됩니다
+es: Todas: la memoria interna y la carpeta elegida. También puedes ver solo una de las dos
+tr: 모두: 내부 메모리와 선택한 폴더. 둘 중 하나만 표시할 수도 있습니다
+
+es: Los que están en /data/ForjaSX2/roms
+tr: /data/ForjaSX2/roms의 게임
 
 es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
 tr: PS4에 복사하지 않고 그 위치에서 바로 읽습니다. 플레이 중에 메모리를 빼지 마세요
@@ -145,8 +151,17 @@ tr: 자동
 es: Sí
 tr: 예
 
+es: Ninguna
+tr: 없음
+
+es: Todas
+tr: 모두
+
 es: Solo la interna
 tr: 내부만
+
+es: Solo la carpeta elegida
+tr: 선택한 폴더만
 
 es: %dx (nativa)
 tr: %dx (기본)
@@ -232,6 +247,9 @@ tr: 디스크 감지에 실패했습니다
 es: Leyendo la unidad. Puedes seguir navegando.
 tr: 드라이브를 읽는 중입니다. 계속 둘러봐도 됩니다.
 
+es: Guardado. %u juegos en la biblioteca.
+tr: 저장했습니다. 라이브러리의 게임: %u개.
+
 es: Idioma guardado.
 tr: 언어를 저장했습니다.
 
@@ -258,9 +276,6 @@ tr: DVD를 사용할 수 없습니다
 
 es:  Descargando portada...
 tr:  표지 다운로드 중...
-
-es: Guardado. %u juegos en la biblioteca.
-tr: 저장했습니다. 라이브러리의 게임: %u개.
 
 es: Cancelando la copia...
 tr: 복사를 취소하는 중...
@@ -732,6 +747,9 @@ tr: 이 폴더의 게임: %u개
 
 es: No hay más carpetas aquí
 tr: 여기에 다른 폴더가 없습니다
+
+es: Quitar la carpeta
+tr: 폴더 해제
 
 es: Entrar
 tr: 열기

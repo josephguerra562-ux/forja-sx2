@@ -49,6 +49,9 @@ tr: 帧生成（30 到 60 FPS）
 es: Botón del menú del emulador
 tr: 模拟器菜单按键
 
+es: Qué juegos mostrar
+tr: 显示哪些游戏
+
 es: Juegos en la memoria interna
 tr: 内部存储中的游戏
 
@@ -64,8 +67,8 @@ tr: 整个模拟器的语言。按 X 打开语言列表
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: 是：每次打开 Forja SX2 都会显示语言列表
 
-es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
-tr: 另一个游戏文件夹,例如 USB 存储设备上的。内部文件夹的游戏仍会显示。按 X 选择
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
+tr: 另一个游戏文件夹,例如 USB 存储设备上的。按 X 选择
 
 es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
 tr: 百分比越高并不会越快:主机负担更重,几乎总是更差。只有游戏变成慢动作或出错时,才在 L3+R3 中调高
@@ -103,8 +106,11 @@ tr: 实验功能：稳定 30 FPS 的游戏以 60 显示（显卡补出中间帧�
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: 触摸板：按右半边。左半边仍是 PS2 的 SELECT
 
-es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
-tr: 位于 /data/ForjaSX2/roms 的游戏。它们始终显示在游戏库中
+es: Todas: la memoria interna y la carpeta elegida. También puedes ver solo una de las dos
+tr: 全部:内部存储和所选文件夹。也可以只显示其中之一
+
+es: Los que están en /data/ForjaSX2/roms
+tr: 位于 /data/ForjaSX2/roms 的游戏
 
 es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
 tr: 直接从该位置读取,不会复制到 PS4。游戏时请勿拔出存储设备
@@ -145,8 +151,17 @@ tr: 自动
 es: Sí
 tr: 是
 
+es: Ninguna
+tr: 无
+
+es: Todas
+tr: 全部
+
 es: Solo la interna
 tr: 仅内部
+
+es: Solo la carpeta elegida
+tr: 仅所选文件夹
 
 es: %dx (nativa)
 tr: %dx（原生）
@@ -232,6 +247,9 @@ tr: 光盘检测失败
 es: Leyendo la unidad. Puedes seguir navegando.
 tr: 正在读取光驱。你可以继续浏览。
 
+es: Guardado. %u juegos en la biblioteca.
+tr: 已保存。游戏库中有 %u 个游戏。
+
 es: Idioma guardado.
 tr: 语言已保存。
 
@@ -258,9 +276,6 @@ tr: DVD 不可用
 
 es:  Descargando portada...
 tr:  正在下载封面...
-
-es: Guardado. %u juegos en la biblioteca.
-tr: 已保存。游戏库中有 %u 个游戏。
 
 es: Cancelando la copia...
 tr: 正在取消复制...
@@ -732,6 +747,9 @@ tr: 此文件夹中有 %u 个游戏
 
 es: No hay más carpetas aquí
 tr: 这里没有更多文件夹
+
+es: Quitar la carpeta
+tr: 移除文件夹
 
 es: Entrar
 tr: 打开

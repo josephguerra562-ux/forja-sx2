@@ -562,4 +562,4 @@ Para una sesión anterior, usa su carpeta de `logs/sesiones/` (trae los mismos a
 
 ## Menú lateral desde la 97
 
-Biblioteca, Disco, Recientes, Favoritos, **Memoria o USB** (elegir otra carpeta de juegos, y cuántos juegos y memorias hay), **Ajustes de juegos** (CPU, resolución, relación de aspecto, cargas, lecturas de la gráfica, modo video, generación de cuadros) y **Ajustes del emulador** (idioma, saltar el logo, botón del menú, contador de FPS, palanca). Dentro de la app las memorias USB son `/usb0` a `/usb7`.
+Biblioteca, Disco, Recientes, Favoritos, **Memoria o USB** (qué juegos mostrar: todas, solo la interna o solo la carpeta elegida; elegir la carpeta, y cuántos juegos y memorias hay), **Ajustes de juegos** (CPU, resolución, relación de aspecto, cargas, lecturas de la gráfica, modo video, generación de cuadros) y **Ajustes del emulador** (idioma, saltar el logo, botón del menú, contador de FPS, palanca). Dentro de la app las memorias USB son `/usb0` a `/usb7`.
