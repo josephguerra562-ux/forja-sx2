@@ -2550,7 +2550,7 @@ namespace PS4GameMenu
 					10 * scale, s_sidebar_focused ? 2.0f * scale : 1.0f * scale, 0);
 			}
 			image(sidebar_icons[i], 43, y + 12, 34, 34);
-			text(91, y + 37, active ? 19 : 18, active ? white : muted, T(sidebar_labels[i]), 155);
+			text(91, y + 37, active ? 19 : 18, active ? white : muted, T(sidebar_labels[i]), 160);
 		}
 		// Forja SX2: the public version (VERSION) and, in brackets, the build, so a tester sees at a glance whether the new
 		// package is the one installed.
