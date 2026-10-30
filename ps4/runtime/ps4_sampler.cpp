@@ -281,6 +281,9 @@ void* samplerThread(void*) {
     const unsigned long long mask = g_sampler_cpu_mask.load();
     const int affinity = mask ? scePthreadSetaffinity(scePthreadSelf(), mask) : 0;
     const int priority = scePthreadSetprio(scePthreadSelf(), 300);
+    // Forja SX2 (compilation 98): the last run's is kept: going back to the library starts the app again, and its first second
+    // erased the game's samples (F-4026, 2026-10-30).
+    rename("/data/ForjaSX2/samples.log", "/data/ForjaSX2/samples-anterior.log");
     const int fd = open("/data/ForjaSX2/samples.log", O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd < 0)
         return nullptr;

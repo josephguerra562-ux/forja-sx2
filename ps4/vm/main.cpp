@@ -3948,7 +3948,7 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
 						   row == PS4GameMenu::ROW_TEXTURES ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
-						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT))
+						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT || row == PS4GameMenu::ROW_REPORT_WHERE))
 		{
 			if (row == PS4GameMenu::ROW_SAVE_STATE)
 				SaveGameState();
@@ -3961,8 +3961,8 @@ void VMHostPoll()
 					ProbeLog("Keyboard: could not open it\n");
 			}
 			// Compilation 77; 82: from "Qué falló" too. Joseph chose what went wrong in Guitar Hero (2026-10-24) and pressed X there,
-			// on the row below the one that sent, and nothing went.
-			else if (row == PS4GameMenu::ROW_REPORT || row == PS4GameMenu::ROW_REPORT_ISSUE)
+			// on the row below the one that sent, and nothing went. Compilation 98: from "Dónde se ve", the last one, too (the same, 2026-10-30).
+			else if (row == PS4GameMenu::ROW_REPORT || row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_WHERE)
 				SendReport(elapsed);
 			else if (row == PS4GameMenu::ROW_LOAD_STATE)
 			{

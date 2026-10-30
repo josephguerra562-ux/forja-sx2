@@ -482,10 +482,11 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 			ProbeLog("Crowd trace (95): end\n");
 		}
 		// Compilation 97: what the crowd looks like, from the emulator's own image: the videos of the screen (480p) can't tell
-		// "pixelated" from the camera's blur. Only on a console with this marker (Joseph's), up to 20 pictures a session.
+		// "pixelated" from the camera's blur. Only on a console with this marker (Joseph's). Compilation 98: 4 a session, one a
+		// minute: every picture of the 97 took the song to 2-15 % for 5-10 s (F-4026), 19 pictures in 5 minutes.
 		static int s_last_photo_frame = -100000;
 		static u32 s_photos = 0;
-		if (crowd_on && frame - s_last_photo_frame >= 300 && s_photos < 20)
+		if (crowd_on && frame - s_last_photo_frame >= 3000 && s_photos < 4)
 		{
 			s_last_photo_frame = frame;
 			if (access("/data/ForjaSX2/fotos-publico", F_OK) == 0)

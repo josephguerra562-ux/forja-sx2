@@ -2424,9 +2424,9 @@ namespace PS4GameMenu
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
 					action = T("AJUSTAR");
 				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
-				         row == ROW_SHARPNESS || row == ROW_GS_SKIP || row == ROW_CROWD || row == ROW_REPORT_WHERE)
+				         row == ROW_SHARPNESS || row == ROW_GS_SKIP || row == ROW_CROWD)
 					action = T("ELEGIR");
-				else if (row == ROW_REPORT_ISSUE) // compilation 82: X sends the report from here too
+				else if (row == ROW_REPORT_ISSUE || row == ROW_REPORT_WHERE) // compilation 82: X sends the report from here too; 98: and the last
 					action = T("ELEGIR  ·  X");
 				else if (row == ROW_REPORT_COMMENT) // compilation 86: X writes, Cuadrado clears; 87: Left/Right, a phrase
 					action = T("ELEGIR  ·  X  ·  CUADRADO");
