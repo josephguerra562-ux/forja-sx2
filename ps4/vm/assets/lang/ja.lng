@@ -49,6 +49,15 @@ tr: フレーム生成（30→60 FPS）
 es: Botón del menú del emulador
 tr: エミュレーターメニューのボタン
 
+es: Juegos en la memoria interna
+tr: 内部メモリーのゲーム
+
+es: Juegos en la carpeta elegida
+tr: 選択したフォルダーのゲーム
+
+es: Memorias USB conectadas
+tr: 接続中の USB メモリー
+
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: エミュレーター全体の言語。Xで言語の一覧を開きます
 
@@ -93,6 +102,15 @@ tr: 実験的：30 FPSで安定したゲームを60で表示（GPUが中間フ�
 
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: タッチパッド：右半分を押します。左半分はPS2のSELECTのままです
+
+es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
+tr: /data/ForjaSX2/roms のゲーム。常にライブラリに表示されます
+
+es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
+tr: PS4 にコピーせず、そこから直接読み込みます。プレイ中はメモリーを抜かないでください
+
+es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
+tr: 表示されない場合は接続し直してください。4 GB を超えるゲームには exFAT が必要です
 
 es: 100 % (PS2 real)
 tr: 100 %（実機PS2）
@@ -169,8 +187,14 @@ tr: 最近のゲームはありません
 es: No hay juegos favoritos
 tr: お気に入りのゲームはありません
 
-es: Ajustes de Forja SX2 (para todos los juegos)
-tr: Forja SX2の設定（すべてのゲーム共通）
+es: Memoria interna o USB
+tr: 内部メモリーまたは USB
+
+es: Ajustes de juegos (valen para todos)
+tr: ゲーム設定(すべてに適用)
+
+es: Ajustes del emulador
+tr: エミュレーター設定
 
 es: No se encontraron juegos
 tr: ゲームが見つかりません
@@ -616,8 +640,11 @@ tr: 最近
 es: Favoritos
 tr: お気に入り
 
-es: Ajustes
-tr: 設定
+es: Memoria o USB
+tr: メモリー / USB
+
+es: Ajustes de juegos
+tr: ゲーム設定
 
 es: Versión %d.%02d (%d)
 tr: バージョン %d.%02d（%d）

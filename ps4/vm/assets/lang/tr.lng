@@ -49,6 +49,15 @@ tr: Kare üretimi (30'dan 60 FPS'ye)
 es: Botón del menú del emulador
 tr: Emülatör menüsü düğmesi
 
+es: Juegos en la memoria interna
+tr: Dahili bellekteki oyunlar
+
+es: Juegos en la carpeta elegida
+tr: Seçilen klasördeki oyunlar
+
+es: Memorias USB conectadas
+tr: Bağlı USB bellekler
+
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: Tüm emülatörün dili. X dil listesini açar
 
@@ -93,6 +102,15 @@ tr: DENEYSEL: 30 FPS'de sabit bir oyun 60'ta görünür (GPU aradaki kareyi üre
 
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: Dokunmatik yüzey: SAĞ yarısına bas. Sol yarısı PS2'nin SELECT'i olarak kalır
+
+es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
+tr: /data/ForjaSX2/roms içindekiler. Kitaplıkta her zaman görünür
+
+es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
+tr: PS4'e kopyalanmadan oradan okunur. Oynarken belleği çıkarmayın
+
+es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
+tr: Sizinki görünmüyorsa yeniden takın. 4 GB üzeri oyunlar için bellek exFAT olmalıdır
 
 es: 100 % (PS2 real)
 tr: %100 (gerçek PS2)
@@ -169,8 +187,14 @@ tr: Son oynanan oyun yok
 es: No hay juegos favoritos
 tr: Favori oyun yok
 
-es: Ajustes de Forja SX2 (para todos los juegos)
-tr: Forja SX2 ayarları (tüm oyunlar için)
+es: Memoria interna o USB
+tr: Dahili bellek veya USB
+
+es: Ajustes de juegos (valen para todos)
+tr: Oyun ayarları (tümü için)
+
+es: Ajustes del emulador
+tr: Emülatör ayarları
 
 es: No se encontraron juegos
 tr: Oyun bulunamadı
@@ -616,8 +640,11 @@ tr: Son oynanan
 es: Favoritos
 tr: Favoriler
 
-es: Ajustes
-tr: Ayarlar
+es: Memoria o USB
+tr: Bellek / USB
+
+es: Ajustes de juegos
+tr: Oyun ayarları
 
 es: Versión %d.%02d (%d)
 tr: Sürüm %d.%02d (%d)

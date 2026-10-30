@@ -111,8 +111,16 @@ namespace PS4GameMenu
 			Disc,
 			Recent,
 			Favorites,
-			Settings,
+			// Compilation 97 (Joseph: "estamos acumulando muchas configuraciones"): the Settings page became three.
+			Storage,
+			GameSettings,
+			EmulatorSettings,
 		};
+		constexpr unsigned LibraryViewCount = 7;
+		constexpr bool IsSettingsView(LibraryView view)
+		{
+			return view == LibraryView::Storage || view == LibraryView::GameSettings || view == LibraryView::EmulatorSettings;
+		}
 		struct CoverImage
 		{
 			std::string path;
@@ -207,8 +215,34 @@ namespace PS4GameMenu
 			SET_VIDEO_MODE,
 			SET_FRAME_GEN,
 			SET_MENU_BUTTON,
+			SET_INTERNAL_GAMES, // compilation 97: these three only show a number
+			SET_FOLDER_GAMES,
+			SET_USB_DRIVES,
 			SettingsRows
 		};
+
+		// Compilation 97: which settings each of the three pages has, in their order on the page. The ones that apply to the games
+		// have a page of their own; a page's cursor (settings_row) is an index into these.
+		constexpr SettingRow StorageRows[] = {SET_GAMES_FOLDER, SET_INTERNAL_GAMES, SET_FOLDER_GAMES, SET_USB_DRIVES};
+		constexpr SettingRow GameSettingsRows[] = {SET_EE_RATE, SET_CPU_AUTO, SET_UPSCALE, SET_ASPECT, SET_FAST_CDVD, SET_READBACK,
+			SET_VIDEO_MODE, SET_FRAME_GEN};
+		constexpr SettingRow EmulatorSettingsRows[] = {SET_LANGUAGE, SET_ASK_LANGUAGE, SET_FAST_BOOT, SET_MENU_BUTTON, SET_OVERLAY, SET_STICK};
+
+		unsigned PageRowCount(LibraryView view)
+		{
+			return view == LibraryView::Storage ? static_cast<unsigned>(std::size(StorageRows)) :
+			       view == LibraryView::GameSettings ? static_cast<unsigned>(std::size(GameSettingsRows)) :
+			                                           static_cast<unsigned>(std::size(EmulatorSettingsRows));
+		}
+
+		SettingRow PageRow(LibraryView view, unsigned index)
+		{
+			const SettingRow* const rows = view == LibraryView::Storage ? StorageRows : view == LibraryView::GameSettings ? GameSettingsRows : EmulatorSettingsRows;
+			return rows[std::min(index, PageRowCount(view) - 1)];
+		}
+
+		// What the Storage page shows (GS thread's copy).
+		unsigned s_storage_internal_gs = 0, s_storage_folder_gs = 0, s_storage_usb_gs = 0;
 
 		const char* SettingLabel(unsigned row)
 		{
@@ -216,7 +250,8 @@ namespace PS4GameMenu
 				N_("Carpeta de juegos"), N_("Velocidad del CPU de la PS2"), N_("CPU automático"), N_("Resolución interna"), N_("Relación de aspecto"),
 				N_("Contador de FPS al jugar"), N_("Sensibilidad de la palanca"), N_("Cargas rápidas del disco"),
 				N_("Saltar el logo de la PS2"), N_("Lecturas de la gráfica (readbacks)"), N_("Modo video automático"),
-				N_("Generación de cuadros (30 a 60 FPS)"), N_("Botón del menú del emulador")};
+				N_("Generación de cuadros (30 a 60 FPS)"), N_("Botón del menú del emulador"), N_("Juegos en la memoria interna"), N_("Juegos en la carpeta elegida"),
+				N_("Memorias USB conectadas")};
 			return T(labels[std::min(row, SettingsRows - 1)]);
 		}
 
@@ -237,7 +272,10 @@ namespace PS4GameMenu
 				N_("Si el juego se traba sin que el CPU esté al 100 %: prueba Sin esperar. Desactivadas puede romper efectos"),
 				N_("En los videos del juego busca el CPU de la PS2 que da más cuadros (31 a 100 %) y lo devuelve al terminar"),
 				N_("EXPERIMENTAL: un juego estable a 30 FPS se ve a 60 (la gráfica inventa el cuadro intermedio). +1 cuadro de retraso"),
-				N_("Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2")};
+				N_("Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2"),
+				N_("Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca"),
+				N_("Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas"),
+				N_("Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT")};
 			return T(help[std::min(row, SettingsRows - 1)]);
 		}
 
@@ -270,6 +308,14 @@ namespace PS4GameMenu
 				}
 				case SET_VIDEO_MODE: std::snprintf(out, size, "%s", yes_no(v.video_mode)); break;
 				case SET_FRAME_GEN: std::snprintf(out, size, "%s", yes_no(v.frame_gen)); break;
+				case SET_INTERNAL_GAMES: std::snprintf(out, size, "%u", s_storage_internal_gs); break;
+				case SET_FOLDER_GAMES:
+					if (v.games_folder[0])
+						std::snprintf(out, size, "%u", s_storage_folder_gs);
+					else
+						std::snprintf(out, size, "%s", T("Solo la interna"));
+					break;
+				case SET_USB_DRIVES: std::snprintf(out, size, "%u", s_storage_usb_gs); break;
 				default:
 				{
 					static constexpr const char* menu_names[] = {"L3+R3", N_("Panel táctil (derecha)"), N_("Los dos")};
@@ -292,7 +338,10 @@ namespace PS4GameMenu
 			switch (row)
 			{
 				case SET_LANGUAGE: break;
-				case SET_GAMES_FOLDER: break;
+				case SET_GAMES_FOLDER:
+				case SET_INTERNAL_GAMES:
+				case SET_FOLDER_GAMES:
+				case SET_USB_DRIVES: break;
 				case SET_ASK_LANGUAGE: v.ask_language = !v.ask_language; break;
 				case SET_EE_RATE: v.ee_rate = step(v.ee_rate, -6, 0); break;
 				case SET_CPU_AUTO: v.cpu_auto = -step(-v.cpu_auto, 0, 6); break; // right: a lower floor
@@ -604,7 +653,7 @@ namespace PS4GameMenu
 			if (!s_ui_images.empty())
 				return;
 			static constexpr const char* names[] = {
-				"menu_logo", "menu_biblioteca", "menu_disc", "menu_recentes", "menu_favoritos", "menu_configuracoes", "status_controle",
+				"menu_logo", "menu_biblioteca", "menu_disc", "menu_recentes", "menu_favoritos", "menu_usb", "menu_juegos", "menu_configuracoes", "status_controle",
 				"controle_x", "controle_bola", "controle_options", "controle_quadrado", "controle_triangulo", "controle_l1", "controle_r1",
 				"navegacao_esquerda", "navegacao_direita", "loading_carousel_1", "loading_carousel_2",
 				"loading_carousel_3", "loading_carousel_4"};
@@ -805,7 +854,9 @@ namespace PS4GameMenu
 				const char* message = view == LibraryView::Disc      ? T("No se detectó ningún disco") :
 				                      view == LibraryView::Recent    ? T("No hay juegos recientes") :
 				                      view == LibraryView::Favorites ? T("No hay juegos favoritos") :
-				                      view == LibraryView::Settings  ? T("Ajustes de Forja SX2 (para todos los juegos)") :
+				                      view == LibraryView::Storage   ? T("Memoria interna o USB") :
+				                      view == LibraryView::GameSettings ? T("Ajustes de juegos (valen para todos)") :
+				                      view == LibraryView::EmulatorSettings ? T("Ajustes del emulador") :
 				                                                       T("No se encontraron juegos");
 				items.push_back({message, {}, {}, false});
 			}
@@ -1136,8 +1187,9 @@ namespace PS4GameMenu
 			PublishFolderDialog(true, folder_path, folder_rows, folder_focus, folder_games);
 		};
 		const auto change_setting = [&](int delta, bool wrap) {
-			ChangeSetting(settings, settings_row, delta, wrap);
-			ProbeLog("Game menu: setting %u changed\n", settings_row);
+			const SettingRow row = PageRow(view, settings_row);
+			ChangeSetting(settings, row, delta, wrap);
+			ProbeLog("Game menu: setting %u changed\n", static_cast<unsigned>(row));
 			save_settings(T("Guardado. Se aplica al iniciar el próximo juego."));
 		};
 		// Forja SX2 (2026-10-19): the language picker. At every start while Settings > "Preguntar el idioma al iniciar" says
@@ -1232,6 +1284,19 @@ namespace PS4GameMenu
 			status = started ? T("Leyendo la unidad. Puedes seguir navegando.") : disc_probe.error;
 			disc_status = status;
 		};
+		// Compilation 97: the Storage page's numbers.
+		const auto publish_storage = [&]() {
+			unsigned internal_games = 0;
+			for (const Item& item : library)
+				internal_games += item.path.rfind(Directory, 0) == 0 ? 1u : 0u;
+			const unsigned folder_games = static_cast<unsigned>(library.size()) - internal_games;
+			const unsigned usb_drives = static_cast<unsigned>(ListFolderRoots().size()) - 2;
+			MTGS::RunOnGSThread([internal_games, folder_games, usb_drives]() {
+				s_storage_internal_gs = internal_games;
+				s_storage_folder_gs = folder_games;
+				s_storage_usb_gs = usb_drives;
+			});
+		};
 		const auto set_view = [&](LibraryView next) {
 			boot_disc_when_ready = false;
 			view = next;
@@ -1257,10 +1322,12 @@ namespace PS4GameMenu
 				}
 				else status = T("Revisando el DVD...");
 			}
-			else if (view == LibraryView::Settings)
+			else if (IsSettingsView(view))
 			{
 				settings = ForjaSettings::Load();
 				settings_row = 0;
+				if (view == LibraryView::Storage)
+					publish_storage();
 				PublishSettings(settings, settings_row);
 			}
 		};
@@ -1462,6 +1529,7 @@ namespace PS4GameMenu
 					pump_library_cover();
 					selected = 0;
 					Publish(items, view);
+					publish_storage();
 					save_settings(ForjaLang::F(TF("Guardado. %u juegos en la biblioteca."), static_cast<unsigned>(library.size())).c_str());
 				};
 				u32 dialog_navigation = buttons & ORBIS_PAD_BUTTON_UP ? ORBIS_PAD_BUTTON_UP : buttons & ORBIS_PAD_BUTTON_DOWN ? ORBIS_PAD_BUTTON_DOWN : 0;
@@ -1573,7 +1641,7 @@ namespace PS4GameMenu
 				Threading::Sleep(16);
 				continue;
 			}
-			if ((pressed & ORBIS_PAD_BUTTON_CIRCLE) && view == LibraryView::Settings && !sidebar_focused)
+			if ((pressed & ORBIS_PAD_BUTTON_CIRCLE) && IsSettingsView(view) && !sidebar_focused)
 			{
 				// Forja SX2: Circle leaves the Settings list for the sidebar instead of asking to exit.
 				sidebar_focused = true;
@@ -1606,7 +1674,7 @@ namespace PS4GameMenu
 			}
 			if (pressed & (ORBIS_PAD_BUTTON_L1 | ORBIS_PAD_BUTTON_R1))
 			{
-				constexpr unsigned view_count = 5;
+				constexpr unsigned view_count = LibraryViewCount;
 				unsigned next = static_cast<unsigned>(view);
 				next = pressed & ORBIS_PAD_BUTTON_L1 ? (next + view_count - 1) % view_count : (next + 1) % view_count;
 				set_view(static_cast<LibraryView>(next));
@@ -1638,22 +1706,26 @@ namespace PS4GameMenu
 					unsigned next = static_cast<unsigned>(view);
 					if (navigation == ORBIS_PAD_BUTTON_UP && next > 0)
 						set_view(static_cast<LibraryView>(next - 1));
-					else if (navigation == ORBIS_PAD_BUTTON_DOWN && next < 4)
+					else if (navigation == ORBIS_PAD_BUTTON_DOWN && next + 1 < LibraryViewCount)
 						set_view(static_cast<LibraryView>(next + 1));
 					else if (navigation == ORBIS_PAD_BUTTON_RIGHT)
 						sidebar_focused = false;
 				}
-				else if (view == LibraryView::Settings)
+				else if (IsSettingsView(view))
 				{
+					const SettingRow row = PageRow(view, settings_row);
 					if (navigation == ORBIS_PAD_BUTTON_UP && settings_row > 0)
 						--settings_row;
-					else if (navigation == ORBIS_PAD_BUTTON_DOWN && settings_row + 1 < SettingsRows)
+					else if (navigation == ORBIS_PAD_BUTTON_DOWN && settings_row + 1 < PageRowCount(view))
 						++settings_row;
-					else if ((navigation == ORBIS_PAD_BUTTON_LEFT || navigation == ORBIS_PAD_BUTTON_RIGHT) && settings_row == SET_LANGUAGE)
+					else if ((navigation == ORBIS_PAD_BUTTON_LEFT || navigation == ORBIS_PAD_BUTTON_RIGHT) && row == SET_LANGUAGE)
 						apply_language((ForjaLang::Current() + (navigation == ORBIS_PAD_BUTTON_LEFT ? ForjaLang::LanguageCount - 1 : 1)) %
 						               ForjaLang::LanguageCount);
-					else if (settings_row == SET_GAMES_FOLDER)
+					else if (view == LibraryView::Storage)
 					{
+						// Nothing to adjust here: the folder opens with X, and the rest are numbers.
+						if (navigation == ORBIS_PAD_BUTTON_LEFT)
+							sidebar_focused = true;
 					}
 					else if (navigation == ORBIS_PAD_BUTTON_LEFT)
 						change_setting(-1, false);
@@ -1678,7 +1750,7 @@ namespace PS4GameMenu
 						selected = std::min(selected + GridColumns, items.size() - 1);
 				}
 				next_repeat = now + (navigation == held_direction ? 0.10 : 0.35);
-				if (view != LibraryView::Settings || sidebar_focused)
+				if (!IsSettingsView(view) || sidebar_focused)
 					status.clear();
 			}
 			held_direction = navigation;
@@ -1730,18 +1802,19 @@ namespace PS4GameMenu
 					sidebar_focused = false;
 					continue;
 				}
-				if (view == LibraryView::Settings)
+				if (IsSettingsView(view))
 				{
 					// Forja SX2: X moves the selected setting to its next choice (and wraps around); on Idioma it opens the picker.
-					if (settings_row == SET_LANGUAGE)
+					const SettingRow row = PageRow(view, settings_row);
+					if (row == SET_LANGUAGE)
 					{
 						language_dialog_visible = true;
 						language_focus = ForjaLang::Current();
 						PublishLanguageDialog(true, language_focus);
 					}
-					else if (settings_row == SET_GAMES_FOLDER)
+					else if (row == SET_GAMES_FOLDER)
 						open_folder(std::string());
-					else
+					else if (view != LibraryView::Storage)
 						change_setting(1, true);
 					Present(selected, status, connected, false, false, false);
 					Threading::Sleep(16);
@@ -1767,7 +1840,7 @@ namespace PS4GameMenu
 				struct stat info{};
 				if (path.empty())
 					status = view == LibraryView::Disc     ? T("El soporte de disco físico está en preparación.") :
-					         view == LibraryView::Settings ? T("Aquí irán las opciones de ajustes.") :
+					         IsSettingsView(view) ? T("Aquí irán las opciones de ajustes.") :
 					                                         T("No hay juegos en esta vista.");
 				else if (stat(path.c_str(), &info) != 0 || !S_ISREG(info.st_mode) || info.st_size <= 0)
 					status = T("Archivo no disponible. Pulsa Triángulo para actualizar.");
@@ -2462,10 +2535,11 @@ namespace PS4GameMenu
 		}
 		// The sidebar changes the data source while retaining the same grid.
 		static constexpr const char* sidebar_icons[] = {
-			"menu_biblioteca", "menu_disc", "menu_recentes", "menu_favoritos", "menu_configuracoes"};
-		static constexpr const char* sidebar_labels[] = {N_("Biblioteca"), N_("Disco"), N_("Recientes"), N_("Favoritos"), N_("Ajustes")};
+			"menu_biblioteca", "menu_disc", "menu_recentes", "menu_favoritos", "menu_usb", "menu_juegos", "menu_configuracoes"};
+		static constexpr const char* sidebar_labels[] = {N_("Biblioteca"), N_("Disco"), N_("Recientes"), N_("Favoritos"), N_("Memoria o USB"),
+			N_("Ajustes de juegos"), N_("Ajustes del emulador")};
 		const unsigned active_view = static_cast<unsigned>(s_library_view);
-		for (unsigned i = 0; i < 5; ++i)
+		for (unsigned i = 0; i < LibraryViewCount; ++i)
 		{
 			const float y = 164.0f + static_cast<float>(i) * 72.0f;
 			const bool active = i == active_view;
@@ -2531,37 +2605,42 @@ namespace PS4GameMenu
 		// Forja SX2: the Settings page, one row per choice with its value on the right. 2026-10-19 (Joseph: "ya está muy chiquito
 		// las letras"): bigger letters, the value on the name's line and the help under both, eight rows on screen in a list that
 		// scrolls with the cursor; the bar on the right and "3 / 14" say where the page is.
-		const bool settings_view = s_library_view == LibraryView::Settings;
+		const bool settings_view = IsSettingsView(s_library_view);
 		if (settings_view)
 		{
 			constexpr unsigned visible_rows = 8;
 			constexpr float rows_top = 110.0f, row_pitch = 100.0f, row_height = 92.0f;
-			const unsigned focused_row = std::min(s_settings_row_gs, SettingsRows - 1);
-			const unsigned first_row = std::min(focused_row > 3 ? focused_row - 3 : 0u, SettingsRows - visible_rows);
-			for (unsigned slot = 0; slot < visible_rows && first_row + slot < SettingsRows; ++slot)
+			const unsigned page_rows = PageRowCount(s_library_view);
+			const unsigned focused_row = std::min(s_settings_row_gs, page_rows - 1);
+			const unsigned max_first_row = page_rows > visible_rows ? page_rows - visible_rows : 0u;
+			const unsigned first_row = std::min(focused_row > 3 ? focused_row - 3 : 0u, max_first_row);
+			for (unsigned slot = 0; slot < visible_rows && first_row + slot < page_rows; ++slot)
 			{
-				const unsigned row = first_row + slot;
+				const unsigned row = PageRow(s_library_view, first_row + slot);
 				const float y = rows_top + static_cast<float>(slot) * row_pitch;
-				const bool focused = !s_sidebar_focused && row == focused_row;
+				const bool focused = !s_sidebar_focused && first_row + slot == focused_row;
 				fill(346, y, 1450, row_height, focused ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 235), 10);
 				if (focused)
 					draw->AddRect(point(346, y), point(1796, y + row_height), accent, 10 * scale, 2.0f * scale, 0);
 				char value[128];
 				SettingValue(s_settings_gs, row, value, sizeof(value));
 				char shown[160];
-				std::snprintf(shown, sizeof(shown), focused ? "<  %s  >" : "%s", value);
+				std::snprintf(shown, sizeof(shown), focused && s_library_view != LibraryView::Storage ? "<  %s  >" : "%s", value);
 				const float value_w = std::min(text_width(28, shown), 640.0f);
 				text(1766 - value_w, y + 42, 28, focused ? white : accent, shown, 640);
 				text(380, y + 42, 28, white, SettingLabel(row), 1766 - value_w - 40 - 380);
 				text(380, y + 76, 20, muted, SettingHelp(row), 1386);
 			}
 			constexpr float track_h = visible_rows * row_pitch - (row_pitch - row_height);
-			const float thumb_h = track_h * static_cast<float>(visible_rows) / static_cast<float>(SettingsRows);
-			const float thumb_y = rows_top + (track_h - thumb_h) * static_cast<float>(first_row) / static_cast<float>(SettingsRows - visible_rows);
-			fill(1810, rows_top, 6, track_h, IM_COL32(30, 66, 94, 180), 3);
-			fill(1810, thumb_y, 6, thumb_h, accent, 3);
+			if (max_first_row > 0)
+			{
+				const float thumb_h = track_h * static_cast<float>(visible_rows) / static_cast<float>(page_rows);
+				const float thumb_y = rows_top + (track_h - thumb_h) * static_cast<float>(first_row) / static_cast<float>(max_first_row);
+				fill(1810, rows_top, 6, track_h, IM_COL32(30, 66, 94, 180), 3);
+				fill(1810, thumb_y, 6, thumb_h, accent, 3);
+			}
 			char where[24];
-			std::snprintf(where, sizeof(where), "%u / %u", focused_row + 1, static_cast<unsigned>(SettingsRows));
+			std::snprintf(where, sizeof(where), "%u / %u", focused_row + 1, page_rows);
 			text(1796 - text_width(18, where), 1023, 18, muted, where);
 		}
 		for (size_t slot = 0; !disc_view && !settings_view && slot < VisibleItems && first + slot < s_items.size(); ++slot)
@@ -2628,7 +2707,8 @@ namespace PS4GameMenu
 			// Forja SX2: the Settings page's own buttons.
 			image("controle_x", 346, 1001, 30, 30);
 			text(384, 1023, 16, white, T("Cambiar"), 126);
-			text(520, 1023, 16, white, T("Izq./Der.: ajustar   Arriba/Abajo: elegir"), 500);
+			if (s_library_view != LibraryView::Storage)
+				text(520, 1023, 16, white, T("Izq./Der.: ajustar   Arriba/Abajo: elegir"), 500);
 			image("controle_bola", 1035, 1001, 30, 30);
 			text(1073, 1023, 16, muted, T("Menú lateral"), 400);
 		}

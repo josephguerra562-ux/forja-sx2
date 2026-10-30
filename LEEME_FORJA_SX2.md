@@ -140,7 +140,7 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
 - **Todo lo que cambies en L3+R3 se guarda solo para ese juego** (como las propiedades por juego de Dolphin), menos el
   contador de FPS. Se aplica al instante:
   - **Resolución interna** y **relación de aspecto**.
-  - **Velocidad del CPU de la PS2:** de 27 % a 300 %. **Desde la 58 todo juego empieza al 36 % con CPU automático hasta 27 %** (de la 45 a la 57, 27 %; antes, 75 %): tiene más
+  - **Velocidad del CPU de la PS2:** de 27 % a 100 % (desde la 97; antes hasta 300 %, que casi nunca servía). **Desde la 58 todo juego empieza al 36 % con CPU automático hasta 27 %** (de la 45 a la 57, 27 %; antes, 75 %): tiene más
     CPU de la PS2 donde la PS4 aguanta y baja solo en las escenas pesadas. Menos % = más
     FPS en la PS4, pero el juego puede perder cuadros. Si uno va en cámara lenta, súbelo aquí: queda guardado para ese juego.
     **Desde la 36, EXPERIMENTAL: 36 %, 31 % y 27 %** (marcados "exp."). Sirven para juegos que con 50 % siguen dibujando
@@ -314,7 +314,7 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
 ## 3b. Pestaña Ajustes (para todos los juegos)
 En la biblioteca, menú lateral > **Ajustes**. Arriba/Abajo eligen, Izq./Der. cambian, X pasa al siguiente valor y Círculo vuelve al menú.
 Se guarda al momento en `/data/ForjaSX2/ajustes.ini` y se aplica al iniciar el siguiente juego:
-velocidad del CPU de la PS2 (desde la 45, de 27 % a 300 %; de fábrica 36 % desde la 58, antes 27 %), **CPU automático** (desde la 45; de fábrica
+velocidad del CPU de la PS2 (de 27 % a 100 % desde la 97; de fábrica 36 % desde la 58, antes 27 %), **CPU automático** (desde la 45; de fábrica
 "Hasta 27 %"), resolución (de fábrica la nativa 1x en todas las PS4; antes una Pro con Boost empezaba en 2x), relación de aspecto, contador de FPS, **sensibilidad de la palanca** (133 % por defecto,
 como el PCSX2 de PC; arregla que X caminara con la palanca a tope), cargas rápidas, saltar el logo,
 lecturas de la GPU (readbacks), **Modo video automático** (sube la velocidad mientras se reproduce un video del juego) y
@@ -559,3 +559,7 @@ Para una sesión anterior, usa su carpeta de `logs/sesiones/` (trae los mismos a
 - **Un estado no carga:** pasa si es de otra compilación. Usa la memory card del juego.
 - Para cualquier otra cosa: baja `/data/ForjaSX2/logs/` y `crash.log` por FTP y pásamelos, o abre un tema en el foro
   **reportar-errores** del [Discord](https://discord.gg/YVCQF5XFFd) con `logs/resumen.txt`.
+
+## Menú lateral desde la 97
+
+Biblioteca, Disco, Recientes, Favoritos, **Memoria o USB** (elegir otra carpeta de juegos, y cuántos juegos y memorias hay), **Ajustes de juegos** (CPU, resolución, relación de aspecto, cargas, lecturas de la gráfica, modo video, generación de cuadros) y **Ajustes del emulador** (idioma, saltar el logo, botón del menú, contador de FPS, palanca). Dentro de la app las memorias USB son `/usb0` a `/usb7`.

@@ -49,6 +49,15 @@ tr: 프레임 생성 (30에서 60 FPS로)
 es: Botón del menú del emulador
 tr: 에뮬레이터 메뉴 버튼
 
+es: Juegos en la memoria interna
+tr: 내부 메모리의 게임
+
+es: Juegos en la carpeta elegida
+tr: 선택한 폴더의 게임
+
+es: Memorias USB conectadas
+tr: 연결된 USB 메모리
+
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: 에뮬레이터 전체의 언어. X로 언어 목록을 엽니다
 
@@ -93,6 +102,15 @@ tr: 실험 기능: 30 FPS로 안정된 게임을 60으로 표시 (GPU가 중간 
 
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: 터치패드: 오른쪽 절반을 누르세요. 왼쪽은 여전히 PS2의 SELECT입니다
+
+es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
+tr: /data/ForjaSX2/roms의 게임. 항상 라이브러리에 표시됩니다
+
+es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
+tr: PS4에 복사하지 않고 그 위치에서 바로 읽습니다. 플레이 중에 메모리를 빼지 마세요
+
+es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
+tr: 보이지 않으면 다시 연결하세요. 4GB가 넘는 게임은 exFAT 형식이어야 합니다
 
 es: 100 % (PS2 real)
 tr: 100 % (실제 PS2)
@@ -169,8 +187,14 @@ tr: 최근 게임이 없습니다
 es: No hay juegos favoritos
 tr: 즐겨찾기한 게임이 없습니다
 
-es: Ajustes de Forja SX2 (para todos los juegos)
-tr: Forja SX2 설정 (모든 게임에 적용)
+es: Memoria interna o USB
+tr: 내부 메모리 또는 USB
+
+es: Ajustes de juegos (valen para todos)
+tr: 게임 설정(모든 게임에 적용)
+
+es: Ajustes del emulador
+tr: 에뮬레이터 설정
 
 es: No se encontraron juegos
 tr: 게임을 찾지 못했습니다
@@ -616,8 +640,11 @@ tr: 최근
 es: Favoritos
 tr: 즐겨찾기
 
-es: Ajustes
-tr: 설정
+es: Memoria o USB
+tr: 메모리 / USB
+
+es: Ajustes de juegos
+tr: 게임 설정
 
 es: Versión %d.%02d (%d)
 tr: 버전 %d.%02d (%d)

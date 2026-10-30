@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Menu Juegos">
+  <title>Menu Juegos</title>
+  <g fill="none" stroke="#F1F7FF" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="20" width="52" height="26" rx="13"/><path d="M19 27v12M13 33h12"/></g>
+  <circle cx="41.5" cy="27.5" r="2.5" fill="#F1F7FF"/><circle cx="48.5" cy="35.5" r="2.5" fill="#F1F7FF"/>
+</svg>

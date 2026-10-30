@@ -3,9 +3,7 @@ name: Compilar Forja SX2
 on:
   workflow_dispatch:
   push:
-    # Forja SX2 (2026-10-30): la rama pruebas compila y deja el PKG como artifact, sin publicar nada (Joseph lo prueba en su
-    # PS4 y solo lo que queda bien pasa a main). Cada push a main sigue creando su pre-release.
-    branches: [main, pruebas]
+    branches: [main]
     paths-ignore:
       - 'MD/**'
       - '**/*.md'
@@ -188,7 +186,7 @@ jobs:
     # las que Joseph aprueba con aprobar.yml. Los dos bajan el .pkg comprobándolo con SHA256SUMS.txt.
     name: Publicar PKG en Releases
     needs: package
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     permissions:
       contents: write

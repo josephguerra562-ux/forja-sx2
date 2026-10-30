@@ -49,6 +49,15 @@ tr: Generazione fotogrammi (da 30 a 60 FPS)
 es: Botón del menú del emulador
 tr: Pulsante del menu dell'emulatore
 
+es: Juegos en la memoria interna
+tr: Giochi nella memoria interna
+
+es: Juegos en la carpeta elegida
+tr: Giochi nella cartella scelta
+
+es: Memorias USB conectadas
+tr: Chiavette USB collegate
+
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: La lingua di tutto l'emulatore. X apre l'elenco delle lingue
 
@@ -93,6 +102,15 @@ tr: SPERIMENTALE: un gioco stabile a 30 FPS si vede a 60 (la GPU inventa il foto
 
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: Touchpad: premi la metà DESTRA. La sinistra resta il SELECT della PS2
+
+es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
+tr: Quelli in /data/ForjaSX2/roms. Appaiono sempre nella libreria
+
+es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
+tr: Vengono letti da lì, senza copiarli sulla PS4. Non togliere la chiavetta mentre giochi
+
+es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
+tr: Se la tua non appare, ricollegala. Per giochi oltre 4 GB deve essere in exFAT
 
 es: 100 % (PS2 real)
 tr: 100 % (PS2 reale)
@@ -169,8 +187,14 @@ tr: Nessun gioco recente
 es: No hay juegos favoritos
 tr: Nessun gioco preferito
 
-es: Ajustes de Forja SX2 (para todos los juegos)
-tr: Impostazioni di Forja SX2 (per tutti i giochi)
+es: Memoria interna o USB
+tr: Memoria interna o USB
+
+es: Ajustes de juegos (valen para todos)
+tr: Opzioni dei giochi (per tutti)
+
+es: Ajustes del emulador
+tr: Opzioni emulatore
 
 es: No se encontraron juegos
 tr: Nessun gioco trovato
@@ -616,8 +640,11 @@ tr: Recenti
 es: Favoritos
 tr: Preferiti
 
-es: Ajustes
-tr: Impostazioni
+es: Memoria o USB
+tr: Memoria o USB
+
+es: Ajustes de juegos
+tr: Opzioni giochi
 
 es: Versión %d.%02d (%d)
 tr: Versione %d.%02d (%d)

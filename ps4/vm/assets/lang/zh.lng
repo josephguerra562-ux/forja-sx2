@@ -49,6 +49,15 @@ tr: 帧生成（30 到 60 FPS）
 es: Botón del menú del emulador
 tr: 模拟器菜单按键
 
+es: Juegos en la memoria interna
+tr: 内部存储中的游戏
+
+es: Juegos en la carpeta elegida
+tr: 所选文件夹中的游戏
+
+es: Memorias USB conectadas
+tr: 已连接的 USB 存储设备
+
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: 整个模拟器的语言。按 X 打开语言列表
 
@@ -93,6 +102,15 @@ tr: 实验功能：稳定 30 FPS 的游戏以 60 显示（显卡补出中间帧�
 
 es: Panel táctil: aprieta su mitad DERECHA. La izquierda sigue siendo el SELECT de la PS2
 tr: 触摸板：按右半边。左半边仍是 PS2 的 SELECT
+
+es: Los que están en /data/ForjaSX2/roms. Siempre aparecen en la biblioteca
+tr: 位于 /data/ForjaSX2/roms 的游戏。它们始终显示在游戏库中
+
+es: Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas
+tr: 直接从该位置读取,不会复制到 PS4。游戏时请勿拔出存储设备
+
+es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
+tr: 如果没有显示,请重新连接。超过 4 GB 的游戏需要 exFAT 格式
 
 es: 100 % (PS2 real)
 tr: 100 %（真实 PS2）
@@ -169,8 +187,14 @@ tr: 没有最近玩过的游戏
 es: No hay juegos favoritos
 tr: 没有收藏的游戏
 
-es: Ajustes de Forja SX2 (para todos los juegos)
-tr: Forja SX2 设置（适用于所有游戏）
+es: Memoria interna o USB
+tr: 内部存储或 USB
+
+es: Ajustes de juegos (valen para todos)
+tr: 游戏设置(适用于全部)
+
+es: Ajustes del emulador
+tr: 模拟器设置
 
 es: No se encontraron juegos
 tr: 未找到游戏
@@ -616,8 +640,11 @@ tr: 最近
 es: Favoritos
 tr: 收藏
 
-es: Ajustes
-tr: 设置
+es: Memoria o USB
+tr: 内存或 USB
+
+es: Ajustes de juegos
+tr: 游戏设置
 
 es: Versión %d.%02d (%d)
 tr: 版本 %d.%02d（%d）
