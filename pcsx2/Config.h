@@ -1137,7 +1137,9 @@ struct Pcsx2Config
 		// past -3, and a game whose frame fits at -3 (God of War II) only drops to half its frames, and halves the VU1's
 		// work a second, below that.
 		static constexpr s8 MIN_EE_CYCLE_RATE = -6;
-		static constexpr s8 MAX_EE_CYCLE_RATE = 3;
+		// Forja SX2 (compilation 97): 100 % at most. Above it asks more of the console for nothing: 17 of 32 players' reports went
+		// through it trying to speed a game up, no factory profile uses it, and Command Mission's own value is 100 %.
+		static constexpr s8 MAX_EE_CYCLE_RATE = 0;
 		static constexpr u8 MAX_EE_CYCLE_SKIP = 3;
 
 		BITFIELD32()

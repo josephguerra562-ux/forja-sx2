@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2002-2026 PCSX2 Dev Team
 // SPDX-License-Identifier: GPL-3.0+
 
+#include "SIO/Memcard/ForjaMcdRepair.h"
 #include "SIO/Memcard/MemoryCardFile.h"
 
 #include "SIO/Memcard/MemoryCardFolder.h"
@@ -395,6 +396,10 @@ void FileMemoryCard::Open()
 	}
 }
 
+#if defined(PCSX2_PS4_VM_BOOT)
+extern void ProbeLog(const char* format, ...); // ps4/core/ProbeLoggerPS4.cpp
+#endif
+
 // vk-285-31: the whole card image into RAM.
 bool FileMemoryCard::LoadCache(uint slot)
 {
@@ -418,6 +423,15 @@ bool FileMemoryCard::LoadCache(uint slot)
 	m_dirty[slot].assign((m_cache[slot].size() + MC2_ERASE_SIZE - 1) / MC2_ERASE_SIZE, 0);
 	m_dirty_any[slot] = false;
 	g_orbis_mcd_cached.fetch_or(1 << slot, std::memory_order_relaxed);
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Compilation 97: a card whose pages have the wrong ECC can't be saved to (ForjaMcdRepair.h). Goes to the file with the next
+	// write back, once a second of the game passes.
+	const ForjaMcdRepair::Result repaired = ForjaMcdRepair::Repair(m_cache[slot].data(), m_cache[slot].size(),
+		[this, slot](u32 adr, u32 bytes) { MarkDirty(slot, adr, bytes); });
+	if (repaired.erased != 0 || repaired.ecc_fixed != 0)
+		ProbeLog("Memory card: slot %u repaired, %u bad pages of free clusters erased, %u pages of used clusters given the right ECC\n",
+			slot, repaired.erased, repaired.ecc_fixed);
+#endif
 	g_orbis_mcd_ticks.fetch_add(__builtin_ia32_rdtsc() - t0, std::memory_order_relaxed);
 	std::printf("[mcd] slot %u: %s in RAM (%lld bytes, read in %.1f ms)\n", slot,
 		std::string(Path::GetFileName(m_filenames[slot])).c_str(), static_cast<long long>(size),
@@ -437,10 +451,6 @@ void FileMemoryCard::MarkDirty(uint slot, u32 adr, u32 size)
 	m_dirty_any[slot] = true;
 	m_idle_seconds[slot] = 0;
 }
-
-#if defined(PCSX2_PS4_VM_BOOT)
-extern void ProbeLog(const char* format, ...); // ps4/core/ProbeLoggerPS4.cpp
-#endif
 
 // Writes the dirty erase blocks back: one seek and one write per run of neighbouring blocks.
 void FileMemoryCard::FlushCache(uint slot, const char* why)

@@ -2314,7 +2314,7 @@ static void SavePlayerProfile(const char* what, Edit&& edit, bool reload_pcsx2)
 // Forja SX2: the pause menu's "PS2 CPU speed" row (EECycleRate, a PCSX2 key: the recompilers need the reload).
 static void ApplyGameEECycleRate(int rate)
 {
-	rate = std::clamp(rate, -6, 3);
+	rate = std::clamp(rate, -6, 0);
 	SavePlayerProfile("EE cycle rate", [rate](INISettingsInterface& ini) { ini.SetIntValue("EmuCore/Speedhacks", "EECycleRate", rate); },
 		true);
 	ProbeLog("EE cycle rate: requested=%d active=%d\n", rate, s_game_ee_rate);
@@ -2994,7 +2994,7 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			break;
 		case PS4GameMenu::ROW_EE_RATE:
 		{
-			const int requested = std::clamp(s_game_ee_rate + delta, -6, 3);
+			const int requested = std::clamp(s_game_ee_rate + delta, -6, 0);
 			if (requested != s_game_ee_rate)
 				ApplyGameEECycleRate(requested);
 			break;

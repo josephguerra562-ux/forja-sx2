@@ -56,7 +56,7 @@ namespace ForjaSettings
 
 	inline Values Clamp(Values v)
 	{
-		v.ee_rate = std::clamp(v.ee_rate, -6, 3);
+		v.ee_rate = std::clamp(v.ee_rate, -6, 0);
 		v.cpu_auto = std::clamp(v.cpu_auto, -6, 0);
 		v.upscale = std::clamp(v.upscale, 1, 4);
 		v.aspect = std::clamp(v.aspect, 0, 4);

@@ -294,7 +294,7 @@ namespace PS4GameMenu
 				case SET_LANGUAGE: break;
 				case SET_GAMES_FOLDER: break;
 				case SET_ASK_LANGUAGE: v.ask_language = !v.ask_language; break;
-				case SET_EE_RATE: v.ee_rate = step(v.ee_rate, -6, 3); break;
+				case SET_EE_RATE: v.ee_rate = step(v.ee_rate, -6, 0); break;
 				case SET_CPU_AUTO: v.cpu_auto = -step(-v.cpu_auto, 0, 6); break; // right: a lower floor
 				case SET_UPSCALE: v.upscale = step(v.upscale, 1, 4); break;
 				case SET_ASPECT: v.aspect = step(v.aspect, 0, 4); break;
