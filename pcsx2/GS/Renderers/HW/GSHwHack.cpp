@@ -433,6 +433,11 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 	static CopyShot s_shots[4];
 	static u32 s_kept_taken = 0, s_kept_put_back = 0, s_kept_drawn = 0, s_seq_drawn = 0, s_seq_left = 0; // for the log
 	static u32 s_missing_logged = 0;
+	// Compilation 99: the last depth clear, to leave out the same one again (below).
+	static u32 s_clear_bp = 0, s_clear_bw = 0, s_clear_psm = 0;
+	static GSVector4i s_clear_rect = GSVector4i::zero();
+	static bool s_clear_stands = false;
+	static u32 s_clears_done = 0, s_clears_repeated = 0;
 	// Compilation 92: the trace: the GS frame it ends at, and how many lines it may still write.
 	static int s_trace_until = -1, s_last_trace_frame = -100000;
 	// Compilation 88: what each kind of GS frame costs the GS thread, from its first draw to the next frame's (waits
@@ -473,6 +478,7 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 		s_work_this_frame = 0;
 		s_drawn_this_frame = false;
 		s_frame = frame;
+		s_clear_stands = false;
 		s_draw_in_frame = 0;
 		s_dump_left = 0;
 		if (s_trace_until >= 0 && frame > s_trace_until)
@@ -524,6 +530,8 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 				ms(s_kind_ticks[2], s_kind_frames[2]));
 			for (unsigned i = 0; i < 3; i++)
 				s_kind_ticks[i] = s_kind_work[i] = s_kind_frames[i] = 0;
+			ProbeLog("Crowd clears (99): %u done, %u the same again left out\n", s_clears_done, s_clears_repeated);
+			s_clears_done = s_clears_repeated = 0;
 			ProbeLog("Crowd draws: GS frame %d, sequence %u (1 in %u), the draws into its blocks in order:\n", frame, s_seq, s_every);
 		}
 	}
@@ -691,7 +699,24 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 			}
 		}
 		const u64 work_t0 = Common::Timer::GetCurrentValue(); // compilation 88
-		ForjaClearZ(r, r.m_context->offset.zb, r.m_r);
+		// Compilation 99: the blur's 12 draws clear the same rectangle of the same depth buffer again and again (r.m_r doesn't change
+		// between them), and they were most of what the clears cost: 11 % of the GS thread (2026-10-30). Left out when the draw before
+		// wrote no depth, didn't draw into that memory and it is the same GS frame: the memory is as the last clear left it.
+		const GSOffset& zb_offset = r.m_context->offset.zb;
+		const bool same_clear = s_clear_stands && zb_offset.bp() == s_clear_bp && zb_offset.bw() == s_clear_bw &&
+			static_cast<u32>(zb_offset.psm()) == s_clear_psm && r.m_r.eq(s_clear_rect);
+		if (same_clear)
+			s_clears_repeated++;
+		else
+		{
+			ForjaClearZ(r, zb_offset, r.m_r);
+			s_clears_done++;
+			s_clear_bp = zb_offset.bp();
+			s_clear_bw = zb_offset.bw();
+			s_clear_psm = static_cast<u32>(zb_offset.psm());
+			s_clear_rect = r.m_r;
+		}
+		s_clear_stands = RZMSK && !sprites && !copy && fbp >= zb_offset.bp() + 0x1000;
 		r.SwPrimRender(r, RFBP != 0x2DC0, false);
 		if (copy && !s_leave_out)
 		{

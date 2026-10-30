@@ -581,7 +581,9 @@ struct Gif_Unit
 	{
 		gifPath[0].Init(GIF_PATH_1, _1mb * 9, _1mb + _1kb);
 		gifPath[1].Init(GIF_PATH_2, _1mb * 9, _1mb + _1kb);
-		gifPath[2].Init(GIF_PATH_3, _1mb * 9, _1mb + _1kb);
+		// Forja SX2 (compilation 99): 24 MB, not 9. When it fills the EE waits for the GS (Gif_MTGS_WaitRead): 8.6 % of the EE's time in
+		// Guitar Hero's songs, 2 ms a frame, with 2 ms too many (2026-10-30).
+		gifPath[2].Init(GIF_PATH_3, _1mb * 24, _1mb + _1kb);
 	}
 
 	// Enable softReset when resetting during game emulation
