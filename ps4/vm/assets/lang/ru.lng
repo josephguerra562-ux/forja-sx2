@@ -10,6 +10,9 @@ tr: Язык
 es: Preguntar el idioma al iniciar
 tr: Спрашивать язык при запуске
 
+es: Carpeta de juegos
+tr: Папка с играми
+
 es: Velocidad del CPU de la PS2
 tr: Скорость ЦП PS2
 
@@ -52,8 +55,11 @@ tr: Язык всего эмулятора. X открывает список я
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: Да: список языков появляется при каждом запуске Forja SX2
 
-es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
-tr: Каждая игра начинает с этого. Если игра замедлена, увеличьте в L3+R3 (сохранится для этой игры)
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
+tr: Другая папка с играми, например на USB-накопителе. Игры из внутренней папки тоже останутся. X — выбрать
+
+es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
+tr: Больше % НЕ значит быстрее: нагрузка растёт, и почти всегда становится хуже. Повышайте в L3+R3, только если игра замедлена или работает с ошибками
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: Если вы подняли ЦП игры и она тормозит, он сам снижается в тяжёлых сценах, до этого предела
@@ -120,6 +126,9 @@ tr: Авто
 
 es: Sí
 tr: Да
+
+es: Solo la interna
+tr: Только внутренняя
 
 es: %dx (nativa)
 tr: %dx (родное)
@@ -225,6 +234,9 @@ tr: DVD недоступен
 
 es:  Descargando portada...
 tr:  Загрузка обложки...
+
+es: Guardado. %u juegos en la biblioteca.
+tr: Сохранено. Игр в библиотеке: %u.
 
 es: Cancelando la copia...
 tr: Отмена копирования...
@@ -684,6 +696,21 @@ tr: Скачать
 
 es: Ahora no
 tr: Не сейчас
+
+es: Elige una memoria USB o la PS4
+tr: Выберите USB-накопитель или PS4
+
+es: %u juegos en esta carpeta
+tr: Игр в этой папке: %u
+
+es: No hay más carpetas aquí
+tr: Здесь больше нет папок
+
+es: Entrar
+tr: Открыть
+
+es: Usar esta carpeta
+tr: Использовать эту папку
 
 es: Parches:  ninguno para este juego
 tr: Патчи:  для этой игры нет

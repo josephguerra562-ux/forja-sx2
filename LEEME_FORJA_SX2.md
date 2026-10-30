@@ -245,6 +245,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
     8x8: los mismos píxeles con los mismos valores, de a 256 bytes. Las 4 primeras veces de cada partida se hace de las
     dos formas, se comparan los 4 MB de memoria byte por byte y el registro dice si quedó igual ("Crowd clear check");
     si alguna vez difiere, vuelve el de PCSX2. Esto acelera también "todos los cuadros".
+    **Desde la 97** esa comparación se hace sobre un patrón: sobre la memoria real, que ya estaba en cero, no probaba nada.
+    Con el marcador `/data/ForjaSX2/fotos-publico` guarda hasta 20 fotos por partida en `snaps/`, para diagnosticar la imagen.
   - **Saltar cuadros (GS)** (desde la 47; en Rendimiento desde la 75, ya sin "experimental"): No / Auto / 1 de 2 / desde
     la 86 **1 de 2 rápido** (abajo; en la 82-85 ese lugar era "1 de 2 sin guardián"). Para juegos en los que el GS de la PS4 no da
     abasto (Dragon Ball Z Budokai Tenkaichi 4: ~2.100 dibujos por cuadro en las peleas, 48 % de velocidad). El GS dibuja

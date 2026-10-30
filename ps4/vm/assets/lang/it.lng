@@ -10,6 +10,9 @@ tr: Lingua
 es: Preguntar el idioma al iniciar
 tr: Chiedi la lingua all'avvio
 
+es: Carpeta de juegos
+tr: Cartella dei giochi
+
 es: Velocidad del CPU de la PS2
 tr: Velocità della CPU della PS2
 
@@ -52,8 +55,11 @@ tr: La lingua di tutto l'emulatore. X apre l'elenco delle lingue
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: Sì: l'elenco delle lingue appare ogni volta che apri Forja SX2
 
-es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
-tr: Ogni gioco parte da qui. Se uno va al rallentatore, alzala in L3+R3 (si salva per quel gioco)
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
+tr: Un'altra cartella di giochi, ad esempio su una chiavetta USB. Quelli della cartella interna restano visibili. X per sceglierla
+
+es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
+tr: Più % NON è più veloce: chiede di più alla console e quasi sempre va peggio. Alzalo in L3+R3 solo se il gioco va al rallentatore o dà problemi
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: Se alzi la CPU di un gioco e rallenta, si abbassa da sola nelle scene pesanti, fino a questo minimo
@@ -120,6 +126,9 @@ tr: Auto
 
 es: Sí
 tr: Sì
+
+es: Solo la interna
+tr: Solo interna
 
 es: %dx (nativa)
 tr: %dx (nativa)
@@ -225,6 +234,9 @@ tr: DVD non disponibile
 
 es:  Descargando portada...
 tr:  Scaricamento copertina...
+
+es: Guardado. %u juegos en la biblioteca.
+tr: Salvato. %u giochi nella libreria.
 
 es: Cancelando la copia...
 tr: Annullamento della copia...
@@ -684,6 +696,21 @@ tr: Scarica
 
 es: Ahora no
 tr: Non ora
+
+es: Elige una memoria USB o la PS4
+tr: Scegli una chiavetta USB o la PS4
+
+es: %u juegos en esta carpeta
+tr: %u giochi in questa cartella
+
+es: No hay más carpetas aquí
+tr: Non ci sono altre cartelle qui
+
+es: Entrar
+tr: Apri
+
+es: Usar esta carpeta
+tr: Usa questa cartella
 
 es: Parches:  ninguno para este juego
 tr: Patch:  nessuna per questo gioco

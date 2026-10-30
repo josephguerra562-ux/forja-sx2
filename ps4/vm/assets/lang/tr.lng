@@ -10,6 +10,9 @@ tr: Dil
 es: Preguntar el idioma al iniciar
 tr: Açılışta dili sor
 
+es: Carpeta de juegos
+tr: Oyun klasörü
+
 es: Velocidad del CPU de la PS2
 tr: PS2 CPU hızı
 
@@ -52,8 +55,11 @@ tr: Tüm emülatörün dili. X dil listesini açar
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: Evet: Forja SX2'yi her açtığında dil listesi çıkar
 
-es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
-tr: Her oyun buradan başlar. Biri ağır çekimde giderse L3+R3'te yükselt (o oyun için kaydedilir)
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
+tr: Oyunların olduğu başka bir klasör, örneğin bir USB bellekte. Dahili klasördekiler de görünmeye devam eder. Seçmek için X
+
+es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
+tr: Daha yüksek % daha hızlı DEĞİLDİR: konsolu daha çok zorlar ve neredeyse her zaman daha kötü çalışır. Yalnızca oyun ağır çekimde gidiyor veya hata veriyorsa L3+R3 ile artırın
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: Bir oyunun CPU'sunu yükseltip oyun yavaşlarsa, ağır sahnelerde kendiliğinden bu sınıra kadar iner
@@ -120,6 +126,9 @@ tr: Otomatik
 
 es: Sí
 tr: Evet
+
+es: Solo la interna
+tr: Yalnızca dahili
 
 es: %dx (nativa)
 tr: %dx (yerel)
@@ -225,6 +234,9 @@ tr: DVD kullanılamıyor
 
 es:  Descargando portada...
 tr:  Kapak indiriliyor...
+
+es: Guardado. %u juegos en la biblioteca.
+tr: Kaydedildi. Kitaplıkta %u oyun var.
 
 es: Cancelando la copia...
 tr: Kopyalama iptal ediliyor...
@@ -684,6 +696,21 @@ tr: İndir
 
 es: Ahora no
 tr: Şimdi değil
+
+es: Elige una memoria USB o la PS4
+tr: Bir USB bellek veya PS4'ü seçin
+
+es: %u juegos en esta carpeta
+tr: Bu klasörde %u oyun var
+
+es: No hay más carpetas aquí
+tr: Burada başka klasör yok
+
+es: Entrar
+tr: Aç
+
+es: Usar esta carpeta
+tr: Bu klasörü kullan
 
 es: Parches:  ninguno para este juego
 tr: Yamalar:  bu oyun için yok

@@ -10,6 +10,9 @@ tr: Langue
 es: Preguntar el idioma al iniciar
 tr: Demander la langue au démarrage
 
+es: Carpeta de juegos
+tr: Dossier des jeux
+
 es: Velocidad del CPU de la PS2
 tr: Vitesse du CPU de la PS2
 
@@ -52,8 +55,11 @@ tr: La langue de tout l'émulateur. X ouvre la liste des langues
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: Oui : la liste des langues s'affiche à chaque ouverture de Forja SX2
 
-es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
-tr: Chaque jeu démarre ici. S'il tourne au ralenti, augmentez-la dans L3+R3 (enregistré pour ce jeu)
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
+tr: Un autre dossier de jeux, par exemple sur une clé USB. Ceux du dossier interne restent affichés. X pour le choisir
+
+es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
+tr: Plus de % n'est PAS plus rapide : cela demande plus à la console et c'est presque toujours pire. Augmentez dans L3+R3 seulement si le jeu est au ralenti ou plante
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: Si vous augmentez le CPU d'un jeu et qu'il ralentit, il baisse seul dans les scènes lourdes, jusqu'à ce plancher
@@ -120,6 +126,9 @@ tr: Auto
 
 es: Sí
 tr: Oui
+
+es: Solo la interna
+tr: Interne uniquement
 
 es: %dx (nativa)
 tr: %dx (native)
@@ -225,6 +234,9 @@ tr: DVD indisponible
 
 es:  Descargando portada...
 tr:  Téléchargement de la jaquette...
+
+es: Guardado. %u juegos en la biblioteca.
+tr: Enregistré. %u jeux dans la bibliothèque.
 
 es: Cancelando la copia...
 tr: Annulation de la copie...
@@ -684,6 +696,21 @@ tr: Télécharger
 
 es: Ahora no
 tr: Pas maintenant
+
+es: Elige una memoria USB o la PS4
+tr: Choisissez une clé USB ou la PS4
+
+es: %u juegos en esta carpeta
+tr: %u jeux dans ce dossier
+
+es: No hay más carpetas aquí
+tr: Plus de dossiers ici
+
+es: Entrar
+tr: Ouvrir
+
+es: Usar esta carpeta
+tr: Utiliser ce dossier
 
 es: Parches:  ninguno para este juego
 tr: Correctifs :  aucun pour ce jeu

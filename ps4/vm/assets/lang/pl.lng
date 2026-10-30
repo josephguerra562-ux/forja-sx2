@@ -10,6 +10,9 @@ tr: Język
 es: Preguntar el idioma al iniciar
 tr: Pytaj o język przy starcie
 
+es: Carpeta de juegos
+tr: Folder gier
+
 es: Velocidad del CPU de la PS2
 tr: Szybkość CPU PS2
 
@@ -52,8 +55,11 @@ tr: Język całego emulatora. X otwiera listę języków
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: Tak: lista języków pojawia się przy każdym uruchomieniu Forja SX2
 
-es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
-tr: Każda gra zaczyna od tego. Jeśli któraś zwalnia, zwiększ w L3+R3 (zapisze się dla tej gry)
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
+tr: Inny folder z grami, np. na pamięci USB. Gry z folderu wewnętrznego nadal będą widoczne. X, aby wybrać
+
+es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
+tr: Więcej % NIE znaczy szybciej: to większe obciążenie konsoli i prawie zawsze działa gorzej. Zwiększ w L3+R3 tylko, gdy gra działa w zwolnionym tempie lub ma błędy
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: Jeśli podniesiesz CPU gry i ona zwolni, sam obniża się w ciężkich scenach, aż do tego poziomu
@@ -120,6 +126,9 @@ tr: Auto
 
 es: Sí
 tr: Tak
+
+es: Solo la interna
+tr: Tylko wewnętrzny
 
 es: %dx (nativa)
 tr: %dx (natywna)
@@ -225,6 +234,9 @@ tr: DVD niedostępne
 
 es:  Descargando portada...
 tr:  Pobieranie okładki...
+
+es: Guardado. %u juegos en la biblioteca.
+tr: Zapisano. Gier w bibliotece: %u.
 
 es: Cancelando la copia...
 tr: Anulowanie kopiowania...
@@ -684,6 +696,21 @@ tr: Pobierz
 
 es: Ahora no
 tr: Nie teraz
+
+es: Elige una memoria USB o la PS4
+tr: Wybierz pamięć USB lub PS4
+
+es: %u juegos en esta carpeta
+tr: Gier w tym folderze: %u
+
+es: No hay más carpetas aquí
+tr: Nie ma tu więcej folderów
+
+es: Entrar
+tr: Otwórz
+
+es: Usar esta carpeta
+tr: Użyj tego folderu
 
 es: Parches:  ninguno para este juego
 tr: Łatki:  brak dla tej gry

@@ -194,6 +194,7 @@ namespace PS4GameMenu
 		{
 			SET_LANGUAGE,
 			SET_ASK_LANGUAGE,
+			SET_GAMES_FOLDER,
 			SET_EE_RATE,
 			SET_CPU_AUTO,
 			SET_UPSCALE,
@@ -212,7 +213,7 @@ namespace PS4GameMenu
 		const char* SettingLabel(unsigned row)
 		{
 			static constexpr const char* labels[SettingsRows] = {N_("Idioma"), N_("Preguntar el idioma al iniciar"),
-				N_("Velocidad del CPU de la PS2"), N_("CPU automático"), N_("Resolución interna"), N_("Relación de aspecto"),
+				N_("Carpeta de juegos"), N_("Velocidad del CPU de la PS2"), N_("CPU automático"), N_("Resolución interna"), N_("Relación de aspecto"),
 				N_("Contador de FPS al jugar"), N_("Sensibilidad de la palanca"), N_("Cargas rápidas del disco"),
 				N_("Saltar el logo de la PS2"), N_("Lecturas de la gráfica (readbacks)"), N_("Modo video automático"),
 				N_("Generación de cuadros (30 a 60 FPS)"), N_("Botón del menú del emulador")};
@@ -224,7 +225,8 @@ namespace PS4GameMenu
 			static constexpr const char* help[SettingsRows] = {
 				N_("El idioma de todo el emulador. X abre la lista de idiomas"),
 				N_("Sí: la lista de idiomas sale cada vez que abres Forja SX2"),
-				N_("Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)"),
+				N_("Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla"),
+				N_("Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla"),
 				N_("Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso"),
 				N_("1x es la de la PS2. En PS4 Pro aguanta 2x-4x en juegos ligeros"),
 				N_("Auto respeta lo que pide el juego"),
@@ -251,6 +253,7 @@ namespace PS4GameMenu
 			{
 				case SET_LANGUAGE: std::snprintf(out, size, "%s", ForjaLang::Languages[ForjaLang::Current()].name); break;
 				case SET_ASK_LANGUAGE: std::snprintf(out, size, "%s", yes_no(v.ask_language)); break;
+				case SET_GAMES_FOLDER: std::snprintf(out, size, "%s", v.games_folder[0] ? v.games_folder : T("Solo la interna")); break;
 				case SET_EE_RATE: std::snprintf(out, size, "%s", T(ee_names[std::clamp(v.ee_rate, -6, 3) + 6])); break;
 				case SET_CPU_AUTO: std::snprintf(out, size, "%s", T(cpu_auto_names[-std::clamp(v.cpu_auto, -6, 0)])); break;
 				case SET_UPSCALE: std::snprintf(out, size, v.upscale == 1 ? TF("%dx (nativa)") : "%dx", v.upscale); break;
@@ -289,6 +292,7 @@ namespace PS4GameMenu
 			switch (row)
 			{
 				case SET_LANGUAGE: break;
+				case SET_GAMES_FOLDER: break;
 				case SET_ASK_LANGUAGE: v.ask_language = !v.ask_language; break;
 				case SET_EE_RATE: v.ee_rate = step(v.ee_rate, -6, 3); break;
 				case SET_CPU_AUTO: v.cpu_auto = -step(-v.cpu_auto, 0, 6); break; // right: a lower floor
@@ -338,6 +342,90 @@ namespace PS4GameMenu
 				s_language_focus = focus;
 				for (unsigned i = 0; i < 4; i++)
 					s_language_texts[i] = texts[i];
+			});
+		}
+
+		bool HasGameExtension(const std::string& name)
+		{
+			const size_t dot = name.find_last_of('.');
+			if (name.empty() || name[0] == '.' || dot == std::string::npos)
+				return false;
+			std::string extension = name.substr(dot);
+			std::transform(extension.begin(), extension.end(), extension.begin(),
+				[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+			return extension == ".iso" || extension == ".bin" || extension == ".chd" || extension == ".cso" ||
+			       extension == ".zso" || extension == ".gz";
+		}
+
+		// Forja SX2 (compilation 97): the picker of Settings > Carpeta de juegos. The app's sandbox has the USB drives as /usb0../usb7
+		// (seen on the console in /mnt/sandbox/FRJA00002_000, 2026-10-30), an empty slot with no entries; /mnt/usb0 is the name
+		// outside it. /data too: some players already keep their games there.
+		constexpr unsigned FolderRowsVisible = 8;
+		bool s_folder_dialog_visible = false;
+		std::string s_folder_path;
+		std::vector<std::string> s_folder_rows;
+		unsigned s_folder_focus = 0;
+		unsigned s_folder_games = 0;
+
+		// The folders in a folder, and how many games it has itself.
+		std::vector<std::string> ListFolders(const std::string& path, unsigned& games)
+		{
+			std::vector<std::string> folders;
+			games = 0;
+			DIR* dir = opendir(path.c_str());
+			if (!dir)
+			{
+				ProbeLog("Game folder picker: cannot open %s (errno %d)\n", path.c_str(), errno);
+				return folders;
+			}
+			while (dirent* entry = readdir(dir))
+			{
+				const std::string name(entry->d_name);
+				if (name.empty() || name[0] == '.' || name[0] == '$' || name == "System Volume Information")
+					continue;
+				struct stat info{};
+				if (stat((path + "/" + name).c_str(), &info) != 0)
+					continue;
+				if (S_ISDIR(info.st_mode))
+					folders.push_back(name);
+				else if (S_ISREG(info.st_mode) && info.st_size > 0 && HasGameExtension(name))
+					games++;
+			}
+			closedir(dir);
+			std::sort(folders.begin(), folders.end());
+			ProbeLog("Game folder picker: %s has %zu folders and %u games\n", path.c_str(), folders.size(), games);
+			return folders;
+		}
+
+		// The first page: the internal folder alone, /data and the drives plugged in.
+		std::vector<std::string> ListFolderRoots()
+		{
+			std::vector<std::string> roots = {std::string(), "/data"};
+			for (unsigned drive = 0; drive < 8; drive++)
+			{
+				const std::string root = "/usb" + std::to_string(drive);
+				DIR* dir = opendir(root.c_str());
+				if (!dir)
+					continue;
+				bool used = false;
+				while (dirent* entry = readdir(dir))
+					used = used || (std::strcmp(entry->d_name, ".") != 0 && std::strcmp(entry->d_name, "..") != 0);
+				closedir(dir);
+				if (used)
+					roots.push_back(root);
+			}
+			ProbeLog("Game folder picker: %zu drives plugged in\n", roots.size() - 2);
+			return roots;
+		}
+
+		void PublishFolderDialog(bool visible, const std::string& path, const std::vector<std::string>& rows, unsigned focus, unsigned games)
+		{
+			MTGS::RunOnGSThread([visible, path, rows, focus, games]() {
+				s_folder_dialog_visible = visible;
+				s_folder_path = path;
+				s_folder_rows = rows;
+				s_folder_focus = focus;
+				s_folder_games = games;
 			});
 		}
 
@@ -600,24 +688,18 @@ namespace PS4GameMenu
 			return texture;
 		}
 
-		std::vector<Item> Scan()
+		void ScanFolder(const char* folder, std::vector<Item>& items)
 		{
-			std::vector<Item> items;
-			if (DIR* dir = opendir(Directory))
+			const size_t before = items.size();
+			if (DIR* dir = opendir(folder))
 			{
 				while (dirent* entry = readdir(dir))
 				{
 					const std::string name(entry->d_name);
+					if (!HasGameExtension(name))
+						continue;
 					const size_t dot = name.find_last_of('.');
-					if (name.empty() || name[0] == '.' || dot == std::string::npos)
-						continue;
-					std::string extension = name.substr(dot);
-					std::transform(extension.begin(), extension.end(), extension.begin(),
-						[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-					if (extension != ".iso" && extension != ".bin" && extension != ".chd" && extension != ".cso" &&
-					    extension != ".zso" && extension != ".gz")
-						continue;
-					const std::string path = std::string(Directory) + "/" + name;
+					const std::string path = std::string(folder) + "/" + name;
 					struct stat info{};
 					if (stat(path.c_str(), &info) == 0 && S_ISREG(info.st_mode) && info.st_size > 0)
 					{
@@ -630,8 +712,20 @@ namespace PS4GameMenu
 				}
 				closedir(dir);
 			}
+			else
+				ProbeLog("Game menu: cannot open %s (errno %d)\n", folder, errno);
+			ProbeLog("Game menu: found %zu .iso/.bin/.chd/.cso/.zso/.gz files in %s\n", items.size() - before, folder);
+		}
+
+		std::vector<Item> Scan()
+		{
+			std::vector<Item> items;
+			ScanFolder(Directory, items);
+			// Compilation 97: the folder picked in Settings, besides the internal one. A drive not plugged in just lists nothing.
+			const ForjaSettings::Values settings = ForjaSettings::Load();
+			if (settings.games_folder[0] && std::strcmp(settings.games_folder, Directory) != 0)
+				ScanFolder(settings.games_folder, items);
 			std::sort(items.begin(), items.end(), [](const Item& a, const Item& b) { return a.name < b.name; });
-			ProbeLog("Game menu: found %zu .iso/.bin/.chd/.cso/.zso/.gz files in %s\n", items.size(), Directory);
 			orbis_stage("game library listed (covers loaded)");
 			return items;
 		}
@@ -1028,6 +1122,19 @@ namespace PS4GameMenu
 			status = ForjaSettings::Save(settings) ? saved : T("No se pudieron guardar los ajustes.");
 			PublishSettings(settings, settings_row);
 		};
+		bool folder_dialog_visible = false;
+		std::string folder_path;
+		std::vector<std::string> folder_rows;
+		unsigned folder_focus = 0;
+		unsigned folder_games = 0;
+		const auto open_folder = [&](const std::string& path) {
+			folder_dialog_visible = true;
+			folder_path = path;
+			folder_games = 0;
+			folder_rows = path.empty() ? ListFolderRoots() : ListFolders(path, folder_games);
+			folder_focus = 0;
+			PublishFolderDialog(true, folder_path, folder_rows, folder_focus, folder_games);
+		};
 		const auto change_setting = [&](int delta, bool wrap) {
 			ChangeSetting(settings, settings_row, delta, wrap);
 			ProbeLog("Game menu: setting %u changed\n", settings_row);
@@ -1336,6 +1443,69 @@ namespace PS4GameMenu
 				Threading::Sleep(16);
 				continue;
 			}
+			// Compilation 97: the game folder's picker. X goes into the folder under the cursor, Triangle keeps the one shown,
+			// Circle goes up (from the first page, it leaves the choice as it was).
+			if (folder_dialog_visible)
+			{
+				const bool at_roots = folder_path.empty();
+				const auto close_picker = [&]() {
+					folder_dialog_visible = false;
+					PublishFolderDialog(false, folder_path, folder_rows, 0, 0);
+				};
+				const auto choose_folder = [&](const std::string& folder) {
+					close_picker();
+					std::snprintf(settings.games_folder, sizeof(settings.games_folder), "%s", folder.c_str());
+					ProbeLog("Game menu: game folder is now '%s'\n", settings.games_folder);
+					library = Scan();
+					library_cover_index = 0;
+					items = BuildView(library, view, favorites, recent);
+					pump_library_cover();
+					selected = 0;
+					Publish(items, view);
+					save_settings(ForjaLang::F(TF("Guardado. %u juegos en la biblioteca."), static_cast<unsigned>(library.size())).c_str());
+				};
+				u32 dialog_navigation = buttons & ORBIS_PAD_BUTTON_UP ? ORBIS_PAD_BUTTON_UP : buttons & ORBIS_PAD_BUTTON_DOWN ? ORBIS_PAD_BUTTON_DOWN : 0;
+				if (connected && !dialog_navigation)
+					dialog_navigation = data.leftStick.y < 72 ? ORBIS_PAD_BUTTON_UP : data.leftStick.y > 184 ? ORBIS_PAD_BUTTON_DOWN : 0;
+				if (dialog_navigation && (dialog_navigation != held_direction || now >= next_repeat))
+				{
+					if (dialog_navigation == ORBIS_PAD_BUTTON_UP && folder_focus > 0)
+						folder_focus--;
+					else if (dialog_navigation == ORBIS_PAD_BUTTON_DOWN && folder_focus + 1 < folder_rows.size())
+						folder_focus++;
+					next_repeat = now + (dialog_navigation == held_direction ? 0.12 : 0.35);
+					PublishFolderDialog(true, folder_path, folder_rows, folder_focus, folder_games);
+				}
+				held_direction = dialog_navigation;
+				if (pressed & ORBIS_PAD_BUTTON_CIRCLE)
+				{
+					if (at_roots)
+						close_picker();
+					else
+					{
+						const size_t slash = folder_path.find_last_of('/');
+						const std::string came_from = folder_path.substr(slash + 1);
+						open_folder(slash == 0 ? std::string() : folder_path.substr(0, slash));
+						const auto back = std::find_if(folder_rows.begin(), folder_rows.end(), [&](const std::string& row) {
+							return row == came_from || row == "/" + came_from;
+						});
+						folder_focus = back == folder_rows.end() ? 0 : static_cast<unsigned>(back - folder_rows.begin());
+						PublishFolderDialog(true, folder_path, folder_rows, folder_focus, folder_games);
+					}
+				}
+				else if ((pressed & ORBIS_PAD_BUTTON_TRIANGLE) && !at_roots)
+					choose_folder(folder_path);
+				else if ((pressed & ORBIS_PAD_BUTTON_CROSS) && folder_focus < folder_rows.size())
+				{
+					if (at_roots && folder_rows[folder_focus].empty())
+						choose_folder(std::string());
+					else
+						open_folder(at_roots ? folder_rows[folder_focus] : folder_path + "/" + folder_rows[folder_focus]);
+				}
+				Present(selected, status, connected, sidebar_focused, false, false);
+				Threading::Sleep(16);
+				continue;
+			}
 			// Forja SX2: the updater. A newer build than this one is offered once per app run; OPTIONS offers it again.
 			if (!s_update_asked && !exit_dialog_visible && !language_dialog_visible && PS4Release::HasUpdate())
 			{
@@ -1482,6 +1652,9 @@ namespace PS4GameMenu
 					else if ((navigation == ORBIS_PAD_BUTTON_LEFT || navigation == ORBIS_PAD_BUTTON_RIGHT) && settings_row == SET_LANGUAGE)
 						apply_language((ForjaLang::Current() + (navigation == ORBIS_PAD_BUTTON_LEFT ? ForjaLang::LanguageCount - 1 : 1)) %
 						               ForjaLang::LanguageCount);
+					else if (settings_row == SET_GAMES_FOLDER)
+					{
+					}
 					else if (navigation == ORBIS_PAD_BUTTON_LEFT)
 						change_setting(-1, false);
 					else if (navigation == ORBIS_PAD_BUTTON_RIGHT)
@@ -1566,6 +1739,8 @@ namespace PS4GameMenu
 						language_focus = ForjaLang::Current();
 						PublishLanguageDialog(true, language_focus);
 					}
+					else if (settings_row == SET_GAMES_FOLDER)
+						open_folder(std::string());
 					else
 						change_setting(1, true);
 					Present(selected, status, connected, false, false, false);
@@ -1657,6 +1832,7 @@ namespace PS4GameMenu
 			s_exit_confirm = false;
 			s_update_dialog_visible = false;
 			s_language_dialog_visible = false;
+			s_folder_dialog_visible = false;
 			s_items.clear();
 			s_status.clear();
 			s_loading_visible = start;
@@ -2550,6 +2726,46 @@ namespace PS4GameMenu
 			text(816, 899, 16, white, s_language_texts[2].c_str(), 170);
 			image("controle_bola", 995, 878, 28, 28);
 			text(1031, 899, 16, muted, s_language_texts[3].c_str(), 170);
+		}
+		// Compilation 97: the game folder's picker.
+		if (s_folder_dialog_visible)
+		{
+			draw->AddRectFilled(ImVec2(0, 0), size, IM_COL32(0, 0, 0, 165));
+			fill(398, 92, 1124, 896, IM_COL32(0, 0, 0, 120), 20);
+			fill(438, 132, 1044, 816, IM_COL32(4, 17, 31, 252), 12);
+			draw->AddRect(point(438, 132), point(1482, 948), IM_COL32(35, 105, 161, 225), 12 * scale, 1.5f * scale, 0);
+			centered_text(960, 190, 32, white, T("Carpeta de juegos"), 980);
+			const bool at_roots = s_folder_path.empty();
+			centered_text(960, 236, 22, accent, at_roots ? T("Elige una memoria USB o la PS4") : s_folder_path.c_str(), 980);
+			if (!at_roots)
+				centered_text(960, 270, 18, s_folder_games ? white : muted, ForjaLang::F(TF("%u juegos en esta carpeta"), s_folder_games).c_str(), 980);
+			const size_t count = s_folder_rows.size();
+			const size_t focus = std::min<size_t>(s_folder_focus, count ? count - 1 : 0);
+			const size_t first_row = focus >= FolderRowsVisible ? focus - FolderRowsVisible + 1 : 0;
+			if (!count)
+				centered_text(960, 400, 22, muted, T("No hay más carpetas aquí"), 900);
+			for (size_t slot = 0; slot < FolderRowsVisible && first_row + slot < count; slot++)
+			{
+				const size_t index = first_row + slot;
+				const float y = 300.0f + static_cast<float>(slot) * 68.0f;
+				const bool active = index == focus;
+				const std::string& name = s_folder_rows[index];
+				fill(490, y, 940, 60, active ? IM_COL32(18, 88, 153, 255) : IM_COL32(11, 34, 54, 255), 10);
+				draw->AddRect(point(490, y), point(1430, y + 60), active ? IM_COL32(48, 170, 255, 255) : IM_COL32(37, 80, 113, 190),
+					10 * scale, active ? 2.0f * scale : 1.0f * scale, 0);
+				text(516, y + 40, 24, active ? white : muted, at_roots && name.empty() ? T("Solo la interna") : name.c_str(), 890);
+			}
+			float hint_x = 640;
+			image("controle_x", hint_x, 878, 28, 28);
+			text(hint_x + 36, 899, 16, white, at_roots && count && s_folder_rows[focus].empty() ? T("Aceptar") : T("Entrar"), 170);
+			if (!at_roots)
+			{
+				hint_x = 840;
+				image("controle_triangulo", hint_x, 878, 28, 28);
+				text(hint_x + 36, 899, 16, white, T("Usar esta carpeta"), 240);
+			}
+			image("controle_bola", 1120, 878, 28, 28);
+			text(1156, 899, 16, muted, T("Atrás"), 170);
 		}
 		return true;
 	}

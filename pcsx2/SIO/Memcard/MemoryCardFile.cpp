@@ -438,6 +438,10 @@ void FileMemoryCard::MarkDirty(uint slot, u32 adr, u32 size)
 	m_idle_seconds[slot] = 0;
 }
 
+#if defined(PCSX2_PS4_VM_BOOT)
+extern void ProbeLog(const char* format, ...); // ps4/core/ProbeLoggerPS4.cpp
+#endif
+
 // Writes the dirty erase blocks back: one seek and one write per run of neighbouring blocks.
 void FileMemoryCard::FlushCache(uint slot, const char* why)
 {
@@ -475,6 +479,11 @@ void FileMemoryCard::FlushCache(uint slot, const char* why)
 	std::printf("[mcd] slot %u: wrote back %u block(s) (%zu KiB) in %u write(s), %.1f ms (%s)%s\n", slot, blocks,
 		bytes >> 10, runs, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - c0).count(), why,
 		ok ? "" : " -- WRITE FAILED");
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Compilation 97: into the report's log too. Three reports of 2026-10-27 said a game doesn't save, and their logs can't
+	// tell whether it ever wrote to the card.
+	ProbeLog("Memory card: slot %u wrote back %zu KiB (%s)%s\n", slot, bytes >> 10, why, ok ? "" : " -- WRITE FAILED");
+#endif
 	if (!ok)
 		Host::ReportErrorAsync("Memory Card Write Failed", "Error writing the memory card file.");
 }

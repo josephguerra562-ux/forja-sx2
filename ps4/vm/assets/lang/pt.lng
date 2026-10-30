@@ -10,6 +10,9 @@ tr: Idioma
 es: Preguntar el idioma al iniciar
 tr: Perguntar o idioma ao iniciar
 
+es: Carpeta de juegos
+tr: Pasta de jogos
+
 es: Velocidad del CPU de la PS2
 tr: Velocidade da CPU do PS2
 
@@ -52,8 +55,11 @@ tr: O idioma de todo o emulador. X abre a lista de idiomas
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: Sim: a lista de idiomas aparece sempre que você abre o Forja SX2
 
-es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
-tr: Todo jogo começa aqui. Se algum ficar em câmera lenta, aumente em L3+R3 (fica salvo para esse jogo)
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
+tr: Outra pasta com jogos, por exemplo em um pendrive. Os da pasta interna continuam aparecendo. X para escolher
+
+es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
+tr: Mais % NÃO é mais rápido: exige mais do console e quase sempre fica pior. Aumente em L3+R3 só se o jogo ficar em câmera lenta ou falhar
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: Se você aumentar a CPU de um jogo e ele ficar lento, ela baixa sozinha nas cenas pesadas, até este limite
@@ -120,6 +126,9 @@ tr: Auto
 
 es: Sí
 tr: Sim
+
+es: Solo la interna
+tr: Só a interna
 
 es: %dx (nativa)
 tr: %dx (nativa)
@@ -225,6 +234,9 @@ tr: DVD indisponível
 
 es:  Descargando portada...
 tr:  Baixando capa...
+
+es: Guardado. %u juegos en la biblioteca.
+tr: Salvo. %u jogos na biblioteca.
 
 es: Cancelando la copia...
 tr: Cancelando a cópia...
@@ -684,6 +696,21 @@ tr: Baixar
 
 es: Ahora no
 tr: Agora não
+
+es: Elige una memoria USB o la PS4
+tr: Escolha um pendrive ou o PS4
+
+es: %u juegos en esta carpeta
+tr: %u jogos nesta pasta
+
+es: No hay más carpetas aquí
+tr: Não há mais pastas aqui
+
+es: Entrar
+tr: Entrar
+
+es: Usar esta carpeta
+tr: Usar esta pasta
 
 es: Parches:  ninguno para este juego
 tr: Patches:  nenhum para este jogo

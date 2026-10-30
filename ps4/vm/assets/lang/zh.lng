@@ -10,6 +10,9 @@ tr: 语言
 es: Preguntar el idioma al iniciar
 tr: 启动时询问语言
 
+es: Carpeta de juegos
+tr: 游戏文件夹
+
 es: Velocidad del CPU de la PS2
 tr: PS2 CPU 速度
 
@@ -52,8 +55,11 @@ tr: 整个模拟器的语言。按 X 打开语言列表
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: 是：每次打开 Forja SX2 都会显示语言列表
 
-es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
-tr: 所有游戏都从这里开始。如果某个游戏变成慢动作，在 L3+R3 里调高（只保存给该游戏）
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
+tr: 另一个游戏文件夹,例如 USB 存储设备上的。内部文件夹的游戏仍会显示。按 X 选择
+
+es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
+tr: 百分比越高并不会越快:主机负担更重,几乎总是更差。只有游戏变成慢动作或出错时,才在 L3+R3 中调高
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: 如果调高了某个游戏的 CPU 后变慢，它会在重场景中自动降低，最低到这个值
@@ -120,6 +126,9 @@ tr: 自动
 
 es: Sí
 tr: 是
+
+es: Solo la interna
+tr: 仅内部
 
 es: %dx (nativa)
 tr: %dx（原生）
@@ -225,6 +234,9 @@ tr: DVD 不可用
 
 es:  Descargando portada...
 tr:  正在下载封面...
+
+es: Guardado. %u juegos en la biblioteca.
+tr: 已保存。游戏库中有 %u 个游戏。
 
 es: Cancelando la copia...
 tr: 正在取消复制...
@@ -684,6 +696,21 @@ tr: 下载
 
 es: Ahora no
 tr: 以后再说
+
+es: Elige una memoria USB o la PS4
+tr: 选择 USB 存储设备或 PS4
+
+es: %u juegos en esta carpeta
+tr: 此文件夹中有 %u 个游戏
+
+es: No hay más carpetas aquí
+tr: 这里没有更多文件夹
+
+es: Entrar
+tr: 打开
+
+es: Usar esta carpeta
+tr: 使用此文件夹
 
 es: Parches:  ninguno para este juego
 tr: 补丁：  此游戏没有

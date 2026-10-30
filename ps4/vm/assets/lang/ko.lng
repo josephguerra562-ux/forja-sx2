@@ -10,6 +10,9 @@ tr: 언어
 es: Preguntar el idioma al iniciar
 tr: 시작할 때 언어 묻기
 
+es: Carpeta de juegos
+tr: 게임 폴더
+
 es: Velocidad del CPU de la PS2
 tr: PS2 CPU 속도
 
@@ -52,8 +55,11 @@ tr: 에뮬레이터 전체의 언어. X로 언어 목록을 엽니다
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: 예: Forja SX2를 열 때마다 언어 목록이 나옵니다
 
-es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
-tr: 모든 게임이 여기서 시작합니다. 느려지는 게임은 L3+R3에서 올리세요 (그 게임에 저장됨)
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
+tr: USB 메모리 등 다른 게임 폴더. 내부 폴더의 게임도 계속 표시됩니다. X로 선택
+
+es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
+tr: %가 높다고 빨라지지 않습니다. 콘솔 부담이 커져 대부분 더 나빠집니다. 게임이 느리게 돌아가거나 오류가 날 때만 L3+R3에서 올리세요
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: 게임의 CPU를 올려서 느려지면 무거운 장면에서만 이 값까지 스스로 내려갑니다
@@ -120,6 +126,9 @@ tr: 자동
 
 es: Sí
 tr: 예
+
+es: Solo la interna
+tr: 내부만
 
 es: %dx (nativa)
 tr: %dx (기본)
@@ -225,6 +234,9 @@ tr: DVD를 사용할 수 없습니다
 
 es:  Descargando portada...
 tr:  표지 다운로드 중...
+
+es: Guardado. %u juegos en la biblioteca.
+tr: 저장했습니다. 라이브러리의 게임: %u개.
 
 es: Cancelando la copia...
 tr: 복사를 취소하는 중...
@@ -684,6 +696,21 @@ tr: 다운로드
 
 es: Ahora no
 tr: 나중에
+
+es: Elige una memoria USB o la PS4
+tr: USB 메모리 또는 PS4 선택
+
+es: %u juegos en esta carpeta
+tr: 이 폴더의 게임: %u개
+
+es: No hay más carpetas aquí
+tr: 여기에 다른 폴더가 없습니다
+
+es: Entrar
+tr: 열기
+
+es: Usar esta carpeta
+tr: 이 폴더 사용
 
 es: Parches:  ninguno para este juego
 tr: 패치:  이 게임에는 없음

@@ -10,6 +10,9 @@ tr: 言語
 es: Preguntar el idioma al iniciar
 tr: 起動時に言語を確認
 
+es: Carpeta de juegos
+tr: ゲームフォルダー
+
 es: Velocidad del CPU de la PS2
 tr: PS2のCPU速度
 
@@ -52,8 +55,11 @@ tr: エミュレーター全体の言語。Xで言語の一覧を開きます
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: はい：Forja SX2を開くたびに言語の一覧が出ます
 
-es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
-tr: すべてのゲームはここから始まります。スローになるゲームはL3+R3で上げてください（そのゲーム用に保存）
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
+tr: USB メモリーなど、別のゲームフォルダー。内部フォルダーのゲームも表示されます。X で選択
+
+es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
+tr: % を上げても速くなりません。本体の負担が増え、ほとんどの場合悪化します。ゲームがスローになる、または不具合が出るときだけ L3+R3 で上げてください
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: ゲームのCPUを上げて重くなったとき、重い場面だけ自動でこの値まで下げます
@@ -120,6 +126,9 @@ tr: 自動
 
 es: Sí
 tr: はい
+
+es: Solo la interna
+tr: 内部のみ
 
 es: %dx (nativa)
 tr: %dx（ネイティブ）
@@ -225,6 +234,9 @@ tr: DVDを使用できません
 
 es:  Descargando portada...
 tr:  ジャケット画像をダウンロード中...
+
+es: Guardado. %u juegos en la biblioteca.
+tr: 保存しました。ライブラリのゲーム: %u 本。
 
 es: Cancelando la copia...
 tr: コピーを中止しています...
@@ -684,6 +696,21 @@ tr: ダウンロード
 
 es: Ahora no
 tr: 今はしない
+
+es: Elige una memoria USB o la PS4
+tr: USB メモリーまたは PS4 を選択
+
+es: %u juegos en esta carpeta
+tr: このフォルダーのゲーム: %u 本
+
+es: No hay más carpetas aquí
+tr: ここに他のフォルダーはありません
+
+es: Entrar
+tr: 開く
+
+es: Usar esta carpeta
+tr: このフォルダーを使う
 
 es: Parches:  ninguno para este juego
 tr: パッチ：  このゲームにはありません

@@ -10,6 +10,9 @@ tr: Language
 es: Preguntar el idioma al iniciar
 tr: Ask for the language at start
 
+es: Carpeta de juegos
+tr: Games folder
+
 es: Velocidad del CPU de la PS2
 tr: PS2 CPU speed
 
@@ -52,8 +55,11 @@ tr: The language of the whole emulator. X opens the list of languages
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: Yes: the list of languages shows up every time you open Forja SX2
 
-es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
-tr: Every game starts here. If one runs in slow motion, raise it in L3+R3 (it is saved for that game)
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
+tr: Another folder with games, for example on a USB drive. The ones in the internal folder still appear. X to choose it
+
+es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
+tr: More % is NOT faster: it asks more of the console and almost always runs worse. Raise it in L3+R3 only if the game runs in slow motion or fails
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: If you raise a game's CPU and it slows down, it lowers itself in heavy scenes, down to this floor
@@ -120,6 +126,9 @@ tr: Auto
 
 es: Sí
 tr: Yes
+
+es: Solo la interna
+tr: Internal only
 
 es: %dx (nativa)
 tr: %dx (native)
@@ -225,6 +234,9 @@ tr: DVD not available
 
 es:  Descargando portada...
 tr:  Downloading cover...
+
+es: Guardado. %u juegos en la biblioteca.
+tr: Saved. %u games in the library.
 
 es: Cancelando la copia...
 tr: Cancelling the copy...
@@ -684,6 +696,21 @@ tr: Download
 
 es: Ahora no
 tr: Not now
+
+es: Elige una memoria USB o la PS4
+tr: Choose a USB drive or the PS4
+
+es: %u juegos en esta carpeta
+tr: %u games in this folder
+
+es: No hay más carpetas aquí
+tr: No more folders here
+
+es: Entrar
+tr: Open
+
+es: Usar esta carpeta
+tr: Use this folder
 
 es: Parches:  ninguno para este juego
 tr: Patches:  none for this game

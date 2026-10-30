@@ -146,6 +146,20 @@ namespace
 			return nullptr;
 		}
 		std::string json(bytes.begin(), bytes.end());
+		// Compilation 97: a build newer than the stable one is a test build its player installed from the Releases page. Those
+		// players were left out: 29 of the 30 reports in Discord (2026-10-30) said channel=estable current=94/96 latest=69
+		// update=0. They are told about the next test build, without the marker.
+		const int current = s_current_build.load(std::memory_order_relaxed);
+		std::string stable_tag;
+		if (!testing && JsonString(json, "tag_name", 0, stable_tag) && BuildFromTag(stable_tag) < current)
+		{
+			std::vector<unsigned char> newer;
+			if (PS4CoverHttp::Get(TestingUrl, "ForjaSX2 release-checker", newer, 256 * 1024))
+			{
+				json.assign(newer.begin(), newer.end());
+				channel = "pruebas-instalada";
+			}
+		}
 		// Compilation 52: of the releases in the answer, the one with the highest build, from its "tag_name" to the next one's
 		// (its assets and notes come after its tag). GitHub lists the release marked Latest first, whatever its date: once
 		// build 50 became v1.02 (2026-10-18), "per_page=1" answered 50 and build 50's updater never offered 51.
@@ -178,7 +192,6 @@ namespace
 		std::string title;
 		JsonString(json, "name", tag_end, title);
 		const int latest = BuildFromTag(tag);
-		const int current = s_current_build.load(std::memory_order_relaxed);
 		std::string package_url = AssetUrl(json, ".pkg");
 		std::string sums_url = AssetUrl(json, "SHA256SUMS.txt");
 		// Compilation 48: downloaded through the API; the package's name still comes from its github.com address.

@@ -6,6 +6,7 @@
 #include "GS/GSGL.h"
 #include "GS/GSPerfMon.h"
 #include "GS/GSUtil.h"
+#include "common/StringUtil.h"
 #include "common/Timer.h"
 
 #include <algorithm>
@@ -15,6 +16,7 @@
 #include <cstring>
 #include <iterator>
 #include <vector>
+#include <unistd.h>
 
 static bool s_nativeres;
 
@@ -251,7 +253,8 @@ extern void ProbeLog(const char* format, ...); // ps4/core/ProbeLoggerPS4.cpp (c
 // 2026-10-26: 16-20 ms in its frames without the crowd, which did only these clears and the small blur). This clears the
 // same pixels with the same values, by 8x8 blocks: a block whose 64 pixels are all inside is one 256-byte write. The first
 // 4 clears of a session are done both ways on the whole memory and compared byte by byte, into the log; PCSX2's result is
-// the one kept then.
+// the one kept then. Compilation 97: on a memory full of a pattern; on the real one the clear changed nothing (the depth
+// buffers were already zero, "0 changed by the clear", 2026-10-27/30), so the 96's "the same" proved nothing.
 void GSHwHack::ForjaClearZByBlocks(GSRendererHW& r, const GSOffset& off, const GSVector4i& rect)
 {
 	const GSLocalMemory::psm_t& psm = GSLocalMemory::m_psm[off.psm()];
@@ -339,10 +342,12 @@ void GSHwHack::ForjaClearZ(GSRendererHW& r, const GSOffset& off, const GSVector4
 		s_checks++;
 		u8* const vm8 = r.m_mem.vm8();
 		const size_t size = static_cast<size_t>(GSLocalMemory::m_vmsize);
+		constexpr u8 pattern = 0xA5;
 		std::vector<u8> before(vm8, vm8 + size);
+		std::memset(vm8, pattern, size);
 		ForjaClearZByBlocks(r, off, rect);
 		std::vector<u8> mine(vm8, vm8 + size);
-		std::memcpy(vm8, before.data(), size);
+		std::memset(vm8, pattern, size);
 		const u64 t0 = Common::Timer::GetCurrentValue();
 		r.ClearGSLocalMemory(off, rect, 0);
 		const double pcsx2_ms = Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - t0);
@@ -350,7 +355,7 @@ void GSHwHack::ForjaClearZ(GSRendererHW& r, const GSOffset& off, const GSVector4
 		for (size_t i = 0; i < size; i++)
 		{
 			differ += mine[i] != vm8[i] ? 1u : 0u;
-			changed += before[i] != vm8[i] ? 1u : 0u;
+			changed += vm8[i] != pattern ? 1u : 0u;
 		}
 		const u64 t1 = Common::Timer::GetCurrentValue();
 		ForjaClearZByBlocks(r, off, rect); // the same again (idempotent), timed
@@ -358,7 +363,7 @@ void GSHwHack::ForjaClearZ(GSRendererHW& r, const GSOffset& off, const GSVector4
 		std::memcpy(vm8, before.data(), size);
 		r.ClearGSLocalMemory(off, rect, 0); // PCSX2's result is the one kept
 		s_blocks_ok = differ == 0;
-		ProbeLog("Crowd clear check (96): zb=%05x bw=%u psm=%02x rect=%d,%d-%d,%d: %s (%zu bytes differ, %zu changed by the "
+		ProbeLog("Crowd clear check (97): zb=%05x bw=%u psm=%02x rect=%d,%d-%d,%d: %s (%zu bytes differ, %zu changed by the "
 			"clear), PCSX2's %.3f ms, by blocks %.3f ms\n", static_cast<unsigned>(off.bp()), static_cast<unsigned>(off.bw()),
 			static_cast<unsigned>(off.psm()), rect.x, rect.y, rect.z, rect.w, differ == 0 ? "the same" : "DIFFERENT", differ,
 			changed, pcsx2_ms, mine_ms);
@@ -475,6 +480,20 @@ bool GSHwHack::GSC_GuitarHero(GSRendererHW& r, int& skip)
 			s_trace_until = -1;
 			g_forja_crowd_trace = 0;
 			ProbeLog("Crowd trace (95): end\n");
+		}
+		// Compilation 97: what the crowd looks like, from the emulator's own image: the videos of the screen (480p) can't tell
+		// "pixelated" from the camera's blur. Only on a console with this marker (Joseph's), up to 20 pictures a session.
+		static int s_last_photo_frame = -100000;
+		static u32 s_photos = 0;
+		if (crowd_on && frame - s_last_photo_frame >= 300 && s_photos < 20)
+		{
+			s_last_photo_frame = frame;
+			if (access("/data/ForjaSX2/fotos-publico", F_OK) == 0)
+			{
+				s_photos++;
+				GSQueueSnapshot(StringUtil::StdStringFromFormat("/data/ForjaSX2/snaps/publico_%d_de_%u.png", frame, s_every));
+				ProbeLog("Crowd photo %u: GS frame %d, 1 in %u\n", s_photos, frame, s_every);
+			}
 		}
 		if (crowd_on && frame - s_last_dump_frame >= 1500)
 		{

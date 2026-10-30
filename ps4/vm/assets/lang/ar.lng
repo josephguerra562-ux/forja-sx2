@@ -10,6 +10,9 @@ tr: اللغة
 es: Preguntar el idioma al iniciar
 tr: السؤال عن اللغة عند البدء
 
+es: Carpeta de juegos
+tr: مجلد الألعاب
+
 es: Velocidad del CPU de la PS2
 tr: سرعة معالج PS2
 
@@ -52,8 +55,11 @@ tr: لغة المحاكي كله. X يفتح قائمة اللغات
 es: Sí: la lista de idiomas sale cada vez que abres Forja SX2
 tr: نعم: تظهر قائمة اللغات في كل مرة تفتح فيها Forja SX2
 
-es: Todo juego empieza aquí. Si uno va en cámara lenta, súbelo en L3+R3 (se guarda para ese juego)
-tr: كل لعبة تبدأ من هنا. إذا كانت إحداها بطيئة، ارفعها من L3+R3 (تُحفظ لتلك اللعبة)
+es: Otra carpeta con juegos, por ejemplo en una memoria USB. Los de la carpeta interna siguen apareciendo. X para elegirla
+tr: مجلد آخر للألعاب، مثل ذاكرة USB. تبقى ألعاب المجلد الداخلي ظاهرة. X للاختيار
+
+es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
+tr: زيادة النسبة لا تعني سرعة أكبر: تزيد الحمل على الجهاز وغالبا تجعل الأداء أسوأ. ارفعها من L3+R3 فقط إذا كانت اللعبة بطيئة الحركة أو بها أخطاء
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: إذا رفعت معالج لعبة وأصبحت بطيئة، ينخفض وحده في المشاهد الثقيلة حتى هذا الحد
@@ -120,6 +126,9 @@ tr: تلقائي
 
 es: Sí
 tr: نعم
+
+es: Solo la interna
+tr: الداخلي فقط
 
 es: %dx (nativa)
 tr: %dx (الأصلية)
@@ -225,6 +234,9 @@ tr: قرص DVD غير متاح
 
 es:  Descargando portada...
 tr:  جارٍ تنزيل الغلاف...
+
+es: Guardado. %u juegos en la biblioteca.
+tr: تم الحفظ. عدد الألعاب في المكتبة: %u.
 
 es: Cancelando la copia...
 tr: جارٍ إلغاء النسخ...
@@ -684,6 +696,21 @@ tr: تنزيل
 
 es: Ahora no
 tr: ليس الآن
+
+es: Elige una memoria USB o la PS4
+tr: اختر ذاكرة USB أو PS4
+
+es: %u juegos en esta carpeta
+tr: عدد الألعاب في هذا المجلد: %u
+
+es: No hay más carpetas aquí
+tr: لا توجد مجلدات أخرى هنا
+
+es: Entrar
+tr: فتح
+
+es: Usar esta carpeta
+tr: استخدم هذا المجلد
 
 es: Parches:  ninguno para este juego
 tr: التصحيحات:  لا شيء لهذه اللعبة

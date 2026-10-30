@@ -48,6 +48,9 @@ namespace ForjaSettings
 		// at every start (Joseph: "al inicio de cada sesión te pide el idioma").
 		char language[8] = "";
 		bool ask_language = true;
+		// Compilation 97: a second folder the library lists games from, besides /data/ForjaSX2/roms ("" none). Inside the app
+		// the USB drives are /usb0../usb7.
+		char games_folder[192] = "";
 		bool from_file = false;
 	};
 
@@ -70,7 +73,7 @@ namespace ForjaSettings
 		if (!file)
 			return v;
 		v.from_file = true;
-		char line[128];
+		char line[256];
 		while (std::fgets(line, sizeof(line), file))
 		{
 			char key[32] = {};
@@ -79,6 +82,12 @@ namespace ForjaSettings
 			if (std::sscanf(line, " idioma = %7[a-z]", code) == 1)
 			{
 				std::snprintf(v.language, sizeof(v.language), "%s", code);
+				continue;
+			}
+			char folder[sizeof(v.games_folder)] = {};
+			if (std::sscanf(line, " carpeta_juegos = %191[^\r\n]", folder) == 1)
+			{
+				std::snprintf(v.games_folder, sizeof(v.games_folder), "%s", folder);
 				continue;
 			}
 			if (line[0] == ';' || line[0] == '#' || std::sscanf(line, " %31[a-z_] = %d", key, &value) != 2)
@@ -125,9 +134,10 @@ namespace ForjaSettings
 		std::fprintf(file,
 			"; Forja SX2: ajustes para todos los juegos (pestaña Ajustes de la biblioteca)\n"
 			"ee_rate=%d\nupscale=%d\naspect=%d\noverlay=%d\nstick=%d\nfast_cdvd=%d\nfast_boot=%d\nreadback=%d\nvideo_mode=%d\n"
-			"frame_gen=%d\ncpu_auto=%d\nmenu_boton=%d\nidioma=%s\npreguntar_idioma=%d\n",
+			"frame_gen=%d\ncpu_auto=%d\nmenu_boton=%d\nidioma=%s\npreguntar_idioma=%d\ncarpeta_juegos=%s\n",
 			v.ee_rate, v.upscale, v.aspect, v.overlay ? 1 : 0, v.stick, v.fast_cdvd ? 1 : 0, v.fast_boot ? 1 : 0,
-			v.readback, v.video_mode ? 1 : 0, v.frame_gen ? 1 : 0, v.cpu_auto, v.menu_button, v.language, v.ask_language ? 1 : 0);
+			v.readback, v.video_mode ? 1 : 0, v.frame_gen ? 1 : 0, v.cpu_auto, v.menu_button, v.language, v.ask_language ? 1 : 0,
+			v.games_folder);
 		const bool written = std::fclose(file) == 0;
 		return written && std::rename(temporary, Path) == 0;
 	}
