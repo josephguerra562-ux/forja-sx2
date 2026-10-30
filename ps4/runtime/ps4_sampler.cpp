@@ -75,10 +75,13 @@ void profHandler(int, siginfo_t*, void* context) {
             // Forja SX2 (compilation 98): a kernel call's samples say nothing by themselves: 24 % of the EE's time in Guitar Hero
             // was two of them (2026-10-30). Their caller, for the window's summary: the nearest eboot address on the stack. It can
             // be stale, so it is a lead, not a proof.
+            // Compilation 99: for the eboot's samples too: who calls memcpy and the other small functions the EE spends its time in.
             uint32_t caller = 0;
-            if (sample >= kSystemLibs && sample < 2 * kSystemLibs) {
-                sample |= kCallerTag;
-                const uintptr_t text = reinterpret_cast<uintptr_t>(__text_start);
+            const uintptr_t text = reinterpret_cast<uintptr_t>(__text_start);
+            const bool in_system = sample >= kSystemLibs && sample < 2 * kSystemLibs;
+            if (in_system || (sample >= text && sample < text + kTextWindow)) {
+                if (in_system)
+                    sample |= kCallerTag;
                 const auto* stack = reinterpret_cast<const uint64_t*>(regs[kRspIndex]);
                 for (int word = 0; word < 48 && !caller; word++) {
                     if (stack[word] >= text && stack[word] < text + kTextWindow)
@@ -113,10 +116,14 @@ void report(int fd, ThreadSamples& t, double window_start) {
     const int n = std::min(t.count.load(std::memory_order_acquire), kMaxSamples);
     memcpy(s, t.samples, sizeof(uint64_t) * n);
     // Forja SX2 (compilation 98): system address and caller, one key, before s is bucketed below.
+    // Compilation 99: bit 63 marks an eboot address (relative to .text) instead of a system one.
     int pair_count = 0;
+    const uintptr_t text_base = reinterpret_cast<uintptr_t>(__text_start);
     for (int i = 0; i < n; i++) {
         if (s[i] & kCallerTag)
             pairs[pair_count++] = (((s[i] & ~kCallerTag) - kSystemLibs) >> 4 << 36) | (t.callers[i] >> 4);
+        else if (s[i] >= text_base && s[i] < text_base + kTextWindow)
+            pairs[pair_count++] = (1ULL << 63) | ((s[i] - text_base) >> 4 << 36) | (t.callers[i] >> 4);
     }
     t.count.store(0, std::memory_order_release);
     if (n == 0)
@@ -182,9 +189,11 @@ void report(int fd, ThreadSamples& t, double window_start) {
         i = j;
     }
     std::sort(entries, entries + unique, [](const Entry& a, const Entry& b) { return a.count > b.count; });
-    for (int i = 0; i < unique && i < 12 && entries[i].count >= 2; i++) {
-        snprintf(line, sizeof(line), "  %5.1f%% caller sys 0x%llx from elf 0x%llx\n", 100.0 * entries[i].count / n,
-                 static_cast<unsigned long long>(((entries[i].key >> 36) << 4) + kSystemLibs),
+    for (int i = 0; i < unique && i < 40 && entries[i].count >= 2; i++) {
+        const bool eboot = entries[i].key >> 63;
+        const uint64_t where = ((entries[i].key & ~(1ULL << 63)) >> 36) << 4;
+        snprintf(line, sizeof(line), "  %5.1f%% caller %s 0x%llx from elf 0x%llx\n", 100.0 * entries[i].count / n, eboot ? "elf" : "sys",
+                 static_cast<unsigned long long>(eboot ? where : where + kSystemLibs),
                  static_cast<unsigned long long>((entries[i].key & 0xFFFFFFFFFULL) << 4));
         writeLine(fd, line);
     }

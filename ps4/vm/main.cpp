@@ -615,6 +615,8 @@ static void UpdateSecondPad(double elapsed)
 // to the GS thread; wait for that snapshot before showing the applied value.
 static void ReadGameResolution()
 {
+	// Compilation 99: the options a player's profile can change that the report's settings line doesn't show (the flicker's tests).
+	ProbeLog("GS image options: deinterlace=%d texture_filter=%d\n", static_cast<int>(GSConfig.InterlaceMode), static_cast<int>(GSConfig.TextureFiltering));
 	MTGS::RunOnGSThread([]() {
 		// Compilation 59: 3x and 4x only on a fast console (a PS4 Pro with Boost Mode). A PS4 or a Slim (or a Pro without Boost
 		// Mode) has ~25 % less CPU and half the GPU, and those resolutions are what the hint already called "solo para PS4 Pro".
