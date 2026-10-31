@@ -937,6 +937,24 @@ tr: Sans limite
 es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
 tr: 100 % est la vitesse réelle. Plus haut : le jeu et son son vont plus vite si la PS4 a de la marge ; cela n'ajoute pas de performances. Enregistré pour ce jeu
 
+es: Mezcla
+tr: Mélange
+
+es: Sin mezcla
+tr: Sans mélange
+
+es: Desentrelazado:  < %s >
+tr: Désentrelacement :  < %s >
+
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
+tr: Si l'image scintille : Mélange le supprime, mais elle paraît un peu plus douce. Auto est le réglage habituel. Enregistré pour ce jeu
+
+es: Filtro de texturas:  < %s >
+tr: Filtre de textures :  < %s >
+
+es: Suave alisa lo pixelado, pero puede verse borroso. Normal es como en la PS2. Se guarda para este juego
+tr: Doux lisse la pixellisation, mais peut paraître flou. Normal est comme sur PS2. Enregistré pour ce jeu
+
 es: Público por software:  este juego no lo usa
 tr: Public en logiciel :  ce jeu ne l'utilise pas
 

@@ -389,7 +389,7 @@ es: CPU de la PS2 durante las cinemáticas.
 tr: CPU della PS2 durante i filmati.
 
 es: Suave
-tr: Morbida
+tr: Morbido
 
 es: Nítida
 tr: Nitida
@@ -936,6 +936,24 @@ tr: Senza limite
 
 es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
 tr: 100 % è la velocità reale. Più alto: il gioco e il suo audio vanno più veloci se la PS4 ha potenza in più; non aumenta le prestazioni. Salvato per questo gioco
+
+es: Mezcla
+tr: Fusione
+
+es: Sin mezcla
+tr: Senza fusione
+
+es: Desentrelazado:  < %s >
+tr: Deinterlacciamento:  < %s >
+
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
+tr: Se l'immagine sfarfalla: Fusione lo elimina, ma appare un po' più morbida. Auto è il normale. Salvato per questo gioco
+
+es: Filtro de texturas:  < %s >
+tr: Filtro texture:  < %s >
+
+es: Suave alisa lo pixelado, pero puede verse borroso. Normal es como en la PS2. Se guarda para este juego
+tr: Morbido attenua i pixel, ma può apparire sfocato. Normale è come su PS2. Salvato per questo gioco
 
 es: Público por software:  este juego no lo usa
 tr: Pubblico via software:  questo gioco non lo usa

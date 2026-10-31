@@ -21,6 +21,8 @@ namespace PS4GameMenu
 		ROW_RESOLUTION,
 		ROW_ASPECT,
 		ROW_SHARPNESS, // compilation 44
+		ROW_DEINTERLACE, // compilation 104
+		ROW_TEXTURE_FILTER, // compilation 104
 		// Compilation 61 (Joseph, 2026-10-20: "esa no le pongas como no tocar, déjale donde estaba antes"): back from No tocar.
 		ROW_FRAME_GEN,
 		ROW_OVERLAY,

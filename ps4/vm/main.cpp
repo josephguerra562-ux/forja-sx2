@@ -1881,6 +1881,37 @@ static void PublishSpeedLimitText()
 		ForjaLang::T("100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego"));
 }
 
+// Compilation 104: the two options that took a file by FTP until now (Joseph, 2026-10-31, Guitar Hero III: "ya no parpadea casi nada ... pero se ve
+// borroso"). The picture of a game that draws by fields: Auto (adaptive) flickers in Guitar Hero III's guitar, a blend of the two fields doesn't and
+// it's softer, and without a blend (bob) nothing is mixed. Both take effect at once, without a reload.
+static constexpr std::pair<GSInterlaceMode, const char*> ForjaDeinterlaceSteps[] = {{GSInterlaceMode::Automatic, "Auto"},
+	{GSInterlaceMode::BlendTFF, N_("Mezcla")}, {GSInterlaceMode::BobTFF, N_("Sin mezcla")}};
+static constexpr std::pair<BiFiltering, const char*> ForjaTextureFilterSteps[] = {{BiFiltering::PS2, N_("Normal")}, {BiFiltering::Forced, N_("Suave")}};
+
+template <typename Value, size_t N>
+static unsigned ForjaImageStep(const std::pair<Value, const char*> (&steps)[N], Value now)
+{
+	for (unsigned i = 0; i < N; i++)
+	{
+		if (steps[i].first == now)
+			return i;
+	}
+	return 0;
+}
+
+static void PublishImageOptionsText()
+{
+	char label[256];
+	std::snprintf(label, sizeof(label), ForjaLang::TF("Desentrelazado:  < %s >"),
+		ForjaLang::T(ForjaDeinterlaceSteps[ForjaImageStep(ForjaDeinterlaceSteps, EmuConfig.GS.InterlaceMode)].second));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_DEINTERLACE, label,
+		ForjaLang::T("Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego"));
+	std::snprintf(label, sizeof(label), ForjaLang::TF("Filtro de texturas:  < %s >"),
+		ForjaLang::T(ForjaTextureFilterSteps[ForjaImageStep(ForjaTextureFilterSteps, EmuConfig.GS.TextureFiltering)].second));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_TEXTURE_FILTER, label,
+		ForjaLang::T("Suave alisa lo pixelado, pero puede verse borroso. Normal es como en la PS2. Se guarda para este juego"));
+}
+
 static void PublishCrowdText()
 {
 	using ForjaLang::T;
@@ -2147,6 +2178,7 @@ static void PublishGameMenu()
 	PublishCrowdText(); // compilation 82
 	PublishCycleSkipText(); // compilation 100
 	PublishSpeedLimitText();
+	PublishImageOptionsText(); // compilation 104
 	PublishReportText();
 	PS4GameMenu::InGameMenuState state;
 	state.visible = s_game_menu_open;
@@ -2919,48 +2951,83 @@ static void UpdateCpuAuto(double elapsed)
 }
 
 // Compilation 103: "Salto de ciclo: Auto". The least that holds the game's speed: each frame repeated is a frame less, and the best
-// value is different in each game and scene (Guitar Hero III 1/2, God of War II less or none). Up after 3 s below 96 %; down after 10 s
-// at full speed with every part below 88 %; after a step down that turned out slow, no more steps down for 2 minutes.
+// value is different in each game and scene (Guitar Hero III 1/2, God of War II less or none).
+// Compilation 104 (Joseph, 2026-10-31: "cuando pongo en automático, la verdad que es peor"): it started from the last value, 3 after going
+// through the row, and in God of War II it never came down: 14-17 FPS against 31 with 1/2. It asked for 10 s in a row at 99 % or more, and
+// the speed jumps around when a game repeats frames. Now by the means of a window, along the row's steps, down only when the game is really
+// repeating frames (a menu at 50 FPS stays where it is), and up only with a part at its limit: this lightens no hitch.
 static void UpdateCycleSkipAuto(double elapsed)
 {
-	static double s_last_check = 0.0, s_last_change = 0.0, s_last_down = -1000.0, s_no_down_until = 0.0;
-	static unsigned s_slow_checks = 0, s_room_checks = 0;
+	struct Window
+	{
+		double speed = 0.0, busiest = 0.0, frames = 0.0;
+		unsigned checks = 0;
+		void Add(double s, double b, double f) { speed += s; busiest += b; frames += f; checks++; }
+	};
+	static constexpr int top_step = 4; // the row's "1": more costs too many frames for an automatic (God of War II at 3: 14-17 FPS)
+	static double s_last_check = 0.0, s_settle_until = 0.0, s_last_down = -1000.0, s_no_down_until = 0.0;
+	static Window s_up, s_down;
 	if (!EmuConfig.Speedhacks.EECycleSkipAuto || s_video_active)
 	{
-		s_slow_checks = s_room_checks = 0;
+		s_up = {};
+		s_down = {};
 		return;
 	}
 	if (elapsed - s_last_check < 0.5)
 		return;
+	// The menu paused the game: the first numbers after it count that pause (God of War II, EE 590 ms in a window of 5 s).
+	if (elapsed - s_last_check > 1.0)
+	{
+		s_settle_until = elapsed + 2.0;
+		s_up = {};
+		s_down = {};
+	}
 	s_last_check = elapsed;
-	const double speed = PerformanceMetrics::GetSpeed();
-	const double busiest = std::max({PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()),
-		static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
-	s_slow_checks = speed < 96.0 ? s_slow_checks + 1 : 0;
-	s_room_checks = (speed >= 99.0 && busiest < 88.0) ? s_room_checks + 1 : 0;
-	if (elapsed - s_last_change < 4.0)
-		return;
 	const int quarters = EmuConfig.Speedhacks.EECycleSkip * 4 + EmuConfig.Speedhacks.EECycleSkipQuarters;
 	int next = quarters;
-	if (s_slow_checks >= 6 && quarters < 8)
+	if (quarters > ForjaCycleSkipSteps[top_step])
+		next = 2; // a profile saved by the 103, at 3
+	else if (elapsed >= s_settle_until)
 	{
-		next = std::min(quarters + (speed < 85.0 ? 2 : 1), 8);
-		if (elapsed - s_last_down < 30.0)
-			s_no_down_until = elapsed + 120.0;
-	}
-	else if (s_room_checks >= 20 && quarters > 0 && elapsed >= s_no_down_until)
-	{
-		next = quarters - 1;
-		s_last_down = elapsed;
+		const double busiest_now = std::max({PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()),
+			static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
+		const double refresh = PerformanceMetrics::GetFPS();
+		const double frames_now = (refresh > 1.0 && PerformanceMetrics::GetInternalFPS() > 0.0f) ? PerformanceMetrics::GetInternalFPS() / refresh : 0.0;
+		s_up.Add(PerformanceMetrics::GetSpeed(), busiest_now, frames_now);
+		s_down.Add(PerformanceMetrics::GetSpeed(), busiest_now, frames_now);
+		int step = 0;
+		while (step < top_step && ForjaCycleSkipSteps[step] < quarters)
+			step++;
+		if (s_up.checks >= 6)
+		{
+			const double speed = s_up.speed / s_up.checks;
+			if (speed < 96.0 && s_up.busiest / s_up.checks >= 85.0 && step < top_step)
+			{
+				next = ForjaCycleSkipSteps[std::min(step + (speed < 85.0 ? 2 : 1), top_step)];
+				if (elapsed - s_last_down < 30.0)
+					s_no_down_until = elapsed + 120.0;
+			}
+			s_up = {};
+		}
+		if (next == quarters && s_down.checks >= 20)
+		{
+			if (step > 0 && elapsed >= s_no_down_until && s_down.speed / s_down.checks >= 98.5 && s_down.busiest / s_down.checks < 91.0 &&
+				s_down.frames / s_down.checks < 0.92)
+			{
+				next = ForjaCycleSkipSteps[step - 1];
+				s_last_down = elapsed;
+			}
+			s_down = {};
+		}
 	}
 	if (next == quarters)
 		return;
 	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(next / 4);
 	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(next % 4);
-	ProbeLog("Cycle skip auto: %d -> %d quarters (speed %.0f %%, busiest part %.0f %%)\n", quarters, next, speed, busiest);
+	ProbeLog("Cycle skip auto: %d -> %d quarters (speed %.0f %%, game FPS %.1f)\n", quarters, next, PerformanceMetrics::GetSpeed(), PerformanceMetrics::GetInternalFPS());
 	PublishCycleSkipText();
-	s_last_change = elapsed;
-	s_slow_checks = s_room_checks = 0;
+	s_up = {};
+	s_down = {};
 }
 
 // Forja SX2: the profile was read before boot from the library's scan of the image. If PCSX2 ends up with another serial or
@@ -3073,6 +3140,32 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			s_game_sharpness = static_cast<unsigned>((static_cast<int>(s_game_sharpness) + delta + 5) % 5);
 			ApplyGameSharpness(s_game_sharpness, true);
 			break;
+		case PS4GameMenu::ROW_DEINTERLACE: // compilation 104
+		{
+			constexpr int steps = static_cast<int>(std::size(ForjaDeinterlaceSteps));
+			const int step = (static_cast<int>(ForjaImageStep(ForjaDeinterlaceSteps, EmuConfig.GS.InterlaceMode)) + delta + steps) % steps;
+			EmuConfig.GS.InterlaceMode = ForjaDeinterlaceSteps[step].first;
+			MTGS::ApplySettings();
+			MTGS::WaitGS(false, false, false);
+			SavePlayerProfile("Deinterlace", [](INISettingsInterface& ini) {
+				ini.SetIntValue("EmuCore/GS", "deinterlace_mode", static_cast<int>(EmuConfig.GS.InterlaceMode));
+			}, false);
+			ProbeLog("Deinterlace applied: %d\n", static_cast<int>(EmuConfig.GS.InterlaceMode));
+			break;
+		}
+		case PS4GameMenu::ROW_TEXTURE_FILTER: // compilation 104
+		{
+			constexpr int steps = static_cast<int>(std::size(ForjaTextureFilterSteps));
+			const int step = (static_cast<int>(ForjaImageStep(ForjaTextureFilterSteps, EmuConfig.GS.TextureFiltering)) + delta + steps) % steps;
+			EmuConfig.GS.TextureFiltering = ForjaTextureFilterSteps[step].first;
+			MTGS::ApplySettings();
+			MTGS::WaitGS(false, false, false);
+			SavePlayerProfile("Texture filter", [](INISettingsInterface& ini) {
+				ini.SetIntValue("EmuCore/GS", "filter", static_cast<int>(EmuConfig.GS.TextureFiltering));
+			}, false);
+			ProbeLog("Texture filter applied: %d\n", static_cast<int>(EmuConfig.GS.TextureFiltering));
+			break;
+		}
 		case PS4GameMenu::ROW_OVERLAY:
 			s_game_show_performance_overlay = !s_game_show_performance_overlay;
 			ApplyPerformanceOverlay();
@@ -3125,8 +3218,9 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			constexpr int steps = static_cast<int>(std::size(ForjaCycleSkipSteps)) + 1;
 			const int step = (static_cast<int>(ForjaCycleSkipStep()) + delta + steps) % steps;
 			const bool automatic = step == static_cast<int>(ForjaCycleSkipAutoStep);
-			const int current = EmuConfig.Speedhacks.EECycleSkip * 4 + EmuConfig.Speedhacks.EECycleSkipQuarters;
-			const int next = automatic ? current : ForjaCycleSkipSteps[step];
+			// Compilation 104: Auto starts at 1/2, the best measured in Guitar Hero III and God of War II. It comes right after 3 in the row, and
+			// starting from the last value it started at the worst.
+			const int next = automatic ? 2 : ForjaCycleSkipSteps[step];
 			SavePlayerProfile("EE cycle skip", [next, automatic](INISettingsInterface& ini) {
 				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkip", next / 4);
 				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkipQuarters", next % 4);
@@ -3145,7 +3239,10 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			const float now = EmuConfig.EmulationSpeed.NominalScalar;
 			const int current = now > 2.0f ? 2 : now > 1.1f ? 1 : 0;
 			const float next = scalars[(current + delta + 3) % 3];
-			SavePlayerProfile("Speed limit", [next](INISettingsInterface& ini) { ini.SetFloatValue("Framerate", "NominalScalar", next); }, true);
+			// Compilation 104: no reload, as Salto de ciclo in the 103: each press cost ~5 s at 8-15 % speed (God of War II, 2026-10-31).
+			SavePlayerProfile("Speed limit", [next](INISettingsInterface& ini) { ini.SetFloatValue("Framerate", "NominalScalar", next); }, false);
+			EmuConfig.EmulationSpeed.NominalScalar = next;
+			VMManager::UpdateTargetSpeed();
 			ProbeLog("Speed limit: requested=%.1f active=%.1f\n", next, EmuConfig.EmulationSpeed.NominalScalar);
 			PublishSpeedLimitText();
 			break;
@@ -4057,7 +4154,7 @@ void VMHostPoll()
 		// X changes the switch-like rows one step, saves, loads or restarts on the save state rows, and resets the game's
 		// profile on its row.
 		if (confirm && (row == PS4GameMenu::ROW_OVERLAY || row == PS4GameMenu::ROW_VIDEO_MODE || row == PS4GameMenu::ROW_FRAME_GEN ||
-						   row == PS4GameMenu::ROW_SHARPNESS ||
+						   row == PS4GameMenu::ROW_SHARPNESS || row == PS4GameMenu::ROW_DEINTERLACE || row == PS4GameMenu::ROW_TEXTURE_FILTER ||
 						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_CPU_AUTO || row == PS4GameMenu::ROW_CYCLE_SKIP || row == PS4GameMenu::ROW_SPEED_LIMIT || row == PS4GameMenu::ROW_RESET_PROFILE ||
 						   row == PS4GameMenu::ROW_GS_SKIP || row == PS4GameMenu::ROW_CROWD ||
 						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART ||

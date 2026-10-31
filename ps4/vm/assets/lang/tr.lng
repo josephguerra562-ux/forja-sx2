@@ -937,6 +937,24 @@ tr: Sınırsız
 es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
 tr: %100 gerçek hızdır. Daha yükseği: PS4'ün gücü yeterse oyun ve sesi hızlanır; performans artmaz. Bu oyun için kaydedilir
 
+es: Mezcla
+tr: Karışım
+
+es: Sin mezcla
+tr: Karışım yok
+
+es: Desentrelazado:  < %s >
+tr: Taramayı düzeltme:  < %s >
+
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
+tr: Görüntü titriyorsa: Karışım bunu giderir, ancak biraz daha yumuşak görünür. Auto olağan ayardır. Bu oyun için kaydedilir
+
+es: Filtro de texturas:  < %s >
+tr: Doku filtresi:  < %s >
+
+es: Suave alisa lo pixelado, pero puede verse borroso. Normal es como en la PS2. Se guarda para este juego
+tr: Yumuşak pikselleri azaltır, ancak bulanık görünebilir. Normal, PS2'deki gibidir. Bu oyun için kaydedilir
+
 es: Público por software:  este juego no lo usa
 tr: Yazılımla seyirci:  bu oyun kullanmıyor
 

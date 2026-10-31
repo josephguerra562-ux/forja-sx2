@@ -2300,6 +2300,14 @@ namespace PS4GameMenu
 						draw->AddLine(ip(0, 15), ip(-14, 0), icon_line, lw);
 						draw->AddLine(ip(-14, 0), ip(0, -15), icon_line, lw);
 						break;
+					case ROW_DEINTERLACE: // two rows of lines, one over the other (compilation 104)
+						draw->AddLine(ip(-15, -8), ip(15, -8), icon_line, lw);
+						draw->AddLine(ip(-15, 0), ip(15, 0), icon_line, lw);
+						draw->AddLine(ip(-15, 8), ip(15, 8), icon_line, lw);
+						break;
+					case ROW_TEXTURE_FILTER: // a square with a smoothed corner (compilation 104)
+						draw->AddRect(ip(-13, -13), ip(13, 13), icon_line, 8 * scale, lw, 0);
+						break;
 					case ROW_VU1_FILTER: // a funnel
 						draw->AddLine(ip(-15, -12), ip(15, -12), icon_line, lw);
 						draw->AddLine(ip(-15, -12), ip(-3, 2), icon_line, lw);
@@ -2465,7 +2473,8 @@ namespace PS4GameMenu
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
 					action = T("AJUSTAR");
 				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
-				         row == ROW_SHARPNESS || row == ROW_GS_SKIP || row == ROW_CROWD || row == ROW_CYCLE_SKIP || row == ROW_SPEED_LIMIT)
+				         row == ROW_SHARPNESS || row == ROW_DEINTERLACE || row == ROW_TEXTURE_FILTER || row == ROW_GS_SKIP || row == ROW_CROWD || row == ROW_CYCLE_SKIP ||
+				         row == ROW_SPEED_LIMIT)
 					action = T("ELEGIR");
 				else if (row == ROW_REPORT_ISSUE || row == ROW_REPORT_WHERE) // compilation 82: X sends the report from here too; 98: and the last
 					action = T("ELEGIR  ·  X");

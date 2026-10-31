@@ -937,6 +937,24 @@ tr: 제한 없음
 es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
 tr: 100 %가 실제 속도입니다. 더 높이면 PS4 성능에 여유가 있을 때 게임과 소리가 빨라지지만 성능이 늘지는 않습니다. 이 게임에 저장됩니다
 
+es: Mezcla
+tr: 혼합
+
+es: Sin mezcla
+tr: 혼합 안 함
+
+es: Desentrelazado:  < %s >
+tr: 디인터레이스:  < %s >
+
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
+tr: 화면이 깜빡이면: 혼합으로 없앨 수 있지만 조금 부드럽게 보입니다. Auto가 기본입니다. 이 게임에 저장됩니다
+
+es: Filtro de texturas:  < %s >
+tr: 텍스처 필터:  < %s >
+
+es: Suave alisa lo pixelado, pero puede verse borroso. Normal es como en la PS2. Se guarda para este juego
+tr: 부드럽게는 픽셀을 줄이지만 흐려 보일 수 있습니다. 보통은 PS2와 같습니다. 이 게임에 저장됩니다
+
 es: Público por software:  este juego no lo usa
 tr: 소프트웨어 관중:  이 게임은 사용하지 않음
 

@@ -389,7 +389,7 @@ es: CPU de la PS2 durante las cinemáticas.
 tr: PS2 CPU speed during cutscenes.
 
 es: Suave
-tr: Soft
+tr: Smooth
 
 es: Nítida
 tr: Sharp
@@ -936,6 +936,24 @@ tr: No limit
 
 es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
 tr: 100 % is the real speed. Higher: the game and its sound run faster if the PS4 has power to spare; it adds no performance. Saved for this game
+
+es: Mezcla
+tr: Blend
+
+es: Sin mezcla
+tr: No blend
+
+es: Desentrelazado:  < %s >
+tr: Deinterlacing:  < %s >
+
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
+tr: If the picture flickers: Blend removes it, but it looks a little softer. Auto is the usual one. Saved for this game
+
+es: Filtro de texturas:  < %s >
+tr: Texture filter:  < %s >
+
+es: Suave alisa lo pixelado, pero puede verse borroso. Normal es como en la PS2. Se guarda para este juego
+tr: Smooth evens out pixelation, but it can look blurry. Normal is as on the PS2. Saved for this game
 
 es: Público por software:  este juego no lo usa
 tr: Software crowd:  not used by this game

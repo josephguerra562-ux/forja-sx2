@@ -389,7 +389,7 @@ es: CPU de la PS2 durante las cinemáticas.
 tr: سرعة معالج PS2 أثناء المشاهد السينمائية.
 
 es: Suave
-tr: ناعمة
+tr: ناعم
 
 es: Nítida
 tr: حادّة
@@ -936,6 +936,24 @@ tr: بلا حد
 
 es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
 tr: 100 % هي السرعة الحقيقية. أعلى من ذلك: تسرع اللعبة وصوتها إذا كان لدى PS4 طاقة زائدة، ولا يزيد الأداء. يُحفظ لهذه اللعبة
+
+es: Mezcla
+tr: مزج
+
+es: Sin mezcla
+tr: بدون مزج
+
+es: Desentrelazado:  < %s >
+tr: إزالة التشابك:  < %s >
+
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
+tr: إذا كانت الصورة تومض: المزج يزيل ذلك، لكنها تبدو أنعم قليلا. Auto هو المعتاد. يُحفظ لهذه اللعبة
+
+es: Filtro de texturas:  < %s >
+tr: مرشح الخامات:  < %s >
+
+es: Suave alisa lo pixelado, pero puede verse borroso. Normal es como en la PS2. Se guarda para este juego
+tr: الناعم يخفف البكسلة، لكن قد تبدو الصورة ضبابية. العادي كما في PS2. يُحفظ لهذه اللعبة
 
 es: Público por software:  este juego no lo usa
 tr: الجمهور بالبرمجيات:  لا تستخدمه هذه اللعبة

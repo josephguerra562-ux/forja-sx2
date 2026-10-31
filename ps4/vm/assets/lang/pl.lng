@@ -389,7 +389,7 @@ es: CPU de la PS2 durante las cinemáticas.
 tr: Szybkość CPU PS2 podczas przerywników.
 
 es: Suave
-tr: Miękka
+tr: Miękki
 
 es: Nítida
 tr: Ostra
@@ -936,6 +936,24 @@ tr: Bez limitu
 
 es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
 tr: 100 % to prawdziwa prędkość. Wyżej: gra i dźwięk przyspieszają, gdy PS4 ma zapas mocy; wydajność nie rośnie. Zapisywane dla tej gry
+
+es: Mezcla
+tr: Mieszanie
+
+es: Sin mezcla
+tr: Bez mieszania
+
+es: Desentrelazado:  < %s >
+tr: Usuwanie przeplotu:  < %s >
+
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
+tr: Jeśli obraz migocze: Mieszanie to usuwa, ale wygląda nieco miękcej. Auto to zwykłe ustawienie. Zapisywane dla tej gry
+
+es: Filtro de texturas:  < %s >
+tr: Filtr tekstur:  < %s >
+
+es: Suave alisa lo pixelado, pero puede verse borroso. Normal es como en la PS2. Se guarda para este juego
+tr: Miękki wygładza piksele, ale obraz może być rozmyty. Normalny jest jak na PS2. Zapisywane dla tej gry
 
 es: Público por software:  este juego no lo usa
 tr: Publiczność programowo:  ta gra jej nie używa

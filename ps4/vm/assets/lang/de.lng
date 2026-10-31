@@ -937,6 +937,24 @@ tr: Ohne Limit
 es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
 tr: 100 % ist die echte Geschwindigkeit. Höher: Spiel und Ton laufen schneller, wenn die PS4 Reserven hat; mehr Leistung gibt es nicht. Für dieses Spiel gespeichert
 
+es: Mezcla
+tr: Mischen
+
+es: Sin mezcla
+tr: Ohne Mischen
+
+es: Desentrelazado:  < %s >
+tr: Deinterlacing:  < %s >
+
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
+tr: Wenn das Bild flimmert: Mischen beseitigt es, aber es wirkt etwas weicher. Auto ist der Normalfall. Für dieses Spiel gespeichert
+
+es: Filtro de texturas:  < %s >
+tr: Texturfilter:  < %s >
+
+es: Suave alisa lo pixelado, pero puede verse borroso. Normal es como en la PS2. Se guarda para este juego
+tr: Weich glättet Pixel, kann aber verschwommen wirken. Normal ist wie auf der PS2. Für dieses Spiel gespeichert
+
 es: Público por software:  este juego no lo usa
 tr: Publikum per Software:  dieses Spiel nutzt es nicht
 

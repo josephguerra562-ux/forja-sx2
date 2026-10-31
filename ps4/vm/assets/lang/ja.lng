@@ -937,6 +937,24 @@ tr: 制限なし
 es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
 tr: 100 % が本来の速度です。高くすると、PS4 に余力があればゲームと音声が速くなりますが、性能は上がりません。このゲームに保存されます
 
+es: Mezcla
+tr: ブレンド
+
+es: Sin mezcla
+tr: ブレンドなし
+
+es: Desentrelazado:  < %s >
+tr: インターレース解除:  < %s >
+
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
+tr: 画面がちらつく場合:ブレンドで消えますが、少し柔らかく見えます。Auto が通常です。このゲームに保存されます
+
+es: Filtro de texturas:  < %s >
+tr: テクスチャフィルター:  < %s >
+
+es: Suave alisa lo pixelado, pero puede verse borroso. Normal es como en la PS2. Se guarda para este juego
+tr: なめらかはドットを抑えますが、ぼやけることがあります。標準は PS2 と同じです。このゲームに保存されます
+
 es: Público por software:  este juego no lo usa
 tr: ソフトウェア描画の観客：  このゲームでは使いません
 

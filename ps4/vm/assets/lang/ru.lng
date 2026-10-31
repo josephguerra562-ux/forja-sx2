@@ -389,7 +389,7 @@ es: CPU de la PS2 durante las cinemáticas.
 tr: Скорость ЦП PS2 во время роликов.
 
 es: Suave
-tr: Мягкая
+tr: Мягкий
 
 es: Nítida
 tr: Чёткая
@@ -936,6 +936,24 @@ tr: Без ограничения
 
 es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
 tr: 100 % — реальная скорость. Выше: игра и звук идут быстрее, если у PS4 есть запас мощности; производительность не растёт. Сохраняется для этой игры
+
+es: Mezcla
+tr: Смешивание
+
+es: Sin mezcla
+tr: Без смешивания
+
+es: Desentrelazado:  < %s >
+tr: Деинтерлейс:  < %s >
+
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
+tr: Если изображение мерцает: Смешивание убирает это, но картинка немного мягче. Auto — обычный вариант. Сохраняется для этой игры
+
+es: Filtro de texturas:  < %s >
+tr: Фильтр текстур:  < %s >
+
+es: Suave alisa lo pixelado, pero puede verse borroso. Normal es como en la PS2. Se guarda para este juego
+tr: Мягкий сглаживает пиксели, но картинка может быть размытой. Обычный — как на PS2. Сохраняется для этой игры
 
 es: Público por software:  este juego no lo usa
 tr: Программная толпа:  в этой игре нет
