@@ -63,8 +63,8 @@ Los archivos se pasan por FTP (GoldHEN, puerto 2121, con FileZilla) o con PS4 Xp
   - **Imagen:** resolución interna, relación de aspecto, **nitidez** (desde la 44), generación de cuadros y contador de FPS.
     **Nitidez:** Suave (como antes), Nítida (bilineal nítido, sin costo), CAS y CAS fuerte (el realce de AMD, de la familia
     del FSR que usa Dolphin para PS4; cuesta muy poco) y Píxeles (sin filtro, estilo retro). Se guarda por juego.
-  - **Partida** (desde la 58 también): **Avance rápido** (X lo prende o lo apaga: el juego corre lo más rápido que aguante
-    la PS4, para cargas y diálogos; no se guarda) y, en Guardar/Cargar estado, **la fecha y la hora** en que se guardó cada
+  - **Partida** (desde la 58 también; Avance rápido estuvo aquí hasta la 101, lo reemplaza Límite de velocidad):
+    en Guardar/Cargar estado, **la fecha y la hora** en que se guardó cada
     ranura.
   - **Rendimiento:** velocidad del CPU de la PS2, **CPU automático**, modo video, núcleos, **Saltar cuadros** (de vuelta
     aquí desde la 75; de la 59 a la 74 estuvo en No tocar).
