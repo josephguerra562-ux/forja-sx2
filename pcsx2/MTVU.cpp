@@ -990,15 +990,16 @@ void VU_Thread::ExecuteVU(u32 vu_addr, u32 vif_top, u32 vif_itop, u32 fbrst)
 	gifUnit.TransferGSPacketData(GIF_TRANS_MTVU, NULL, 0);
 	// vk-285-84: the recent programs' cycles (four atomics the VU thread writes per program, so a
 	// cross-core miss) are only used by the EE cycle skip and by Instant VU1 off.
-	const u32 cycle_skip = EmuConfig.Speedhacks.EECycleSkip;
+	// Forja SX2 (compilation 102): in quarters. 1 took Guitar Hero III to 100 %, with 18 % of its frames shown twice; 0 was at 90 %.
+	const u32 cycle_skip = EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters;
 	const bool instant = INSTANT_VU1;
 	u32 cycles = 4;
 	if (cycle_skip || !instant)
 	{
 		cycles = std::max(Get_vuCycles(), 4u);
 		const u32 skip_cycles = std::min(cycles, 3000u);
-		cpuRegs.cycle += skip_cycles * cycle_skip;
-		VU0.cycle += skip_cycles * cycle_skip;
+		cpuRegs.cycle += skip_cycles * cycle_skip / 4;
+		VU0.cycle += skip_cycles * cycle_skip / 4;
 	}
 	Get_MTVUChanges();
 

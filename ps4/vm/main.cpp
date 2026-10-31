@@ -617,7 +617,7 @@ static void ReadGameResolution()
 {
 	// Compilation 99: the options a player's profile can change that the report's settings line doesn't show (the flicker's tests).
 	ProbeLog("GS image options: deinterlace=%d texture_filter=%d cycle_skip=%d\n", static_cast<int>(GSConfig.InterlaceMode),
-		static_cast<int>(GSConfig.TextureFiltering), static_cast<int>(EmuConfig.Speedhacks.EECycleSkip));
+		static_cast<int>(GSConfig.TextureFiltering), EmuConfig.Speedhacks.EECycleSkip * 4 + EmuConfig.Speedhacks.EECycleSkipQuarters);
 	MTGS::RunOnGSThread([]() {
 		// Compilation 59: 3x and 4x only on a fast console (a PS4 Pro with Boost Mode). A PS4 or a Slim (or a Pro without Boost
 		// Mode) has ~25 % less CPU and half the GPU, and those resolutions are what the hint already called "solo para PS4 Pro".
@@ -1140,24 +1140,6 @@ static void ToggleCheat()
 	ReloadCheats();
 }
 
-// Forja SX2 (compilation 58): "Avance rápido" (L3+R3 > Partida), an idea from M33: the frame limiter off while it's on, for
-// loading screens and dialogues, as fast as the PS4 can run the game. Not saved; a game starts with it off.
-static bool s_fast_forward = false;
-
-static void PublishFastForwardText()
-{
-	PS4GameMenu::SetRowText(PS4GameMenu::ROW_FAST_FORWARD,
-		s_fast_forward ? ForjaLang::T("Avance rápido:  < Sí >") : ForjaLang::T("Avance rápido:  < No >"),
-		ForjaLang::T("X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda"));
-}
-
-static void ToggleFastForward()
-{
-	s_fast_forward = !s_fast_forward;
-	VMManager::SetLimiterMode(s_fast_forward ? LimiterModeType::Unlimited : LimiterModeType::Nominal);
-	ProbeLog("Fast forward: %s\n", s_fast_forward ? "on" : "off");
-	PublishFastForwardText();
-}
 
 // Forja SX2 (compilation 58): the hang log, an idea from M33's hang.log: a thread checks once a second that the game's frames
 // still advance (g_FrameCount, the PS2's vsyncs). After 10 s without one while the game runs (not paused, no menu) it writes
@@ -1849,12 +1831,23 @@ static bool GameDrawsCrowdInSoftware()
 // Compilation 100: "Salto de ciclo" (EECycleSkip): each VU1 program's cycles are also taken from the EE (MTVU.cpp), as if it had
 // waited for it. Guitar Hero III went from 87 to 99.8 % with 1 (2026-10-31): the EE goes from 23 to 18 ms a frame, and the game
 // shows some frames for two refreshes instead of the whole song running slow.
+// Compilation 102: in quarters too, up to 1 (ForjaCycleSkipSteps): between 90 % with every frame and 100 % with 18 % of them shown twice.
+static constexpr u8 ForjaCycleSkipSteps[] = {0, 1, 2, 3, 4, 8, 12};
+
+static unsigned ForjaCycleSkipStep()
+{
+	const unsigned quarters = EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters;
+	unsigned step = 0;
+	while (step + 1 < std::size(ForjaCycleSkipSteps) && ForjaCycleSkipSteps[step] < quarters)
+		step++;
+	return step;
+}
+
 static void PublishCycleSkipText()
 {
 	char label[256];
-	static constexpr const char* names[] = {N_("No"), "1", "2", "3"};
-	std::snprintf(label, sizeof(label), ForjaLang::TF("Salto de ciclo:  < %s >"),
-		ForjaLang::T(names[std::min<unsigned>(EmuConfig.Speedhacks.EECycleSkip, 3u)]));
+	static constexpr const char* names[] = {N_("No"), "1/4", "1/2", "3/4", "1", "2", "3"};
+	std::snprintf(label, sizeof(label), ForjaLang::TF("Salto de ciclo:  < %s >"), ForjaLang::T(names[ForjaCycleSkipStep()]));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CYCLE_SKIP, label,
 		ForjaLang::T("Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego"));
 }
@@ -3066,9 +3059,14 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		}
 		case PS4GameMenu::ROW_CYCLE_SKIP: // compilation 100
 		{
-			const int next = (static_cast<int>(EmuConfig.Speedhacks.EECycleSkip) + delta + 4) % 4;
-			SavePlayerProfile("EE cycle skip", [next](INISettingsInterface& ini) { ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkip", next); }, true);
-			ProbeLog("EE cycle skip: requested=%d active=%d\n", next, static_cast<int>(EmuConfig.Speedhacks.EECycleSkip));
+			constexpr int steps = static_cast<int>(std::size(ForjaCycleSkipSteps));
+			const int next = ForjaCycleSkipSteps[(static_cast<int>(ForjaCycleSkipStep()) + delta + steps) % steps];
+			SavePlayerProfile("EE cycle skip", [next](INISettingsInterface& ini) {
+				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkip", next / 4);
+				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkipQuarters", next % 4);
+			}, true);
+			ProbeLog("EE cycle skip: requested=%d active=%d quarters\n", next,
+				EmuConfig.Speedhacks.EECycleSkip * 4 + EmuConfig.Speedhacks.EECycleSkipQuarters);
 			PublishCycleSkipText();
 			break;
 		}
@@ -3833,7 +3831,6 @@ void VMHostPoll()
 		RefreshStateSlot();
 		ReloadPatchMenu(); // Forja SX2 (compilation 42): the Parches tab
 		ReloadCheats(); // compilation 58
-		PublishFastForwardText();
 		// Compilation 44: the Extras tab's other rows and Partida's discs.
 		ReloadVu1Filter();
 		ReloadGsFilter(); // compilation 51
@@ -3994,7 +3991,7 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_CPU_AUTO || row == PS4GameMenu::ROW_CYCLE_SKIP || row == PS4GameMenu::ROW_SPEED_LIMIT || row == PS4GameMenu::ROW_RESET_PROFILE ||
 						   row == PS4GameMenu::ROW_GS_SKIP || row == PS4GameMenu::ROW_CROWD ||
 						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART ||
-						   row == PS4GameMenu::ROW_FAST_FORWARD || row == PS4GameMenu::ROW_CHEATS ||
+						   row == PS4GameMenu::ROW_CHEATS ||
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
 						   row == PS4GameMenu::ROW_TEXTURES ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
@@ -4037,8 +4034,6 @@ void VMHostPoll()
 				TogglePatch();
 			else if (row == PS4GameMenu::ROW_CHEATS) // compilation 58
 				ToggleCheat();
-			else if (row == PS4GameMenu::ROW_FAST_FORWARD)
-				ToggleFastForward();
 			else if (row == PS4GameMenu::ROW_VU1_FILTER)
 				ToggleVu1Program();
 			else if (row == PS4GameMenu::ROW_GS_FILTER)
@@ -4479,7 +4474,6 @@ static void* RunVM(void*)
 			g_forja_iop_sleep = false; // compilation 67
 			ResetGsFilterList(); // compilation 54: a new game's list starts empty
 			LoadRules(); // compilation 55: huellas.ini, before the profile turns its rules on
-			s_fast_forward = false; // compilation 58: a game starts at its own speed
 			StartHangWatch();
 			ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
 			RepinWorkersForProfile();

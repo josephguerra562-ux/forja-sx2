@@ -376,7 +376,7 @@ void Pcsx2Config::SpeedhackOptions::Set(SpeedHack id, int value)
 
 bool Pcsx2Config::SpeedhackOptions::operator==(const SpeedhackOptions& right) const
 {
-	return OpEqu(bitset) && OpEqu(EECycleRate) && OpEqu(EECycleSkip);
+	return OpEqu(bitset) && OpEqu(EECycleRate) && OpEqu(EECycleSkip) && OpEqu(EECycleSkipQuarters);
 }
 
 bool Pcsx2Config::SpeedhackOptions::operator!=(const SpeedhackOptions& right) const
@@ -400,6 +400,7 @@ Pcsx2Config::SpeedhackOptions& Pcsx2Config::SpeedhackOptions::DisableAll()
 	bitset = 0;
 	EECycleRate = 0;
 	EECycleSkip = 0;
+	EECycleSkipQuarters = 0;
 
 	return *this;
 }
@@ -410,6 +411,7 @@ void Pcsx2Config::SpeedhackOptions::LoadSave(SettingsWrapper& wrap)
 
 	SettingsWrapBitfield(EECycleRate);
 	SettingsWrapBitfield(EECycleSkip);
+	SettingsWrapBitfield(EECycleSkipQuarters);
 	SettingsWrapBitBool(fastCDVD);
 	SettingsWrapBitBool(IntcStat);
 	SettingsWrapBitBool(WaitLoop);
@@ -419,6 +421,7 @@ void Pcsx2Config::SpeedhackOptions::LoadSave(SettingsWrapper& wrap)
 
 	EECycleRate = std::clamp(EECycleRate, MIN_EE_CYCLE_RATE, MAX_EE_CYCLE_RATE);
 	EECycleSkip = std::min(EECycleSkip, MAX_EE_CYCLE_SKIP);
+	EECycleSkipQuarters = std::min<u8>(EECycleSkipQuarters, 3);
 }
 
 Pcsx2Config::ProfilerOptions::ProfilerOptions()

@@ -2307,10 +2307,6 @@ namespace PS4GameMenu
 						draw->AddLine(ip(-3, 2), ip(-3, 14), icon_line, lw);
 						draw->AddLine(ip(3, 2), ip(3, 14), icon_line, lw);
 						break;
-					case ROW_FAST_FORWARD: // two arrows (compilation 58)
-						draw->AddTriangle(ip(-15, -10), ip(-2, 0), ip(-15, 10), icon_line, lw);
-						draw->AddTriangle(ip(0, -10), ip(13, 0), ip(0, 10), icon_line, lw);
-						break;
 					case ROW_CHEATS: // a lightning bolt (compilation 58)
 						draw->AddLine(ip(4, -15), ip(-8, 2), icon_line, lw);
 						draw->AddLine(ip(-8, 2), ip(4, 2), icon_line, lw);
@@ -2479,8 +2475,6 @@ namespace PS4GameMenu
 					action = T("ELEGIR  ·  X  ·  CUADRADO"); // compilation 52: Cuadrado brings everything back
 				else if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)
 					action = T("ELEGIR  ·  X");
-				else if (row == ROW_FAST_FORWARD) // compilation 58
-					action = "X";
 				else if (row == ROW_TEXTURES)
 					action = T("ELEGIR");
 				else if (row == ROW_RECOMMENDED)

@@ -1154,6 +1154,7 @@ struct Pcsx2Config
 
 		s8 EECycleRate; // EE cycle rate selector (1.0, 1.5, 2.0)
 		u8 EECycleSkip; // EE Cycle skip factor (0, 1, 2, or 3)
+		u8 EECycleSkipQuarters; // Forja SX2 (compilation 102): and a quarter of it each, 0 to 3 (MTVU.cpp)
 
 		SpeedhackOptions();
 		void LoadSave(SettingsWrapper& conf);

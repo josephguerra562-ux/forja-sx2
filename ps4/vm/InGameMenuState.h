@@ -15,7 +15,6 @@ namespace PS4GameMenu
 		ROW_RESUME = 0,
 		ROW_SAVE_STATE,
 		ROW_LOAD_STATE,
-		ROW_FAST_FORWARD, // compilation 58
 		ROW_RESTART,
 		ROW_CHANGE_DISC, // compilation 44
 		// Imagen
