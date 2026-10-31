@@ -925,8 +925,8 @@ tr: Not acting: this game's PS2 CPU (%d %%) is already this low or lower. Pick a
 es: Salto de ciclo:  < %s >
 tr: Cycle skip:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
-tr: Takes work off the console: speed gets closer to 100 %, but the game may repeat frames. Saved for this game
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
+tr: Takes work off the console: speed gets closer to 100 %, but the game may repeat frames. Auto adjusts it by itself. Saved for this game
 
 es: Límite de velocidad:  < %s >
 tr: Speed limit:  < %s >

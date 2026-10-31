@@ -3376,6 +3376,7 @@ void VMManager::EnforceAchievementsChallengeModeSettings()
 		std::max<decltype(EmuConfig.Speedhacks.EECycleRate)>(EmuConfig.Speedhacks.EECycleRate, 0);
 	EmuConfig.Speedhacks.EECycleSkip = 0;
 	EmuConfig.Speedhacks.EECycleSkipQuarters = 0;
+	EmuConfig.Speedhacks.EECycleSkipAuto = 0;
 }
 
 void VMManager::LogUnsafeSettingsToConsole(const std::string& messages)

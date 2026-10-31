@@ -925,8 +925,8 @@ tr: لا يعمل: معالج PS2 لهذه اللعبة (%d %%) بالفعل ع�
 es: Salto de ciclo:  < %s >
 tr: تخطي الدورات:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
-tr: يخفف العمل عن الجهاز: تقترب السرعة من 100 %، لكن قد تتكرر بعض الإطارات. يُحفظ لهذه اللعبة
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
+tr: يخفف العمل عن الجهاز: تقترب السرعة من 100 %، لكن قد تتكرر بعض الإطارات. Auto يضبطه تلقائيا. يُحفظ لهذه اللعبة
 
 es: Límite de velocidad:  < %s >
 tr: حد السرعة:  < %s >

@@ -1834,8 +1834,13 @@ static bool GameDrawsCrowdInSoftware()
 // Compilation 102: in quarters too, up to 1 (ForjaCycleSkipSteps): between 90 % with every frame and 100 % with 18 % of them shown twice.
 static constexpr u8 ForjaCycleSkipSteps[] = {0, 1, 2, 3, 4, 8, 12};
 
+// Compilation 103: Auto, after them.
+static constexpr unsigned ForjaCycleSkipAutoStep = std::size(ForjaCycleSkipSteps);
+
 static unsigned ForjaCycleSkipStep()
 {
+	if (EmuConfig.Speedhacks.EECycleSkipAuto)
+		return ForjaCycleSkipAutoStep;
 	const unsigned quarters = EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters;
 	unsigned step = 0;
 	while (step + 1 < std::size(ForjaCycleSkipSteps) && ForjaCycleSkipSteps[step] < quarters)
@@ -1847,9 +1852,20 @@ static void PublishCycleSkipText()
 {
 	char label[256];
 	static constexpr const char* names[] = {N_("No"), "1/4", "1/2", "3/4", "1", "2", "3"};
-	std::snprintf(label, sizeof(label), ForjaLang::TF("Salto de ciclo:  < %s >"), ForjaLang::T(names[ForjaCycleSkipStep()]));
+	char value[64];
+	if (EmuConfig.Speedhacks.EECycleSkipAuto)
+	{
+		const unsigned quarters = EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters;
+		unsigned step = 0;
+		while (step + 1 < std::size(ForjaCycleSkipSteps) && ForjaCycleSkipSteps[step] < quarters)
+			step++;
+		std::snprintf(value, sizeof(value), "%s: %s", ForjaLang::T("Auto"), ForjaLang::T(names[step]));
+	}
+	else
+		std::snprintf(value, sizeof(value), "%s", ForjaLang::T(names[ForjaCycleSkipStep()]));
+	std::snprintf(label, sizeof(label), ForjaLang::TF("Salto de ciclo:  < %s >"), value);
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CYCLE_SKIP, label,
-		ForjaLang::T("Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego"));
+		ForjaLang::T("Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego"));
 }
 
 // Compilation 100 (Joseph liked God of War II without the limiter, as a setting and not as "fast forward"): the normal speed of a game
@@ -2902,6 +2918,51 @@ static void UpdateCpuAuto(double elapsed)
 	s_cpu_auto_slow_checks = s_cpu_auto_room_checks = 0;
 }
 
+// Compilation 103: "Salto de ciclo: Auto". The least that holds the game's speed: each frame repeated is a frame less, and the best
+// value is different in each game and scene (Guitar Hero III 1/2, God of War II less or none). Up after 3 s below 96 %; down after 10 s
+// at full speed with every part below 88 %; after a step down that turned out slow, no more steps down for 2 minutes.
+static void UpdateCycleSkipAuto(double elapsed)
+{
+	static double s_last_check = 0.0, s_last_change = 0.0, s_last_down = -1000.0, s_no_down_until = 0.0;
+	static unsigned s_slow_checks = 0, s_room_checks = 0;
+	if (!EmuConfig.Speedhacks.EECycleSkipAuto || s_video_active)
+	{
+		s_slow_checks = s_room_checks = 0;
+		return;
+	}
+	if (elapsed - s_last_check < 0.5)
+		return;
+	s_last_check = elapsed;
+	const double speed = PerformanceMetrics::GetSpeed();
+	const double busiest = std::max({PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()),
+		static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
+	s_slow_checks = speed < 96.0 ? s_slow_checks + 1 : 0;
+	s_room_checks = (speed >= 99.0 && busiest < 88.0) ? s_room_checks + 1 : 0;
+	if (elapsed - s_last_change < 4.0)
+		return;
+	const int quarters = EmuConfig.Speedhacks.EECycleSkip * 4 + EmuConfig.Speedhacks.EECycleSkipQuarters;
+	int next = quarters;
+	if (s_slow_checks >= 6 && quarters < 8)
+	{
+		next = std::min(quarters + (speed < 85.0 ? 2 : 1), 8);
+		if (elapsed - s_last_down < 30.0)
+			s_no_down_until = elapsed + 120.0;
+	}
+	else if (s_room_checks >= 20 && quarters > 0 && elapsed >= s_no_down_until)
+	{
+		next = quarters - 1;
+		s_last_down = elapsed;
+	}
+	if (next == quarters)
+		return;
+	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(next / 4);
+	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(next % 4);
+	ProbeLog("Cycle skip auto: %d -> %d quarters (speed %.0f %%, busiest part %.0f %%)\n", quarters, next, speed, busiest);
+	PublishCycleSkipText();
+	s_last_change = elapsed;
+	s_slow_checks = s_room_checks = 0;
+}
+
 // Forja SX2: the profile was read before boot from the library's scan of the image. If PCSX2 ends up with another serial or
 // CRC (a disc whose scan failed, a changed disc), the profile is read again for the game that is really running.
 static void UpdateGameProfile(double elapsed)
@@ -3059,14 +3120,22 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		}
 		case PS4GameMenu::ROW_CYCLE_SKIP: // compilation 100
 		{
-			constexpr int steps = static_cast<int>(std::size(ForjaCycleSkipSteps));
-			const int next = ForjaCycleSkipSteps[(static_cast<int>(ForjaCycleSkipStep()) + delta + steps) % steps];
-			SavePlayerProfile("EE cycle skip", [next](INISettingsInterface& ini) {
+			// Compilation 103: no reload: only MTVU.cpp reads these, at every program. Reloading the game's settings reset the recompilers
+			// for nothing: 5-15 s at ~10 % speed with each press (God of War II, 2026-10-31).
+			constexpr int steps = static_cast<int>(std::size(ForjaCycleSkipSteps)) + 1;
+			const int step = (static_cast<int>(ForjaCycleSkipStep()) + delta + steps) % steps;
+			const bool automatic = step == static_cast<int>(ForjaCycleSkipAutoStep);
+			const int current = EmuConfig.Speedhacks.EECycleSkip * 4 + EmuConfig.Speedhacks.EECycleSkipQuarters;
+			const int next = automatic ? current : ForjaCycleSkipSteps[step];
+			SavePlayerProfile("EE cycle skip", [next, automatic](INISettingsInterface& ini) {
 				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkip", next / 4);
 				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkipQuarters", next % 4);
-			}, true);
-			ProbeLog("EE cycle skip: requested=%d active=%d quarters\n", next,
-				EmuConfig.Speedhacks.EECycleSkip * 4 + EmuConfig.Speedhacks.EECycleSkipQuarters);
+				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkipAuto", automatic ? 1 : 0);
+			}, false);
+			EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(next / 4);
+			EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(next % 4);
+			EmuConfig.Speedhacks.EECycleSkipAuto = automatic ? 1 : 0;
+			ProbeLog("EE cycle skip: requested=%d quarters, auto=%d\n", next, automatic ? 1 : 0);
 			PublishCycleSkipText();
 			break;
 		}
@@ -3607,6 +3676,7 @@ void VMHostPoll()
 		UpdateVideoMode(elapsed);
 		UpdateRuleShares(); // compilation 55
 		UpdateCpuAuto(elapsed);
+		UpdateCycleSkipAuto(elapsed);
 		UpdateGsSkip(elapsed);
 		UpdateOutputRate(elapsed);
 		CheckLoadedState(elapsed); // compilation 61

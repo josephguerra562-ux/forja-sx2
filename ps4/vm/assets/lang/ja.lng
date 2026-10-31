@@ -925,8 +925,8 @@ tr: 動作しません：このゲームのPS2のCPU（%d %%）はすでにこ�
 es: Salto de ciclo:  < %s >
 tr: サイクルスキップ:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
-tr: 本体の負担を減らします。速度は 100 % に近づきますが、フレームが重複することがあります。このゲームに保存されます
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
+tr: 本体の負担を減らします。速度は 100 % に近づきますが、フレームが重複することがあります。Auto は自動で調整します。このゲームに保存されます
 
 es: Límite de velocidad:  < %s >
 tr: 速度制限:  < %s >

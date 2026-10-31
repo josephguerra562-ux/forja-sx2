@@ -925,8 +925,8 @@ tr: Nie działa: CPU PS2 tej gry (%d %%) jest już tak niskie lub niższe. Wybie
 es: Salto de ciclo:  < %s >
 tr: Pomijanie cykli:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
-tr: Odciąża konsolę: prędkość zbliża się do 100 %, ale gra może powtarzać klatki. Zapisywane dla tej gry
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
+tr: Odciąża konsolę: prędkość zbliża się do 100 %, ale gra może powtarzać klatki. Auto dostosowuje to samo. Zapisywane dla tej gry
 
 es: Límite de velocidad:  < %s >
 tr: Limit prędkości:  < %s >

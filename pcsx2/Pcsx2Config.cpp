@@ -376,7 +376,7 @@ void Pcsx2Config::SpeedhackOptions::Set(SpeedHack id, int value)
 
 bool Pcsx2Config::SpeedhackOptions::operator==(const SpeedhackOptions& right) const
 {
-	return OpEqu(bitset) && OpEqu(EECycleRate) && OpEqu(EECycleSkip) && OpEqu(EECycleSkipQuarters);
+	return OpEqu(bitset) && OpEqu(EECycleRate) && OpEqu(EECycleSkip) && OpEqu(EECycleSkipQuarters) && OpEqu(EECycleSkipAuto);
 }
 
 bool Pcsx2Config::SpeedhackOptions::operator!=(const SpeedhackOptions& right) const
@@ -401,6 +401,7 @@ Pcsx2Config::SpeedhackOptions& Pcsx2Config::SpeedhackOptions::DisableAll()
 	EECycleRate = 0;
 	EECycleSkip = 0;
 	EECycleSkipQuarters = 0;
+	EECycleSkipAuto = 0;
 
 	return *this;
 }
@@ -412,6 +413,7 @@ void Pcsx2Config::SpeedhackOptions::LoadSave(SettingsWrapper& wrap)
 	SettingsWrapBitfield(EECycleRate);
 	SettingsWrapBitfield(EECycleSkip);
 	SettingsWrapBitfield(EECycleSkipQuarters);
+	SettingsWrapBitfield(EECycleSkipAuto);
 	SettingsWrapBitBool(fastCDVD);
 	SettingsWrapBitBool(IntcStat);
 	SettingsWrapBitBool(WaitLoop);

@@ -925,8 +925,8 @@ tr: Etkisiz: bu oyunun PS2 CPU'su (%d %%) zaten bu kadar ya da daha düşük. Da
 es: Salto de ciclo:  < %s >
 tr: Döngü atlama:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
-tr: Konsolun yükünü azaltır: hız %100'e yaklaşır, ancak oyun kareleri tekrarlayabilir. Bu oyun için kaydedilir
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
+tr: Konsolun yükünü azaltır: hız %100'e yaklaşır, ancak oyun kareleri tekrarlayabilir. Auto kendisi ayarlar. Bu oyun için kaydedilir
 
 es: Límite de velocidad:  < %s >
 tr: Hız sınırı:  < %s >

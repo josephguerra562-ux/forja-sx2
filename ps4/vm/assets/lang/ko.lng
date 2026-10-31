@@ -925,8 +925,8 @@ tr: 작동하지 않습니다: 이 게임의 PS2 CPU(%d %%)가 이미 이 값 �
 es: Salto de ciclo:  < %s >
 tr: 사이클 건너뛰기:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
-tr: 콘솔 부담을 줄입니다. 속도가 100 %에 가까워지지만 프레임이 반복될 수 있습니다. 이 게임에 저장됩니다
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
+tr: 콘솔 부담을 줄입니다. 속도가 100 %에 가까워지지만 프레임이 반복될 수 있습니다. Auto는 자동으로 조정합니다. 이 게임에 저장됩니다
 
 es: Límite de velocidad:  < %s >
 tr: 속도 제한:  < %s >

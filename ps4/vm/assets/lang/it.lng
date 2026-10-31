@@ -925,8 +925,8 @@ tr: Non agisce: la CPU della PS2 di questo gioco (%d %%) è già uguale o più b
 es: Salto de ciclo:  < %s >
 tr: Salto di ciclo:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
-tr: Alleggerisce la console: la velocità si avvicina al 100 %, ma il gioco può ripetere fotogrammi. Salvato per questo gioco
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
+tr: Alleggerisce la console: la velocità si avvicina al 100 %, ma il gioco può ripetere fotogrammi. Auto lo regola da solo. Salvato per questo gioco
 
 es: Límite de velocidad:  < %s >
 tr: Limite di velocità:  < %s >

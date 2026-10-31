@@ -925,8 +925,8 @@ tr: Не действует: ЦП PS2 этой игры (%d %%) уже на эт
 es: Salto de ciclo:  < %s >
 tr: Пропуск циклов:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
-tr: Снижает нагрузку на консоль: скорость приближается к 100 %, но игра может повторять кадры. Сохраняется для этой игры
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
+tr: Снижает нагрузку на консоль: скорость приближается к 100 %, но игра может повторять кадры. Auto настраивает сам. Сохраняется для этой игры
 
 es: Límite de velocidad:  < %s >
 tr: Предел скорости:  < %s >
