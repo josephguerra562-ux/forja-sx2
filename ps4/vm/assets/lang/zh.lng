@@ -790,14 +790,17 @@ tr: 金手指 %u/%zu：  < %s >  %s
 es:   ·  X: quitar
 tr:   ·  X：关闭
 
-es: Avance rápido:  < Sí >
-tr: 快进：  < 是 >
+es: Avance rápido:  < 130 % >
+tr: 快进:  < 130 % >
+
+es: Avance rápido:  < Sin límite >
+tr: 快进:  < 无限制 >
 
 es: Avance rápido:  < No >
 tr: 快进：  < 否 >
 
-es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
-tr: X：游戏以 PS4 能承受的最快速度运行（读取、对话）。不会保存
+es: X: No, 130 % o sin límite. El juego y su sonido van más rápido si a la PS4 le sobra potencia. No se guarda
+tr: X:否、130 % 或无限制。如果 PS4 性能有余,游戏和声音会变快。不保存
 
 es: Filtro VU1:  sin datos todavía
 tr: VU1 过滤：  暂无数据
@@ -930,6 +933,12 @@ tr: 自动已关闭：这个游戏先在别处绘制画面，再复制到屏幕�
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: 不起作用：此游戏的 PS2 CPU（%d %%）已经等于或低于此限制。请选择更低的限制，或提高 PS2 CPU
+
+es: Salto de ciclo:  < %s >
+tr: 周期跳过:  < %s >
+
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
+tr: 减轻主机负担:速度接近 100 %,但游戏可能重复画面。为此游戏保存
 
 es: Público por software:  este juego no lo usa
 tr: 软件绘制观众：  此游戏不使用

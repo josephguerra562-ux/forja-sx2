@@ -2346,6 +2346,10 @@ namespace PS4GameMenu
 						draw->AddLine(ip(0, 4), ip(-8, -6), icon_line, lw);
 						draw->AddTriangleFilled(ip(10, -14), ip(16, -6), ip(4, -6), icon_line);
 						break;
+					case ROW_CYCLE_SKIP: // a gauge with its needle jumping forward (compilation 100)
+						draw->AddCircle(ip(0, 4), 14.0f * scale, icon_line, 28, lw);
+						draw->AddLine(ip(0, 4), ip(9, -5), icon_line, lw);
+						break;
 					case ROW_VIDEO_MODE:
 						draw->AddRect(ip(-15, -11), ip(15, 11), icon_line, 3 * scale, lw, 0);
 						draw->AddTriangleFilled(ip(-5, -6), ip(-5, 6), ip(7, 0), icon_line);
@@ -2457,7 +2461,7 @@ namespace PS4GameMenu
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
 					action = T("AJUSTAR");
 				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
-				         row == ROW_SHARPNESS || row == ROW_GS_SKIP || row == ROW_CROWD)
+				         row == ROW_SHARPNESS || row == ROW_GS_SKIP || row == ROW_CROWD || row == ROW_CYCLE_SKIP)
 					action = T("ELEGIR");
 				else if (row == ROW_REPORT_ISSUE || row == ROW_REPORT_WHERE) // compilation 82: X sends the report from here too; 98: and the last
 					action = T("ELEGIR  ·  X");

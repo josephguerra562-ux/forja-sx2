@@ -790,14 +790,17 @@ tr: Trapaça %u de %zu:  < %s >  %s
 es:   ·  X: quitar
 tr:   ·  X: tirar
 
-es: Avance rápido:  < Sí >
-tr: Avanço rápido:  < Sim >
+es: Avance rápido:  < 130 % >
+tr: Avanço rápido:  < 130 % >
+
+es: Avance rápido:  < Sin límite >
+tr: Avanço rápido:  < Sem limite >
 
 es: Avance rápido:  < No >
 tr: Avanço rápido:  < Não >
 
-es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
-tr: X: o jogo corre o mais rápido que o PS4 aguentar (carregamentos, diálogos). Não fica salvo
+es: X: No, 130 % o sin límite. El juego y su sonido van más rápido si a la PS4 le sobra potencia. No se guarda
+tr: X: Não, 130 % ou sem limite. O jogo e o som ficam mais rápidos se o PS4 tiver potência de sobra. Não é salvo
 
 es: Filtro VU1:  sin datos todavía
 tr: Filtro VU1:  ainda sem dados
@@ -930,6 +933,12 @@ tr: O Auto se desligou: este jogo desenha a imagem à parte e depois a copia par
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: Não atua: a CPU do PS2 deste jogo (%d %%) já está igual ou mais baixa. Escolha um limite mais baixo ou suba a CPU do PS2
+
+es: Salto de ciclo:  < %s >
+tr: Salto de ciclo:  < %s >
+
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
+tr: Tira trabalho do console: a velocidade se aproxima de 100 %, mas o jogo pode repetir quadros. Fica salvo para este jogo
 
 es: Público por software:  este juego no lo usa
 tr: Público por software:  este jogo não usa

@@ -790,14 +790,17 @@ tr: Triche %u sur %zu :  < %s >  %s
 es:   ·  X: quitar
 tr:   ·  X : retirer
 
-es: Avance rápido:  < Sí >
-tr: Avance rapide :  < Oui >
+es: Avance rápido:  < 130 % >
+tr: Avance rapide :  < 130 % >
+
+es: Avance rápido:  < Sin límite >
+tr: Avance rapide :  < Sans limite >
 
 es: Avance rápido:  < No >
 tr: Avance rapide :  < Non >
 
-es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
-tr: X : le jeu tourne aussi vite que la PS4 le permet (chargements, dialogues). Non enregistré
+es: X: No, 130 % o sin límite. El juego y su sonido van más rápido si a la PS4 le sobra potencia. No se guarda
+tr: X : Non, 130 % ou sans limite. Le jeu et son son vont plus vite si la PS4 a de la marge. Non enregistré
 
 es: Filtro VU1:  sin datos todavía
 tr: Filtre VU1 :  pas encore de données
@@ -930,6 +933,12 @@ tr: Auto s'est désactivé : ce jeu dessine son image à part puis la copie à l
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: N'agit pas : le CPU de la PS2 de ce jeu (%d %%) est déjà aussi bas ou plus bas. Choisissez une limite plus basse ou montez le CPU de la PS2
+
+es: Salto de ciclo:  < %s >
+tr: Saut de cycle :  < %s >
+
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
+tr: Allège la console : la vitesse s'approche de 100 %, mais le jeu peut répéter des images. Enregistré pour ce jeu
 
 es: Público por software:  este juego no lo usa
 tr: Public en logiciel :  ce jeu ne l'utilise pas

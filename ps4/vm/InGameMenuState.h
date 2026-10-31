@@ -28,6 +28,7 @@ namespace PS4GameMenu
 		// Rendimiento
 		ROW_EE_RATE,
 		ROW_CPU_AUTO,
+		ROW_CYCLE_SKIP, // compilation 100
 		ROW_VIDEO_MODE,
 		ROW_CORES,
 		// Compilation 47 here; No tocar from 59 to 74. 1.06 (Joseph, 2026-10-21: "lo coloquemos en el lugar que debe estar"):

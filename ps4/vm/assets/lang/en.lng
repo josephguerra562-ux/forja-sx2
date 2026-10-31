@@ -790,14 +790,17 @@ tr: Cheat %u of %zu:  < %s >  %s
 es:   ·  X: quitar
 tr:   ·  X: turn off
 
-es: Avance rápido:  < Sí >
-tr: Fast forward:  < Yes >
+es: Avance rápido:  < 130 % >
+tr: Fast forward:  < 130 % >
+
+es: Avance rápido:  < Sin límite >
+tr: Fast forward:  < No limit >
 
 es: Avance rápido:  < No >
 tr: Fast forward:  < No >
 
-es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
-tr: X: the game runs as fast as the PS4 can take (loading, dialogues). Not saved
+es: X: No, 130 % o sin límite. El juego y su sonido van más rápido si a la PS4 le sobra potencia. No se guarda
+tr: X: No, 130 % or no limit. The game and its sound run faster if the PS4 has power to spare. Not saved
 
 es: Filtro VU1:  sin datos todavía
 tr: VU1 filter:  no data yet
@@ -930,6 +933,12 @@ tr: Auto turned itself off: this game draws its picture elsewhere and then copie
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: Not acting: this game's PS2 CPU (%d %%) is already this low or lower. Pick a lower limit or raise the PS2 CPU
+
+es: Salto de ciclo:  < %s >
+tr: Cycle skip:  < %s >
+
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
+tr: Takes work off the console: speed gets closer to 100 %, but the game may repeat frames. Saved for this game
 
 es: Público por software:  este juego no lo usa
 tr: Software crowd:  not used by this game

@@ -790,14 +790,17 @@ tr: Hile %u/%zu:  < %s >  %s
 es:   ·  X: quitar
 tr:   ·  X: kaldır
 
-es: Avance rápido:  < Sí >
-tr: Hızlı ileri:  < Evet >
+es: Avance rápido:  < 130 % >
+tr: Hızlı ileri:  < %130 >
+
+es: Avance rápido:  < Sin límite >
+tr: Hızlı ileri:  < Sınırsız >
 
 es: Avance rápido:  < No >
 tr: Hızlı ileri:  < Hayır >
 
-es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
-tr: X: oyun PS4'ün kaldırabildiği en yüksek hızda gider (yüklemeler, diyaloglar). Kaydedilmez
+es: X: No, 130 % o sin límite. El juego y su sonido van más rápido si a la PS4 le sobra potencia. No se guarda
+tr: X: Hayır, %130 veya sınırsız. PS4'ün gücü yeterse oyun ve sesi hızlanır. Kaydedilmez
 
 es: Filtro VU1:  sin datos todavía
 tr: VU1 filtresi:  henüz veri yok
@@ -930,6 +933,12 @@ tr: Otomatik kendini kapattı: bu oyun görüntüsünü başka bir yerde çizip 
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: Etkisiz: bu oyunun PS2 CPU'su (%d %%) zaten bu kadar ya da daha düşük. Daha düşük bir sınır seçin ya da PS2 CPU'sunu yükseltin
+
+es: Salto de ciclo:  < %s >
+tr: Döngü atlama:  < %s >
+
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
+tr: Konsolun yükünü azaltır: hız %100'e yaklaşır, ancak oyun kareleri tekrarlayabilir. Bu oyun için kaydedilir
 
 es: Público por software:  este juego no lo usa
 tr: Yazılımla seyirci:  bu oyun kullanmıyor

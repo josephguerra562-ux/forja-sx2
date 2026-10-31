@@ -584,9 +584,7 @@ struct Gif_Unit
 		, lastTranType(GIF_TRANS_INVALID)
 	{
 		gifPath[0].Init(GIF_PATH_1, _1mb * 9, _1mb + _1kb);
-		// Forja SX2 (compilation 100): 24 MB, not 9. When it fills the EE waits for the GS (Gif_MTGS_WaitRead): 10 % of the EE's time in
-		// Guitar Hero's songs, 3.5 ms a frame, with 3 ms too many (2026-10-31). PATH3 at 24 MB (the 99) changed nothing, so it isn't that one.
-		gifPath[1].Init(GIF_PATH_2, _1mb * 24, _1mb + _1kb);
+		gifPath[1].Init(GIF_PATH_2, _1mb * 9, _1mb + _1kb);
 		gifPath[2].Init(GIF_PATH_3, _1mb * 9, _1mb + _1kb);
 	}
 

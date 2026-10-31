@@ -790,14 +790,17 @@ tr: Kod %u z %zu:  < %s >  %s
 es:   ·  X: quitar
 tr:   ·  X: wyłącz
 
-es: Avance rápido:  < Sí >
-tr: Przyspieszenie:  < Tak >
+es: Avance rápido:  < 130 % >
+tr: Przyspieszenie:  < 130 % >
+
+es: Avance rápido:  < Sin límite >
+tr: Przyspieszenie:  < Bez limitu >
 
 es: Avance rápido:  < No >
 tr: Przyspieszenie:  < Nie >
 
-es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
-tr: X: gra działa tak szybko, jak da radę PS4 (wczytywanie, dialogi). Nie zapisuje się
+es: X: No, 130 % o sin límite. El juego y su sonido van más rápido si a la PS4 le sobra potencia. No se guarda
+tr: X: Nie, 130 % lub bez limitu. Gra i dźwięk przyspieszają, gdy PS4 ma zapas mocy. Nie jest zapisywane
 
 es: Filtro VU1:  sin datos todavía
 tr: Filtr VU1:  brak danych
@@ -930,6 +933,12 @@ tr: Auto się wyłączyło: ta gra rysuje obraz osobno, a potem kopiuje go na ek
 
 es: No actúa: el CPU de la PS2 de este juego (%d %%) ya está igual o más bajo. Elige un límite más bajo o sube el CPU de la PS2
 tr: Nie działa: CPU PS2 tej gry (%d %%) jest już tak niskie lub niższe. Wybierz niższy limit albo podnieś CPU PS2
+
+es: Salto de ciclo:  < %s >
+tr: Pomijanie cykli:  < %s >
+
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
+tr: Odciąża konsolę: prędkość zbliża się do 100 %, ale gra może powtarzać klatki. Zapisywane dla tej gry
 
 es: Público por software:  este juego no lo usa
 tr: Publiczność programowo:  ta gra jej nie używa
