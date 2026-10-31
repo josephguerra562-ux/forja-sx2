@@ -23,6 +23,7 @@ struct GS_Packet;
 extern void Gif_MTGS_Wait(bool isMTVU);
 // vk-285-124 (PS5 port): waits until a path's readAmount + extra is at most target (MTGS.cpp); false: wait the old way.
 extern bool Gif_MTGS_WaitRead(std::atomic<int>& readAmount, s32 extra, s32 target);
+extern unsigned long long g_forja_gif_wait_ticks[3]; // compilation 100: the EE's waits for room, by GIF path (the log's "EE waits")
 extern void Gif_FinishIRQ();
 extern bool Gif_HandlerAD(u8* pMem);
 extern void Gif_HandlerAD_MTVU(u8* pMem);
@@ -297,7 +298,10 @@ struct Gif_Path
 	// GS thread idle until the EE caught up again: 26% and 16% of the two threads).
 	void mtgsReadWait(s32 target)
 	{
-		if (!isMTVU() && Gif_MTGS_WaitRead(readAmount, gsPack.readAmount, target))
+		const unsigned long long wait_t0 = __builtin_ia32_rdtsc();
+		const bool waited = !isMTVU() && Gif_MTGS_WaitRead(readAmount, gsPack.readAmount, target);
+		g_forja_gif_wait_ticks[idx] += __builtin_ia32_rdtsc() - wait_t0;
+		if (waited)
 			return;
 		if (IsDevBuild)
 		{
@@ -580,10 +584,10 @@ struct Gif_Unit
 		, lastTranType(GIF_TRANS_INVALID)
 	{
 		gifPath[0].Init(GIF_PATH_1, _1mb * 9, _1mb + _1kb);
-		gifPath[1].Init(GIF_PATH_2, _1mb * 9, _1mb + _1kb);
-		// Forja SX2 (compilation 99): 24 MB, not 9. When it fills the EE waits for the GS (Gif_MTGS_WaitRead): 8.6 % of the EE's time in
-		// Guitar Hero's songs, 2 ms a frame, with 2 ms too many (2026-10-30).
-		gifPath[2].Init(GIF_PATH_3, _1mb * 24, _1mb + _1kb);
+		// Forja SX2 (compilation 100): 24 MB, not 9. When it fills the EE waits for the GS (Gif_MTGS_WaitRead): 10 % of the EE's time in
+		// Guitar Hero's songs, 3.5 ms a frame, with 3 ms too many (2026-10-31). PATH3 at 24 MB (the 99) changed nothing, so it isn't that one.
+		gifPath[1].Init(GIF_PATH_2, _1mb * 24, _1mb + _1kb);
+		gifPath[2].Init(GIF_PATH_3, _1mb * 9, _1mb + _1kb);
 	}
 
 	// Enable softReset when resetting during game emulation

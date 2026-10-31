@@ -1506,6 +1506,7 @@ void Gif_MTGS_Wait(bool isMTVU)
 // doesn't allow but which must not spin forever, or when flags/gifwaitfull asks for the old wait (live).
 // Counted with WaitGS's waits ([threads] ee_waitgs_ms). Needs proper testing.
 extern bool OrbisFlag(const char* name);
+unsigned long long g_forja_gif_wait_ticks[3] = {};
 bool Gif_MTGS_WaitRead(std::atomic<int>& readAmount, s32 extra, s32 target)
 {
 #if defined(PCSX2_GS_MTGS_PROBE)

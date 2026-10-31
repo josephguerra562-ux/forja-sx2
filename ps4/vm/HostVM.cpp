@@ -74,6 +74,7 @@ extern std::atomic<int> g_forja_pads;
 // refreshes already queued (vsyncq), its ring full (stall), a wait for it to empty (waitgs); and the GS thread's own wait for
 // work. Only the EE thread writes the first three and only the GS thread the last: a meter's reads, no lock.
 extern unsigned long long g_orbis_ee_vsyncq_ticks, g_orbis_ee_stall_ticks, g_orbis_ee_waitgs_ticks, g_orbis_gs_idle_ticks;
+extern unsigned long long g_forja_gif_wait_ticks[3];
 // Compilation 85: the GameDB's software draws (GSRendererHW.cpp), the GS thread's waits for their workers and each worker's
 // drawing (pcsx2/GS/Renderers/SW/GSRasterizer.cpp, the PS5 port's counters), for the "Software draws" line.
 extern unsigned long long g_forja_sw_draws, g_forja_sw_ticks, g_orbis_gs_swsync_ticks, g_orbis_sw_busy_ticks[16];
@@ -371,6 +372,17 @@ void Host::OnPerformanceMetricsUpdated()
 					 "GS idle per_refresh_ms=%.2f of GS_ms=%.2f\n",
 				ms[0] + ms[1] + ms[2], ms[0], ms[1], ms[2], PerformanceMetrics::GetCPUThreadAverageTime(), ms[3],
 				PerformanceMetrics::GetGSThreadAverageTime());
+		// Compilation 100: which GIF path's buffer the EE waits on.
+		static unsigned long long last_path[3] = {};
+		double path_ms[3] = {};
+		for (int i = 0; i < 3; i++)
+		{
+			const unsigned long long now_path = g_forja_gif_wait_ticks[i];
+			path_ms[i] = refreshes > 0.0 ? static_cast<double>(now_path - last_path[i]) / 1600000.0 / refreshes : 0.0;
+			last_path[i] = now_path;
+		}
+		if (profile_interval > 0.0)
+			ProbeLog("EE waits for GIF room: per_refresh_ms path1=%.2f path2=%.2f path3=%.2f\n", path_ms[0], path_ms[1], path_ms[2]);
 	}
 	// Compilation 85: the software draws in these 5 s, a second: how many, the GS thread's whole time in them, its waits for the
 	// workers, and each of the 3 workers' drawing. Whole time much more than the workers' drawing: the cost is the setup around
