@@ -2420,7 +2420,7 @@ namespace PS4GameMenu
 				}
 			};
 			// Forja SX2 (compilation 35): the rows in four tabs, as Dolphin's quick menu (Joseph, 2026-10-16: one list of fifteen
-			// rows was hard to follow). L1/R1 move between the tabs (main.cpp); each tab fits without scrolling.
+			// rows was hard to follow). L1/R1 move between the tabs (main.cpp). Compilation 101: a tab with more than six rows scrolls.
 			// Compilation 86: "Reportes", between No tocar and Sistema.
 			static constexpr const char* tab_names[TAB_COUNT] = {N_("Partida"), N_("Imagen"), N_("Rendimiento"), N_("Extras"),
 				N_("No tocar"), N_("Reportes"), N_("Sistema")};
@@ -2452,9 +2452,13 @@ namespace PS4GameMenu
 				DrawText(draw, font, 18.0f * scale, point(112, 244), muted,
 					T("Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está."), 1690.0f * scale);
 			constexpr float ROW_TOP = 270.0f, ROW_PITCH = 112.0f, ROW_HEIGHT = 100.0f;
-			for (unsigned row = TAB_FIRST_ROW[active_tab]; row < TAB_FIRST_ROW[active_tab + 1]; row++)
+			// Compilation 101 (Joseph, 2026-10-31: Rendimiento's seventh row was over the L1/R1 line): six rows on screen, following the cursor.
+			constexpr unsigned ROWS_VISIBLE = 6;
+			const unsigned tab_first = TAB_FIRST_ROW[active_tab], tab_rows = TAB_FIRST_ROW[active_tab + 1] - tab_first;
+			const unsigned first_index = selected_row >= tab_first + ROWS_VISIBLE ? selected_row - tab_first - ROWS_VISIBLE + 1 : 0u;
+			for (unsigned row = tab_first + first_index; row < tab_first + tab_rows && row < tab_first + first_index + ROWS_VISIBLE; row++)
 			{
-				const float y = ROW_TOP + static_cast<float>(row - TAB_FIRST_ROW[active_tab]) * ROW_PITCH;
+				const float y = ROW_TOP + static_cast<float>(row - tab_first - first_index) * ROW_PITCH;
 				const bool selected = selected_row == row;
 				draw->AddRectFilled(point(112, y), point(1808, y + ROW_HEIGHT),
 					selected ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 255), 14.0f * scale);
@@ -2498,6 +2502,14 @@ namespace PS4GameMenu
 				}
 				DrawText(draw, font, 32.0f * scale, point(240, y + 12), white, label_of(row), (text_right - 240.0f) * scale);
 				DrawText(draw, font, 20.0f * scale, point(240, y + 60), muted, description_of(row), (text_right - 240.0f) * scale);
+			}
+			if (tab_rows > ROWS_VISIBLE)
+			{
+				const float track_h = ROWS_VISIBLE * ROW_PITCH - (ROW_PITCH - ROW_HEIGHT);
+				const float thumb_h = track_h * static_cast<float>(ROWS_VISIBLE) / static_cast<float>(tab_rows);
+				const float thumb_y = ROW_TOP + (track_h - thumb_h) * static_cast<float>(first_index) / static_cast<float>(tab_rows - ROWS_VISIBLE);
+				draw->AddRectFilled(point(1820, ROW_TOP), point(1826, ROW_TOP + track_h), IM_COL32(30, 66, 94, 180), 3.0f * scale);
+				draw->AddRectFilled(point(1820, thumb_y), point(1826, thumb_y + thumb_h), accent, 3.0f * scale);
 			}
 			char hint[512];
 			std::snprintf(hint, sizeof(hint),

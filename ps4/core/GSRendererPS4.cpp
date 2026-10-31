@@ -1239,7 +1239,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 			s_orbis_fg_vsyncs = 0;
 			s_orbis_fg_presents = 0;
 			const float fg_target = VMManager::GetTargetSpeed();
-			const bool fg_nominal = VMManager::GetLimiterMode() == LimiterModeType::Nominal && fg_target > 0.5f && fg_target < 1.05f &&
+			const bool fg_nominal = VMManager::GetLimiterMode() == LimiterModeType::Nominal && fg_target > 0.5f && fg_target < 1.35f && // compilation 101: at the 130 % of Límite de velocidad too (fg_speed below is relative to it)
 			                        !GSCapture::IsCapturingVideo();
 			const float fg_speed = fg_target > 0.0f ? PerformanceMetrics::GetSpeed() / fg_target : PerformanceMetrics::GetSpeed();
 			const u32 generated_presents = OrbisVkFrameGenRecord(current, src_uv, draw_rect, s_tv_shader_indices[GSConfig.TVShader],

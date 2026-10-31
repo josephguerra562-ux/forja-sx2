@@ -587,7 +587,9 @@ struct Gif_Unit
 		// Forja SX2 (compilation 100): 24 MB, not 9. When it fills the EE waits for the GS (Gif_MTGS_WaitRead): at 36 % in Guitar Hero, with no
 		// frame repeated, 2.8 of the EE's 22.8 ms; without them it would be at its 20 ms. PATH3 at 24 MB (the 99) changed nothing.
 		gifPath[1].Init(GIF_PATH_2, _1mb * 24, _1mb + _1kb);
-		gifPath[2].Init(GIF_PATH_3, _1mb * 9, _1mb + _1kb);
+		// Compilation 101: this one too. With PATH2 at 24 MB (the 100) the EE's wait in Guitar Hero at 36 % fell from 2.8 to 0.5 ms a frame, and
+		// what's left is here (path3=2.0 in its heavy stretches, 2026-10-31). The free flexible memory didn't change (47 MB).
+		gifPath[2].Init(GIF_PATH_3, _1mb * 24, _1mb + _1kb);
 	}
 
 	// Enable softReset when resetting during game emulation
