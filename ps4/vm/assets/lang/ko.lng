@@ -790,17 +790,14 @@ tr: 치트 %u/%zu:  < %s >  %s
 es:   ·  X: quitar
 tr:   ·  X: 끄기
 
-es: Avance rápido:  < 130 % >
-tr: 빨리 감기:  < 130 % >
-
-es: Avance rápido:  < Sin límite >
-tr: 빨리 감기:  < 제한 없음 >
+es: Avance rápido:  < Sí >
+tr: 빨리 감기:  < 예 >
 
 es: Avance rápido:  < No >
 tr: 빨리 감기:  < 아니요 >
 
-es: X: No, 130 % o sin límite. El juego y su sonido van más rápido si a la PS4 le sobra potencia. No se guarda
-tr: X: 없음, 130 % 또는 제한 없음. PS4 성능에 여유가 있으면 게임과 소리가 빨라집니다. 저장되지 않습니다
+es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
+tr: X: PS4가 버티는 최대 속도로 게임이 달립니다 (로딩, 대화). 저장되지 않음
 
 es: Filtro VU1:  sin datos todavía
 tr: VU1 필터:  아직 데이터 없음
@@ -939,6 +936,15 @@ tr: 사이클 건너뛰기:  < %s >
 
 es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
 tr: 콘솔 부담을 줄입니다. 속도가 100 %에 가까워지지만 프레임이 반복될 수 있습니다. 이 게임에 저장됩니다
+
+es: Límite de velocidad:  < %s >
+tr: 속도 제한:  < %s >
+
+es: Sin límite
+tr: 제한 없음
+
+es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
+tr: 100 %가 실제 속도입니다. 더 높이면 PS4 성능에 여유가 있을 때 게임과 소리가 빨라지지만 성능이 늘지는 않습니다. 이 게임에 저장됩니다
 
 es: Público por software:  este juego no lo usa
 tr: 소프트웨어 관중:  이 게임은 사용하지 않음

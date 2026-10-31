@@ -790,17 +790,14 @@ tr: الشفرة %u من %zu:  < %s >  %s
 es:   ·  X: quitar
 tr:   ·  X: إزالة
 
-es: Avance rápido:  < 130 % >
-tr: التسريع:  < 130 % >
-
-es: Avance rápido:  < Sin límite >
-tr: التسريع:  < بلا حد >
+es: Avance rápido:  < Sí >
+tr: التقديم السريع:  < نعم >
 
 es: Avance rápido:  < No >
 tr: التقديم السريع:  < لا >
 
-es: X: No, 130 % o sin límite. El juego y su sonido van más rápido si a la PS4 le sobra potencia. No se guarda
-tr: X: لا، 130 % أو بلا حد. تسرع اللعبة وصوتها إذا كان لدى PS4 طاقة زائدة. لا يُحفظ
+es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
+tr: X: تجري اللعبة بأقصى سرعة يتحملها PS4 (التحميل، الحوارات). لا يُحفظ
 
 es: Filtro VU1:  sin datos todavía
 tr: مرشّح VU1:  لا بيانات بعد
@@ -939,6 +936,15 @@ tr: تخطي الدورات:  < %s >
 
 es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
 tr: يخفف العمل عن الجهاز: تقترب السرعة من 100 %، لكن قد تتكرر بعض الإطارات. يُحفظ لهذه اللعبة
+
+es: Límite de velocidad:  < %s >
+tr: حد السرعة:  < %s >
+
+es: Sin límite
+tr: بلا حد
+
+es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
+tr: 100 % هي السرعة الحقيقية. أعلى من ذلك: تسرع اللعبة وصوتها إذا كان لدى PS4 طاقة زائدة، ولا يزيد الأداء. يُحفظ لهذه اللعبة
 
 es: Público por software:  este juego no lo usa
 tr: الجمهور بالبرمجيات:  لا تستخدمه هذه اللعبة

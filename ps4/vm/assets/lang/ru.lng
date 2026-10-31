@@ -790,17 +790,14 @@ tr: Чит %u из %zu:  < %s >  %s
 es:   ·  X: quitar
 tr:   ·  X: убрать
 
-es: Avance rápido:  < 130 % >
-tr: Ускорение:  < 130 % >
-
-es: Avance rápido:  < Sin límite >
-tr: Ускорение:  < Без ограничения >
+es: Avance rápido:  < Sí >
+tr: Ускорение:  < Да >
 
 es: Avance rápido:  < No >
 tr: Ускорение:  < Нет >
 
-es: X: No, 130 % o sin límite. El juego y su sonido van más rápido si a la PS4 le sobra potencia. No se guarda
-tr: X: нет, 130 % или без ограничения. Игра и звук идут быстрее, если у PS4 есть запас мощности. Не сохраняется
+es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
+tr: X: игра идёт так быстро, как тянет PS4 (загрузки, диалоги). Не сохраняется
 
 es: Filtro VU1:  sin datos todavía
 tr: Фильтр VU1:  данных пока нет
@@ -939,6 +936,15 @@ tr: Пропуск циклов:  < %s >
 
 es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
 tr: Снижает нагрузку на консоль: скорость приближается к 100 %, но игра может повторять кадры. Сохраняется для этой игры
+
+es: Límite de velocidad:  < %s >
+tr: Предел скорости:  < %s >
+
+es: Sin límite
+tr: Без ограничения
+
+es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
+tr: 100 % — реальная скорость. Выше: игра и звук идут быстрее, если у PS4 есть запас мощности; производительность не растёт. Сохраняется для этой игры
 
 es: Público por software:  este juego no lo usa
 tr: Программная толпа:  в этой игре нет

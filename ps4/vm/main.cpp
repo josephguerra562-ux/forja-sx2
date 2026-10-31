@@ -1142,22 +1142,20 @@ static void ToggleCheat()
 
 // Forja SX2 (compilation 58): "Avance rápido" (L3+R3 > Partida), an idea from M33: the frame limiter off while it's on, for
 // loading screens and dialogues, as fast as the PS4 can run the game. Not saved; a game starts with it off.
-// Compilation 100 (Joseph liked God of War II at ~130 %): 0 off, 1 up to 130 %, 2 no limit.
-static int s_fast_forward = 0;
+static bool s_fast_forward = false;
 
 static void PublishFastForwardText()
 {
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_FAST_FORWARD,
-		s_fast_forward == 1 ? ForjaLang::T("Avance rápido:  < 130 % >") :
-		s_fast_forward == 2 ? ForjaLang::T("Avance rápido:  < Sin límite >") : ForjaLang::T("Avance rápido:  < No >"),
-		ForjaLang::T("X: No, 130 % o sin límite. El juego y su sonido van más rápido si a la PS4 le sobra potencia. No se guarda"));
+		s_fast_forward ? ForjaLang::T("Avance rápido:  < Sí >") : ForjaLang::T("Avance rápido:  < No >"),
+		ForjaLang::T("X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda"));
 }
 
 static void ToggleFastForward()
 {
-	s_fast_forward = (s_fast_forward + 1) % 3;
-	VMManager::SetLimiterMode(s_fast_forward == 1 ? LimiterModeType::Turbo : s_fast_forward == 2 ? LimiterModeType::Unlimited : LimiterModeType::Nominal);
-	ProbeLog("Fast forward: %s\n", s_fast_forward == 1 ? "on 130 %" : s_fast_forward == 2 ? "on, no limit" : "off");
+	s_fast_forward = !s_fast_forward;
+	VMManager::SetLimiterMode(s_fast_forward ? LimiterModeType::Unlimited : LimiterModeType::Nominal);
+	ProbeLog("Fast forward: %s\n", s_fast_forward ? "on" : "off");
 	PublishFastForwardText();
 }
 
@@ -1861,6 +1859,19 @@ static void PublishCycleSkipText()
 		ForjaLang::T("Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego"));
 }
 
+// Compilation 100 (Joseph liked God of War II without the limiter, as a setting and not as "fast forward"): the normal speed of a game
+// (PCSX2's NominalScalar, in its profile): 100 %, 130 % or no limit in practice (1000 %). It gives no extra power: where the PS4 has
+// some left, the game and its sound run faster. In Guitar Hero's songs the limit changed nothing (87 and 88 %, 2026-10-31).
+static void PublishSpeedLimitText()
+{
+	const float scalar = EmuConfig.EmulationSpeed.NominalScalar;
+	char label[256];
+	std::snprintf(label, sizeof(label), ForjaLang::TF("Límite de velocidad:  < %s >"),
+		scalar > 2.0f ? ForjaLang::T("Sin límite") : scalar > 1.1f ? "130 %" : "100 %");
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_SPEED_LIMIT, label,
+		ForjaLang::T("100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego"));
+}
+
 static void PublishCrowdText()
 {
 	using ForjaLang::T;
@@ -2126,6 +2137,7 @@ static void PublishGameMenu()
 	PublishAutoNotes(); // compilation 76
 	PublishCrowdText(); // compilation 82
 	PublishCycleSkipText(); // compilation 100
+	PublishSpeedLimitText();
 	PublishReportText();
 	PS4GameMenu::InGameMenuState state;
 	state.visible = s_game_menu_open;
@@ -3060,6 +3072,17 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			PublishCycleSkipText();
 			break;
 		}
+		case PS4GameMenu::ROW_SPEED_LIMIT: // compilation 100
+		{
+			static constexpr float scalars[3] = {1.0f, 1.3f, 10.0f};
+			const float now = EmuConfig.EmulationSpeed.NominalScalar;
+			const int current = now > 2.0f ? 2 : now > 1.1f ? 1 : 0;
+			const float next = scalars[(current + delta + 3) % 3];
+			SavePlayerProfile("Speed limit", [next](INISettingsInterface& ini) { ini.SetFloatValue("Framerate", "NominalScalar", next); }, true);
+			ProbeLog("Speed limit: requested=%.1f active=%.1f\n", next, EmuConfig.EmulationSpeed.NominalScalar);
+			PublishSpeedLimitText();
+			break;
+		}
 		case PS4GameMenu::ROW_CPU_AUTO:
 		{
 			// No, down to 75 %, 60 %, 50 %, 36 %, 31 % or 27 % ([Forja] CpuAuto 0, -1 ... -6). UpdateCpuAuto takes the change from here.
@@ -3968,7 +3991,7 @@ void VMHostPoll()
 		// profile on its row.
 		if (confirm && (row == PS4GameMenu::ROW_OVERLAY || row == PS4GameMenu::ROW_VIDEO_MODE || row == PS4GameMenu::ROW_FRAME_GEN ||
 						   row == PS4GameMenu::ROW_SHARPNESS ||
-						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_CPU_AUTO || row == PS4GameMenu::ROW_CYCLE_SKIP || row == PS4GameMenu::ROW_RESET_PROFILE ||
+						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_CPU_AUTO || row == PS4GameMenu::ROW_CYCLE_SKIP || row == PS4GameMenu::ROW_SPEED_LIMIT || row == PS4GameMenu::ROW_RESET_PROFILE ||
 						   row == PS4GameMenu::ROW_GS_SKIP || row == PS4GameMenu::ROW_CROWD ||
 						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART ||
 						   row == PS4GameMenu::ROW_FAST_FORWARD || row == PS4GameMenu::ROW_CHEATS ||
@@ -4191,7 +4214,6 @@ static void* RunVM(void*)
 	if (access("/data/ForjaSX2/vm-ee-cycle-skip", F_OK) == 0)
 		ee_cycle_skip = 1;
 	settings->SetIntValue("EmuCore/Speedhacks", "EECycleSkip", ee_cycle_skip);
-	settings->SetFloatValue("Framerate", "TurboScalar", 1.3f); // compilation 100: "Avance rápido: 130 %"
 	ProbeLog("EE cycle profile requested: rate=%d skip=%d (underclock marker=%s, mild marker=%s, normal marker=%s, skip marker=%s)\n",
 		ee_cycle_rate, ee_cycle_skip,
 		access("/data/ForjaSX2/vm-ee-cycle-underclock", F_OK) == 0 ? "present" : "absent",
@@ -4457,7 +4479,7 @@ static void* RunVM(void*)
 			g_forja_iop_sleep = false; // compilation 67
 			ResetGsFilterList(); // compilation 54: a new game's list starts empty
 			LoadRules(); // compilation 55: huellas.ini, before the profile turns its rules on
-			s_fast_forward = 0; // compilation 58: a game starts at its own speed
+			s_fast_forward = false; // compilation 58: a game starts at its own speed
 			StartHangWatch();
 			ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
 			RepinWorkersForProfile();

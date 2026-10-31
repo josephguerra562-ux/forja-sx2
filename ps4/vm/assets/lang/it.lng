@@ -790,17 +790,14 @@ tr: Trucco %u di %zu:  < %s >  %s
 es:   ·  X: quitar
 tr:   ·  X: togli
 
-es: Avance rápido:  < 130 % >
-tr: Avanzamento rapido:  < 130 % >
-
-es: Avance rápido:  < Sin límite >
-tr: Avanzamento rapido:  < Senza limite >
+es: Avance rápido:  < Sí >
+tr: Avanti veloce:  < Sì >
 
 es: Avance rápido:  < No >
 tr: Avanti veloce:  < No >
 
-es: X: No, 130 % o sin límite. El juego y su sonido van más rápido si a la PS4 le sobra potencia. No se guarda
-tr: X: No, 130 % o senza limite. Il gioco e il suo audio vanno più veloci se la PS4 ha potenza in più. Non viene salvato
+es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
+tr: X: il gioco va più veloce che la PS4 regge (caricamenti, dialoghi). Non si salva
 
 es: Filtro VU1:  sin datos todavía
 tr: Filtro VU1:  ancora nessun dato
@@ -939,6 +936,15 @@ tr: Salto di ciclo:  < %s >
 
 es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
 tr: Alleggerisce la console: la velocità si avvicina al 100 %, ma il gioco può ripetere fotogrammi. Salvato per questo gioco
+
+es: Límite de velocidad:  < %s >
+tr: Limite di velocità:  < %s >
+
+es: Sin límite
+tr: Senza limite
+
+es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
+tr: 100 % è la velocità reale. Più alto: il gioco e il suo audio vanno più veloci se la PS4 ha potenza in più; non aumenta le prestazioni. Salvato per questo gioco
 
 es: Público por software:  este juego no lo usa
 tr: Pubblico via software:  questo gioco non lo usa

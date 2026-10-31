@@ -790,17 +790,14 @@ tr: チート %u/%zu：  < %s >  %s
 es:   ·  X: quitar
 tr:   ·  X：オフ
 
-es: Avance rápido:  < 130 % >
-tr: 早送り:  < 130 % >
-
-es: Avance rápido:  < Sin límite >
-tr: 早送り:  < 制限なし >
+es: Avance rápido:  < Sí >
+tr: 早送り：  < はい >
 
 es: Avance rápido:  < No >
 tr: 早送り：  < いいえ >
 
-es: X: No, 130 % o sin límite. El juego y su sonido van más rápido si a la PS4 le sobra potencia. No se guarda
-tr: X: なし、130 %、制限なし。PS4 に余力があれば、ゲームと音声が速くなります。保存されません
+es: X: el juego corre lo más rápido que aguante la PS4 (cargas, diálogos). No se guarda
+tr: X：PS4が出せる最高速度でゲームを進めます（読み込み、会話）。保存されません
 
 es: Filtro VU1:  sin datos todavía
 tr: VU1フィルター：  まだデータがありません
@@ -939,6 +936,15 @@ tr: サイクルスキップ:  < %s >
 
 es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Se guarda para este juego
 tr: 本体の負担を減らします。速度は 100 % に近づきますが、フレームが重複することがあります。このゲームに保存されます
+
+es: Límite de velocidad:  < %s >
+tr: 速度制限:  < %s >
+
+es: Sin límite
+tr: 制限なし
+
+es: 100 % es la velocidad real. Más alto: el juego y su sonido van más rápido si a la PS4 le sobra potencia; no da más rendimiento. Se guarda para este juego
+tr: 100 % が本来の速度です。高くすると、PS4 に余力があればゲームと音声が速くなりますが、性能は上がりません。このゲームに保存されます
 
 es: Público por software:  este juego no lo usa
 tr: ソフトウェア描画の観客：  このゲームでは使いません
