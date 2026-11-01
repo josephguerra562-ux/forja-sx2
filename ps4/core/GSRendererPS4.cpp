@@ -82,6 +82,9 @@ std::atomic<bool> g_forja_gs_skip_two{false};
 // Behind: when this frame starts, the EE has already queued two vsyncs or more for the GS (MTGS::GetCurrentVsyncQueueSize;
 // with VsyncQueueSize 2 the EE waits at that point). A frame left out lets the GS catch up, the next one is drawn.
 std::atomic<bool> g_forja_gs_skip_lag{false};
+// Compilation 105: and at most this share of the frames, which main.cpp moves with the speed (UpdateGsSkip). Two in a row only above 50 %.
+std::atomic<unsigned> g_forja_gs_skip_lag_percent{25};
+static unsigned s_forja_lag_credit = 0;
 static forja_skip::Guard s_forja_guard; // Forja 1.06 (ForjaSkipGuard.h)
 static u32 s_forja_hidden_total = 0;    // Forja 1.06: pictures hidden, for the guard's checks
 namespace
@@ -1082,7 +1085,8 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				// the second frame to leave out about every other time, and it left out ~53 frames in 5 s, as "1 de 2" (Joseph:
 				// "no le siento diferencia", 2026-10-25).
 				const bool lag = g_forja_gs_skip_lag.load(std::memory_order_relaxed); // compilation 90
-				const bool many = lag || g_forja_gs_skip_two.load(std::memory_order_relaxed); // two in a row may be left out
+				const unsigned lag_percent = g_forja_gs_skip_lag_percent.load(std::memory_order_relaxed); // compilation 105
+				const bool many = (lag && lag_percent > 50u) || g_forja_gs_skip_two.load(std::memory_order_relaxed); // two in a row may be left out
 				const bool force = s_forja_hidden_frames >= (many ? 3u : 2u);
 				if (force && forja_want)
 					g_forja_gs_skip_stats[3].fetch_add(1, std::memory_order_relaxed);
@@ -1102,12 +1106,16 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				const bool two = g_forja_gs_skip_two.load(std::memory_order_relaxed);
 				const unsigned every = two ? 3u : std::max(g_forja_gs_skip_every.load(std::memory_order_relaxed), 2u);
 				s_forja_skip_count = (s_forja_skip_count + 1) % every;
-				const bool behind = lag && MTGS::GetCurrentVsyncQueueSize() >= 2;
+				if (lag)
+					s_forja_lag_credit = std::min(s_forja_lag_credit + lag_percent, 200u);
+				const bool behind = lag && s_forja_lag_credit >= 100u && MTGS::GetCurrentVsyncQueueSize() >= 2;
 				const bool turn = lag ? behind : two ? s_forja_skip_count != 0 : s_forja_skip_count == 0;
 				const bool guard = g_forja_gs_skip_guard.load(std::memory_order_relaxed); // compilation 82
 				g_forja_gs_skip_drawing = forja_want && (many || !g_forja_gs_skip_drawing) && !force && turn &&
 					s_forja_previous_frame_draws >= FORJA_SKIP_MIN_PREVIOUS && // compilation 68: never after a light frame
 					(guard ? s_forja_guard.MayChoose(s_forja_vsync) : s_forja_guard.WarmedUp()); // Forja 1.06
+				if (lag && g_forja_gs_skip_drawing)
+					s_forja_lag_credit -= 100u;
 				if (g_forja_gs_skip_drawing)
 				{
 					g_forja_gs_skipped_frames.fetch_add(1, std::memory_order_relaxed);

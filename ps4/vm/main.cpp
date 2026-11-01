@@ -358,6 +358,7 @@ extern std::atomic<bool> g_forja_gs_skip_guard;       // compilation 82: the gua
 extern std::atomic<bool> g_forja_gs_skip_quick;       // compilation 86: "1 de 2 rápido" (SaltarCuadros 3), short pauses
 extern std::atomic<bool> g_forja_gs_skip_two;         // compilation 88: "2 de 3" (SaltarCuadros 4)
 extern std::atomic<bool> g_forja_gs_skip_lag;         // compilation 90: "Al vuelo" (SaltarCuadros 5)
+extern std::atomic<unsigned> g_forja_gs_skip_lag_percent; // compilation 105: at most this share of the frames (UpdateGsSkip)
 // Compilation 82: the Guitar Hero games' crowd, drawn in software once every N of its passes (GSHwHack.cpp, GSC_GuitarHero;
 // [Forja] PublicoCada). Without a value, one in two: every one is PCSX2's, and cost Guitar Hero III ~36 ms a frame.
 extern std::atomic<u32> g_forja_crowd_every;
@@ -2800,6 +2801,26 @@ static void UpdateGsSkip(double elapsed)
 				s_gs_skip_left_any = true;
 		}
 	}
+	// Compilation 105: "Al vuelo" leaves out as few frames as the speed needs. "Behind" alone was true in nearly every frame of a game at 30 FPS, where
+	// a frame is two vsyncs: Dragon Ball Z BT4 left out 45 % of its frames with the GS at 76 %, ~17 new pictures a second and holes of 70-80 ms, where
+	// without it it ran at 84 % with 25 and holes of 42 (Joseph, 2026-11-01: "el saltar cuadros fallaba demasiado").
+	if (s_gs_skip_mode == 5 && !s_video_active)
+	{
+		static double s_lag_last = 0.0, s_lag_logged = 0.0;
+		if (elapsed - s_lag_last >= 1.0)
+		{
+			s_lag_last = elapsed;
+			const double speed = PerformanceMetrics::GetSpeed();
+			const unsigned before = g_forja_gs_skip_lag_percent.load(std::memory_order_relaxed);
+			const unsigned percent = speed < 97.0 ? std::min(before + 5u, 66u) : speed >= 99.5 ? (before >= 5u ? before - 5u : 0u) : before;
+			g_forja_gs_skip_lag_percent.store(percent, std::memory_order_relaxed);
+			if (percent != before && elapsed - s_lag_logged >= 5.0)
+			{
+				s_lag_logged = elapsed;
+				ProbeLog("GS skip on the fly: at most %u %% of the frames (speed %.0f %%)\n", percent, speed);
+			}
+		}
+	}
 	if (s_gs_skip_mode != 1 || s_video_active || s_gs_skip_useless || elapsed - s_gs_skip_last_check < 0.5)
 		return;
 	s_gs_skip_last_check = elapsed;
@@ -2956,6 +2977,9 @@ static void UpdateCpuAuto(double elapsed)
 // through the row, and in God of War II it never came down: 14-17 FPS against 31 with 1/2. It asked for 10 s in a row at 99 % or more, and
 // the speed jumps around when a game repeats frames. Now by the means of a window, along the row's steps, down only when the game is really
 // repeating frames (a menu at 50 FPS stays where it is), and up only with a part at its limit: this lightens no hitch.
+// Compilation 105 (2026-11-01): it starts at no skip in every game, and it judges each step up. At 1/2 and up to 1 it took GTA San Andreas
+// from 99 % at 27.7 FPS to 86-100 % at 12-13 FPS and stayed there, and its top of 1 left Guitar Hero III's heaviest stage at 83-88 %. A step
+// that doesn't raise the speed, or that costs more than 30 % of the frames, goes back, with no more steps up for 5 minutes.
 static void UpdateCycleSkipAuto(double elapsed)
 {
 	struct Window
@@ -2964,15 +2988,34 @@ static void UpdateCycleSkipAuto(double elapsed)
 		unsigned checks = 0;
 		void Add(double s, double b, double f) { speed += s; busiest += b; frames += f; checks++; }
 	};
-	static constexpr int top_step = 4; // the row's "1": more costs too many frames for an automatic (God of War II at 3: 14-17 FPS)
-	static double s_last_check = 0.0, s_settle_until = 0.0, s_last_down = -1000.0, s_no_down_until = 0.0;
+	static constexpr int top_step = 5; // the row's "2"; each step up has to prove itself
+	static double s_last_check = 0.0, s_settle_until = 0.0, s_last_down = -1000.0, s_no_down_until = 0.0, s_no_up_until = 0.0;
+	static double s_tried_speed = -1.0, s_tried_frames = 0.0;
+	static int s_tried_from = 0, s_value = 0;
+	static bool s_running = false;
+	static u32 s_crc = 0;
 	static Window s_up, s_down;
 	if (!EmuConfig.Speedhacks.EECycleSkipAuto || s_video_active)
 	{
 		s_up = {};
 		s_down = {};
+		s_running = s_running && EmuConfig.Speedhacks.EECycleSkipAuto;
 		return;
 	}
+	const u32 crc = VMManager::GetDiscCRC();
+	if (!s_running || crc != s_crc)
+	{
+		s_running = true;
+		s_crc = crc;
+		s_value = 0;
+		s_no_up_until = s_no_down_until = 0.0;
+		s_tried_speed = -1.0;
+		s_up = {};
+		s_down = {};
+	}
+	// A reload of the game's settings brought the profile's value back, or the game has just started.
+	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(s_value / 4);
+	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(s_value % 4);
 	if (elapsed - s_last_check < 0.5)
 		return;
 	// The menu paused the game: the first numbers after it count that pause (God of War II, EE 590 ms in a window of 5 s).
@@ -2983,45 +3026,58 @@ static void UpdateCycleSkipAuto(double elapsed)
 		s_down = {};
 	}
 	s_last_check = elapsed;
-	const int quarters = EmuConfig.Speedhacks.EECycleSkip * 4 + EmuConfig.Speedhacks.EECycleSkipQuarters;
+	if (elapsed < s_settle_until)
+		return;
+	const int quarters = s_value;
 	int next = quarters;
-	if (quarters > ForjaCycleSkipSteps[top_step])
-		next = 2; // a profile saved by the 103, at 3
-	else if (elapsed >= s_settle_until)
+	const double busiest_now = std::max({PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()),
+		static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
+	const double refresh = PerformanceMetrics::GetFPS();
+	const double frames_now = (refresh > 1.0 && PerformanceMetrics::GetInternalFPS() > 0.0f) ? PerformanceMetrics::GetInternalFPS() / refresh : 0.0;
+	s_up.Add(PerformanceMetrics::GetSpeed(), busiest_now, frames_now);
+	s_down.Add(PerformanceMetrics::GetSpeed(), busiest_now, frames_now);
+	int step = 0;
+	while (step < top_step && ForjaCycleSkipSteps[step] < quarters)
+		step++;
+	if (s_up.checks >= 6)
 	{
-		const double busiest_now = std::max({PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()),
-			static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
-		const double refresh = PerformanceMetrics::GetFPS();
-		const double frames_now = (refresh > 1.0 && PerformanceMetrics::GetInternalFPS() > 0.0f) ? PerformanceMetrics::GetInternalFPS() / refresh : 0.0;
-		s_up.Add(PerformanceMetrics::GetSpeed(), busiest_now, frames_now);
-		s_down.Add(PerformanceMetrics::GetSpeed(), busiest_now, frames_now);
-		int step = 0;
-		while (step < top_step && ForjaCycleSkipSteps[step] < quarters)
-			step++;
-		if (s_up.checks >= 6)
+		const double speed = s_up.speed / s_up.checks;
+		const double frames = s_up.frames / s_up.checks;
+		if (s_tried_speed >= 0.0)
 		{
-			const double speed = s_up.speed / s_up.checks;
-			if (speed < 96.0 && s_up.busiest / s_up.checks >= 85.0 && step < top_step)
+			if ((speed < s_tried_speed + 3.0 && speed < 98.0) || frames < s_tried_frames * 0.7)
 			{
-				next = ForjaCycleSkipSteps[std::min(step + (speed < 85.0 ? 2 : 1), top_step)];
-				if (elapsed - s_last_down < 30.0)
-					s_no_down_until = elapsed + 120.0;
+				next = s_tried_from;
+				s_no_up_until = elapsed + 300.0;
+				ProbeLog("Cycle skip auto: no use in this scene: speed %.0f -> %.0f %%, frames %.0f -> %.0f %% of the refreshes\n", s_tried_speed, speed,
+					s_tried_frames * 100.0, frames * 100.0);
 			}
-			s_up = {};
+			s_tried_speed = -1.0;
 		}
-		if (next == quarters && s_down.checks >= 20)
+		else if (speed < 96.0 && s_up.busiest / s_up.checks >= 85.0 && step < top_step && elapsed >= s_no_up_until)
 		{
-			if (step > 0 && elapsed >= s_no_down_until && s_down.speed / s_down.checks >= 98.5 && s_down.busiest / s_down.checks < 91.0 &&
-				s_down.frames / s_down.checks < 0.92)
-			{
-				next = ForjaCycleSkipSteps[step - 1];
-				s_last_down = elapsed;
-			}
-			s_down = {};
+			next = ForjaCycleSkipSteps[std::min(step + (speed < 85.0 ? 2 : 1), top_step)];
+			s_tried_speed = speed;
+			s_tried_frames = frames;
+			s_tried_from = quarters;
+			if (elapsed - s_last_down < 30.0)
+				s_no_down_until = elapsed + 120.0;
 		}
+		s_up = {};
+	}
+	if (next == quarters && s_tried_speed < 0.0 && s_down.checks >= 20)
+	{
+		if (step > 0 && elapsed >= s_no_down_until && s_down.speed / s_down.checks >= 98.5 && s_down.busiest / s_down.checks < 91.0 &&
+			s_down.frames / s_down.checks < 0.92)
+		{
+			next = ForjaCycleSkipSteps[step - 1];
+			s_last_down = elapsed;
+		}
+		s_down = {};
 	}
 	if (next == quarters)
 		return;
+	s_value = next;
 	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(next / 4);
 	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(next % 4);
 	ProbeLog("Cycle skip auto: %d -> %d quarters (speed %.0f %%, game FPS %.1f)\n", quarters, next, PerformanceMetrics::GetSpeed(), PerformanceMetrics::GetInternalFPS());
@@ -3218,9 +3274,8 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			constexpr int steps = static_cast<int>(std::size(ForjaCycleSkipSteps)) + 1;
 			const int step = (static_cast<int>(ForjaCycleSkipStep()) + delta + steps) % steps;
 			const bool automatic = step == static_cast<int>(ForjaCycleSkipAutoStep);
-			// Compilation 104: Auto starts at 1/2, the best measured in Guitar Hero III and God of War II. It comes right after 3 in the row, and
-			// starting from the last value it started at the worst.
-			const int next = automatic ? 2 : ForjaCycleSkipSteps[step];
+			// Compilation 105: Auto starts at no skip, what's best where the game can do without it (UpdateCycleSkipAuto).
+			const int next = automatic ? 0 : ForjaCycleSkipSteps[step];
 			SavePlayerProfile("EE cycle skip", [next, automatic](INISettingsInterface& ini) {
 				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkip", next / 4);
 				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkipQuarters", next % 4);
