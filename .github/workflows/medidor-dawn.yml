@@ -1,0 +1,41 @@
+# Compila el plugin que mide DawnStation (herramientas: medidores_dawn). Solo en su rama: no toca main ni el canal de pruebas de Forja.
+name: Medidor DawnStation
+
+on:
+  push:
+    branches: [medidor-dawn]
+
+permissions:
+  contents: write
+
+jobs:
+  plugin:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Herramientas
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq llvm lld clang
+          curl -sL https://github.com/illusion0001/OpenOrbis-PS4-Toolchain/releases/latest/download/toolchain.tar.gz | tar xz -C "$RUNNER_TEMP"
+          echo "OO_PS4_TOOLCHAIN=$RUNNER_TEMP/OpenOrbis/PS4Toolchain" >> "$GITHUB_ENV"
+      - name: SDK de GoldHEN y compilación
+        run: |
+          git clone -q --depth 1 https://github.com/GoldHEN/GoldHEN_Plugins_SDK "$RUNNER_TEMP/sdk"
+          git clone -q --depth 1 https://github.com/GoldHEN/GoldHEN_Plugins_Repository "$RUNNER_TEMP/repo"
+          export GOLDHEN_SDK="$RUNNER_TEMP/sdk"
+          make -C "$GOLDHEN_SDK" PRINTF=1 DEBUGFLAGS=1
+          cd "$RUNNER_TEMP/repo/plugin_src"
+          mkdir -p medidor_dawn
+          cp -r "$GITHUB_WORKSPACE/ps4/medidor_dawn/source" medidor_dawn/
+          sed 's/-lSceGnmDriver/-lSceGnmDriver -lSceVideoOut/' frame_logger/Makefile > medidor_dawn/Makefile
+          mkdir -p ../bin/plugins/prx_final ../bin/plugins/elf_final
+          make -C medidor_dawn PRINTF=1 DEBUG=0
+          cp ../bin/plugins/prx_final/medidor_dawn.prx "$GITHUB_WORKSPACE/medidor_dawn.prx"
+      - name: Publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha256sum medidor_dawn.prx
+          gh release create "medidor-dawn-${{ github.run_number }}" medidor_dawn.prx --prerelease --latest=false \
+            --target "$GITHUB_SHA" --title "Medidor DawnStation ${{ github.run_number }}" --notes "Herramienta de medición. No es una versión de Forja."
