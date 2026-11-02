@@ -1,8 +1,8 @@
-// Medidor de DawnStation: un plugin de GoldHEN que mira lo que el emulador le entrega al sistema, sin tocar ni leer su código.
+// Medidor: un plugin de GoldHEN que mira lo que el emulador le entrega al sistema, sin tocar ni leer su código.
 // Cuenta cuántas imágenes enviadas al televisor son de verdad distintas de la anterior, y cuánto se envía a la gráfica por imagen.
-// Escribe en /data/medidor_dawn/medidor.log. Se prende solo para DAWN00001 en /data/GoldHEN/plugins.ini.
+// Escribe en /data/medidor/medidor.log. Se prende solo para la app indicada en /data/GoldHEN/plugins.ini.
 //
-// Versión 2 (2026-11-01). La 1 enganchaba todo apenas cargaba, también en el menú de DawnStation, y usaba fopen: creó su carpeta, no escribió nada y la
+// Versión 2 (2026-11-01). La 1 enganchaba todo apenas cargaba, también en el menú del emulador, y usaba fopen: creó su carpeta, no escribió nada y la
 // app se trabó, sin saberse en qué paso. Ahora cada paso queda escrito al momento con llamadas directas del sistema, y solo se engancha cuando aparece el
 // módulo del menú dentro del juego (menu.prx). En el menú de la app no engancha nada.
 
@@ -15,7 +15,7 @@
 #include <orbis/libkernel.h>
 #include "plugin_common.h"
 
-#define PLUGIN_NAME "medidor_dawn"
+#define PLUGIN_NAME "medidor"
 #define LOG_FOLDER "/data/" PLUGIN_NAME
 #define LOG_PATH LOG_FOLDER "/medidor.log"
 #define MAX_BUFFERS 16
