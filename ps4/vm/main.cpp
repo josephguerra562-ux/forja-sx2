@@ -2981,18 +2981,23 @@ static void UpdateCpuAuto(double elapsed)
 // 83-88 %. A step that doesn't raise the speed, or that costs more than 30 % of the frames, goes back, with no more steps up for 5 minutes.
 // Measured on the street in GTA San Andreas (2026-11-02, the 105): no skip 91 % at 13.5 FPS, skip 1 99.9 % at 11.8 FPS. An earlier note here blamed the skip for
 // "27.7 to 12.8 FPS": those 27.7 were the game's opening scenes.
+// Compilation 107 (Joseph, 2026-11-02, the menu of Need for Speed Most Wanted): skip 0 gives 28 % at 14.2 FPS, skip 2 gives 98 % at 13.6 FPS, and Auto stayed at 0.
+// It judged the frames as a share of the refreshes, and a faster game has more refreshes: 14.2 -> 13.9 FPS read as "100 -> 69 %" and the step went back. It now
+// judges the game's own FPS. Its 5 minutes without steps up also held in the next scene, so a new scene (another share of frames) frees them,
+// after 30 s; each failed step in a row doubles that wait, up to 4 minutes, so a game whose scenes keep changing doesn't pay for a try every 30 s.
+// A window that goes from one scene to another (30 points of speed or more between its readings) starts no step: its mean is neither scene, and the step would be judged against it.
 static void UpdateCycleSkipAuto(double elapsed)
 {
 	struct Window
 	{
-		double speed = 0.0, busiest = 0.0, frames = 0.0;
+		double speed = 0.0, busiest = 0.0, frames = 0.0, fps = 0.0, slowest = 1000.0, fastest = 0.0;
 		unsigned checks = 0;
-		void Add(double s, double b, double f) { speed += s; busiest += b; frames += f; checks++; }
+		void Add(double s, double b, double f, double g) { speed += s; busiest += b; frames += f; fps += g; slowest = std::min(slowest, s); fastest = std::max(fastest, s); checks++; }
 	};
 	static constexpr int top_step = 5; // the row's "2"; each step up has to prove itself
 	static double s_last_check = 0.0, s_settle_until = 0.0, s_last_down = -1000.0, s_no_down_until = 0.0, s_no_up_until = 0.0;
-	static double s_tried_speed = -1.0, s_tried_frames = 0.0;
-	static int s_tried_from = 0, s_value = 0;
+	static double s_tried_speed = -1.0, s_tried_frames = 0.0, s_tried_fps = 0.0, s_no_up_frames = 0.0, s_no_up_since = 0.0;
+	static int s_tried_from = 0, s_value = 0, s_failed_tries = 0;
 	static bool s_running = false;
 	static u32 s_crc = 0;
 	static Window s_up, s_down;
@@ -3010,6 +3015,7 @@ static void UpdateCycleSkipAuto(double elapsed)
 		s_crc = crc;
 		s_value = 0;
 		s_no_up_until = s_no_down_until = 0.0;
+		s_failed_tries = 0;
 		s_tried_speed = -1.0;
 		s_up = {};
 		s_down = {};
@@ -3035,8 +3041,9 @@ static void UpdateCycleSkipAuto(double elapsed)
 		static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
 	const double refresh = PerformanceMetrics::GetFPS();
 	const double frames_now = (refresh > 1.0 && PerformanceMetrics::GetInternalFPS() > 0.0f) ? PerformanceMetrics::GetInternalFPS() / refresh : 0.0;
-	s_up.Add(PerformanceMetrics::GetSpeed(), busiest_now, frames_now);
-	s_down.Add(PerformanceMetrics::GetSpeed(), busiest_now, frames_now);
+	const double fps_now = PerformanceMetrics::GetInternalFPS();
+	s_up.Add(PerformanceMetrics::GetSpeed(), busiest_now, frames_now, fps_now);
+	s_down.Add(PerformanceMetrics::GetSpeed(), busiest_now, frames_now, fps_now);
 	int step = 0;
 	while (step < top_step && ForjaCycleSkipSteps[step] < quarters)
 		step++;
@@ -3044,22 +3051,35 @@ static void UpdateCycleSkipAuto(double elapsed)
 	{
 		const double speed = s_up.speed / s_up.checks;
 		const double frames = s_up.frames / s_up.checks;
+		const double fps = s_up.fps / s_up.checks;
 		if (s_tried_speed >= 0.0)
 		{
-			if ((speed < s_tried_speed + 3.0 && speed < 98.0) || frames < s_tried_frames * 0.7)
+			if ((speed < s_tried_speed + 3.0 && speed < 98.0) || fps < s_tried_fps * 0.7)
 			{
 				next = s_tried_from;
 				s_no_up_until = elapsed + 300.0;
-				ProbeLog("Cycle skip auto: no use in this scene: speed %.0f -> %.0f %%, frames %.0f -> %.0f %% of the refreshes\n", s_tried_speed, speed,
-					s_tried_frames * 100.0, frames * 100.0);
+				s_no_up_frames = s_tried_frames;
+				s_no_up_since = elapsed;
+				s_failed_tries++;
+				ProbeLog("Cycle skip auto: no use in this scene: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f\n", s_tried_speed, speed, s_tried_fps, fps);
+			}
+			else
+			{
+				s_failed_tries = 0;
 			}
 			s_tried_speed = -1.0;
 		}
-		else if (speed < 96.0 && s_up.busiest / s_up.checks >= 85.0 && step < top_step && elapsed >= s_no_up_until)
+		else if (elapsed < s_no_up_until && elapsed - s_no_up_since >= 30.0 * (1 << std::clamp(s_failed_tries - 1, 0, 3)) && frames > 0.05 && std::abs(frames - s_no_up_frames) >= 0.25)
+		{
+			s_no_up_until = 0.0;
+			ProbeLog("Cycle skip auto: another scene (frames %.0f -> %.0f %% of the refreshes), it can try again\n", s_no_up_frames * 100.0, frames * 100.0);
+		}
+		else if (speed < 96.0 && s_up.busiest / s_up.checks >= 85.0 && step < top_step && elapsed >= s_no_up_until && s_up.fastest - s_up.slowest < 30.0)
 		{
 			next = ForjaCycleSkipSteps[std::min(step + (speed < 85.0 ? 2 : 1), top_step)];
 			s_tried_speed = speed;
 			s_tried_frames = frames;
+			s_tried_fps = fps;
 			s_tried_from = quarters;
 			if (elapsed - s_last_down < 30.0)
 				s_no_down_until = elapsed + 120.0;
