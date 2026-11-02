@@ -18,6 +18,10 @@
 #include "ps4/core/GSProfilePS4.h"
 #include "ps4/core/WorkerProfilePS4.h"
 #include "SessionStats.h"
+#include "ps4/core/ThreadAffinityPS4.h"
+#include "R5900.h"
+#include "Memory.h"
+#include <unistd.h>
 #include <string>
 extern double GetVerticalFrequency(); // pcsx2/GS.h (Counters.cpp): the PS2's refresh at the game's own rate (compilation 77)
 #include <mutex>
@@ -63,9 +67,88 @@ void VMHostDrainCPUQueue()
 }
 void VMHostPoll();
 extern void ProbeLog(const char*, ...);
+
+// Compilation 106: where the game's code spends the EE's time, to find loops that only wait: 200 times a second a helper thread reads the PS2's
+// program counter, which the recompiler writes at the end of each block, into buckets of 16 bytes, and every 1000 samples (~5 s) logs the busiest. A
+// race is harmless: a sample off by one block. It runs for everyone so reports bring it too; the marker vm-sin-medidor-ee turns it off, and with the
+// marker vm-ee-pc-codigo it also logs the game's instructions around the 3 busiest (never in a report: ReportLogLines keeps only "EE guest PC:").
+static void* ForjaEePcMeterThread(void*)
+{
+	PS4ThreadAffinity::PinCurrentThreadToHelpers("ee pc");
+	const bool with_code = access("/data/ForjaSX2/vm-ee-pc-codigo", F_OK) == 0;
+	struct Bucket
+	{
+		u32 pc;
+		u32 count;
+	};
+	static constexpr u32 kBuckets = 512;
+	static constexpr u32 kWindow = 1000;
+	static constexpr u32 kShown = 8;
+	Bucket buckets[kBuckets] = {};
+	u32 samples = 0, dropped = 0;
+	for (;;)
+	{
+		usleep(5000);
+		if (VMManager::GetState() != VMState::Running)
+			continue;
+		const u32 pc = cpuRegs.pc & ~15u;
+		u32 slot = (pc >> 4) * 2654435761u >> 23; // 512 slots
+		u32 tries = 0;
+		while (buckets[slot].count != 0 && buckets[slot].pc != pc && tries < 8)
+		{
+			slot = (slot + 1) % kBuckets;
+			tries++;
+		}
+		if (buckets[slot].count == 0 || buckets[slot].pc == pc)
+		{
+			buckets[slot].pc = pc;
+			buckets[slot].count++;
+		}
+		else
+		{
+			dropped++;
+		}
+		if (++samples < kWindow)
+			continue;
+		std::partial_sort(std::begin(buckets), std::begin(buckets) + kShown, std::end(buckets), [](const Bucket& a, const Bucket& b) { return a.count > b.count; });
+		char line[256];
+		int size = std::snprintf(line, sizeof(line), "EE guest PC: samples=%u dropped=%u top=", samples, dropped);
+		for (u32 i = 0; i < kShown && buckets[i].count != 0 && size > 0 && size < static_cast<int>(sizeof(line)) - 20; i++)
+			size += std::snprintf(line + size, sizeof(line) - size, "%s%08x:%u", i ? "," : "", buckets[i].pc, buckets[i].count);
+		ProbeLog("%s\n", line);
+		if (with_code && eeMem)
+		{
+			for (u32 i = 0; i < 3 && buckets[i].count != 0; i++)
+			{
+				const u32 address = buckets[i].pc & 0x01FFFFFFu;
+				if (address + 32 > Ps2MemSize::MainRam)
+					continue;
+				const u32* code = reinterpret_cast<const u32*>(eeMem->Main + address);
+				ProbeLog("EE guest code %08x: %08x %08x %08x %08x %08x %08x %08x %08x\n", buckets[i].pc, code[0], code[1], code[2], code[3], code[4], code[5], code[6], code[7]);
+			}
+		}
+		std::memset(buckets, 0, sizeof(buckets));
+		samples = dropped = 0;
+	}
+	return nullptr;
+}
+
+static void ForjaStartEePcMeter()
+{
+	static bool s_started = false;
+	if (s_started)
+		return;
+	s_started = true;
+	if (access("/data/ForjaSX2/vm-sin-medidor-ee", F_OK) == 0)
+		return;
+	pthread_t thread;
+	if (pthread_create(&thread, nullptr, ForjaEePcMeterThread, nullptr) == 0)
+		pthread_detach(thread);
+}
 extern void ForjaLogFramePacing(); // compilation 65: ps4/core/GSRendererPS4.cpp, the frame pacing meter
 extern bool g_orbis_fg_movie;   // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp: a movie playing (main.cpp sets it)
 extern bool g_orbis_fg_engaged; // ...and frame generation generating now
+extern bool g_orbis_fg_wanted;
 // Compilation 80: the session's scenes and controllers (SessionStats.h): every draw of the GS (GSRendererHW.cpp), and the
 // controllers connected (main.cpp, the second pad).
 extern std::atomic<u64> g_forja_gs_draws_total;
@@ -295,6 +378,7 @@ void Host::OnPerformanceMetricsUpdated()
 		if (g_vulkan_shader_cache)
 			g_vulkan_shader_cache->FlushPipelineCacheInBackground();
 	}
+	ForjaStartEePcMeter();
 	if (last_log != 0 && Common::Timer::ConvertValueToSeconds(now - last_log) < 5.0)
 		return;
 	const double profile_interval = last_log ? Common::Timer::ConvertValueToSeconds(now - last_log) : 0.0;
@@ -330,7 +414,8 @@ void Host::OnPerformanceMetricsUpdated()
 		window.fps = PerformanceMetrics::GetInternalFPS();
 		window.limit = limit;
 		window.movie = g_orbis_fg_movie;
-		window.fg_generating = g_orbis_fg_engaged;
+		// Compilation 106: only while it's on. The flag stayed up after turning it off, and Guitar Hero III's summary said "generated 100 % of the time".
+		window.fg_generating = g_orbis_fg_wanted && g_orbis_fg_engaged;
 		window.limit_ms = limit_ms;
 		window.budget_ms = budget_ms;
 		// Compilation 80: the scene (game, menu, movie, load), the controllers, and whether a second part was at its limit too:

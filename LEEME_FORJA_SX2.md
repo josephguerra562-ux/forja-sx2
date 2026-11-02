@@ -566,4 +566,6 @@ Biblioteca, Disco, Recientes, Favoritos, **Memoria o USB** (qué juegos mostrar:
 
 ## Desde la 102
 
+**Desde la 106**, Forja anota cada 5 s en qué partes del juego se va el tiempo del CPU de la PS2 (línea `EE guest PC:` del registro; va también en los reportes). `vm-sin-medidor-ee` en `/data/ForjaSX2/` lo apaga.
+
 **Avance rápido se quitó de Partida** a pedido de Joseph: lo reemplaza Rendimiento > Límite de velocidad. **Salto de ciclo** tiene cuartos: No, 1/4, 1/2, 3/4, 1, 2 y 3. En el registro, `cycle_skip` va en cuartos.

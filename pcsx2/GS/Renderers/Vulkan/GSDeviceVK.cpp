@@ -914,8 +914,30 @@ bool GSDeviceVK::ProcessDeviceExtensions()
 		VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR};
 	Vulkan::AddPointerToChain(&properties2, &push_descriptor_properties);
 
+	// Forja SX2 (compilation 106): whether this GPU's driver has what a compute GS (paraLLEl-GS) asks for. It only logs.
+	VkPhysicalDeviceSubgroupProperties forja_subgroup = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES};
+	Vulkan::AddPointerToChain(&properties2, &forja_subgroup);
+
 	// query
 	vkGetPhysicalDeviceProperties2(m_physical_device, &properties2);
+
+	{
+		VkPhysicalDevice16BitStorageFeatures storage16 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES};
+		VkPhysicalDevice8BitStorageFeatures storage8 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES};
+		VkPhysicalDeviceDescriptorIndexingFeatures indexing = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES};
+		VkPhysicalDeviceTimelineSemaphoreFeatures timeline = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES};
+		VkPhysicalDeviceFeatures2 query = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+		Vulkan::AddPointerToChain(&query, &storage16);
+		Vulkan::AddPointerToChain(&query, &storage8);
+		Vulkan::AddPointerToChain(&query, &indexing);
+		Vulkan::AddPointerToChain(&query, &timeline);
+		vkGetPhysicalDeviceFeatures2(m_physical_device, &query);
+		Console.WriteLn("Vulkan compute GS: api %u.%u subgroup size %u ops 0x%x stages 0x%x, 16-bit storage %u, 8-bit storage %u, int16 %u, bindless sampled %u partial %u variable %u, timeline %u",
+			VK_API_VERSION_MAJOR(properties2.properties.apiVersion), VK_API_VERSION_MINOR(properties2.properties.apiVersion), forja_subgroup.subgroupSize,
+			forja_subgroup.supportedOperations, forja_subgroup.supportedStages, storage16.storageBuffer16BitAccess, storage8.storageBuffer8BitAccess,
+			query.features.shaderInt16, indexing.shaderSampledImageArrayNonUniformIndexing, indexing.descriptorBindingPartiallyBound,
+			indexing.runtimeDescriptorArray, timeline.timelineSemaphore);
+	}
 
 	// confirm we actually support it
 	if (push_descriptor_properties.maxPushDescriptors < NUM_TFX_TEXTURES)

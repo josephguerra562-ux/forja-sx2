@@ -2421,8 +2421,16 @@ void VMManager::Internal::Throttle()
 	const u64 iEnd = GetCPUTicks(); // The current tick we actually stopped on.
 	const s64 sDeltaTime = iEnd - uExpectedEnd; // The diff between when we stopped and when we expected to.
 
+	// Forja SX2 (compilation 106): with the marker vm-limitador, a hitch of up to 3 frames is made up afterwards instead of lost. Another emulator on
+	// PCSX2 got GTA San Andreas from 90 to 96 % this way; not measured here, so it's off.
+	static const bool s_forja_keep_lost_time = [] {
+		const bool on = FileSystem::FileExists("/data/ForjaSX2/vm-limitador");
+		if (on)
+			Console.WriteLn("Frame limiter: keeps up to 3 frames of lost time");
+		return on;
+	}();
 	// If frame ran too long...
-	if (sDeltaTime >= s_limiter_ticks_per_frame)
+	if (sDeltaTime >= s_limiter_ticks_per_frame * (s_forja_keep_lost_time ? 3 : 1))
 	{
 		// ... Fudge the next frame start over a bit. Prevents fast forward zoomies.
 		s_limiter_frame_start += (sDeltaTime / s_limiter_ticks_per_frame) * s_limiter_ticks_per_frame;

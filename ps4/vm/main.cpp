@@ -2977,9 +2977,10 @@ static void UpdateCpuAuto(double elapsed)
 // through the row, and in God of War II it never came down: 14-17 FPS against 31 with 1/2. It asked for 10 s in a row at 99 % or more, and
 // the speed jumps around when a game repeats frames. Now by the means of a window, along the row's steps, down only when the game is really
 // repeating frames (a menu at 50 FPS stays where it is), and up only with a part at its limit: this lightens no hitch.
-// Compilation 105 (2026-11-01): it starts at no skip in every game, and it judges each step up. At 1/2 and up to 1 it took GTA San Andreas
-// from 99 % at 27.7 FPS to 86-100 % at 12-13 FPS and stayed there, and its top of 1 left Guitar Hero III's heaviest stage at 83-88 %. A step
-// that doesn't raise the speed, or that costs more than 30 % of the frames, goes back, with no more steps up for 5 minutes.
+// Compilation 105 (2026-11-01): it starts at no skip in every game, and it judges each step up. Its top of 1 left Guitar Hero III's heaviest stage at
+// 83-88 %. A step that doesn't raise the speed, or that costs more than 30 % of the frames, goes back, with no more steps up for 5 minutes.
+// Measured on the street in GTA San Andreas (2026-11-02, the 105): no skip 91 % at 13.5 FPS, skip 1 99.9 % at 11.8 FPS. An earlier note here blamed the skip for
+// "27.7 to 12.8 FPS": those 27.7 were the game's opening scenes.
 static void UpdateCycleSkipAuto(double elapsed)
 {
 	struct Window
@@ -3607,7 +3608,8 @@ static std::string ReportLogLines(const char* path, size_t read_bytes, size_t ma
 {
 	static constexpr const char* kept[] = {"Performance:", "GS groups:", "Frame pacing:", "Video mode:", "Movie settings:", "GS skip:",
 		"CPU auto:", "[fg]", "VM heartbeat:", "Game settings", "Game profile:", "Render configuration:", "Hitch:", "Audio SPU2 split:",
-		"PS4 audio queue:", "EE JIT cumulative:", "Patches:", "VU1 programs:", "Recommended settings:", "Emulator menu:"};
+		"PS4 audio queue:", "EE JIT cumulative:", "Patches:", "VU1 programs:", "Recommended settings:", "Emulator menu:",
+		"EE guest PC:", "Vulkan compute GS:", "Cycle skip auto:", "GS skip on the fly:", "Speed limit:", "Frame limiter:", "EE cycle skip:"}; // compilation 106
 	std::string text;
 	std::FILE* file = std::fopen(path, "rb");
 	if (!file)
