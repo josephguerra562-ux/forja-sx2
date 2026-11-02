@@ -19,7 +19,7 @@
 #define LOG_FOLDER "/data/" PLUGIN_NAME
 #define LOG_PATH LOG_FOLDER "/medidor.log"
 #define MAX_BUFFERS 16
-#define MAX_MODULES 128
+#define MAX_MODULES 256
 #define GRID_W 48
 #define GRID_H 27
 #define WINDOW_US 5000000u
@@ -34,7 +34,7 @@
 attr_public const char *g_pluginName = PLUGIN_NAME;
 attr_public const char *g_pluginDesc = "Mide cuadros distintos y envios a la grafica.";
 attr_public const char *g_pluginAuth = "Forja SX2";
-attr_public u32 g_pluginVersion = 0x00000200;
+attr_public u32 g_pluginVersion = 0x00000300;
 
 int32_t sceGnmSubmitAndFlipCommandBuffers(uint32_t count, void *dcb[], uint32_t *dcbSizes, void *ccb[], uint32_t *ccbSizes, uint32_t handle,
 	uint32_t index, uint32_t flipMode, int64_t flipArg);
@@ -228,8 +228,7 @@ static bool FindMenuModule(size_t *modules_seen)
 	size_t count = 0;
 	if (sceKernelGetModuleList(list, sizeof(list), &count) != 0)
 		return false;
-	count /= sizeof(OrbisKernelModule);
-	const bool log = count != *modules_seen;
+	// The call gives the number of modules, not bytes. Version 2 divided it by 4, saw a quarter of the list and never found the menu's module.
 	bool found = false;
 	for (size_t i = 0; i < count && i < MAX_MODULES; i++)
 	{
@@ -238,7 +237,8 @@ static bool FindMenuModule(size_t *modules_seen)
 		info.size = sizeof(info);
 		if (sceKernelGetModuleInfo(list[i], &info) != 0)
 			continue;
-		if (log)
+		// Only the ones new since the last look: the list only grows at the end.
+		if (i >= *modules_seen)
 			Log("modulo %s\n", info.name);
 		found = found || strstr(info.name, "menu") != NULL;
 	}
@@ -277,7 +277,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 		s_buffers[i].readable = -1;
 	sceKernelMkdir(LOG_FOLDER, 0777);
 	s_log = sceKernelOpen(LOG_PATH, OPEN_WRITE_CREATE_APPEND, 0666);
-	Log("medidor v2: cargado, proceso nuevo\n");
+	Log("medidor v3: cargado, proceso nuevo\n");
 	OrbisPthread thread;
 	const int32_t created = scePthreadCreate(&thread, NULL, SearchThread, NULL, "medidor_buscar");
 	Log("hilo creado: 0x%08x\n", (unsigned)created);
