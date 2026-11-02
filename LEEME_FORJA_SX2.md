@@ -570,4 +570,6 @@ Biblioteca, Disco, Recientes, Favoritos, **Memoria o USB** (qué juegos mostrar:
 
 **Desde la 107**, el Salto Auto juzga cada paso con los FPS reales del juego (subir velocidad con los mismos FPS ya no se deshace), y otra escena le quita los 5 minutos sin subir tras un intento fallido. Sigue apagado de fábrica.
 
+**Desde la 108**, el Salto Auto reacciona más rápido: un paso que sirvió decide el siguiente en la misma medición, y si el juego va bajo 50 % sube 3 pasos. Baja cada 5 s. Un video o una carga borran sus esperas. Sigue apagado de fábrica.
+
 **Avance rápido se quitó de Partida** a pedido de Joseph: lo reemplaza Rendimiento > Límite de velocidad. **Salto de ciclo** tiene cuartos: No, 1/4, 1/2, 3/4, 1, 2 y 3. En el registro, `cycle_skip` va en cuartos.

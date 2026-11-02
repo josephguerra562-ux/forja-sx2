@@ -2986,6 +2986,9 @@ static void UpdateCpuAuto(double elapsed)
 // judges the game's own FPS. Its 5 minutes without steps up also held in the next scene, so a new scene (another share of frames) frees them,
 // after 30 s; each failed step in a row doubles that wait, up to 4 minutes, so a game whose scenes keep changing doesn't pay for a try every 30 s.
 // A window that goes from one scene to another (30 points of speed or more between its readings) starts no step: its mean is neither scene, and the step would be judged against it.
+// Compilation 108 (Joseph, 2026-11-02: "reacciona lento"): the menu took 18 s to reach skip 2, 6 s a step, and a race kept the menu's skip for 100 s, at 12-14 FPS instead of 18.
+// A step that holds decides the next one from the same window, far below full speed it takes 3 steps, a failed step waits 10 s for a new scene, downs take 5 s, a video or a load frees
+// the waits, and a step that held isn't taken back for 60 s.
 static void UpdateCycleSkipAuto(double elapsed)
 {
 	struct Window
@@ -2998,6 +3001,7 @@ static void UpdateCycleSkipAuto(double elapsed)
 	static double s_last_check = 0.0, s_settle_until = 0.0, s_last_down = -1000.0, s_no_down_until = 0.0, s_no_up_until = 0.0;
 	static double s_tried_speed = -1.0, s_tried_frames = 0.0, s_tried_fps = 0.0, s_no_up_frames = 0.0, s_no_up_since = 0.0;
 	static int s_tried_from = 0, s_value = 0, s_failed_tries = 0;
+	static double s_down_wait = 120.0, s_seen_frames = 0.0;
 	static bool s_running = false;
 	static u32 s_crc = 0;
 	static Window s_up, s_down;
@@ -3006,6 +3010,11 @@ static void UpdateCycleSkipAuto(double elapsed)
 		s_up = {};
 		s_down = {};
 		s_running = s_running && EmuConfig.Speedhacks.EECycleSkipAuto;
+		if (s_video_active)
+		{
+			s_no_up_until = s_no_down_until = 0.0;
+			s_down_wait = 120.0;
+		}
 		return;
 	}
 	const u32 crc = VMManager::GetDiscCRC();
@@ -3016,6 +3025,8 @@ static void UpdateCycleSkipAuto(double elapsed)
 		s_value = 0;
 		s_no_up_until = s_no_down_until = 0.0;
 		s_failed_tries = 0;
+		s_down_wait = 120.0;
+		s_seen_frames = 0.0;
 		s_tried_speed = -1.0;
 		s_up = {};
 		s_down = {};
@@ -3052,6 +3063,14 @@ static void UpdateCycleSkipAuto(double elapsed)
 		const double speed = s_up.speed / s_up.checks;
 		const double frames = s_up.frames / s_up.checks;
 		const double fps = s_up.fps / s_up.checks;
+		// A load: this game showed frames before, and now none. What comes next is another scene.
+		if (frames > 0.05)
+			s_seen_frames = frames;
+		else if (s_seen_frames > 0.05)
+		{
+			s_no_up_until = s_no_down_until = 0.0;
+			s_down_wait = 120.0;
+		}
 		if (s_tried_speed >= 0.0)
 		{
 			if ((speed < s_tried_speed + 3.0 && speed < 98.0) || fps < s_tried_fps * 0.7)
@@ -3066,27 +3085,31 @@ static void UpdateCycleSkipAuto(double elapsed)
 			else
 			{
 				s_failed_tries = 0;
+				s_no_down_until = std::max(s_no_down_until, elapsed + 60.0);
 			}
 			s_tried_speed = -1.0;
 		}
-		else if (elapsed < s_no_up_until && elapsed - s_no_up_since >= 30.0 * (1 << std::clamp(s_failed_tries - 1, 0, 3)) && frames > 0.05 && std::abs(frames - s_no_up_frames) >= 0.25)
+		if (next == quarters && elapsed < s_no_up_until && elapsed - s_no_up_since >= 10.0 * (1 << std::clamp(s_failed_tries - 1, 0, 4)) && frames > 0.05 && std::abs(frames - s_no_up_frames) >= 0.25)
 		{
 			s_no_up_until = 0.0;
 			ProbeLog("Cycle skip auto: another scene (frames %.0f -> %.0f %% of the refreshes), it can try again\n", s_no_up_frames * 100.0, frames * 100.0);
 		}
-		else if (speed < 96.0 && s_up.busiest / s_up.checks >= 85.0 && step < top_step && elapsed >= s_no_up_until && s_up.fastest - s_up.slowest < 30.0)
+		else if (next == quarters && speed < 96.0 && s_up.busiest / s_up.checks >= 85.0 && step < top_step && elapsed >= s_no_up_until && s_up.fastest - s_up.slowest < 30.0)
 		{
-			next = ForjaCycleSkipSteps[std::min(step + (speed < 85.0 ? 2 : 1), top_step)];
+			next = ForjaCycleSkipSteps[std::min(step + (speed < 50.0 ? 3 : speed < 85.0 ? 2 : 1), top_step)];
 			s_tried_speed = speed;
 			s_tried_frames = frames;
 			s_tried_fps = fps;
 			s_tried_from = quarters;
 			if (elapsed - s_last_down < 30.0)
-				s_no_down_until = elapsed + 120.0;
+				{
+					s_no_down_until = elapsed + s_down_wait;
+					s_down_wait = std::min(s_down_wait * 2.0, 240.0);
+				}
 		}
 		s_up = {};
 	}
-	if (next == quarters && s_tried_speed < 0.0 && s_down.checks >= 20)
+	if (next == quarters && s_tried_speed < 0.0 && s_down.checks >= 10)
 	{
 		if (step > 0 && elapsed >= s_no_down_until && s_down.speed / s_down.checks >= 98.5 && s_down.busiest / s_down.checks < 91.0 &&
 			s_down.frames / s_down.checks < 0.92)
