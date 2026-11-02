@@ -1,14 +1,18 @@
 # Forja SX2
 
+[![Discord](https://img.shields.io/badge/Discord-%C3%9Anete%20a%20Forja%20SX2-5865F2?logo=discord&logoColor=white)](https://discord.gg/YVCQF5XFFd)
+
+**Únete al [Discord de Forja SX2](https://discord.gg/YVCQF5XFFd):** novedades, ayuda para instalar, juegos probados y reportes.
+
 PlayStation 2 emulator for jailbroken PS4 consoles (GoldHEN). It is based on [PS4SX2](https://github.com/Phoenixx1202/PS4SX2),
 which comes from [PCSX2](https://github.com/PCSX2/pcsx2), and adds performance work, per-game profiles, save states, frame
 generation, PS2 DVD copying and an in-app updater. It is still in testing: every game behaves differently, and there can be
 stutters, audio dropouts or crashes.
 
 - **Download:** the recommended version is the one marked **Latest** in
-  [Releases](https://github.com/josephguerra562-ux/forja-sx2/releases/latest), for example `ForjaSX2-Emulador-v1.03.pkg`.
-  It has been tested on a PS4 Pro (stable channel). The "Pre-release" builds (such as "Forja SX2 v1.03 (prueba 58)") are
-  published automatically with every change and may break (testing channel). You can download whichever you like.
+  [Releases](https://github.com/josephguerra562-ux/forja-sx2/releases/latest), for example `ForjaSX2-Emulador-v1.06.pkg`.
+  It has been tested on a PS4 Pro (stable channel). The "Pre-release" builds, titled "Versión de prueba, no usar", are
+  published automatically with every change and may break (testing channel). Please do not use them unless you are helping test.
 - **Install and use:** the full guide is in Spanish, [LEEME_FORJA_SX2.md](LEEME_FORJA_SX2.md) (installation, folders,
   controls, per-game settings and troubleshooting). The app's menus are in Spanish.
 - **Community:** join the [Forja SX2 Discord](https://discord.gg/YVCQF5XFFd) (in Spanish) for news, help with installing, game reports and bug
@@ -25,8 +29,9 @@ in each game's factory profile (`resources/perfiles/`); whatever you change in t
 
 | Status | Game | Region | How it runs | Factory settings |
 |---|---|---|---|---|
+| Playable | Guitar Hero III | PAL (SLES-54974) | 100 % speed and 48 FPS at 1x on a PS4 Pro with Boost Mode (build 106). | PS2 CPU at 27 %, EE cycle skip 1/2, Blend deinterlacing, software crowd 1 in 8. |
 | Playable | Crash Nitro Kart | PAL (SLES-51511) | Full speed at 27 % PS2 CPU, also with two players in split screen (97-99 %). The game runs at 25 FPS in races; "Fluid" frame generation fills the 60 Hz output. | PS2 CPU at 27 %, "Fluid" frame generation. Experimental "50 FPS" patch: 50 FPS in races with the PS2 CPU at 36 % (factory setting since build 47). |
-| In testing | Dragon Ball Z Budokai Tenkaichi 4 (fan mod) | NTSC-U (SLUS-21978) | GS-bound: ~2,100 draws a frame in fights, 25 µs each on the PS4's CPU (31 ms a vsync, 40-55 % speed). The "character shading" fingerprint brings fights to 80-100 %, and since build 73 the GS frame skip ("Saltar cuadros") on Auto, with its guard against flicker, keeps them at full speed and 30 FPS. | Budokai Tenkaichi 3's GS fixes, the "Menos efectos: sombreado de personajes" fingerprint, frame generation off, GS frame skip on Auto (since build 75). |
+| Playable | Dragon Ball Z Budokai Tenkaichi 4 (fan mod) | NTSC-U (SLUS-21978) | 99.6 % speed and 30 FPS at 1x on a PS4 Pro with Boost Mode (build 105). GS-bound: ~2,100 draws a frame in fights, 25 µs each on the PS4's CPU (31 ms a vsync). The "character shading" fingerprint brings fights to 80-100 %, and since build 73 the GS frame skip ("Saltar cuadros") on Auto, with its guard against flicker, keeps them at full speed and 30 FPS. | Budokai Tenkaichi 3's GS fixes, the "Menos efectos: sombreado de personajes" fingerprint, frame generation off, GS frame skip on Auto (since build 75). |
 | Playable | God of War II | PAL (SCES-54206) | With the PS2 CPU at 27 %: 98 % average speed, full speed 83 % of the time. At 100 % CPU the heaviest fights (Colossus of Rhodes, many enemies) run at 60-85 %, limited by the VU1. | vuFlagHack, cores "Plan B", skip cutscenes, PS2 CPU at 36 % with automatic CPU down to 27 % in the heaviest fights (since build 46: ~41 FPS at the Colossus instead of ~30), "Fluid" frame generation. "Menos efectos 1 y 2 (Sony)" (fewer effects: 97 % at the Colossus, even at 3x), on by default since build 44. |
 | Playable | Tales of the Abyss | USA (SLUS-21386) | Gameplay 93-100 %. Cutscenes ~78 % (23 FPS) without video mode. | PS2 CPU at 100 %, normal cores. |
 | Playable | Mega Man X Command Mission | USA (SLUS-20903) | 30 FPS version: locked 30 FPS, even at 4x. The intro runs at 80-90 % with video mode. | Normal VU1 clamping. |

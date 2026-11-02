@@ -215,7 +215,7 @@ jobs:
           pkg=$(basename release/*.pkg)
           version=$(sed -E 's/^ForjaSX2-Emulador-v([0-9]+\.[0-9]+)\.pkg$/\1/' <<< "$pkg")
           {
-            echo "**Versión de prueba** de Forja SX2 v$version (compilación ${{ github.run_number }}, commit ${GITHUB_SHA::7})."
+            echo "**Versión de prueba, no usar.** Compilación ${{ github.run_number }}, commit ${GITHUB_SHA::7}."
             echo "Sale sola con cada cambio y puede fallar. La versión recomendada para todos es la marcada como **Latest**."
             echo
             echo "Instalar \`$pkg\` en la PS4 con GoldHEN. Guía: LEEME_FORJA_SX2.md"
@@ -226,4 +226,4 @@ jobs:
           } > notas.md
           gh release create "$tag" release/*.pkg release/SHA256SUMS.txt release/vm_boot.sym.gz \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
-            --title "Forja SX2 v$version (prueba ${{ github.run_number }})" --notes-file notas.md
+            --title "Versión de prueba, no usar" --notes-file notas.md
