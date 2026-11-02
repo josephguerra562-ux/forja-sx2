@@ -34,7 +34,7 @@
 attr_public const char *g_pluginName = PLUGIN_NAME;
 attr_public const char *g_pluginDesc = "Mide cuadros distintos y envios a la grafica.";
 attr_public const char *g_pluginAuth = "Forja SX2";
-attr_public u32 g_pluginVersion = 0x00000300;
+attr_public u32 g_pluginVersion = 0x00000400;
 
 int32_t sceGnmSubmitAndFlipCommandBuffers(uint32_t count, void *dcb[], uint32_t *dcbSizes, void *ccb[], uint32_t *ccbSizes, uint32_t handle,
 	uint32_t index, uint32_t flipMode, int64_t flipArg);
@@ -59,9 +59,12 @@ static bool s_have_previous = false, s_hooked = false;
 static volatile bool s_stop = false;
 static int s_last_index = -1;
 static int s_log = -1;
+// One of the GNM calls goes through the other. Version 3 counted each flip twice (120 a second), and the second time it read the buffer that was being
+// drawn, so its "new" pictures weren't real. Only the outermost call counts.
+static int s_depth = 0;
 
 // One window of 5 s.
-static uint64_t s_window_start = 0, s_last_flip = 0, s_last_gnm = 0;
+static uint64_t s_window_start = 0, s_last_flip = 0;
 static uint32_t s_flips = 0, s_same = 0, s_slight = 0, s_new = 0, s_unread = 0, s_over_25ms = 0, s_over_42ms = 0;
 static uint64_t s_gap_max = 0, s_dcb_bytes = 0, s_submits = 0, s_submit_us = 0, s_read_us = 0;
 
@@ -170,27 +173,37 @@ static void CountSubmit(uint32_t count, const uint32_t *sizes)
 int32_t sceGnmSubmitAndFlipCommandBuffers_hook(uint32_t count, void *dcb[], uint32_t *dcbSizes, void *ccb[], uint32_t *ccbSizes, uint32_t handle,
 	uint32_t index, uint32_t flipMode, int64_t flipArg)
 {
-	s_last_gnm = sceKernelGetProcessTime();
-	Flip((int)index);
-	CountSubmit(count, dcbSizes);
+	const bool outer = s_depth++ == 0;
+	if (outer)
+	{
+		Flip((int)index);
+		CountSubmit(count, dcbSizes);
+	}
 	const uint64_t start = sceKernelGetProcessTime();
 	const int32_t result = HOOK_CONTINUE(sceGnmSubmitAndFlipCommandBuffers, int32_t(*)(uint32_t, void **, uint32_t *, void **, uint32_t *, uint32_t, uint32_t, uint32_t, int64_t),
 		count, dcb, dcbSizes, ccb, ccbSizes, handle, index, flipMode, flipArg);
-	s_submit_us += sceKernelGetProcessTime() - start;
+	if (outer)
+		s_submit_us += sceKernelGetProcessTime() - start;
+	s_depth--;
 	return result;
 }
 
 int32_t sceGnmSubmitAndFlipCommandBuffersForWorkload_hook(uint32_t workload, uint32_t count, void *dcb[], uint32_t *dcbSizes, void *ccb[], uint32_t *ccbSizes,
 	uint32_t handle, uint32_t index, uint32_t flipMode, int64_t flipArg)
 {
-	s_last_gnm = sceKernelGetProcessTime();
-	Flip((int)index);
-	CountSubmit(count, dcbSizes);
+	const bool outer = s_depth++ == 0;
+	if (outer)
+	{
+		Flip((int)index);
+		CountSubmit(count, dcbSizes);
+	}
 	const uint64_t start = sceKernelGetProcessTime();
 	const int32_t result = HOOK_CONTINUE(sceGnmSubmitAndFlipCommandBuffersForWorkload,
 		int32_t(*)(uint32_t, uint32_t, void **, uint32_t *, void **, uint32_t *, uint32_t, uint32_t, uint32_t, int64_t),
 		workload, count, dcb, dcbSizes, ccb, ccbSizes, handle, index, flipMode, flipArg);
-	s_submit_us += sceKernelGetProcessTime() - start;
+	if (outer)
+		s_submit_us += sceKernelGetProcessTime() - start;
+	s_depth--;
 	return result;
 }
 
@@ -216,8 +229,8 @@ int32_t sceVideoOutRegisterBuffers_hook(int32_t handle, int32_t start, void *con
 
 int32_t sceVideoOutSubmitFlip_hook(int32_t handle, int32_t index, uint32_t flipMode, int64_t flipArg)
 {
-	// Only a flip of its own: the GNM call above may come through here too.
-	if (sceKernelGetProcessTime() - s_last_gnm > 2000)
+	// Only a flip of its own: the GNM calls above may come through here too.
+	if (s_depth == 0)
 		Flip(index);
 	return HOOK_CONTINUE(sceVideoOutSubmitFlip, int32_t(*)(int32_t, int32_t, uint32_t, int64_t), handle, index, flipMode, flipArg);
 }
@@ -277,7 +290,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 		s_buffers[i].readable = -1;
 	sceKernelMkdir(LOG_FOLDER, 0777);
 	s_log = sceKernelOpen(LOG_PATH, OPEN_WRITE_CREATE_APPEND, 0666);
-	Log("medidor v3: cargado, proceso nuevo\n");
+	Log("medidor v4: cargado, proceso nuevo\n");
 	OrbisPthread thread;
 	const int32_t created = scePthreadCreate(&thread, NULL, SearchThread, NULL, "medidor_buscar");
 	Log("hilo creado: 0x%08x\n", (unsigned)created);
