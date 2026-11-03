@@ -3001,6 +3001,12 @@ static void UpdateCpuAuto(double elapsed)
 // (-24 %). Now a step's FPS are judged against the value's normal ones, the median of its last windows in the same scene, and a mild dip (85-96 %) has to last three
 // windows (~9 s): a dip of 3 s that falls across two windows leaves both slow. Under 85 % it still reacts at once (the menu of Most Wanted, at 28 %).
 // herramientas/simulaciones/simular_automaticos.py, with dips of 3 s, saw the 110's climb to 8 and sees none with these rules.
+// Compilation 112 (the 111 on Joseph's PS4 Pro, 2026-11-03): Dragon Ball went from 23 to 28 FPS, but the rule for steps down (the busiest part under 91 %) took it
+// from 2 to 1 (100 -> 95.5 %) and from 1 to 0 (28.2 -> 20.1 FPS), unjudged; at 95.5 % its dips never made three slow windows, so it stayed. In God of War II the
+// same scene's share of frames moves more than 0.15 (30-44 FPS), so the normal was again the dip. Now a step down is judged against the value's normal from
+// before (back up after 3 points of speed without 5 % more FPS, or 15 % of the FPS); a scene's windows are those within 0.25, the margin the Auto already uses
+// for "another scene"; a strong dip takes two windows (70-85 %; under 70 % at once, the menu of Most Wanted), and a step is undone after two bad windows in a
+// row, as one window sometimes fell in a dip (Dragon Ball's 1 -> 2 judged at 89.8 % was refused, then 5 minutes at 1).
 static void UpdateCycleSkipAuto(double elapsed)
 {
 	struct Window
@@ -3028,6 +3034,32 @@ static void UpdateCycleSkipAuto(double elapsed)
 	static int s_normal_count = 0, s_normal_next = 0, s_slow_windows = 0;
 	static double s_base_fps = 0.0, s_base_speed = 0.0;
 	const auto forget_normal = [] { s_normal_count = s_normal_next = s_slow_windows = 0; };
+	// Compilation 112: a step down waiting for its judgment (the value it came from, -1 for none) and the normal it is judged by; whether the
+	// step being judged (up or down) already had one bad window.
+	static int s_down_from = -1;
+	static double s_down_base_fps = 0.0, s_down_base_speed = 0.0;
+	static bool s_one_bad = false;
+	// The value's normal in this scene: the median speed and FPS of its last windows whose share of frames is within 0.25 of `frames` (the
+	// margin of "another scene"; 0.15 in the 111). False with fewer than 3.
+	const auto normal_of = [](double frames, double* speed, double* fps) {
+		double fps_list[normal_windows], speed_list[normal_windows];
+		int similar = 0;
+		for (int i = 0; i < s_normal_count; i++)
+		{
+			if (std::abs(s_normal[i].frames - frames) < 0.25)
+			{
+				fps_list[similar] = s_normal[i].fps;
+				speed_list[similar++] = s_normal[i].speed;
+			}
+		}
+		if (similar < 3)
+			return false;
+		std::nth_element(fps_list, fps_list + similar / 2, fps_list + similar);
+		std::nth_element(speed_list, speed_list + similar / 2, speed_list + similar);
+		*fps = fps_list[similar / 2];
+		*speed = speed_list[similar / 2];
+		return true;
+	};
 	if (!EmuConfig.Speedhacks.EECycleSkipAuto || s_video_active)
 	{
 		s_up = {};
@@ -3061,6 +3093,8 @@ static void UpdateCycleSkipAuto(double elapsed)
 		s_down_wait = 120.0;
 		s_seen_frames = 0.0;
 		s_tried_speed = -1.0;
+		s_down_from = -1;
+		s_one_bad = false;
 		s_up = {};
 		s_down = {};
 		forget_normal();
@@ -3114,15 +3148,44 @@ static void UpdateCycleSkipAuto(double elapsed)
 		{
 			s_after_break = false;
 			s_tried_speed = -1.0;
+			s_down_from = -1;
+			s_one_bad = false;
 			if (quarters > factory_q)
 			{
 				next = factory_q;
 				ProbeLog("Cycle skip auto: a new scene after a video or a load, back to the game's factory value\n");
 			}
 		}
-		if (s_tried_speed >= 0.0)
+		// Compilation 112: a step down is judged too, against the value's normal from before. Back up if it cost 3 points of speed without 5 % more
+		// FPS, or 15 % of the FPS: going from 8 to 4 in Dragon Ball (the 108) cost 5 points and gave 21 % more FPS, and that one stays.
+		if (s_down_from >= 0)
 		{
-			if ((speed < s_tried_speed + 3.0 && speed < 98.0) || fps < s_base_fps * 0.7 || (s_base_speed >= 90.0 && fps < s_base_fps * 0.85))
+			const bool bad = (speed < s_down_base_speed - 3.0 && fps < s_down_base_fps * 1.05) || (s_down_base_speed >= 90.0 && fps < s_down_base_fps * 0.85);
+			if (bad && !s_one_bad)
+				s_one_bad = true;
+			else
+			{
+				if (bad)
+				{
+					next = s_down_from;
+					s_no_down_until = elapsed + s_down_wait;
+					s_down_wait = std::min(s_down_wait * 2.0, 240.0);
+				}
+				ProbeLog("Cycle skip auto: the step down %s: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f\n", bad ? "cost, back up" : "holds", s_down_base_speed,
+					speed, s_down_base_fps, fps);
+				s_down_from = -1;
+				s_one_bad = false;
+			}
+		}
+		// Compilation 112: a step is undone after two bad windows in a row; one good window keeps it.
+		const bool tried_bad = s_tried_speed >= 0.0 &&
+							   ((speed < s_tried_speed + 3.0 && speed < 98.0) || fps < s_base_fps * 0.7 || (s_base_speed >= 90.0 && fps < s_base_fps * 0.85));
+		if (tried_bad && !s_one_bad)
+			s_one_bad = true;
+		else if (s_tried_speed >= 0.0)
+		{
+			s_one_bad = false;
+			if (tried_bad)
 			{
 				next = s_tried_from;
 				s_no_up_until = elapsed + 300.0;
@@ -3147,7 +3210,9 @@ static void UpdateCycleSkipAuto(double elapsed)
 			s_no_up_until = 0.0;
 			ProbeLog("Cycle skip auto: another scene (frames %.0f -> %.0f %% of the refreshes), it can try again\n", s_no_up_frames * 100.0, frames * 100.0);
 		}
-		else if (next == quarters && speed < 96.0 && (speed < 85.0 || s_slow_windows >= 2) && s_up.busiest / s_up.checks >= 85.0 && step < top_step &&
+		// Compilation 112: a dip of 70-85 % takes two windows (God of War II dipped 3 s to 77 % and went from 0 to 2), under 70 % at once.
+		else if (next == quarters && s_tried_speed < 0.0 && s_down_from < 0 && speed < 96.0 &&
+				 (speed < 70.0 || (speed < 85.0 && s_slow_windows >= 1) || s_slow_windows >= 2) && s_up.busiest / s_up.checks >= 85.0 && step < top_step &&
 				 elapsed >= s_no_up_until && s_up.fastest - s_up.slowest < 30.0)
 		{
 			next = ForjaCycleSkipSteps[std::min(step + (speed < 50.0 ? 3 : speed < 85.0 ? 2 : 1), top_step)];
@@ -3155,26 +3220,9 @@ static void UpdateCycleSkipAuto(double elapsed)
 			s_tried_frames = frames;
 			s_tried_fps = fps;
 			s_tried_from = quarters;
-			// Compilation 111: the value's normal FPS and speed, the median of its last windows in this scene (a share of frames within 0.15 of
-			// this one: without that, the menu of Most Wanted was judged against the race's FPS). With fewer than 3, this window's, as the 110.
-			double fps_list[normal_windows], speed_list[normal_windows];
-			int similar = 0;
-			for (int i = 0; i < s_normal_count; i++)
-			{
-				if (std::abs(s_normal[i].frames - frames) < 0.15)
-				{
-					fps_list[similar] = s_normal[i].fps;
-					speed_list[similar++] = s_normal[i].speed;
-				}
-			}
-			if (similar >= 3)
-			{
-				std::nth_element(fps_list, fps_list + similar / 2, fps_list + similar);
-				std::nth_element(speed_list, speed_list + similar / 2, speed_list + similar);
-				s_base_fps = fps_list[similar / 2];
-				s_base_speed = speed_list[similar / 2];
-			}
-			else
+			// Compilation 111: the value's normal FPS and speed in this scene (without the scene's filter, the menu of Most Wanted was judged against
+			// the race's FPS). With fewer than 3 windows, this window's, as the 110.
+			if (!normal_of(frames, &s_base_speed, &s_base_fps))
 			{
 				s_base_fps = fps;
 				s_base_speed = speed;
@@ -3195,13 +3243,21 @@ static void UpdateCycleSkipAuto(double elapsed)
 		s_slow_windows = speed < 96.0 ? s_slow_windows + 1 : 0;
 		s_up = {};
 	}
-	if (next == quarters && s_tried_speed < 0.0 && s_down.checks >= 10)
+	if (next == quarters && s_tried_speed < 0.0 && s_down_from < 0 && s_down.checks >= 10)
 	{
 		if (quarters > factory_q && elapsed >= s_no_down_until && s_down.speed / s_down.checks >= 98.5 && s_down.busiest / s_down.checks < 91.0 &&
 			s_down.frames / s_down.checks < 0.92)
 		{
 			next = ForjaCycleSkipSteps[step - 1];
 			s_last_down = elapsed;
+			// Compilation 112: what the step down is judged against, taken before the value's windows are forgotten.
+			s_down_from = quarters;
+			s_one_bad = false;
+			if (!normal_of(s_down.frames / s_down.checks, &s_down_base_speed, &s_down_base_fps))
+			{
+				s_down_base_speed = s_down.speed / s_down.checks;
+				s_down_base_fps = s_down.fps / s_down.checks;
+			}
 		}
 		s_down = {};
 	}
