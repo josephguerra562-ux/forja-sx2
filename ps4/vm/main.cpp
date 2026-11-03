@@ -2996,6 +2996,11 @@ static void UpdateCpuAuto(double elapsed)
 // instead of ~17. Guitar Hero III stayed at 1 (94 %): Auto started at 0 though its factory value is 2 (97 %), and 2 failed on one window of a game whose speed jumps
 // 82-110 %. Dragon Ball Z BT4 went from 4 to 8 at full speed and kept 20 FPS instead of 25-30. Now it starts at the game's factory value and never goes below it,
 // the first scene with frames after a video or a load goes straight back to it, and a step taken near full speed (90 % or more) that costs 15 % of the FPS goes back.
+// Compilation 111 (the 110 on Joseph's PS4 Pro, 2026-11-03, its "holds:" lines): Dragon Ball Z BT4 at 2 ran at 99.4 % and 25.8 FPS, and dips of ~3 s took it to 3, 4
+// and 8, fixed at 20 FPS. Each step was judged against the dip that set it off (4 -> 8: 23.7 -> 21.2 FPS, -11 %), so each passed, while the step's normal FPS were 26.2
+// (-24 %). Now a step's FPS are judged against the value's normal ones, the median of its last windows in the same scene, and a mild dip (85-96 %) has to last three
+// windows (~9 s): a dip of 3 s that falls across two windows leaves both slow. Under 85 % it still reacts at once (the menu of Most Wanted, at 28 %).
+// herramientas/simulaciones/simular_automaticos.py, with dips of 3 s, saw the 110's climb to 8 and sees none with these rules.
 static void UpdateCycleSkipAuto(double elapsed)
 {
 	struct Window
@@ -3012,6 +3017,17 @@ static void UpdateCycleSkipAuto(double elapsed)
 	static bool s_running = false, s_after_break = false;
 	static u32 s_crc = 0;
 	static Window s_up, s_down;
+	// Compilation 111: the last windows at the current value (its normal speed, FPS and share of frames), how many slow windows in a row, and
+	// the normal FPS and speed a step being tried is judged against.
+	struct Normal
+	{
+		double speed, fps, frames;
+	};
+	static constexpr int normal_windows = 7; // ~20 s
+	static Normal s_normal[normal_windows];
+	static int s_normal_count = 0, s_normal_next = 0, s_slow_windows = 0;
+	static double s_base_fps = 0.0, s_base_speed = 0.0;
+	const auto forget_normal = [] { s_normal_count = s_normal_next = s_slow_windows = 0; };
 	if (!EmuConfig.Speedhacks.EECycleSkipAuto || s_video_active)
 	{
 		s_up = {};
@@ -3022,6 +3038,7 @@ static void UpdateCycleSkipAuto(double elapsed)
 			s_no_up_until = s_no_down_until = 0.0;
 			s_down_wait = 120.0;
 			s_after_break = true;
+			forget_normal();
 		}
 		return;
 	}
@@ -3046,6 +3063,7 @@ static void UpdateCycleSkipAuto(double elapsed)
 		s_tried_speed = -1.0;
 		s_up = {};
 		s_down = {};
+		forget_normal();
 	}
 	// The profile read again for the game that is really running (UpdateGameProfile) can bring a higher factory value.
 	s_value = std::max(s_value, factory_q);
@@ -3089,6 +3107,7 @@ static void UpdateCycleSkipAuto(double elapsed)
 			s_no_up_until = s_no_down_until = 0.0;
 			s_down_wait = 120.0;
 			s_after_break = true;
+			forget_normal();
 		}
 		// Compilation 109: the scene after a video or a load is another one; a try from before is judged against neither.
 		if (s_after_break && frames > 0.05)
@@ -3103,21 +3122,23 @@ static void UpdateCycleSkipAuto(double elapsed)
 		}
 		if (s_tried_speed >= 0.0)
 		{
-			if ((speed < s_tried_speed + 3.0 && speed < 98.0) || fps < s_tried_fps * 0.7 || (s_tried_speed >= 90.0 && fps < s_tried_fps * 0.85))
+			if ((speed < s_tried_speed + 3.0 && speed < 98.0) || fps < s_base_fps * 0.7 || (s_base_speed >= 90.0 && fps < s_base_fps * 0.85))
 			{
 				next = s_tried_from;
 				s_no_up_until = elapsed + 300.0;
 				s_no_up_frames = s_tried_frames;
 				s_no_up_since = elapsed;
 				s_failed_tries++;
-				ProbeLog("Cycle skip auto: no use in this scene: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f\n", s_tried_speed, speed, s_tried_fps, fps);
+				ProbeLog("Cycle skip auto: no use in this scene: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f (normal before: %.1f FPS at %.0f %%)\n", s_tried_speed, speed,
+					s_tried_fps, fps, s_base_fps, s_base_speed);
 			}
 			else
 			{
 				s_failed_tries = 0;
 				s_no_down_until = std::max(s_no_down_until, elapsed + 60.0);
 				// Compilation 110: only the steps given back were logged; in God of War II (the 109) a step from 2 to 3 couldn't be told from its scene.
-				ProbeLog("Cycle skip auto: holds: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f\n", s_tried_speed, speed, s_tried_fps, fps);
+				ProbeLog("Cycle skip auto: holds: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f (normal before: %.1f FPS at %.0f %%)\n", s_tried_speed, speed, s_tried_fps,
+					fps, s_base_fps, s_base_speed);
 			}
 			s_tried_speed = -1.0;
 		}
@@ -3126,19 +3147,52 @@ static void UpdateCycleSkipAuto(double elapsed)
 			s_no_up_until = 0.0;
 			ProbeLog("Cycle skip auto: another scene (frames %.0f -> %.0f %% of the refreshes), it can try again\n", s_no_up_frames * 100.0, frames * 100.0);
 		}
-		else if (next == quarters && speed < 96.0 && s_up.busiest / s_up.checks >= 85.0 && step < top_step && elapsed >= s_no_up_until && s_up.fastest - s_up.slowest < 30.0)
+		else if (next == quarters && speed < 96.0 && (speed < 85.0 || s_slow_windows >= 2) && s_up.busiest / s_up.checks >= 85.0 && step < top_step &&
+				 elapsed >= s_no_up_until && s_up.fastest - s_up.slowest < 30.0)
 		{
 			next = ForjaCycleSkipSteps[std::min(step + (speed < 50.0 ? 3 : speed < 85.0 ? 2 : 1), top_step)];
 			s_tried_speed = speed;
 			s_tried_frames = frames;
 			s_tried_fps = fps;
 			s_tried_from = quarters;
+			// Compilation 111: the value's normal FPS and speed, the median of its last windows in this scene (a share of frames within 0.15 of
+			// this one: without that, the menu of Most Wanted was judged against the race's FPS). With fewer than 3, this window's, as the 110.
+			double fps_list[normal_windows], speed_list[normal_windows];
+			int similar = 0;
+			for (int i = 0; i < s_normal_count; i++)
+			{
+				if (std::abs(s_normal[i].frames - frames) < 0.15)
+				{
+					fps_list[similar] = s_normal[i].fps;
+					speed_list[similar++] = s_normal[i].speed;
+				}
+			}
+			if (similar >= 3)
+			{
+				std::nth_element(fps_list, fps_list + similar / 2, fps_list + similar);
+				std::nth_element(speed_list, speed_list + similar / 2, speed_list + similar);
+				s_base_fps = fps_list[similar / 2];
+				s_base_speed = speed_list[similar / 2];
+			}
+			else
+			{
+				s_base_fps = fps;
+				s_base_speed = speed;
+			}
 			if (elapsed - s_last_down < 30.0)
 				{
 					s_no_down_until = elapsed + s_down_wait;
 					s_down_wait = std::min(s_down_wait * 2.0, 240.0);
 				}
 		}
+		// A window with no step being tried is part of the value's normal; a slow one counts towards the three in a row.
+		if (next == quarters && s_tried_speed < 0.0)
+		{
+			s_normal[s_normal_next] = {speed, fps, frames};
+			s_normal_next = (s_normal_next + 1) % normal_windows;
+			s_normal_count = std::min(s_normal_count + 1, normal_windows);
+		}
+		s_slow_windows = speed < 96.0 ? s_slow_windows + 1 : 0;
 		s_up = {};
 	}
 	if (next == quarters && s_tried_speed < 0.0 && s_down.checks >= 10)
@@ -3154,6 +3208,7 @@ static void UpdateCycleSkipAuto(double elapsed)
 	if (next == quarters)
 		return;
 	s_value = next;
+	forget_normal(); // the windows were of the value before
 	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(next / 4);
 	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(next % 4);
 	ProbeLog("Cycle skip auto: %d -> %d quarters (speed %.0f %%, game FPS %.1f)\n", quarters, next, PerformanceMetrics::GetSpeed(), PerformanceMetrics::GetInternalFPS());

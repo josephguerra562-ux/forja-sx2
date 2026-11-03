@@ -580,4 +580,6 @@ Biblioteca, Disco, Recientes, Favoritos, **Memoria o USB** (qué juegos mostrar:
 - El Salto Auto anota con qué valor empieza y cada paso que mantiene.
 - En los reportes, si no mueves la palabra (Pésimo a Perfecto), sale "Regular (sin elegir)" en vez de "Regular".
 
+**Desde la 111**, el Salto Auto ya no sube por bajones cortos. Un bajón leve (85-96 %) tiene que durar unos 9 s antes de probar un paso; si el juego va muy lento, reacciona al instante. Cada paso se juzga contra los FPS normales del paso anterior en la misma escena, no contra el bajón que lo hizo probar. Sigue apagado de fábrica.
+
 **Avance rápido se quitó de Partida** a pedido de Joseph: lo reemplaza Rendimiento > Límite de velocidad. **Salto de ciclo** tiene cuartos: No, 1/4, 1/2, 3/4, 1, 2 y 3. En el registro, `cycle_skip` va en cuartos.
