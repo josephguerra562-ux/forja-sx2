@@ -572,4 +572,6 @@ Biblioteca, Disco, Recientes, Favoritos, **Memoria o USB** (qué juegos mostrar:
 
 **Desde la 108**, el Salto Auto reacciona más rápido: un paso que sirvió decide el siguiente en la misma medición, y si el juego va bajo 50 % sube 3 pasos. Baja cada 5 s. Un video o una carga borran sus esperas. Sigue apagado de fábrica.
 
+**Desde la 109**, el Salto Auto empieza en el valor de fábrica del juego y no baja de ahí (Guitar Hero III: 2). Después de un video o una carga, vuelve directo a ese valor en vez de bajar de a un paso. También devuelve un paso que, con el juego cerca de velocidad completa, baja los FPS más de 15 %. Sigue apagado de fábrica.
+
 **Avance rápido se quitó de Partida** a pedido de Joseph: lo reemplaza Rendimiento > Límite de velocidad. **Salto de ciclo** tiene cuartos: No, 1/4, 1/2, 3/4, 1, 2 y 3. En el registro, `cycle_skip` va en cuartos.

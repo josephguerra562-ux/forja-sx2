@@ -2989,6 +2989,10 @@ static void UpdateCpuAuto(double elapsed)
 // Compilation 108 (Joseph, 2026-11-02: "reacciona lento"): the menu took 18 s to reach skip 2, 6 s a step, and a race kept the menu's skip for 100 s, at 12-14 FPS instead of 18.
 // A step that holds decides the next one from the same window, far below full speed it takes 3 steps, a failed step waits 10 s for a new scene, downs take 5 s, a video or a load frees
 // the waits, and a step that held isn't taken back for 60 s.
+// Compilation 109 (the 108 on Joseph's PS4 Pro, 2026-11-02): the menu of Most Wanted reached 8 in ~5 s, but a race still came down a step at a time, 52 s at ~12 FPS
+// instead of ~17. Guitar Hero III stayed at 1 (94 %): Auto started at 0 though its factory value is 2 (97 %), and 2 failed on one window of a game whose speed jumps
+// 82-110 %. Dragon Ball Z BT4 went from 4 to 8 at full speed and kept 20 FPS instead of 25-30. Now it starts at the game's factory value and never goes below it,
+// the first scene with frames after a video or a load goes straight back to it, and a step taken near full speed (90 % or more) that costs 15 % of the FPS goes back.
 static void UpdateCycleSkipAuto(double elapsed)
 {
 	struct Window
@@ -3002,7 +3006,7 @@ static void UpdateCycleSkipAuto(double elapsed)
 	static double s_tried_speed = -1.0, s_tried_frames = 0.0, s_tried_fps = 0.0, s_no_up_frames = 0.0, s_no_up_since = 0.0;
 	static int s_tried_from = 0, s_value = 0, s_failed_tries = 0;
 	static double s_down_wait = 120.0, s_seen_frames = 0.0;
-	static bool s_running = false;
+	static bool s_running = false, s_after_break = false;
 	static u32 s_crc = 0;
 	static Window s_up, s_down;
 	if (!EmuConfig.Speedhacks.EECycleSkipAuto || s_video_active)
@@ -3014,15 +3018,22 @@ static void UpdateCycleSkipAuto(double elapsed)
 		{
 			s_no_up_until = s_no_down_until = 0.0;
 			s_down_wait = 120.0;
+			s_after_break = true;
 		}
 		return;
 	}
 	const u32 crc = VMManager::GetDiscCRC();
+	// The game's factory value as a step of the row the Auto reaches (Guitar Hero III: 2 quarters; no factory profile: 0).
+	int factory_q = 0;
+	for (int i = 0; i <= top_step; i++)
+		if (s_profile.crc == crc && ForjaCycleSkipSteps[i] <= s_profile.cycle_skip_factory)
+			factory_q = ForjaCycleSkipSteps[i];
 	if (!s_running || crc != s_crc)
 	{
 		s_running = true;
 		s_crc = crc;
-		s_value = 0;
+		s_value = factory_q;
+		s_after_break = false;
 		s_no_up_until = s_no_down_until = 0.0;
 		s_failed_tries = 0;
 		s_down_wait = 120.0;
@@ -3031,6 +3042,8 @@ static void UpdateCycleSkipAuto(double elapsed)
 		s_up = {};
 		s_down = {};
 	}
+	// The profile read again for the game that is really running (UpdateGameProfile) can bring a higher factory value.
+	s_value = std::max(s_value, factory_q);
 	// A reload of the game's settings brought the profile's value back, or the game has just started.
 	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(s_value / 4);
 	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(s_value % 4);
@@ -3070,10 +3083,22 @@ static void UpdateCycleSkipAuto(double elapsed)
 		{
 			s_no_up_until = s_no_down_until = 0.0;
 			s_down_wait = 120.0;
+			s_after_break = true;
+		}
+		// Compilation 109: the scene after a video or a load is another one; a try from before is judged against neither.
+		if (s_after_break && frames > 0.05)
+		{
+			s_after_break = false;
+			s_tried_speed = -1.0;
+			if (quarters > factory_q)
+			{
+				next = factory_q;
+				ProbeLog("Cycle skip auto: a new scene after a video or a load, back to the game's factory value\n");
+			}
 		}
 		if (s_tried_speed >= 0.0)
 		{
-			if ((speed < s_tried_speed + 3.0 && speed < 98.0) || fps < s_tried_fps * 0.7)
+			if ((speed < s_tried_speed + 3.0 && speed < 98.0) || fps < s_tried_fps * 0.7 || (s_tried_speed >= 90.0 && fps < s_tried_fps * 0.85))
 			{
 				next = s_tried_from;
 				s_no_up_until = elapsed + 300.0;
@@ -3111,7 +3136,7 @@ static void UpdateCycleSkipAuto(double elapsed)
 	}
 	if (next == quarters && s_tried_speed < 0.0 && s_down.checks >= 10)
 	{
-		if (step > 0 && elapsed >= s_no_down_until && s_down.speed / s_down.checks >= 98.5 && s_down.busiest / s_down.checks < 91.0 &&
+		if (quarters > factory_q && elapsed >= s_no_down_until && s_down.speed / s_down.checks >= 98.5 && s_down.busiest / s_down.checks < 91.0 &&
 			s_down.frames / s_down.checks < 0.92)
 		{
 			next = ForjaCycleSkipSteps[step - 1];
@@ -3318,7 +3343,8 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			constexpr int steps = static_cast<int>(std::size(ForjaCycleSkipSteps)) + 1;
 			const int step = (static_cast<int>(ForjaCycleSkipStep()) + delta + steps) % steps;
 			const bool automatic = step == static_cast<int>(ForjaCycleSkipAutoStep);
-			// Compilation 105: Auto starts at no skip, what's best where the game can do without it (UpdateCycleSkipAuto).
+			// Compilation 105: Auto starts at no skip, what's best where the game can do without it. Compilation 109: UpdateCycleSkipAuto starts
+			// it at the game's factory value instead (Guitar Hero III: 2).
 			const int next = automatic ? 0 : ForjaCycleSkipSteps[step];
 			SavePlayerProfile("EE cycle skip", [next, automatic](INISettingsInterface& ini) {
 				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkip", next / 4);

@@ -76,6 +76,9 @@ namespace ForjaGameProfile
 		// every 1, 2, 4 or 8 of its passes; 0 not set (main.cpp's default).
 		int crowd_every = 0;
 		Origin crowd_every_origin = Origin::Global;
+		// [EmuCore/Speedhacks] EECycleSkip * 4 + EECycleSkipQuarters of the factory profile only (compilation 109): where the cycle
+		// skip's Auto starts and the least it goes to (main.cpp, UpdateCycleSkipAuto). 0 with no factory profile.
+		int cycle_skip_factory = 0;
 	};
 
 	// Forja SX2 (compilation 44): the settings center's copy (/data/ForjaSX2/centro/perfiles, fetched from the project's GitHub by
@@ -199,6 +202,13 @@ namespace ForjaGameProfile
 			v.gs_filter_origin = Origin::Player;
 		else if (v.has_factory && factory.GetStringValue("Forja", "GSQuitar", &v.gs_filter))
 			v.gs_filter_origin = Origin::Factory;
+		int skip_whole = 0, skip_quarters = 0;
+		if (v.has_factory)
+		{
+			factory.GetIntValue("EmuCore/Speedhacks", "EECycleSkip", &skip_whole);
+			factory.GetIntValue("EmuCore/Speedhacks", "EECycleSkipQuarters", &skip_quarters);
+		}
+		v.cycle_skip_factory = std::clamp(skip_whole, 0, 3) * 4 + std::clamp(skip_quarters, 0, 3);
 
 		// Compilation 49: VideoMode 2 = auto (main.cpp, UpdateVideoMode), and movie rates down to -6 (27 %).
 		if (v.video_mode >= 0)
