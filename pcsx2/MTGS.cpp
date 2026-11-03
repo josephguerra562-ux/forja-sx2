@@ -11,6 +11,7 @@
 #include "IconsFontAwesome.h"
 #include "VMManager.h"
 #include "OrbisEEProf.h"
+#include "ForjaGsPhase.h" // compilation 110
 
 #include "common/FPControl.h"
 #include "common/ScopedGuard.h"
@@ -451,6 +452,7 @@ void MTGS::MainLoop()
 			mtvu_lock.unlock();
 			{
 				const unsigned long long t0 = __builtin_ia32_rdtsc();
+				ForjaGsPhase::Scope forja_phase(ForjaGsPhase::WaitWork);
 				s_sem_event.WaitForWork();
 				g_orbis_gs_idle_ticks += __builtin_ia32_rdtsc() - t0;
 			}
@@ -647,6 +649,7 @@ void MTGS::MainLoop()
 						if (got == 0)
 						{
 							PS4_WORKER_SCOPE(GSWaitVU);
+							ForjaGsPhase::Scope forja_phase(ForjaGsPhase::WaitVU);
 							orbis_flush_path1_read();
 							mtvu_lock.unlock();
 							for (u32 waited = 0; waited < 20000 && got == 0;)
@@ -726,7 +729,10 @@ void MTGS::MainLoop()
 							((GSRegSIGBLID&)RingBuffer.Regs[0x1080]) = (GSRegSIGBLID&)remainder[2];
 
 							// CSR & 0x2000; is the pageflip id.
-							GSvsync((((u32&)RingBuffer.Regs[0x1000]) & 0x2000) ? 0 : 1, remainder[4] != 0);
+							{
+								ForjaGsPhase::Scope forja_phase(ForjaGsPhase::VSync);
+								GSvsync((((u32&)RingBuffer.Regs[0x1000]) & 0x2000) ? 0 : 1, remainder[4] != 0);
+							}
 #if defined(PCSX2_GS_MTGS_PROBE)
 							s_probe_vsyncs++;
 #endif

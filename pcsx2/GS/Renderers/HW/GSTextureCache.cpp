@@ -3,6 +3,7 @@
 
 #include "GSTextureCache.h"
 #include "ps4/core/GSProfilePS4.h"
+#include "ForjaGsPhase.h" // compilation 110
 #include "GSTextureReplacements.h"
 #include "GSRendererHW.h"
 #include "GS/GSState.h"
@@ -7394,6 +7395,7 @@ std::shared_ptr<GSTextureCache::Palette> GSTextureCache::LookupPaletteObject(con
 void GSTextureCache::Read(Target* t, const GSVector4i& r)
 {
 	OrbisReadTimer orbis_read_timer;
+	ForjaGsPhase::Scope forja_phase(ForjaGsPhase::Readback);
 	if ((!t->m_dirty.empty() && !t->m_dirty.GetTotalRect(t->m_TEX0, t->m_unscaled_size).rintersect(r).rempty()) || r.width() == 0 || r.height() == 0)
 		return;
 
@@ -7520,6 +7522,7 @@ void GSTextureCache::Read(Target* t, const GSVector4i& r)
 void GSTextureCache::Read(Source* t, const GSVector4i& r)
 {
 	OrbisReadTimer orbis_read_timer;
+	ForjaGsPhase::Scope forja_phase(ForjaGsPhase::Readback);
 	if (r.rempty())
 		return;
 

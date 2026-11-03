@@ -1938,6 +1938,9 @@ static void PublishCrowdText()
 static constexpr const char* REPORT_RATINGS[] = {N_("Pésimo"), N_("Mal"), N_("Regular"), N_("Bien"), N_("Perfecto")};
 static constexpr int REPORT_RATING_COUNT = static_cast<int>(std::size(REPORT_RATINGS));
 static int s_report_rating = 2; // "Regular"
+// Compilation 110: whether the player ever moved the word. The 19 reports from Joseph's PS4 of 2026-11-02/03 all said "Regular", the word
+// the row starts on: X sends at once, so an untouched word said nothing. It now goes as "Regular (sin elegir)".
+static bool s_report_rating_chosen = false;
 // Compilation 80: what went wrong, the half of "compatible" no meter sees (the picture, the sound, the controls).
 static constexpr const char* REPORT_ISSUES[] = {N_("Nada en especial"), N_("Va lento"), N_("Fallos de imagen"),
 	N_("Fallos de sonido"), N_("Los controles"), N_("Se cuelga o se cierra")};
@@ -3034,6 +3037,8 @@ static void UpdateCycleSkipAuto(double elapsed)
 		s_crc = crc;
 		s_value = factory_q;
 		s_after_break = false;
+		// Compilation 110: the start was silent, and auditar_automaticos.py read Guitar Hero III's 2 as 0.
+		ProbeLog("Cycle skip auto: starts at %d quarters, the game's factory value\n", factory_q);
 		s_no_up_until = s_no_down_until = 0.0;
 		s_failed_tries = 0;
 		s_down_wait = 120.0;
@@ -3111,6 +3116,8 @@ static void UpdateCycleSkipAuto(double elapsed)
 			{
 				s_failed_tries = 0;
 				s_no_down_until = std::max(s_no_down_until, elapsed + 60.0);
+				// Compilation 110: only the steps given back were logged; in God of War II (the 109) a step from 2 to 3 couldn't be told from its scene.
+				ProbeLog("Cycle skip auto: holds: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f\n", s_tried_speed, speed, s_tried_fps, fps);
 			}
 			s_tried_speed = -1.0;
 		}
@@ -3381,6 +3388,7 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		}
 		case PS4GameMenu::ROW_REPORT: // compilation 77: the player's word for the report, not saved
 			s_report_rating = (s_report_rating + REPORT_RATING_COUNT + delta) % REPORT_RATING_COUNT;
+			s_report_rating_chosen = true;
 			break;
 		case PS4GameMenu::ROW_REPORT_ISSUE: // compilation 80: what went wrong, not saved either
 			s_report_issue = (s_report_issue + REPORT_ISSUE_COUNT + delta) % REPORT_ISSUE_COUNT;
@@ -3678,7 +3686,8 @@ static std::string ReportLogLines(const char* path, size_t read_bytes, size_t ma
 	static constexpr const char* kept[] = {"Performance:", "GS groups:", "Frame pacing:", "Video mode:", "Movie settings:", "GS skip:",
 		"CPU auto:", "[fg]", "VM heartbeat:", "Game settings", "Game profile:", "Render configuration:", "Hitch:", "Audio SPU2 split:",
 		"PS4 audio queue:", "EE JIT cumulative:", "Patches:", "VU1 programs:", "Recommended settings:", "Emulator menu:",
-		"EE guest PC:", "Vulkan compute GS:", "Cycle skip auto:", "GS skip on the fly:", "Speed limit:", "Frame limiter:", "EE cycle skip:"}; // compilation 106
+		"EE guest PC:", "Vulkan compute GS:", "Cycle skip auto:", "GS skip on the fly:", "Speed limit:", "Frame limiter:", "EE cycle skip:", // compilation 106
+		"GS thread split:"}; // compilation 110
 	std::string text;
 	std::FILE* file = std::fopen(path, "rb");
 	if (!file)
@@ -3747,7 +3756,9 @@ static void SendReport(double elapsed)
 		hash = (hash ^ static_cast<unsigned char>(*c)) * 16777619u;
 	char id[16];
 	std::snprintf(id, sizeof(id), "F-%04X", hash & 0xffffu);
-	const char* rating = REPORT_RATINGS[std::clamp(s_report_rating, 0, REPORT_RATING_COUNT - 1)];
+	const std::string rating_text = std::string(REPORT_RATINGS[std::clamp(s_report_rating, 0, REPORT_RATING_COUNT - 1)]) +
+		(s_report_rating_chosen ? "" : " (sin elegir)"); // compilation 110
+	const char* rating = rating_text.c_str();
 	const char* issue = REPORT_ISSUES[std::clamp(s_report_issue, 0, REPORT_ISSUE_COUNT - 1)]; // compilation 80
 	const std::string measured = ForjaSession::Verdict();
 

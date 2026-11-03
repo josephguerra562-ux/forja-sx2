@@ -7,6 +7,7 @@
 #include "ImGui/ImGuiManager.h"
 #include "GS/GS.h"
 #include "ps4/core/WorkerProfilePS4.h"
+#include "ForjaGsPhase.h" // compilation 110
 #include "GS/GSCapture.h"
 #if !defined(PCSX2_PS4)
 #include "GSDeviceOrbis.h"
@@ -484,21 +485,25 @@ void GSReadLocalMemoryUnsync(u8* mem, u32 qwc, u64 BITBLITBUF, u64 TRXPOS, u64 T
 void GSgifTransfer(const u8* mem, u32 size)
 {
 	PS4_WORKER_SCOPE(GSTransfer);
+	ForjaGsPhase::Scope forja_phase(ForjaGsPhase::Transfer); // compilation 110
 	g_gs_renderer->Transfer<3>(mem, size);
 }
 
 void GSgifTransfer1(u8* mem, u32 addr)
 {
+	ForjaGsPhase::Scope forja_phase(ForjaGsPhase::Transfer);
 	g_gs_renderer->Transfer<0>(const_cast<u8*>(mem) + addr, (0x4000 - addr) / 16);
 }
 
 void GSgifTransfer2(u8* mem, u32 size)
 {
+	ForjaGsPhase::Scope forja_phase(ForjaGsPhase::Transfer);
 	g_gs_renderer->Transfer<1>(const_cast<u8*>(mem), size);
 }
 
 void GSgifTransfer3(u8* mem, u32 size)
 {
+	ForjaGsPhase::Scope forja_phase(ForjaGsPhase::Transfer);
 	g_gs_renderer->Transfer<2>(const_cast<u8*>(mem), size);
 }
 

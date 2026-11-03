@@ -574,4 +574,10 @@ Biblioteca, Disco, Recientes, Favoritos, **Memoria o USB** (qué juegos mostrar:
 
 **Desde la 109**, el Salto Auto empieza en el valor de fábrica del juego y no baja de ahí (Guitar Hero III: 2). Después de un video o una carga, vuelve directo a ese valor en vez de bajar de a un paso. También devuelve un paso que, con el juego cerca de velocidad completa, baja los FPS más de 15 %. Sigue apagado de fábrica.
 
+**Desde la 110**, los registros traen tres medidores nuevos, sin cambiar cómo se juega:
+- El medidor del EE cuenta solo el tiempo en que el EE trabaja; las esperas van en una línea aparte.
+- Una línea dice en qué se va el hilo del GS: esperar, transferencias, dibujar, leer de la gráfica, fin de cuadro.
+- El Salto Auto anota con qué valor empieza y cada paso que mantiene.
+- En los reportes, si no mueves la palabra (Pésimo a Perfecto), sale "Regular (sin elegir)" en vez de "Regular".
+
 **Avance rápido se quitó de Partida** a pedido de Joseph: lo reemplaza Rendimiento > Límite de velocidad. **Salto de ciclo** tiene cuartos: No, 1/4, 1/2, 3/4, 1, 2 y 3. En el registro, `cycle_skip` va en cuartos.

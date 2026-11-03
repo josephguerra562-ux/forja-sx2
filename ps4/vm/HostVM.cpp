@@ -21,6 +21,8 @@
 #include "ps4/core/ThreadAffinityPS4.h"
 #include "R5900.h"
 #include "Memory.h"
+#include "OrbisEEProf.h" // compilation 110: g_orbis_ee_waiting
+#include "ForjaGsPhase.h"
 #include <unistd.h>
 #include <string>
 extern double GetVerticalFrequency(); // pcsx2/GS.h (Counters.cpp): the PS2's refresh at the game's own rate (compilation 77)
@@ -72,6 +74,10 @@ extern void ProbeLog(const char*, ...);
 // program counter, which the recompiler writes at the end of each block, into buckets of 16 bytes, and every 1000 samples (~5 s) logs the busiest. A
 // race is harmless: a sample off by one block. It runs for everyone so reports bring it too; the marker vm-sin-medidor-ee turns it off, and with the
 // marker vm-ee-pc-codigo it also logs the game's instructions around the 3 busiest (never in a report: ReportLogLines keeps only "EE guest PC:").
+// Compilation 110: a sample with the EE thread in a wait (the speed limiter, the GS's queue, the VU1; OrbisEEWaitScope) is counted apart. Its PC is wherever
+// the EE stopped, often the PS2's own idle loop (00081fc0, EENULL_START): Budokai 3 and Tourist Trophy showed it at 25-29 % of the samples exactly
+// when they had time to spare (reports F-5E51 and F-C01D, 2026-11-02). "samples" now counts the working ones only, so its shares are of the EE's work,
+// and "EE guest PC: waiting=W of T" says how much was left out. The same thread reads what the GS thread is doing (ForjaGsPhase.h): "GS thread split".
 static void* ForjaEePcMeterThread(void*)
 {
 	PS4ThreadAffinity::PinCurrentThreadToHelpers("ee pc");
@@ -85,50 +91,67 @@ static void* ForjaEePcMeterThread(void*)
 	static constexpr u32 kWindow = 1000;
 	static constexpr u32 kShown = 8;
 	Bucket buckets[kBuckets] = {};
-	u32 samples = 0, dropped = 0;
+	u32 samples = 0, dropped = 0, waiting = 0, total = 0;
+	u32 gs_phases[ForjaGsPhase::Count] = {};
 	for (;;)
 	{
 		usleep(5000);
 		if (VMManager::GetState() != VMState::Running)
 			continue;
-		const u32 pc = cpuRegs.pc & ~15u;
-		u32 slot = (pc >> 4) * 2654435761u >> 23; // 512 slots
-		u32 tries = 0;
-		while (buckets[slot].count != 0 && buckets[slot].pc != pc && tries < 8)
-		{
-			slot = (slot + 1) % kBuckets;
-			tries++;
-		}
-		if (buckets[slot].count == 0 || buckets[slot].pc == pc)
-		{
-			buckets[slot].pc = pc;
-			buckets[slot].count++;
-		}
+		const int gs_phase = ForjaGsPhase::now.phase.load(std::memory_order_relaxed);
+		gs_phases[(gs_phase >= 0 && gs_phase < ForjaGsPhase::Count) ? gs_phase : ForjaGsPhase::Other]++;
+		if (g_orbis_ee_waiting.load(std::memory_order_relaxed) > 0)
+			waiting++;
 		else
 		{
-			dropped++;
-		}
-		if (++samples < kWindow)
-			continue;
-		std::partial_sort(std::begin(buckets), std::begin(buckets) + kShown, std::end(buckets), [](const Bucket& a, const Bucket& b) { return a.count > b.count; });
-		char line[256];
-		int size = std::snprintf(line, sizeof(line), "EE guest PC: samples=%u dropped=%u top=", samples, dropped);
-		for (u32 i = 0; i < kShown && buckets[i].count != 0 && size > 0 && size < static_cast<int>(sizeof(line)) - 20; i++)
-			size += std::snprintf(line + size, sizeof(line) - size, "%s%08x:%u", i ? "," : "", buckets[i].pc, buckets[i].count);
-		ProbeLog("%s\n", line);
-		if (with_code && eeMem)
-		{
-			for (u32 i = 0; i < 3 && buckets[i].count != 0; i++)
+			samples++;
+			const u32 pc = cpuRegs.pc & ~15u;
+			u32 slot = (pc >> 4) * 2654435761u >> 23; // 512 slots
+			u32 tries = 0;
+			while (buckets[slot].count != 0 && buckets[slot].pc != pc && tries < 8)
 			{
-				const u32 address = buckets[i].pc & 0x01FFFFFFu;
-				if (address + 32 > Ps2MemSize::MainRam)
-					continue;
-				const u32* code = reinterpret_cast<const u32*>(eeMem->Main + address);
-				ProbeLog("EE guest code %08x: %08x %08x %08x %08x %08x %08x %08x %08x\n", buckets[i].pc, code[0], code[1], code[2], code[3], code[4], code[5], code[6], code[7]);
+				slot = (slot + 1) % kBuckets;
+				tries++;
+			}
+			if (buckets[slot].count == 0 || buckets[slot].pc == pc)
+			{
+				buckets[slot].pc = pc;
+				buckets[slot].count++;
+			}
+			else
+			{
+				dropped++;
 			}
 		}
+		if (++total < kWindow)
+			continue;
+		if (samples > 0)
+		{
+			std::partial_sort(std::begin(buckets), std::begin(buckets) + kShown, std::end(buckets), [](const Bucket& a, const Bucket& b) { return a.count > b.count; });
+			char line[256];
+			int size = std::snprintf(line, sizeof(line), "EE guest PC: samples=%u dropped=%u top=", samples, dropped);
+			for (u32 i = 0; i < kShown && buckets[i].count != 0 && size > 0 && size < static_cast<int>(sizeof(line)) - 20; i++)
+				size += std::snprintf(line + size, sizeof(line) - size, "%s%08x:%u", i ? "," : "", buckets[i].pc, buckets[i].count);
+			ProbeLog("%s\n", line);
+			if (with_code && eeMem)
+			{
+				for (u32 i = 0; i < 3 && buckets[i].count != 0; i++)
+				{
+					const u32 address = buckets[i].pc & 0x01FFFFFFu;
+					if (address + 32 > Ps2MemSize::MainRam)
+						continue;
+					const u32* code = reinterpret_cast<const u32*>(eeMem->Main + address);
+					ProbeLog("EE guest code %08x: %08x %08x %08x %08x %08x %08x %08x %08x\n", buckets[i].pc, code[0], code[1], code[2], code[3], code[4], code[5], code[6], code[7]);
+				}
+			}
+		}
+		ProbeLog("EE guest PC: waiting=%u of %u samples (the EE thread in a wait: speed limiter, GS queue, VU1)\n", waiting, total);
+		ProbeLog("GS thread split: samples=%u wait_work=%u wait_vu=%u transfer=%u draw=%u readback=%u vsync=%u other=%u\n", total,
+			gs_phases[ForjaGsPhase::WaitWork], gs_phases[ForjaGsPhase::WaitVU], gs_phases[ForjaGsPhase::Transfer], gs_phases[ForjaGsPhase::Draw],
+			gs_phases[ForjaGsPhase::Readback], gs_phases[ForjaGsPhase::VSync], gs_phases[ForjaGsPhase::Other]);
 		std::memset(buckets, 0, sizeof(buckets));
-		samples = dropped = 0;
+		std::memset(gs_phases, 0, sizeof(gs_phases));
+		samples = dropped = waiting = total = 0;
 	}
 	return nullptr;
 }

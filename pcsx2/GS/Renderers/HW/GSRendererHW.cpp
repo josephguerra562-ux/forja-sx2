@@ -6,6 +6,7 @@
 #include "GS/GSGL.h"
 #include "GS/GSPerfMon.h"
 #include "ps4/core/GSProfilePS4.h"
+#include "ForjaGsPhase.h" // compilation 110
 #include "GS/GSUtil.h"
 #include "Host.h"
 #include "common/Console.h"
@@ -3304,6 +3305,7 @@ void GSRendererHW::Draw()
 	if (forja_gs_timer.t0 && forja_gs_timer.group)
 		ForjaGsNote(*forja_gs_timer.group, m_context->TEX0, m_context->ALPHA, PRIM->TME, forja_desc);
 	PS4_GS_SCOPE(HWDraw);
+	ForjaGsPhase::Scope forja_phase(ForjaGsPhase::Draw);
 	OrbisHwDrawTimer orbis_hwdraw_timer;
 	g_orbis_ctx = m_context; g_orbis_tme = PRIM->TME; g_orbis_prim = (unsigned)m_vt.m_primclass; g_orbis_verts = (unsigned)m_index->tail;
 	// Orbis: bring-up draw counter + target info.
