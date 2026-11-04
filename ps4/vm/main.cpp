@@ -3015,6 +3015,14 @@ static void UpdateCpuAuto(double elapsed)
 // Compilation 114 (the 113 on Joseph's PS4 Pro, 2026-11-03): in the menu of Most Wanted the step to 8 took the speed from 60 to 100 %, and 20 s later the early
 // step down tried 4: the menu ran at ~61-72 % for ~11 s ("va lento"). Guitar Hero III at 2x stayed 71 s at 4 and 87 %, untried: no part reached 85 %, its
 // GS waiting on the GPU. Now a step that gained 25 points or more isn't taken back for 120 s, and under 90 % a step is tried whatever the busiest part says.
+// Compilation 115 (the 114 on Joseph's PS4 Pro, 2026-11-03): a failed step blocked steps up for 5 minutes, a rule from the 105, when one window judged a step.
+// Guitar Hero III went from 1x to 2x in the menu, the step after it was judged against the 1x normal, and it stayed 5 minutes at 2 and 84 %; Shadow of the
+// Colossus tried 4 in a dip to 49 %, judged against the normal FPS, and later stayed 111 s at 1 and 76 %. Now the block starts at 60 s and doubles with each
+// failed step in a row, up to 300; a pause or the menu (its settings may have changed) gives back the step being judged and forgets the normal and the
+// blocks; a step set off under 70 % is judged against its own window; a step up is judged on the mean of two windows (~6 s), as with shorter blocks noise
+// kept steps that cost FPS (GTA at 88 %: 0 -> 1, 24 % fewer FPS, and a game at 88 % never steps down); after a bad window, a step down is judged on the mean
+// of the two; and a step up that gains too little without costing FPS, with the game under 90 %, goes one step more instead of back (Guitar Hero III at 2x:
+// 2 at 85 %, 3 at 85 %, 4 at 87 %, 8 at 98 %).
 static void UpdateCycleSkipAuto(double elapsed)
 {
 	struct Window
@@ -3043,10 +3051,11 @@ static void UpdateCycleSkipAuto(double elapsed)
 	static double s_base_fps = 0.0, s_base_speed = 0.0;
 	const auto forget_normal = [] { s_normal_count = s_normal_next = s_slow_windows = s_good_windows = 0; };
 	// Compilation 112: a step down waiting for its judgment (the value it came from, -1 for none) and the normal it is judged by; whether the
-	// step being judged (up or down) already had one bad window.
+	// step being judged already had one window (a step up, any since the 115; a step down, a bad one), and that window's speed and FPS (115).
 	static int s_down_from = -1;
 	static double s_down_base_fps = 0.0, s_down_base_speed = 0.0;
 	static bool s_one_bad = false;
+	static double s_first_speed = 0.0, s_first_fps = 0.0;
 	// The value's normal in this scene: the median speed and FPS of its last windows whose share of frames is within 0.25 of `frames` (the
 	// margin of "another scene"; 0.15 in the 111). False with fewer than 3.
 	const auto normal_of = [](double frames, double* speed, double* fps) {
@@ -3120,6 +3129,23 @@ static void UpdateCycleSkipAuto(double elapsed)
 		s_settle_until = elapsed + 2.0;
 		s_up = {};
 		s_down = {};
+		// Compilation 115: and its settings may have changed (Guitar Hero III went from 1x to 2x, and the step after it was judged against the 1x
+		// normal): the step being judged goes back, and the normal and the blocks are forgotten.
+		const int back = s_tried_speed >= 0.0 ? s_tried_from : s_down_from >= 0 ? s_down_from : s_value;
+		s_tried_speed = -1.0;
+		s_down_from = -1;
+		s_one_bad = false;
+		s_no_up_until = s_no_down_until = 0.0;
+		s_failed_tries = 0;
+		forget_normal();
+		if (back != s_value)
+		{
+			ProbeLog("Cycle skip auto: %d -> %d quarters (after a pause or the menu, the step being judged goes back)\n", s_value, back);
+			s_value = back;
+			EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(back / 4);
+			EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(back % 4);
+			PublishCycleSkipText();
+		}
 	}
 	s_last_check = elapsed;
 	if (elapsed < s_settle_until)
@@ -3169,12 +3195,22 @@ static void UpdateCycleSkipAuto(double elapsed)
 		if (s_down_from >= 0)
 		{
 			// Compilation 113: and under 95 % it comes back even with more FPS (Guitar Hero at 2x, the music at 86-92 %).
-			const bool bad = (speed < s_down_base_speed - 3.0 && fps < s_down_base_fps * 1.05) || (s_down_base_speed >= 90.0 && fps < s_down_base_fps * 0.85) ||
-							 (speed < 95.0 && s_down_base_speed >= 95.0);
-			if (bad && !s_one_bad)
+			const auto down_bad = [](double s, double f) {
+				return (s < s_down_base_speed - 3.0 && f < s_down_base_fps * 1.05) || (s_down_base_speed >= 90.0 && f < s_down_base_fps * 0.85) ||
+					   (s < 95.0 && s_down_base_speed >= 95.0);
+			};
+			if (down_bad(speed, fps) && !s_one_bad)
+			{
 				s_one_bad = true;
+				s_first_speed = speed;
+				s_first_fps = fps;
+			}
 			else
 			{
+				// Compilation 115: after a bad window, the second one judges the mean of the two (the 112-114 judged the second alone).
+				const double judged_speed = s_one_bad ? (s_first_speed + speed) / 2.0 : speed;
+				const double judged_fps = s_one_bad ? (s_first_fps + fps) / 2.0 : fps;
+				const bool bad = down_bad(judged_speed, judged_fps);
 				if (bad)
 				{
 					next = s_down_from;
@@ -3182,39 +3218,56 @@ static void UpdateCycleSkipAuto(double elapsed)
 					s_down_wait = std::min(s_down_wait * 2.0, 240.0);
 				}
 				ProbeLog("Cycle skip auto: the step down %s: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f\n", bad ? "cost, back up" : "holds", s_down_base_speed,
-					speed, s_down_base_fps, fps);
+					judged_speed, s_down_base_fps, judged_fps);
 				s_down_from = -1;
 				s_one_bad = false;
 			}
 		}
-		// Compilation 112: a step is undone after two bad windows in a row; one good window keeps it.
-		const bool tried_bad = s_tried_speed >= 0.0 &&
-							   ((speed < s_tried_speed + 3.0 && speed < 98.0) || fps < s_base_fps * 0.7 || (s_base_speed >= 90.0 && fps < s_base_fps * 0.85));
-		if (tried_bad && !s_one_bad)
+		// Compilation 112: a step is undone after two bad windows in a row; one good window kept it. Compilation 115: a step up is always judged on
+		// the mean of two windows (~6 s): the first is kept and the second judges.
+		if (s_tried_speed >= 0.0 && !s_one_bad)
+		{
 			s_one_bad = true;
+			s_first_speed = speed;
+			s_first_fps = fps;
+		}
 		else if (s_tried_speed >= 0.0)
 		{
 			s_one_bad = false;
-			if (tried_bad)
+			const double judged_speed = (s_first_speed + speed) / 2.0, judged_fps = (s_first_fps + fps) / 2.0;
+			const bool tried_bad = (judged_speed < s_tried_speed + 3.0 && judged_speed < 98.0) || judged_fps < s_base_fps * 0.7 ||
+								   (s_base_speed >= 90.0 && judged_fps < s_base_fps * 0.85);
+			// Compilation 115: too little speed but no FPS lost, and the game still under 90 %: one step more, judged against the same normal.
+			if (tried_bad && step < top_step && judged_speed < 90.0 && judged_fps >= s_base_fps * 0.95)
 			{
-				next = s_tried_from;
-				s_no_up_until = elapsed + 300.0;
-				s_no_up_frames = s_tried_frames;
-				s_no_up_since = elapsed;
-				s_failed_tries++;
-				ProbeLog("Cycle skip auto: no use in this scene: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f (normal before: %.1f FPS at %.0f %%)\n", s_tried_speed, speed,
-					s_tried_fps, fps, s_base_fps, s_base_speed);
+				next = ForjaCycleSkipSteps[step + 1];
+				ProbeLog("Cycle skip auto: not enough yet, one step more: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f (normal before: %.1f FPS at %.0f %%)\n",
+					s_tried_speed, judged_speed, s_tried_fps, judged_fps, s_base_fps, s_base_speed);
 			}
 			else
 			{
-				s_failed_tries = 0;
-				// Compilation 113: 20 s (60 until the 112); 114: 120 s after a step that gained 25 points or more.
-				s_no_down_until = std::max(s_no_down_until, elapsed + (speed - s_tried_speed >= 25.0 ? 120.0 : 20.0));
-				// Compilation 110: only the steps given back were logged; in God of War II (the 109) a step from 2 to 3 couldn't be told from its scene.
-				ProbeLog("Cycle skip auto: holds: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f (normal before: %.1f FPS at %.0f %%)\n", s_tried_speed, speed, s_tried_fps,
-					fps, s_base_fps, s_base_speed);
+				if (tried_bad)
+				{
+					next = s_tried_from;
+					// Compilation 115: 60 s, doubled with each failed step in a row up to 300 (always 300 since the 105).
+					s_no_up_until = elapsed + std::min(60.0 * (1 << std::min(s_failed_tries, 3)), 300.0);
+					s_no_up_frames = s_tried_frames;
+					s_no_up_since = elapsed;
+					s_failed_tries++;
+					ProbeLog("Cycle skip auto: no use in this scene: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f (normal before: %.1f FPS at %.0f %%)\n", s_tried_speed,
+						judged_speed, s_tried_fps, judged_fps, s_base_fps, s_base_speed);
+				}
+				else
+				{
+					s_failed_tries = 0;
+					// Compilation 113: 20 s (60 until the 112); 114: 120 s after a step that gained 25 points or more.
+					s_no_down_until = std::max(s_no_down_until, elapsed + (judged_speed - s_tried_speed >= 25.0 ? 120.0 : 20.0));
+					// Compilation 110: only the steps given back were logged; in God of War II (the 109) a step from 2 to 3 couldn't be told from its scene.
+					ProbeLog("Cycle skip auto: holds: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f (normal before: %.1f FPS at %.0f %%)\n", s_tried_speed, judged_speed,
+						s_tried_fps, judged_fps, s_base_fps, s_base_speed);
+				}
+				s_tried_speed = -1.0;
 			}
-			s_tried_speed = -1.0;
 		}
 		if (next == quarters && elapsed < s_no_up_until && elapsed - s_no_up_since >= 10.0 * (1 << std::clamp(s_failed_tries - 1, 0, 4)) && frames > 0.05 && std::abs(frames - s_no_up_frames) >= 0.25)
 		{
@@ -3232,8 +3285,9 @@ static void UpdateCycleSkipAuto(double elapsed)
 			s_tried_fps = fps;
 			s_tried_from = quarters;
 			// Compilation 111: the value's normal FPS and speed in this scene (without the scene's filter, the menu of Most Wanted was judged against
-			// the race's FPS). With fewer than 3 windows, this window's, as the 110.
-			if (!normal_of(frames, &s_base_speed, &s_base_fps))
+			// the race's FPS). With fewer than 3 windows, this window's, as the 110. Compilation 115: and under 70 %, a strong dip, the dip's (Shadow of
+			// the Colossus: 2 -> 4 in a dip to 49 % was judged against the normal 11.5 FPS, not the dip's 5.9).
+			if (speed < 70.0 || !normal_of(frames, &s_base_speed, &s_base_fps))
 			{
 				s_base_fps = fps;
 				s_base_speed = speed;

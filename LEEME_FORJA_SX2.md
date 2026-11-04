@@ -588,4 +588,6 @@ Biblioteca, Disco, Recientes, Favoritos, **Memoria o USB** (qué juegos mostrar:
 
 **Desde la 114**, tras una subida que ganó 25 puntos de velocidad o más (como el menú de Most Wanted), el Salto Auto espera 2 minutos antes de probar bajar. Y si el juego va bajo 90 %, prueba subir aunque ninguna parte del emulador vaya al tope (Guitar Hero a 2x). Sigue apagado de fábrica.
 
+**Desde la 115**, una prueba que no sirve bloquea nuevas subidas 1 minuto, no 5. Si vuelve a fallar seguido, la espera se dobla, hasta 5 minutos. Al volver del menú L3+R3 (pudiste cambiar la resolución u otro ajuste), el paso que se estaba probando se devuelve y los bloqueos se borran. Cada subida se juzga con unos 6 s de juego, no con 3. Y si un paso casi no ayuda pero tampoco quita FPS, y el juego sigue lento, prueba uno más en vez de volver: Guitar Hero a 2x solo mejora con 8. Sigue apagado de fábrica.
+
 **Avance rápido se quitó de Partida** a pedido de Joseph: lo reemplaza Rendimiento > Límite de velocidad. **Salto de ciclo** tiene cuartos: No, 1/4, 1/2, 3/4, 1, 2 y 3. En el registro, `cycle_skip` va en cuartos.
