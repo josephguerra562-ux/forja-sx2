@@ -2320,6 +2320,11 @@ namespace PS4GameMenu
 						draw->AddLine(ip(-8, 2), ip(4, 2), icon_line, lw);
 						draw->AddLine(ip(4, 2), ip(-4, 15), icon_line, lw);
 						break;
+					case ROW_DRAW_THREAD: // two lanes, one handing over to the other (compilation 116)
+						draw->AddLine(ip(-15, -8), ip(15, -8), icon_line, lw);
+						draw->AddLine(ip(-15, 8), ip(15, 8), icon_line, lw);
+						draw->AddLine(ip(-4, -8), ip(4, 8), icon_line, lw);
+						break;
 					case ROW_GS_FILTER: // a picture crossed out (compilation 51)
 						draw->AddRect(ip(-15, -11), ip(15, 11), icon_line, 3 * scale, lw, 0);
 						draw->AddLine(ip(-11, 8), ip(11, -8), icon_line, lw);
@@ -2484,7 +2489,7 @@ namespace PS4GameMenu
 					action = T("ELEGIR  ·  X  ·  CUADRADO"); // compilation 52: Cuadrado brings everything back
 				else if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)
 					action = T("ELEGIR  ·  X");
-				else if (row == ROW_TEXTURES)
+				else if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD)
 					action = T("ELEGIR");
 				else if (row == ROW_RECOMMENDED)
 					action = "X";

@@ -970,6 +970,12 @@ tr: ソフトウェア描画の観客：  < %u フレームに 1 回 >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: このゲームは観客を CPU で描いていて、それが一番の遅さの原因です。回数を減らす = 速くなる。観客の動きは少しなめらかでなくなります。このゲーム用に保存されます
 
+es: Grabar dibujos en otro hilo:  < %s >
+tr: 描画を別のスレッドで書き込み：  < %s >
+
+es: Prueba: la gráfica se graba en un núcleo libre y el GS sigue. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
+tr: テスト：グラフィックを空きコアで書き込み、GSは処理を続けます。ゲームが終了したり表示がおかしい場合は「いいえ」に。このゲーム用に保存
+
 es: Pésimo
 tr: 最悪
 

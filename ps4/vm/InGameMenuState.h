@@ -52,6 +52,9 @@ namespace PS4GameMenu
 		ROW_GS_FILTER, // compilation 51
 		ROW_TEXTURES,
 		ROW_CHEATS, // compilation 58
+		// Compilation 116: "Grabar dibujos en otro hilo", the GS recorder (GS/Renderers/Vulkan/ForjaVkRecorder.h), here until it is
+		// measured in the six test games ([Forja] GrabarEnOtroHilo).
+		ROW_DRAW_THREAD,
 		// Reportes (compilation 86, Joseph, 2026-10-24: "entre no tocar y sistema ... para que diga reportes"; until 85 in Sistema)
 		ROW_REPORT, // compilation 77: "Reportar este juego" (main.cpp, SendReport; ForjaReport.cpp)
 		// Compilation 80: what went wrong, for the report: the picture, the sound and the controls are what no meter sees.

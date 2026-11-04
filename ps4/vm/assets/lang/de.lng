@@ -970,6 +970,12 @@ tr: Publikum per Software:  < 1 von %u Bildern >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: Dieses Spiel zeichnet sein Publikum mit der CPU, das bremst es am meisten. Seltener = schneller; das Publikum bewegt sich weniger flüssig. Wird für dieses Spiel gespeichert
 
+es: Grabar dibujos en otro hilo:  < %s >
+tr: Zeichnungen in eigenem Thread aufzeichnen:  < %s >
+
+es: Prueba: la gráfica se graba en un núcleo libre y el GS sigue. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
+tr: Test: Die Grafik wird auf einem freien Kern aufgezeichnet und der GS läuft weiter. Wenn das Spiel schließt oder falsch aussieht, auf Nein stellen. Für dieses Spiel gespeichert
+
 es: Pésimo
 tr: Sehr schlecht
 

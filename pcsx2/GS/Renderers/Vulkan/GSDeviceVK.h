@@ -26,6 +26,18 @@
 
 class VKSwapChain;
 
+#if defined(PCSX2_PS4_VM_BOOT)
+// Forja SX2 (compilation 116): the GS recorder, "Grabar dibujos en otro hilo" (ForjaVkRecorder.h, in GSDeviceVK.cpp).
+namespace ForjaVkRec
+{
+	extern bool g_on;
+	void Drain();
+	void FrameBoundary();
+	void Shutdown();
+	void DeviceCreated();
+} // namespace ForjaVkRec
+#endif
+
 class GSDeviceVK final : public GSDevice
 {
 public:
@@ -98,7 +110,16 @@ public:
 
 	// These command buffers are allocated per-frame. They are valid until the command buffer
 	// is submitted, after that you should call these functions again.
-	__fi VkCommandBuffer GetCurrentCommandBuffer() const { return m_current_command_buffer; }
+	__fi VkCommandBuffer GetCurrentCommandBuffer() const
+	{
+#if defined(PCSX2_PS4_VM_BOOT)
+		// Forja SX2 (compilation 116): while the GS recorder makes the draws' commands on its thread (ForjaVkRecorder.h),
+		// whoever writes the command buffer directly waits for its queue to empty first.
+		if (ForjaVkRec::g_on)
+			ForjaVkRec::Drain();
+#endif
+		return m_current_command_buffer;
+	}
 	__fi VKStreamBuffer& GetTextureUploadBuffer() { return m_texture_stream_buffer; }
 	VkCommandBuffer GetCurrentInitCommandBuffer();
 
@@ -800,7 +821,8 @@ private:
 	bool CreatePersistentDescriptorSets();
 
 	void SetInitialState(VkCommandBuffer cmdbuf);
-	void ApplyBaseState(u32 flags, VkCommandBuffer cmdbuf);
+	// queue (Forja SX2, compilation 116): from ApplyTFXState, through the GS recorder's queue when it is on.
+	void ApplyBaseState(u32 flags, VkCommandBuffer cmdbuf, bool queue = false);
 
 	// Which bindings/state has to be updated before the next draw.
 	// PS5 port (vk-285-102): always stored as a whole word. LLVM narrows "flags |= constant" to a byte OR on

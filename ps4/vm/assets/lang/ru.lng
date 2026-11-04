@@ -970,6 +970,12 @@ tr: Программная толпа:  < 1 из %u кадров >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: Эта игра рисует толпу процессором, и это тормозит её сильнее всего. Реже = быстрее; толпа движется менее плавно. Сохраняется для этой игры
 
+es: Grabar dibujos en otro hilo:  < %s >
+tr: Запись отрисовки в другом потоке:  < %s >
+
+es: Prueba: la gráfica se graba en un núcleo libre y el GS sigue. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
+tr: Тест: графика записывается на свободном ядре, а GS продолжает работу. Если игра закрывается или выглядит неправильно, выберите «Нет». Сохраняется для этой игры
+
 es: Pésimo
 tr: Ужасно
 

@@ -970,6 +970,12 @@ tr: Software crowd:  < 1 of every %u frames >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: This game draws its crowd with the CPU, what slows it down the most. Fewer times = more speed; the crowd moves less smoothly. Saved for this game
 
+es: Grabar dibujos en otro hilo:  < %s >
+tr: Record draws on another thread:  < %s >
+
+es: Prueba: la gráfica se graba en un núcleo libre y el GS sigue. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
+tr: Test: the graphics are recorded on a free core and the GS keeps going. If the game closes or looks wrong, set it to No. Saved for this game
+
 es: Pésimo
 tr: Awful
 

@@ -970,6 +970,12 @@ tr: 软件绘制观众：  < 每 %u 帧画 1 次 >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: 此游戏用 CPU 绘制观众，这是最拖慢它的部分。次数越少 = 速度越快；观众动作不那么流畅。为此游戏保存
 
+es: Grabar dibujos en otro hilo:  < %s >
+tr: 在另一个线程中记录绘制：  < %s >
+
+es: Prueba: la gráfica se graba en un núcleo libre y el GS sigue. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
+tr: 测试：图形在未使用的核心上记录，GS 继续运行。如果游戏关闭或画面出错，请设为否。仅为此游戏保存
+
 es: Pésimo
 tr: 很差
 

@@ -36,6 +36,9 @@
 #include "OrbisDriver.h" // vk-285-115: ps5vk or RADV (the same objects link with either)
 #include "OrbisExit.h" // vk-285-115: the app ends through the system (_exit() is a SIGSYS on the console)
 #endif
+#if defined(PCSX2_PS4_VM_BOOT)
+#include "GS/Renderers/Vulkan/ForjaVkRecorder.h" // Forja SX2 (compilation 116): the draws' commands on their own thread
+#endif
 #if defined(PCSX2_PS4)
 #include <cstdio> // Forja SX2: the GPU-side flip's guard file
 #include <unistd.h> // (AI-assisted) access() for the PS4 flip marker
@@ -1232,6 +1235,12 @@ VkRenderPass GSDeviceVK::GetRenderPassForRestarting(VkRenderPass pass)
 
 VkCommandBuffer GSDeviceVK::GetCurrentInitCommandBuffer()
 {
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2 (compilation 116): the init buffer comes from the same pool as the one the GS recorder writes, and a pool is
+	// one thread's at a time: wait for its queue.
+	if (ForjaVkRec::g_on)
+		ForjaVkRec::Drain();
+#endif
 	FrameResources& res = m_frame_resources[m_current_frame];
 	VkCommandBuffer buf = res.command_buffers[0];
 	if (res.init_buffer_used)
@@ -1979,7 +1988,7 @@ void GSDeviceVK::OrbisGpWrite(const void* meta)
 		f.overflow = true;
 		return;
 	}
-	vkCmdWriteTimestamp(m_current_command_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, s_gp_pool,
+	vkCmdWriteTimestamp(GetCurrentCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, s_gp_pool, // Forja SX2 (116): after the recorder's queue
 		m_current_frame * ORBIS_GP_MAX + f.count);
 	f.meta[f.count++] = *static_cast<const OrbisGpMeta*>(meta);
 }
@@ -2390,6 +2399,10 @@ static void OrbisDropRefusedCommands(VkDevice device, VkCommandPool pool, VkComm
 
 void GSDeviceVK::SubmitCommandBuffer(VKSwapChain* present_swap_chain)
 {
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2 (compilation 116): the GS recorder's last commands into this command buffer before it ends.
+	ForjaVkRec::Drain();
+#endif
 	FrameResources& resources = m_frame_resources[m_current_frame];
 
 	// End the current command buffer.
@@ -2841,6 +2854,11 @@ void GSDeviceVK::ActivateCommandBuffer(u32 index)
 	vmaSetCurrentFrameIndex(m_allocator, static_cast<u32>(m_next_fence_counter));
 #ifdef ORBIS_VULKAN
 	OrbisGpBegin(index); // vk-285-94
+#endif
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2 (compilation 116): the GS recorder takes the player's choice here, with its queue empty (the submission
+	// drained it), and says what it did every ~5 s.
+	ForjaVkRec::FrameBoundary();
 #endif
 }
 
@@ -3574,6 +3592,9 @@ bool GSDeviceVK::Create(GSVSyncMode vsync_mode, bool allow_present_throttle)
 {
 	if (!GSDevice::Create(vsync_mode, allow_present_throttle))
 		return false;
+#if defined(PCSX2_PS4_VM_BOOT)
+	ForjaVkRec::DeviceCreated(); // Forja SX2 (compilation 116): the GS recorder may start again (after a Shutdown)
+#endif
 
 	if (!CreateDeviceAndSwapChain())
 		return false;
@@ -3709,6 +3730,9 @@ void GSDeviceVK::Destroy()
 		ExecuteCommandBuffer(false);
 		WaitForGPUIdle();
 	}
+#if defined(PCSX2_PS4_VM_BOOT)
+	ForjaVkRec::Shutdown(); // Forja SX2 (compilation 116): the GS recorder's thread, its queue empty after the last submission
+#endif
 #if defined(PCSX2_PS4)
 	PS4CompleteDeferredFlip(UINT64_MAX);
 	OrbisFrameGenRelease(); // Forja SX2: its images and pipelines before the device
@@ -3934,7 +3958,7 @@ GSDevice::PresentResult GSDeviceVK::BeginPresent(bool frame_skip)
 	if (resources.pipeline_statistics_query == QueryState::Querying)
 	{
 		resources.pipeline_statistics_query = QueryState::Ready;
-		vkCmdEndQuery(m_current_command_buffer, m_pipeline_statistics_query_pool, m_current_frame);
+		vkCmdEndQuery(GetCurrentCommandBuffer(), m_pipeline_statistics_query_pool, m_current_frame); // Forja SX2 (116): after the recorder's queue
 	}
 
 	VkResult res = m_resize_requested ? VK_ERROR_OUT_OF_DATE_KHR : m_swap_chain->AcquireNextImage();
@@ -4475,6 +4499,33 @@ void GSDeviceVK::DrawIndexedPrimitiveVSExpand(int offset, int count, bool vs_ind
 
 void GSDeviceVK::Draw(const GSHWDrawConfig& config, int offset, int count)
 {
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2 (compilation 116): DrawIndexedPrimitive and DrawIndexedPrimitiveVSExpand for the hardware draws only, through
+	// the GS recorder (ForjaVkRecorder.h); the utility draws keep calling those, and Vulkan at once.
+	pxAssert(offset + count <= (int)m_index.count);
+	g_perfmon.Put(GSPerfMon::DrawCalls, 1);
+#ifdef ORBIS_VULKAN
+	m_orbis_submit_draws++;
+#endif
+	const VkCommandBuffer cmdbuf = m_current_command_buffer;
+	if (config.vs.expand != GSHWDrawConfig::VSExpand::None)
+	{
+		if (config.vs.UseVSExpandIndexBuffer())
+		{
+			SetVSPushConstants(m_vertex.start, m_index.start + offset);
+			ForjaVkRec::CmdDraw(cmdbuf, static_cast<u32>(count) * GetExpansionFactor(config.vs.expand), 1, 0, 0, true);
+		}
+		else
+		{
+			SetVSPushConstants(m_vertex.start);
+			ForjaVkRec::CmdDrawIndexed(cmdbuf, count, 1, m_index.start + offset, 0, 0, true);
+		}
+	}
+	else
+	{
+		ForjaVkRec::CmdDrawIndexed(cmdbuf, count, 1, m_index.start + offset, m_vertex.start, 0, true);
+	}
+#else
 	if (config.vs.expand != GSHWDrawConfig::VSExpand::None)
 	{
 		const bool vs_indexing = config.vs.UseVSExpandIndexBuffer();
@@ -4485,6 +4536,7 @@ void GSDeviceVK::Draw(const GSHWDrawConfig& config, int offset, int count)
 	{
 		DrawIndexedPrimitive(offset, count);
 	}
+#endif
 }
 
 void GSDeviceVK::Draw(const GSHWDrawConfig& config)
@@ -8238,8 +8290,36 @@ void GSDeviceVK::SetInitialState(VkCommandBuffer cmdbuf)
 	}
 }
 
-__ri void GSDeviceVK::ApplyBaseState(u32 flags, VkCommandBuffer cmdbuf)
+__ri void GSDeviceVK::ApplyBaseState(u32 flags, VkCommandBuffer cmdbuf, bool queue)
 {
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2 (compilation 116): the hardware draws' state through the GS recorder (ForjaVkRecorder.h); the utility
+	// draws' (queue false) to Vulkan at once, as before.
+	if (flags & DIRTY_FLAG_INDEX_BUFFER)
+		ForjaVkRec::CmdBindIndexBuffer(cmdbuf, m_index_buffer, 0, VK_INDEX_TYPE_UINT16, queue);
+
+	if (flags & DIRTY_FLAG_PIPELINE)
+		ForjaVkRec::CmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_current_pipeline, queue);
+
+	if (flags & DIRTY_FLAG_VIEWPORT)
+		ForjaVkRec::CmdSetViewport(cmdbuf, m_viewport, queue);
+
+	if (flags & DIRTY_FLAG_SCISSOR)
+	{
+		const VkRect2D vscissor{
+			{m_scissor.x, m_scissor.y}, {static_cast<u32>(m_scissor.width()), static_cast<u32>(m_scissor.height())}};
+		ForjaVkRec::CmdSetScissor(cmdbuf, vscissor, queue);
+	}
+
+	if (flags & DIRTY_FLAG_BLEND_CONSTANTS)
+	{
+		const GSVector4 col(static_cast<float>(m_blend_constant_color) / 128.0f);
+		ForjaVkRec::CmdSetBlendConstants(cmdbuf, col.v, queue);
+	}
+
+	if (flags & DIRTY_FLAG_LINE_WIDTH)
+		ForjaVkRec::CmdSetLineWidth(cmdbuf, m_current_line_width, queue);
+#else
 	if (flags & DIRTY_FLAG_INDEX_BUFFER)
 		vkCmdBindIndexBuffer(cmdbuf, m_index_buffer, 0, VK_INDEX_TYPE_UINT16);
 
@@ -8264,6 +8344,7 @@ __ri void GSDeviceVK::ApplyBaseState(u32 flags, VkCommandBuffer cmdbuf)
 
 	if (flags & DIRTY_FLAG_LINE_WIDTH)
 		vkCmdSetLineWidth(cmdbuf, m_current_line_width);
+#endif
 }
 
 bool GSDeviceVK::ApplyTFXState(bool already_execed)
@@ -8272,7 +8353,13 @@ bool GSDeviceVK::ApplyTFXState(bool already_execed)
 	if (m_current_pipeline_layout == PipelineLayout::TFX && m_dirty_flags == 0)
 		return true;
 
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2 (compilation 116): this draw's commands go into the GS recorder's queue when it is on, so taking the command
+	// buffer here must not wait for the queue (GetCurrentCommandBuffer would).
+	const VkCommandBuffer cmdbuf = m_current_command_buffer;
+#else
 	const VkCommandBuffer cmdbuf = GetCurrentCommandBuffer();
+#endif
 	u32 flags = m_dirty_flags;
 	m_dirty_flags &= ~(DIRTY_TFX_STATE | DIRTY_CONSTANT_BUFFER_STATE | DIRTY_FLAG_TFX_UBO);
 
@@ -8347,8 +8434,13 @@ bool GSDeviceVK::ApplyTFXState(bool already_execed)
 	if (flags & DIRTY_FLAG_TFX_UBO)
 	{
 		// Still need to bind the UBO descriptor set.
+#if defined(PCSX2_PS4_VM_BOOT)
+		ForjaVkRec::CmdBindDescriptorSet(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_tfx_pipeline_layout, 0,
+			m_tfx_ubo_descriptor_set, NUM_TFX_DYNAMIC_OFFSETS, m_tfx_dynamic_offsets.data(), true);
+#else
 		vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_tfx_pipeline_layout, 0, 1,
 			&m_tfx_ubo_descriptor_set, NUM_TFX_DYNAMIC_OFFSETS, m_tfx_dynamic_offsets.data());
+#endif
 	}
 
 	if (m_features.vs_expand && (flags & DIRTY_FLAG_VS_PUSH_CONSTANTS))
@@ -8409,10 +8501,16 @@ bool GSDeviceVK::ApplyTFXState(bool already_execed)
 				m_tfx_textures[TFX_TEXTURE_DEPTH_ROV]->GetVkLayout(), true);
 		}
 
+#if defined(PCSX2_PS4_VM_BOOT)
+		ForjaVkRec::CmdPushDescriptorSet(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_tfx_pipeline_layout,
+			TFX_DESCRIPTOR_SET_TEXTURES, dsub.GetNumWrites(), dsub.GetWrites(), true);
+		dsub.Clear();
+#else
 		dsub.PushUpdate(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_tfx_pipeline_layout, TFX_DESCRIPTOR_SET_TEXTURES);
+#endif
 	}
 
-	ApplyBaseState(flags, cmdbuf);
+	ApplyBaseState(flags, cmdbuf, true);
 	return true;
 }
 
@@ -8460,8 +8558,14 @@ void GSDeviceVK::SetVSPushConstants(u32 base_vertex, u32 base_index, bool force_
 
 	if (m_vs_pc_cache.Update(pc) || force_update)
 	{
+#if defined(PCSX2_PS4_VM_BOOT)
+		// Forja SX2 (compilation 116): only the hardware draws set these (ApplyTFXState, Draw): through the GS recorder.
+		ForjaVkRec::CmdPushConstants(m_current_command_buffer, m_tfx_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+			sizeof(pc), &pc, true);
+#else
 		vkCmdPushConstants(GetCurrentCommandBuffer(), m_tfx_pipeline_layout,
 			VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pc), &pc);
+#endif
 	}
 }
 
@@ -8774,7 +8878,7 @@ void GSDeviceVK::RenderHW(GSHWDrawConfig& config)
 
 				// If depth is cleared, we need to commit it, because we're only going to draw to the active part of the FB.
 				if (draw_ds && draw_ds->GetState() == GSTexture::State::Cleared && !config.drawarea.eq(GSVector4i::loadh(rtsize)))
-					draw_ds->CommitClear(m_current_command_buffer);
+					draw_ds->CommitClear(GetCurrentCommandBuffer()); // Forja SX2 (116): after the recorder's queue
 			}
 			else if (draw_rt->GetState() == GSTexture::State::Dirty)
 			{
@@ -8961,7 +9065,7 @@ void GSDeviceVK::RenderHW(GSHWDrawConfig& config)
 		const VkClearRect rc = {{{config.drawarea.left, config.drawarea.top},
 									{static_cast<u32>(config.drawarea.width()), static_cast<u32>(config.drawarea.height())}},
 			0u, 1u};
-		vkCmdClearAttachments(m_current_command_buffer, 1, &ca, 1, &rc);
+		vkCmdClearAttachments(GetCurrentCommandBuffer(), 1, &ca, 1, &rc); // Forja SX2 (116): after the recorder's queue
 	}
 
 	// rt -> colclip hw blit if enabled
@@ -9203,6 +9307,20 @@ void GSDeviceVK::SendHWDraw(const GSHWDrawConfig& config, GSTextureVK* draw_rt, 
 	}
 
 	const auto IssueBarriers = [&]() {
+#if defined(PCSX2_PS4_VM_BOOT)
+		// Forja SX2 (compilation 116): through the GS recorder, like the draw they come before.
+		if (draw_rt)
+		{
+			ForjaVkRec::CmdImageBarrier(m_current_command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, barrier_flags, barriers[0], true);
+		}
+		if (draw_ds)
+		{
+			ForjaVkRec::CmdImageBarrier(m_current_command_buffer,
+				VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, barrier_flags, barriers[1], true);
+		}
+#else
 		if (draw_rt)
 		{
 			vkCmdPipelineBarrier(GetCurrentCommandBuffer(),
@@ -9215,6 +9333,7 @@ void GSDeviceVK::SendHWDraw(const GSHWDrawConfig& config, GSTextureVK* draw_rt, 
 				VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
 				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, barrier_flags, 0, nullptr, 0, nullptr, 1, &barriers[1]);
 		}
+#endif
 	};
 
 	if (full_barrier)

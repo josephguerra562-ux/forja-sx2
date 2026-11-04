@@ -362,6 +362,10 @@ extern std::atomic<unsigned> g_forja_gs_skip_lag_percent; // compilation 105: at
 // Compilation 82: the Guitar Hero games' crowd, drawn in software once every N of its passes (GSHwHack.cpp, GSC_GuitarHero;
 // [Forja] PublicoCada). Without a value, one in two: every one is PCSX2's, and cost Guitar Hero III ~36 ms a frame.
 extern std::atomic<u32> g_forja_crowd_every;
+// Compilation 116: "Grabar dibujos en otro hilo" (No tocar; [Forja] GrabarEnOtroHilo): the draws' Vulkan calls on their own
+// thread. The GS thread takes it at its next command buffer (GS/Renderers/Vulkan/ForjaVkRecorder.h, FrameBoundary).
+extern std::atomic<bool> g_forja_draw_thread_wanted;
+static bool s_draw_thread = false;
 // Compilation 88: 16 and 32 too (Joseph, 2026-10-25, Guitar Hero III: "el público sigue siendo el problema").
 static constexpr unsigned CROWD_EVERY_STEPS[] = {1u, 2u, 4u, 8u, 16u, 32u};
 static constexpr unsigned CROWD_EVERY_DEFAULT = 2u;
@@ -1777,9 +1781,10 @@ static void ChangeToSelectedDisc()
 static void LogGameSettings(const char* why)
 {
 	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d "
-			 "gs_left_out=[%s] huellas=[%s]\n", why,
+			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
-		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str());
+		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str(),
+		s_draw_thread ? 1 : 0);
 }
 
 // Compilation 76: two rows say so when their Auto can do nothing in this game, in place of their usual line (GameMenu.cpp's
@@ -1930,6 +1935,17 @@ static void PublishCrowdText()
 		std::snprintf(label, sizeof(label), TF("Público por software:  < 1 de cada %u cuadros >"), s_crowd_every);
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CROWD, label,
 		T("Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego"));
+}
+
+// Compilation 116: the GS recorder's row, in No tocar until it is measured in the six test games.
+static void PublishDrawThreadText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("Grabar dibujos en otro hilo:  < %s >"), T(s_draw_thread ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_DRAW_THREAD, label,
+		T("Prueba: la gráfica se graba en un núcleo libre y el GS sigue. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego"));
 }
 
 // Compilation 77: "Reportar este juego" (SendReport, PublishReportText): the player's word for it, and when the last one went.
@@ -2180,6 +2196,7 @@ static void PublishGameMenu()
 {
 	PublishAutoNotes(); // compilation 76
 	PublishCrowdText(); // compilation 82
+	PublishDrawThreadText(); // compilation 116
 	PublishCycleSkipText(); // compilation 100
 	PublishSpeedLimitText();
 	PublishImageOptionsText(); // compilation 104
@@ -2330,6 +2347,11 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	g_forja_crowd_every.store(s_crowd_every, std::memory_order_relaxed);
 	if (GameDrawsCrowdInSoftware())
 		ProbeLog("Crowd: drawn in software one pass in %u (%s)\n", s_crowd_every, ProfileOriginName(s_profile.crowd_every_origin));
+	// Compilation 116: the GS recorder, off unless the profile says 1.
+	s_draw_thread = s_profile.draw_thread == 1;
+	g_forja_draw_thread_wanted.store(s_draw_thread, std::memory_order_relaxed);
+	if (s_draw_thread || s_profile.draw_thread_origin != ForjaGameProfile::Origin::Global)
+		ProbeLog("GS recorder wanted: %s (%s)\n", s_draw_thread ? "on" : "off", ProfileOriginName(s_profile.draw_thread_origin));
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
 	ApplyVu1SkipList(s_profile.vu1_skip); // compilation 44: the VU1 filter
 	ApplyGsFilterList(s_profile.gs_filter); // compilation 51: the GS filter
@@ -3594,6 +3616,12 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			SavePlayerProfile("Crowd", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "PublicoCada", next); }, false);
 			break;
 		}
+		case PS4GameMenu::ROW_DRAW_THREAD: // compilation 116: No / Sí ([Forja] GrabarEnOtroHilo); ApplyGameProfile takes it
+		{
+			const int next = s_draw_thread ? 0 : 1;
+			SavePlayerProfile("Draw thread", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "GrabarEnOtroHilo", next); }, false);
+			break;
+		}
 		case PS4GameMenu::ROW_GS_SKIP:
 		{
 			// No, auto, one frame in two ([Forja] SaltarCuadros 0, 1, 2; compilation 47), and without the guard (3, compilation 82).
@@ -4474,7 +4502,7 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART ||
 						   row == PS4GameMenu::ROW_CHEATS ||
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
-						   row == PS4GameMenu::ROW_TEXTURES ||
+						   row == PS4GameMenu::ROW_TEXTURES || row == PS4GameMenu::ROW_DRAW_THREAD ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
 						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT || row == PS4GameMenu::ROW_REPORT_WHERE))
 		{

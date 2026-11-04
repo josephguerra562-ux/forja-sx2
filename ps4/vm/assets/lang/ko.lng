@@ -970,6 +970,12 @@ tr: 소프트웨어 관중:  < %u 프레임마다 1번 >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: 이 게임은 관중을 CPU로 그리며, 이것이 가장 느리게 만듭니다. 횟수를 줄이면 = 더 빠름; 관중의 움직임은 덜 부드러워집니다. 이 게임에 저장됩니다
 
+es: Grabar dibujos en otro hilo:  < %s >
+tr: 다른 스레드에서 그리기 기록:  < %s >
+
+es: Prueba: la gráfica se graba en un núcleo libre y el GS sigue. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
+tr: 테스트: 그래픽을 빈 코어에서 기록하고 GS는 계속 진행합니다. 게임이 종료되거나 화면이 이상하면 아니요로 설정하세요. 이 게임에 저장됩니다
+
 es: Pésimo
 tr: 최악
 

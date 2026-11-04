@@ -256,6 +256,12 @@ namespace Vulkan
 		void AddStorageImageDescriptorWrite(
 			VkDescriptorSet set, u32 binding, VkImageView view, VkImageLayout layout = VK_IMAGE_LAYOUT_GENERAL);
 
+#if defined(PCSX2_PS4_VM_BOOT)
+		// Forja SX2 (compilation 116): the writes a push would make, for the GS recorder to copy (ForjaVkRecorder.h).
+		u32 GetNumWrites() const { return m_num_writes; }
+		const VkWriteDescriptorSet* GetWrites() const { return m_writes.data(); }
+#endif
+
 	private:
 		std::array<VkWriteDescriptorSet, MAX_WRITES> m_writes;
 		u32 m_num_writes = 0;

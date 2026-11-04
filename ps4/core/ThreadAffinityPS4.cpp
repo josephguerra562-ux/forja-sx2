@@ -255,6 +255,31 @@ namespace PS4ThreadAffinity
 		std::fflush(stdout);
 	}
 
+	int PinCurrentThreadToRecorder()
+	{
+		if (!IsEnabled())
+			return -1;
+		ApplyPriority("GRABAR", WORKER_PRIORITY);
+		int core = ResolveCore("GRABAR", -1);
+		if (core < 0 || core > 5)
+		{
+			const int ee = ResolveCore("EE", 2), vu1 = ResolveCore("VU1", 3), gs = ResolveCore("GS", 4), audio = ResolveCore("Audio", 5);
+			const int helpers = ResolveCore("AYUDANTES", -1);
+			core = -1;
+			for (int c = 0; c < 6 && core < 0; c++)
+			{
+				if (c != ee && c != vu1 && c != gs && c != audio && c != helpers)
+					core = c;
+			}
+			if (core < 0)
+				return -1;
+		}
+		const int result = scePthreadSetaffinity(scePthreadSelf(), 1ULL << core);
+		std::printf("PS4 thread affinity: GS recorder core=%d sce_result=0x%x\n", core, result);
+		std::fflush(stdout);
+		return core;
+	}
+
 	void SetGamePlan(const char* plan)
 	{
 		std::call_once(s_file_loaded, LoadOverrides);
