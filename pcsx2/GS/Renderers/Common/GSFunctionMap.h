@@ -142,6 +142,13 @@ namespace GSCodeReserve
 	void ResetMemory();
 
 	size_t GetMemoryUsed();
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Forja SX2 (compilation 117): the PS4 has two software rasterizers at once (GSRendererHWMultiISA.cpp, the small draws'
+	// and the threaded one), each with its own GSDrawScanline over this one block: only the first one resets it, and the JIT
+	// stops (back to the C version) before it runs out instead of resetting what the other one still uses.
+	bool IsReady();
+	size_t GetMemoryFree();
+#endif
 
 	u8* ReserveMemory(size_t size);
 	void CommitMemory(size_t size);

@@ -970,6 +970,12 @@ tr: Yazılımla seyirci:  < her %u karede 1 >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: Bu oyun seyirciyi CPU ile çizer, onu en çok yavaşlatan budur. Daha az = daha hızlı; seyirci daha az akıcı hareket eder. Bu oyun için kaydedilir
 
+es: Dibujo por software con traductor:  < %s >
+tr: Çeviricili yazılım çizimi:  < %s >
+
+es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
+tr: Test: Oyunun CPU ile çizdikleri (Guitar Hero'nun seyircisi, Dragon Ball'un paletleri) yavaş kod yerine çevrilmiş kod kullanır. Oyun kapanırsa veya yanlış görünürse Hayır yapın. Bu oyun için kaydedilir
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Çizimleri başka bir iş parçacığında kaydet:  < %s >
 

@@ -184,6 +184,10 @@ extern unsigned long long g_forja_gif_wait_ticks[3];
 // Compilation 85: the GameDB's software draws (GSRendererHW.cpp), the GS thread's waits for their workers and each worker's
 // drawing (pcsx2/GS/Renderers/SW/GSRasterizer.cpp, the PS5 port's counters), for the "Software draws" line.
 extern unsigned long long g_forja_sw_draws, g_forja_sw_ticks, g_orbis_gs_swsync_ticks, g_orbis_sw_busy_ticks[16];
+// Compilation 117: whether they use the generated code (the JIT) and how much of its block it filled
+// (pcsx2/GS/Renderers/SW/GSDrawScanline.cpp).
+extern std::atomic<bool> g_forja_sw_jit;
+extern "C" int ForjaSwJitCodeKB();
 // Forja 1.06: what held the last 5 s back (SessionStats.h, ForjaSession::Limit), for UIVM.cpp's HUD.
 std::atomic<int> g_forja_limit{0};
 
@@ -504,9 +508,11 @@ void Host::OnPerformanceMetricsUpdated()
 			double busy[3];
 			for (int i = 0; i < 3; i++)
 				busy[i] = static_cast<double>(g_orbis_sw_busy_ticks[i] - last_busy[i]) * to_ms_per_s;
-			ProbeLog("Software draws: per_second=%.0f gs_thread_ms=%.1f waiting_workers_ms=%.1f workers_drawing_ms=%.1f,%.1f,%.1f\n",
+			ProbeLog("Software draws: per_second=%.0f gs_thread_ms=%.1f waiting_workers_ms=%.1f workers_drawing_ms=%.1f,%.1f,%.1f "
+					 "jit=%d jit_code_kb=%d\n",
 				static_cast<double>(draws_now - last_draws) / profile_interval, static_cast<double>(ticks_now - last_ticks) * to_ms_per_s,
-				static_cast<double>(sync_now - last_sync) * to_ms_per_s, busy[0], busy[1], busy[2]);
+				static_cast<double>(sync_now - last_sync) * to_ms_per_s, busy[0], busy[1], busy[2],
+				g_forja_sw_jit.load(std::memory_order_relaxed) ? 1 : 0, ForjaSwJitCodeKB());
 		}
 		last_draws = draws_now;
 		last_ticks = ticks_now;

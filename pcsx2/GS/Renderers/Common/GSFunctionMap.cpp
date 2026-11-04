@@ -23,6 +23,18 @@ size_t GSCodeReserve::GetMemoryUsed()
 	return s_memory_ptr - s_memory_base;
 }
 
+#if defined(PCSX2_PS4_VM_BOOT)
+bool GSCodeReserve::IsReady()
+{
+	return s_memory_base != nullptr;
+}
+
+size_t GSCodeReserve::GetMemoryFree()
+{
+	return s_memory_base ? static_cast<size_t>(s_memory_end - s_memory_ptr) : 0;
+}
+#endif
+
 u8* GSCodeReserve::ReserveMemory(size_t size)
 {
 	pxAssert((s_memory_ptr + size) <= s_memory_end);

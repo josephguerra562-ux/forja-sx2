@@ -80,6 +80,10 @@ namespace ForjaGameProfile
 		// ForjaVkRecorder.h): 1 on; 0 or not set, off.
 		int draw_thread = 0;
 		Origin draw_thread_origin = Origin::Global;
+		// [Forja] TraductorSoftware (compilation 117): the software draws with the generated code (the JIT) instead of the C
+		// version (GS/Renderers/SW/GSDrawScanline.cpp): 1 on; 0 or not set, off.
+		int sw_jit = 0;
+		Origin sw_jit_origin = Origin::Global;
 		// [EmuCore/Speedhacks] EECycleSkip * 4 + EECycleSkipQuarters of the factory profile only (compilation 109): where the cycle
 		// skip's Auto starts and the least it goes to (main.cpp, UpdateCycleSkipAuto). 0 with no factory profile.
 		int cycle_skip_factory = 0;
@@ -181,6 +185,7 @@ namespace ForjaGameProfile
 		read_int("SaltarCuadros", &v.gs_skip, &v.gs_skip_origin);
 		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);
 		read_int("GrabarEnOtroHilo", &v.draw_thread, &v.draw_thread_origin);
+		read_int("TraductorSoftware", &v.sw_jit, &v.sw_jit_origin);
 		// Forja 1.06: [Forja] SaltarCuadrosConGuardian, a factory profile's frame skip for the versions with the guard (73 on),
 		// which wins over its SaltarCuadros (never over the player's). The versions before 1.06 fetch the factory profiles from
 		// main and read only SaltarCuadros: there it keeps what suits their skip without the guard (Dragon Ball: off).

@@ -970,6 +970,12 @@ tr: ソフトウェア描画の観客：  < %u フレームに 1 回 >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: このゲームは観客を CPU で描いていて、それが一番の遅さの原因です。回数を減らす = 速くなる。観客の動きは少しなめらかでなくなります。このゲーム用に保存されます
 
+es: Dibujo por software con traductor:  < %s >
+tr: トランスレーターでソフトウェア描画：  < %s >
+
+es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
+tr: テスト：ゲームがCPUで描画するもの（Guitar Hero の観客、Dragon Ball のパレット）に、遅いコードではなく変換したコードを使います。ゲームが終了したり表示がおかしい場合は「いいえ」に。このゲーム用に保存
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: 描画を別のスレッドで書き込み：  < %s >
 

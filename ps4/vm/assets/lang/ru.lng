@@ -970,6 +970,12 @@ tr: Программная толпа:  < 1 из %u кадров >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: Эта игра рисует толпу процессором, и это тормозит её сильнее всего. Реже = быстрее; толпа движется менее плавно. Сохраняется для этой игры
 
+es: Dibujo por software con traductor:  < %s >
+tr: Программная отрисовка с транслятором:  < %s >
+
+es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
+tr: Тест: то, что игра рисует процессором (публика в Guitar Hero, палитры в Dragon Ball), использует транслированный код вместо медленного. Если игра закрывается или выглядит неправильно, выберите «Нет». Сохраняется для этой игры
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Запись отрисовки в другом потоке:  < %s >
 

@@ -970,6 +970,12 @@ tr: 소프트웨어 관중:  < %u 프레임마다 1번 >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: 이 게임은 관중을 CPU로 그리며, 이것이 가장 느리게 만듭니다. 횟수를 줄이면 = 더 빠름; 관중의 움직임은 덜 부드러워집니다. 이 게임에 저장됩니다
 
+es: Dibujo por software con traductor:  < %s >
+tr: 변환기로 소프트웨어 그리기:  < %s >
+
+es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
+tr: 테스트: 게임이 CPU로 그리는 것(Guitar Hero의 관중, Dragon Ball의 색상표)에 느린 코드 대신 변환된 코드를 사용합니다. 게임이 종료되거나 화면이 이상하면 아니요로 설정하세요. 이 게임에 저장됩니다
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: 다른 스레드에서 그리기 기록:  < %s >
 

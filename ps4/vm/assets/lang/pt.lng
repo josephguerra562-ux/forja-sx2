@@ -970,6 +970,12 @@ tr: Público por software:  < 1 a cada %u quadros >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: Este jogo desenha o público com a CPU, o que mais o deixa lento. Menos vezes = mais velocidade; o público se move menos fluido. Salvo para este jogo
 
+es: Dibujo por software con traductor:  < %s >
+tr: Desenho por software com tradutor:  < %s >
+
+es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
+tr: Teste: o que o jogo desenha com a CPU (a plateia de Guitar Hero, as paletas de Dragon Ball) usa código traduzido em vez do lento. Se o jogo fechar ou ficar errado, coloque em Não. Salvo para este jogo
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Gravar desenhos em outra thread:  < %s >
 

@@ -79,7 +79,7 @@ namespace
 	{
 		std::string name, summary, text;
 		std::string log_gz; // compilation 85: the session's whole log, gzipped (Run fills it)
-		bool resend = false; // compilation 86: a pending report sent again (no log: that session is over)
+		bool resend = false; // compilation 86: a pending report sent again (since 117 with its log, kept when it failed)
 	};
 
 	// Compilation 86: when the report being sent started (steady clock, ms; 0: none), and whether a pending one is being sent
@@ -95,6 +95,13 @@ namespace
 	std::string PendingPath(const std::string& name)
 	{
 		return std::string(Folder) + "/" + name + ".pendiente";
+	}
+
+	// Compilation 117: the session's log of a report that did not arrive, kept beside its marker for ResendPending. Until 116 a
+	// resent report went without it (F-E536, 2026-11-02: only its .txt reached the channel).
+	std::string PendingLogPath(const std::string& name)
+	{
+		return std::string(Folder) + "/" + name + "_registro.log.gz";
 	}
 
 	// Compilation 85: the session's whole log goes with the report, gzipped, as a second file. Until 84 a report carried the
@@ -187,7 +194,19 @@ namespace
 		ProbeLog("Report: %s %s%s (http %d)\n", job->name.c_str(), job->resend ? "sent again: " : "",
 			sent ? "sent to the reports channel" : "not sent, kept in reportes/ to send again", http);
 		if (sent)
+		{
 			unlink(PendingPath(job->name).c_str()); // compilation 86: it arrived, nothing pending
+			unlink(PendingLogPath(job->name).c_str()); // compilation 117: nor its kept log
+		}
+		else if (!job->resend && !job->log_gz.empty())
+		{
+			// Compilation 117: the log goes with the pending report, so the resend carries it.
+			if (std::FILE* file = std::fopen(PendingLogPath(job->name).c_str(), "wb"))
+			{
+				std::fwrite(job->log_gz.data(), 1, job->log_gz.size(), file);
+				std::fclose(file);
+			}
+		}
 		if (job->resend)
 			s_resending.store(false, std::memory_order_release);
 		else
@@ -316,13 +335,16 @@ namespace ForjaReport
 		if (text.empty())
 		{
 			unlink(PendingPath(oldest).c_str()); // its report is gone: nothing to send
+			unlink(PendingLogPath(oldest).c_str());
 			return;
 		}
 		const std::string summary = "(reenviado) " + ReadFile(PendingPath(oldest));
 		auto* job = new Job{oldest, summary, text};
 		job->resend = true;
+		job->log_gz = ReadFile(PendingLogPath(oldest)); // compilation 117: its session's log, when it was kept
 		s_resending.store(true, std::memory_order_release);
-		ProbeLog("Report: sending %s again (it didn't reach the channel before)\n", oldest.c_str());
+		ProbeLog("Report: sending %s again (it didn't reach the channel before), with its log: %zu bytes\n", oldest.c_str(),
+			job->log_gz.size());
 		if (!StartThread(job))
 		{
 			delete job;

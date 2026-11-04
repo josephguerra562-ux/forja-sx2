@@ -366,6 +366,10 @@ extern std::atomic<u32> g_forja_crowd_every;
 // thread. The GS thread takes it at its next command buffer (GS/Renderers/Vulkan/ForjaVkRecorder.h, FrameBoundary).
 extern std::atomic<bool> g_forja_draw_thread_wanted;
 static bool s_draw_thread = false;
+// Compilation 117: "Dibujo por software con traductor" (No tocar; [Forja] TraductorSoftware): the software draws with the
+// generated code (the JIT) instead of the C version (GS/Renderers/SW/GSDrawScanline.cpp, read at each draw's setup).
+extern std::atomic<bool> g_forja_sw_jit;
+static bool s_sw_jit = false;
 // Compilation 88: 16 and 32 too (Joseph, 2026-10-25, Guitar Hero III: "el público sigue siendo el problema").
 static constexpr unsigned CROWD_EVERY_STEPS[] = {1u, 2u, 4u, 8u, 16u, 32u};
 static constexpr unsigned CROWD_EVERY_DEFAULT = 2u;
@@ -1781,10 +1785,10 @@ static void ChangeToSelectedDisc()
 static void LogGameSettings(const char* why)
 {
 	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d "
-			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d\n", why,
+			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
 		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str(),
-		s_draw_thread ? 1 : 0);
+		s_draw_thread ? 1 : 0, s_sw_jit ? 1 : 0);
 }
 
 // Compilation 76: two rows say so when their Auto can do nothing in this game, in place of their usual line (GameMenu.cpp's
@@ -1938,6 +1942,17 @@ static void PublishCrowdText()
 }
 
 // Compilation 116: the GS recorder's row, in No tocar until it is measured in the six test games.
+// Compilation 117: the software draws' JIT row, in No tocar until it is measured.
+static void PublishSwJitText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("Dibujo por software con traductor:  < %s >"), T(s_sw_jit ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_SW_JIT, label,
+		T("Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego"));
+}
+
 static void PublishDrawThreadText()
 {
 	using ForjaLang::T;
@@ -2197,6 +2212,7 @@ static void PublishGameMenu()
 	PublishAutoNotes(); // compilation 76
 	PublishCrowdText(); // compilation 82
 	PublishDrawThreadText(); // compilation 116
+	PublishSwJitText(); // compilation 117
 	PublishCycleSkipText(); // compilation 100
 	PublishSpeedLimitText();
 	PublishImageOptionsText(); // compilation 104
@@ -2352,6 +2368,11 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	g_forja_draw_thread_wanted.store(s_draw_thread, std::memory_order_relaxed);
 	if (s_draw_thread || s_profile.draw_thread_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("GS recorder wanted: %s (%s)\n", s_draw_thread ? "on" : "off", ProfileOriginName(s_profile.draw_thread_origin));
+	// Compilation 117: the software draws' JIT, off unless the profile says 1.
+	s_sw_jit = s_profile.sw_jit == 1;
+	g_forja_sw_jit.store(s_sw_jit, std::memory_order_relaxed);
+	if (s_sw_jit || s_profile.sw_jit_origin != ForjaGameProfile::Origin::Global)
+		ProbeLog("Software draws JIT: %s (%s)\n", s_sw_jit ? "on" : "off", ProfileOriginName(s_profile.sw_jit_origin));
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
 	ApplyVu1SkipList(s_profile.vu1_skip); // compilation 44: the VU1 filter
 	ApplyGsFilterList(s_profile.gs_filter); // compilation 51: the GS filter
@@ -3616,6 +3637,12 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			SavePlayerProfile("Crowd", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "PublicoCada", next); }, false);
 			break;
 		}
+		case PS4GameMenu::ROW_SW_JIT: // compilation 117: No / Sí ([Forja] TraductorSoftware); ApplyGameProfile takes it
+		{
+			const int next = s_sw_jit ? 0 : 1;
+			SavePlayerProfile("Software draws JIT", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "TraductorSoftware", next); }, false);
+			break;
+		}
 		case PS4GameMenu::ROW_DRAW_THREAD: // compilation 116: No / Sí ([Forja] GrabarEnOtroHilo); ApplyGameProfile takes it
 		{
 			const int next = s_draw_thread ? 0 : 1;
@@ -4502,7 +4529,7 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART ||
 						   row == PS4GameMenu::ROW_CHEATS ||
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
-						   row == PS4GameMenu::ROW_TEXTURES || row == PS4GameMenu::ROW_DRAW_THREAD ||
+						   row == PS4GameMenu::ROW_TEXTURES || row == PS4GameMenu::ROW_DRAW_THREAD || row == PS4GameMenu::ROW_SW_JIT ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
 						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT || row == PS4GameMenu::ROW_REPORT_WHERE))
 		{

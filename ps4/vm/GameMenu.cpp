@@ -2325,6 +2325,13 @@ namespace PS4GameMenu
 						draw->AddLine(ip(-15, 8), ip(15, 8), icon_line, lw);
 						draw->AddLine(ip(-4, -8), ip(4, 8), icon_line, lw);
 						break;
+					case ROW_SW_JIT: // a pencil with a spark: the drawing turned to code (compilation 117)
+						draw->AddLine(ip(-13, 13), ip(9, -9), icon_line, lw);
+						draw->AddLine(ip(9, -9), ip(13, -5), icon_line, lw);
+						draw->AddLine(ip(-13, 13), ip(-9, 9), icon_line, lw);
+						draw->AddLine(ip(4, -15), ip(4, -9), icon_line, lw);
+						draw->AddLine(ip(1, -12), ip(7, -12), icon_line, lw);
+						break;
 					case ROW_GS_FILTER: // a picture crossed out (compilation 51)
 						draw->AddRect(ip(-15, -11), ip(15, 11), icon_line, 3 * scale, lw, 0);
 						draw->AddLine(ip(-11, 8), ip(11, -8), icon_line, lw);
@@ -2489,7 +2496,7 @@ namespace PS4GameMenu
 					action = T("ELEGIR  ·  X  ·  CUADRADO"); // compilation 52: Cuadrado brings everything back
 				else if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)
 					action = T("ELEGIR  ·  X");
-				else if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD)
+				else if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD || row == ROW_SW_JIT)
 					action = T("ELEGIR");
 				else if (row == ROW_RECOMMENDED)
 					action = "X";

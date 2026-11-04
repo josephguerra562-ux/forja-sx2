@@ -8,6 +8,7 @@
 
 #include "common/Console.h"
 
+#include <atomic>
 #include <fstream>
 #include <unistd.h>
 #include "OrbisPaths.h" // vk-285-33 (the port's include-orbis)
@@ -27,11 +28,35 @@ static __forceinline const GSScanlineGlobalData& GlobalFromLocal(const GSScanlin
 	return *local.gd;
 }
 
+#if defined(PCSX2_PS4_VM_BOOT)
+// Forja SX2 (compilation 117): "Dibujo por software con traductor" (No tocar, [Forja] TraductorSoftware; main.cpp sets it at the
+// game's start and from the row). On, SetupDraw takes the generated code (the JIT) instead of CDrawScanline, the C version that
+// every software draw used until 116: 8.9 % of the GS thread in Dragon Ball BT4 (cpuCLUTRender, ~613 small draws a second) and
+// 11.7 % in Guitar Hero III at 2x (informes/PASO0_ENVIO_A_LA_GRAFICA_2026-11-04.md, 3c). The PS5 port kept the JIT off ("until
+// the native code cache is stable"); on the PS4 its block is in the code memory the EE and VU recompilers write and run
+// (Memory.cpp, prot 0x33). Off by default; how much faster than the C version on the PS4's CPU needs proper testing.
+std::atomic<bool> g_forja_sw_jit{false};
+// Stays true once the JIT gave up in this process (its block nearly full, or a generation that failed): the C version from then.
+static std::atomic<bool> s_forja_sw_jit_spent{false};
+// What the JIT turned to code, for HostVM.cpp's "Software draws" line (KB of the 8 MiB block, -1 never started).
+extern "C" int ForjaSwJitCodeKB()
+{
+	return GSCodeReserve::IsReady() ? static_cast<int>(GSCodeReserve::GetMemoryUsed() / 1024) : -1;
+}
+#endif
+
 GSDrawScanline::GSDrawScanline()
 	: m_sp_map("GSSetupPrim")
 	, m_ds_map("GSDrawScanline")
 {
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Compilation 117: the small draws' rasterizer and the threaded one share the block; resetting it here would overwrite the
+	// other one's code (GSFunctionMap.h).
+	if (!GSCodeReserve::IsReady())
+		GSCodeReserve::ResetMemory();
+#else
 	GSCodeReserve::ResetMemory();
+#endif
 }
 
 GSDrawScanline::~GSDrawScanline()
@@ -116,17 +141,35 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData& data, GSScanlineLocalData
 
 void GSDrawScanline::ResetCodeCache()
 {
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Compilation 117: never reset the shared block (the other rasterizer's code is in it): the C version from here on.
+	if (!s_forja_sw_jit_spent.exchange(true, std::memory_order_relaxed))
+		Console.Warning("Forja: the software draws' JIT failed to generate a function, back to the C version");
+#else
 	Console.Warning("GS Software JIT cache overflow, resetting.");
 	m_sp_map.Clear();
 	m_ds_map.Clear();
 	GSCodeReserve::ResetMemory();
+#endif
 }
 
 bool GSDrawScanline::SetupDraw(GSRasterizerData& data)
 {
 	const GSScanlineGlobalData& global = data.global;
 
+#if defined(PCSX2_PS4_VM_BOOT)
+	// Compilation 117: the row's choice, while the block has room for a draw's three functions (8 KiB each at most) with margin.
+	bool s_ps5_swjit = g_forja_sw_jit.load(std::memory_order_relaxed) && !s_forja_sw_jit_spent.load(std::memory_order_relaxed);
+	if (s_ps5_swjit && GSCodeReserve::GetMemoryFree() < 64 * 1024)
+	{
+		if (!s_forja_sw_jit_spent.exchange(true, std::memory_order_relaxed))
+			Console.Warning("Forja: the software draws' JIT block is full (%zu KB), back to the C version",
+				GSCodeReserve::GetMemoryUsed() / 1024);
+		s_ps5_swjit = false;
+	}
+#else
 	static const bool s_ps5_swjit = OrbisFlag("swjit"); // vk-285-33: flags/
+#endif
 	if (s_ps5_swjit)
 	{
 	data.draw_scanline = m_ds_map[global.sel];

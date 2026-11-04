@@ -970,6 +970,12 @@ tr: الجمهور بالبرمجيات:  < 1 من كل %u إطارات >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: ترسم هذه اللعبة جمهورها بالمعالج، وهذا أكثر ما يبطئها. مرات أقل = سرعة أكبر؛ يتحرك الجمهور بسلاسة أقل. يُحفظ لهذه اللعبة
 
+es: Dibujo por software con traductor:  < %s >
+tr: الرسم البرمجي مع المترجم:  < %s >
+
+es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
+tr: تجربة: ما ترسمه اللعبة بالمعالج (جمهور Guitar Hero، ولوحات ألوان Dragon Ball) يستخدم شيفرة مترجمة بدل البطيئة. إذا أُغلقت اللعبة أو ظهرت بشكل خاطئ، اجعلها لا. تُحفظ لهذه اللعبة
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: تسجيل الرسم في خيط آخر:  < %s >
 
