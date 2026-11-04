@@ -586,4 +586,6 @@ Biblioteca, Disco, Recientes, Favoritos, **Memoria o USB** (qué juegos mostrar:
 
 **Desde la 113**, el Salto Auto vuelve antes al valor de fábrica cuando ya no hace falta: tras unos 15 s al 97 % o más prueba bajar un paso, y un paso que sirvió se puede bajar a los 20 s (antes 60). Una bajada que deja el juego bajo 95 % vuelve atrás aunque gane FPS: en un juego de ritmo, la música lenta pesa más. Sigue apagado de fábrica.
 
+**Desde la 114**, tras una subida que ganó 25 puntos de velocidad o más (como el menú de Most Wanted), el Salto Auto espera 2 minutos antes de probar bajar. Y si el juego va bajo 90 %, prueba subir aunque ninguna parte del emulador vaya al tope (Guitar Hero a 2x). Sigue apagado de fábrica.
+
 **Avance rápido se quitó de Partida** a pedido de Joseph: lo reemplaza Rendimiento > Límite de velocidad. **Salto de ciclo** tiene cuartos: No, 1/4, 1/2, 3/4, 1, 2 y 3. En el registro, `cycle_skip` va en cuartos.

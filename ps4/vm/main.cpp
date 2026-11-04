@@ -3012,6 +3012,9 @@ static void UpdateCpuAuto(double elapsed)
 // at 2x, went down from 8 to 4 for 17 % more FPS and the music ran at 86-92 %. Now after five windows in a row at 97 % or more (~15 s) a step down is
 // tried whatever the busiest part says (the step down is judged and comes back if it costs), a step that held isn't taken back for 20 s, and a step
 // down that leaves the game under 95 % comes back even with more FPS.
+// Compilation 114 (the 113 on Joseph's PS4 Pro, 2026-11-03): in the menu of Most Wanted the step to 8 took the speed from 60 to 100 %, and 20 s later the early
+// step down tried 4: the menu ran at ~61-72 % for ~11 s ("va lento"). Guitar Hero III at 2x stayed 71 s at 4 and 87 %, untried: no part reached 85 %, its
+// GS waiting on the GPU. Now a step that gained 25 points or more isn't taken back for 120 s, and under 90 % a step is tried whatever the busiest part says.
 static void UpdateCycleSkipAuto(double elapsed)
 {
 	struct Window
@@ -3205,7 +3208,8 @@ static void UpdateCycleSkipAuto(double elapsed)
 			else
 			{
 				s_failed_tries = 0;
-				s_no_down_until = std::max(s_no_down_until, elapsed + 20.0); // compilation 113: 60 s until the 112
+				// Compilation 113: 20 s (60 until the 112); 114: 120 s after a step that gained 25 points or more.
+				s_no_down_until = std::max(s_no_down_until, elapsed + (speed - s_tried_speed >= 25.0 ? 120.0 : 20.0));
 				// Compilation 110: only the steps given back were logged; in God of War II (the 109) a step from 2 to 3 couldn't be told from its scene.
 				ProbeLog("Cycle skip auto: holds: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f (normal before: %.1f FPS at %.0f %%)\n", s_tried_speed, speed, s_tried_fps,
 					fps, s_base_fps, s_base_speed);
@@ -3219,7 +3223,7 @@ static void UpdateCycleSkipAuto(double elapsed)
 		}
 		// Compilation 112: a dip of 70-85 % takes two windows (God of War II dipped 3 s to 77 % and went from 0 to 2), under 70 % at once.
 		else if (next == quarters && s_tried_speed < 0.0 && s_down_from < 0 && speed < 96.0 &&
-				 (speed < 70.0 || (speed < 85.0 && s_slow_windows >= 1) || s_slow_windows >= 2) && s_up.busiest / s_up.checks >= 85.0 && step < top_step &&
+				 (speed < 70.0 || (speed < 85.0 && s_slow_windows >= 1) || s_slow_windows >= 2) && (s_up.busiest / s_up.checks >= 85.0 || speed < 90.0) && step < top_step &&
 				 elapsed >= s_no_up_until && s_up.fastest - s_up.slowest < 30.0)
 		{
 			next = ForjaCycleSkipSteps[std::min(step + (speed < 50.0 ? 3 : speed < 85.0 ? 2 : 1), top_step)];
