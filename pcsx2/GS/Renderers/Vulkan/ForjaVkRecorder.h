@@ -10,7 +10,7 @@
 // thread in Dragon Ball BT4, 16 % in Most Wanted, 11 % in Guitar Hero III at 2x and 27 % in Shadow of the Colossus at 2x; the
 // submission itself (vkQueueSubmit) under 1 %. How much of that is the driver, and so moves here, needs proper testing on the
 // console: the "GS recorder:" line says what the queue cost and what this thread did.
-// Off by default. Only GSDeviceVK.cpp includes this file.
+// On by default since compilation 118 (off in 116 and 117, until it was measured). Only GSDeviceVK.cpp includes this file.
 #pragma once
 
 #if defined(PCSX2_PS4_VM_BOOT)

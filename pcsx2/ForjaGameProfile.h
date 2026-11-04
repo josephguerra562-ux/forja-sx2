@@ -77,12 +77,13 @@ namespace ForjaGameProfile
 		int crowd_every = 0;
 		Origin crowd_every_origin = Origin::Global;
 		// [Forja] GrabarEnOtroHilo (compilation 116): the draws' Vulkan calls on their own thread (GS/Renderers/Vulkan/
-		// ForjaVkRecorder.h): 1 on; 0 or not set, off.
-		int draw_thread = 0;
+		// ForjaVkRecorder.h): 0 off; 1 on; -1 not set, on since compilation 118 (tested in the six test games, 2026-11-04).
+		int draw_thread = -1;
 		Origin draw_thread_origin = Origin::Global;
 		// [Forja] TraductorSoftware (compilation 117): the software draws with the generated code (the JIT) instead of the C
-		// version (GS/Renderers/SW/GSDrawScanline.cpp): 1 on; 0 or not set, off.
-		int sw_jit = 0;
+		// version (GS/Renderers/SW/GSDrawScanline.cpp): 0 off; 1 on; -1 not set, on since compilation 118 (Dragon Ball and
+		// Guitar Hero, 2026-11-04).
+		int sw_jit = -1;
 		Origin sw_jit_origin = Origin::Global;
 		// [EmuCore/Speedhacks] EECycleSkip * 4 + EECycleSkipQuarters of the factory profile only (compilation 109): where the cycle
 		// skip's Auto starts and the least it goes to (main.cpp, UpdateCycleSkipAuto). 0 with no factory profile.

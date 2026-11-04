@@ -2363,13 +2363,15 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	g_forja_crowd_every.store(s_crowd_every, std::memory_order_relaxed);
 	if (GameDrawsCrowdInSoftware())
 		ProbeLog("Crowd: drawn in software one pass in %u (%s)\n", s_crowd_every, ProfileOriginName(s_profile.crowd_every_origin));
-	// Compilation 116: the GS recorder, off unless the profile says 1.
-	s_draw_thread = s_profile.draw_thread == 1;
+	// Compilation 116: the GS recorder. Compilation 118 (Joseph, 2026-11-04, after the 116 in the six test games: Shadow -27 %,
+	// Most Wanted -22 %, God of War II -17 % a draw on the GS): on unless the profile says 0.
+	s_draw_thread = s_profile.draw_thread != 0;
 	g_forja_draw_thread_wanted.store(s_draw_thread, std::memory_order_relaxed);
 	if (s_draw_thread || s_profile.draw_thread_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("GS recorder wanted: %s (%s)\n", s_draw_thread ? "on" : "off", ProfileOriginName(s_profile.draw_thread_origin));
-	// Compilation 117: the software draws' JIT, off unless the profile says 1.
-	s_sw_jit = s_profile.sw_jit == 1;
+	// Compilation 117: the software draws' JIT. Compilation 118 (Joseph, 2026-11-04, after the 117: a software draw -52 % in
+	// Dragon Ball and -38 % in Guitar Hero III, both drawn the same): on unless the profile says 0.
+	s_sw_jit = s_profile.sw_jit != 0;
 	g_forja_sw_jit.store(s_sw_jit, std::memory_order_relaxed);
 	if (s_sw_jit || s_profile.sw_jit_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("Software draws JIT: %s (%s)\n", s_sw_jit ? "on" : "off", ProfileOriginName(s_profile.sw_jit_origin));

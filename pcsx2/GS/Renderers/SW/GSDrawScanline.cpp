@@ -34,7 +34,8 @@ static __forceinline const GSScanlineGlobalData& GlobalFromLocal(const GSScanlin
 // every software draw used until 116: 8.9 % of the GS thread in Dragon Ball BT4 (cpuCLUTRender, ~613 small draws a second) and
 // 11.7 % in Guitar Hero III at 2x (informes/PASO0_ENVIO_A_LA_GRAFICA_2026-11-04.md, 3c). The PS5 port kept the JIT off ("until
 // the native code cache is stable"); on the PS4 its block is in the code memory the EE and VU recompilers write and run
-// (Memory.cpp, prot 0x33). Off by default; how much faster than the C version on the PS4's CPU needs proper testing.
+// (Memory.cpp, prot 0x33). Measured with the 117 (2026-11-04): a software draw -52 % in Dragon Ball BT4 and -38 % in Guitar
+// Hero III, drawn the same; on by default since compilation 118 (main.cpp, ApplyGameProfile).
 std::atomic<bool> g_forja_sw_jit{false};
 // Stays true once the JIT gave up in this process (its block nearly full, or a generation that failed): the C version from then.
 static std::atomic<bool> s_forja_sw_jit_spent{false};
