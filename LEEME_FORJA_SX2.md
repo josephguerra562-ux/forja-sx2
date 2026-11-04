@@ -584,4 +584,6 @@ Biblioteca, Disco, Recientes, Favoritos, **Memoria o USB** (qué juegos mostrar:
 
 **Desde la 112**, el Salto Auto juzga también sus bajadas: si bajar cuesta velocidad sin ganar FPS, o pierde FPS, vuelve a subir. Un paso se deshace solo con dos mediciones malas seguidas, así un bajón suelto no lo engaña. Un bajón fuerte (70-85 %) tiene que durar unos 6 s antes de probar un paso; bajo 70 % reacciona al instante. Sigue apagado de fábrica.
 
+**Desde la 113**, el Salto Auto vuelve antes al valor de fábrica cuando ya no hace falta: tras unos 15 s al 97 % o más prueba bajar un paso, y un paso que sirvió se puede bajar a los 20 s (antes 60). Una bajada que deja el juego bajo 95 % vuelve atrás aunque gane FPS: en un juego de ritmo, la música lenta pesa más. Sigue apagado de fábrica.
+
 **Avance rápido se quitó de Partida** a pedido de Joseph: lo reemplaza Rendimiento > Límite de velocidad. **Salto de ciclo** tiene cuartos: No, 1/4, 1/2, 3/4, 1, 2 y 3. En el registro, `cycle_skip` va en cuartos.

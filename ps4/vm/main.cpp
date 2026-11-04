@@ -3007,6 +3007,11 @@ static void UpdateCpuAuto(double elapsed)
 // before (back up after 3 points of speed without 5 % more FPS, or 15 % of the FPS); a scene's windows are those within 0.25, the margin the Auto already uses
 // for "another scene"; a strong dip takes two windows (70-85 %; under 70 % at once, the menu of Most Wanted), and a step is undone after two bad windows in a
 // row, as one window sometimes fell in a dip (Dragon Ball's 1 -> 2 judged at 89.8 % was refused, then 5 minutes at 1).
+// Compilation 113 (the 112 on Joseph's PS4 Pro, 2026-11-03): God of War II went from 0 to 2 in a heavy moment (79 -> 95 % with the same FPS), and then
+// a step that held wasn't taken back for 60 s, while 2 costs it FPS in the normal scene (going down: 25.2 -> 30.6 and 34 -> 49.7 FPS). Guitar Hero III,
+// at 2x, went down from 8 to 4 for 17 % more FPS and the music ran at 86-92 %. Now after five windows in a row at 97 % or more (~15 s) a step down is
+// tried whatever the busiest part says (the step down is judged and comes back if it costs), a step that held isn't taken back for 20 s, and a step
+// down that leaves the game under 95 % comes back even with more FPS.
 static void UpdateCycleSkipAuto(double elapsed)
 {
 	struct Window
@@ -3031,9 +3036,9 @@ static void UpdateCycleSkipAuto(double elapsed)
 	};
 	static constexpr int normal_windows = 7; // ~20 s
 	static Normal s_normal[normal_windows];
-	static int s_normal_count = 0, s_normal_next = 0, s_slow_windows = 0;
+	static int s_normal_count = 0, s_normal_next = 0, s_slow_windows = 0, s_good_windows = 0;
 	static double s_base_fps = 0.0, s_base_speed = 0.0;
-	const auto forget_normal = [] { s_normal_count = s_normal_next = s_slow_windows = 0; };
+	const auto forget_normal = [] { s_normal_count = s_normal_next = s_slow_windows = s_good_windows = 0; };
 	// Compilation 112: a step down waiting for its judgment (the value it came from, -1 for none) and the normal it is judged by; whether the
 	// step being judged (up or down) already had one bad window.
 	static int s_down_from = -1;
@@ -3160,7 +3165,9 @@ static void UpdateCycleSkipAuto(double elapsed)
 		// FPS, or 15 % of the FPS: going from 8 to 4 in Dragon Ball (the 108) cost 5 points and gave 21 % more FPS, and that one stays.
 		if (s_down_from >= 0)
 		{
-			const bool bad = (speed < s_down_base_speed - 3.0 && fps < s_down_base_fps * 1.05) || (s_down_base_speed >= 90.0 && fps < s_down_base_fps * 0.85);
+			// Compilation 113: and under 95 % it comes back even with more FPS (Guitar Hero at 2x, the music at 86-92 %).
+			const bool bad = (speed < s_down_base_speed - 3.0 && fps < s_down_base_fps * 1.05) || (s_down_base_speed >= 90.0 && fps < s_down_base_fps * 0.85) ||
+							 (speed < 95.0 && s_down_base_speed >= 95.0);
 			if (bad && !s_one_bad)
 				s_one_bad = true;
 			else
@@ -3198,7 +3205,7 @@ static void UpdateCycleSkipAuto(double elapsed)
 			else
 			{
 				s_failed_tries = 0;
-				s_no_down_until = std::max(s_no_down_until, elapsed + 60.0);
+				s_no_down_until = std::max(s_no_down_until, elapsed + 20.0); // compilation 113: 60 s until the 112
 				// Compilation 110: only the steps given back were logged; in God of War II (the 109) a step from 2 to 3 couldn't be told from its scene.
 				ProbeLog("Cycle skip auto: holds: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f (normal before: %.1f FPS at %.0f %%)\n", s_tried_speed, speed, s_tried_fps,
 					fps, s_base_fps, s_base_speed);
@@ -3241,12 +3248,13 @@ static void UpdateCycleSkipAuto(double elapsed)
 			s_normal_count = std::min(s_normal_count + 1, normal_windows);
 		}
 		s_slow_windows = speed < 96.0 ? s_slow_windows + 1 : 0;
+		s_good_windows = speed >= 97.0 ? s_good_windows + 1 : 0;
 		s_up = {};
 	}
 	if (next == quarters && s_tried_speed < 0.0 && s_down_from < 0 && s_down.checks >= 10)
 	{
-		if (quarters > factory_q && elapsed >= s_no_down_until && s_down.speed / s_down.checks >= 98.5 && s_down.busiest / s_down.checks < 91.0 &&
-			s_down.frames / s_down.checks < 0.92)
+		if (quarters > factory_q && elapsed >= s_no_down_until && s_down.frames / s_down.checks < 0.92 &&
+			((s_down.speed / s_down.checks >= 98.5 && s_down.busiest / s_down.checks < 91.0) || s_good_windows >= 5))
 		{
 			next = ForjaCycleSkipSteps[step - 1];
 			s_last_down = elapsed;
