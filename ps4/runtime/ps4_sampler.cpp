@@ -159,22 +159,42 @@ void report(int fd, ThreadSamples& t, double window_start) {
     snprintf(line, sizeof(line), "== %.0f s, %s: %d samples, %d in eboot code (%.0f%%)\n",
              window_start, t.name, n, eboot_samples, 100.0 * eboot_samples / n);
     writeLine(fd, line);
-    // Every bucket seen at least twice (up to 1500): a function spread over many 16-byte buckets
-    // fell below a top-60 cut, hiding about half of a busy thread. Aggregated per function
-    // offline (symbolizer, JIT block map).
-    for (int i = 0; i < unique && i < 1500 && entries[i].count >= 2; i++) {
-        if (entries[i].key >> 63) {
+    // Forja SX2 (compilation 119): every sample counted. Bully's EE (2026-11-04) listed only half its samples: the rest were
+    // 16-byte buckets seen once, mostly the game's JIT code and the emulator's functions spread thin. Now the window says how
+    // many samples each kind had (the JIT and the system calls, listed or not, are known in total), every eboot bucket is
+    // listed even when seen once (perfil_funciones.py names them per function), and the shares carry four decimals so a
+    // single sample (1/5000 = 0.02 %) is not printed as 0.0. The JIT and the system calls keep the "twice or more" cut.
+    int kind_jit = 0, kind_sys = 0;
+    for (int i = 0; i < unique; i++) {
+        if (entries[i].key >> 63)
+            kind_jit += entries[i].count;
+        else if (entries[i].key & kCallerTag)
+            kind_sys += entries[i].count;
+    }
+    snprintf(line, sizeof(line), "  totals samples=%d elf=%d jit=%d sys=%d\n", n, eboot_samples, kind_jit, kind_sys);
+    writeLine(fd, line);
+    int listed_other = 0, listed_elf = 0;
+    for (int i = 0; i < unique; i++) {
+        const bool jit = entries[i].key >> 63, sys = !jit && (entries[i].key & kCallerTag);
+        if (jit || sys) {
+            if (listed_other >= 1500 || entries[i].count < 2)
+                continue;
+            listed_other++;
+        } else if (listed_elf++ >= 4000) {
+            continue;
+        }
+        if (jit) {
             const uint64_t address = entries[i].key & ~(1ULL << 63);
-            snprintf(line, sizeof(line), "  %5.1f%% jit 0x%llx\n", 100.0 * entries[i].count / n,
+            snprintf(line, sizeof(line), "  %8.4f%% jit 0x%llx\n", 100.0 * entries[i].count / n,
                      static_cast<unsigned long long>(address));
             noteHotJit(address, entries[i].count);
         }
-        else if (entries[i].key & kCallerTag)
-            snprintf(line, sizeof(line), "  %5.1f%% sys 0x%llx\n",
+        else if (sys)
+            snprintf(line, sizeof(line), "  %8.4f%% sys 0x%llx\n",
                      100.0 * entries[i].count / n,
                      static_cast<unsigned long long>(entries[i].key & ~kCallerTag));
         else
-            snprintf(line, sizeof(line), "  %5.1f%% elf 0x%llx\n", 100.0 * entries[i].count / n,
+            snprintf(line, sizeof(line), "  %8.4f%% elf 0x%llx\n", 100.0 * entries[i].count / n,
                      static_cast<unsigned long long>(entries[i].key));
         writeLine(fd, line);
     }
