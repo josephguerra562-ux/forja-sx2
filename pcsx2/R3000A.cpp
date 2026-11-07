@@ -47,10 +47,18 @@ namespace
 	{
 		u32 pc = 0;
 		u32 words = 0;
-		u32 code[4] = {};
+		u32 code[16] = {}; // compilation 123: 16 words, for the loops that read memory (4 for the empty ones)
+		// Compilation 123: a loop that reads memory, and the loads whose base register the loop doesn't change (checked at each sleep:
+		// all of them in the IOP's RAM, never a hardware register, where a read can take something out of a queue).
+		bool poll = false;
+		u32 bases = 0;
+		u8 base[8] = {};
+		s16 imm[8] = {};
 	};
-	ForjaIopIdleLoop s_forja_iop_idle[4];
+	// Compilation 123: 0-3 for the empty loops, 4-7 for the reading ones, so these never push out the empty one Shadow and God of War wait in.
+	ForjaIopIdleLoop s_forja_iop_idle[8];
 	u32 s_forja_iop_idle_next = 0;
+	u32 s_forja_iop_poll_next = 4;
 
 	bool ForjaIopIdleAt(u32 pc)
 	{
@@ -60,6 +68,11 @@ namespace
 				continue;
 			for (u32 i = 0; i < loop.words; i++)
 				if (iopMemRead32(pc + i * 4) != loop.code[i])
+					return false;
+			if (loop.poll && !g_forja_iop_sleep_poll)
+				return false;
+			for (u32 i = 0; loop.poll && i < loop.bases; i++)
+				if (((psxRegs.GPR.r[loop.base[i]] + static_cast<u32>(static_cast<s32>(loop.imm[i]))) & 0x1fffffff) >= 0x00200000)
 					return false;
 			return true;
 		}
@@ -88,12 +101,168 @@ void ForjaNoteIopIdleLoop(u32 pc, u32 end)
 	if (!slot)
 	{
 		slot = &s_forja_iop_idle[s_forja_iop_idle_next];
-		s_forja_iop_idle_next = (s_forja_iop_idle_next + 1) % std::size(s_forja_iop_idle);
+		s_forja_iop_idle_next = (s_forja_iop_idle_next + 1) % 4;
 	}
 	slot->pc = pc;
 	slot->words = words;
 	for (u32 i = 0; i < words; i++)
 		slot->code[i] = iopMemRead32(pc + i * 4);
+	slot->poll = false; // compilation 123: a slot a reading loop had before
+	slot->bases = 0;
+}
+
+// Compilation 123 (Bully, 2026-11-07, with the 122's "IOP dormido en el juego"): the IOP slept in 1.5 % of its turns, against ~70 % in
+// Shadow of the Colossus. Shadow's IOP waits at 0xbe9c, an empty loop the recompiler fast-forwards; Bully's waits at 0x11efc-0x11f28, a
+// loop that reads memory and tests what it read. While that memory doesn't change, every turn of such a loop is the same as the last,
+// so it can sleep like the empty one: it wakes at its next event (384 IOP cycles at most), an interrupt or an event the EE schedules, and
+// then reads again (whatever wrote the memory, a DMA, an interrupt handler or the EE, is seen at most those few cycles later).
+// Only a loop to its own start of 3-16 words with loads, branches and register arithmetic: no stores, calls, system calls or coprocessor
+// work, and no register that carries a value from one turn to the next (a count-down delay loop would last longer asleep).
+u32 g_forja_iop_poll_loops = 0;
+// Only with "IOP dormido en el juego" on (main.cpp, ForjaApplyIopSleep): in movies, where the IOP sleeps for every game since compilation 67,
+// these loops stay awake unless the player turned the row on.
+bool g_forja_iop_sleep_poll = false;
+
+// The register an allowed instruction writes (0 for none), or -1 for an instruction such a loop may not have.
+static int ForjaIopPollDest(u32 op)
+{
+	const u32 opcode = op >> 26, rs = (op >> 21) & 31, rt = (op >> 16) & 31, rd = (op >> 11) & 31, funct = op & 63;
+	switch (opcode)
+	{
+		case 0: // SPECIAL: shifts and arithmetic only
+			switch (funct)
+			{
+				case 0x00: case 0x02: case 0x03: case 0x04: case 0x06: case 0x07:
+				case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: case 0x27: case 0x2a: case 0x2b:
+					return static_cast<int>(rd);
+				default:
+					return -1;
+			}
+		case 1: // REGIMM: BLTZ and BGEZ (not the ones that link)
+			return (rt == 0 || rt == 1) ? 0 : -1;
+		case 2: // J
+		case 4: case 5: case 6: case 7: // BEQ, BNE, BLEZ, BGTZ
+			return 0;
+		case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15: // ADDI .. LUI
+		case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: // loads
+			return static_cast<int>(rt);
+		default:
+			(void)rs;
+			return -1;
+	}
+}
+
+// The registers an allowed instruction reads, as a mask.
+static u32 ForjaIopPollReads(u32 op)
+{
+	const u32 opcode = op >> 26, rs = (op >> 21) & 31, rt = (op >> 16) & 31, funct = op & 63;
+	u32 m = 0;
+	if (opcode == 0)
+		m = (funct <= 0x03) ? (1u << rt) : ((1u << rs) | (1u << rt));
+	else if (opcode == 1 || opcode == 6 || opcode == 7)
+		m = 1u << rs;
+	else if (opcode == 4 || opcode == 5)
+		m = (1u << rs) | (1u << rt);
+	else if (opcode >= 8 && opcode <= 14)
+		m = 1u << rs;
+	else if (opcode >= 0x20 && opcode <= 0x26)
+		m = (1u << rs) | ((opcode == 0x22 || opcode == 0x26) ? (1u << rt) : 0u);
+	return m & ~1u;
+}
+
+void ForjaNoteIopPollLoop(u32 pc, u32 end)
+{
+	const u32 words = (end - pc) / 4;
+	if (end <= pc || words < 3 || words > 16)
+		return;
+	u32 writes_all = 0, loads = 0;
+	for (u32 a = pc; a < end; a += 4)
+	{
+		const u32 op = iopMemRead32(a);
+		const int rd = ForjaIopPollDest(op);
+		if (rd < 0)
+			return;
+		if (rd > 0)
+			writes_all |= 1u << rd;
+		loads += (op >> 26) >= 0x20;
+	}
+	if (loads == 0)
+		return;
+	u32 written = 0, bases = 0;
+	u8 base[8] = {};
+	s16 imm[8] = {};
+	u32 lui_value[32] = {};
+	u32 lui_regs = 0;
+	for (u32 a = pc; a < end; a += 4)
+	{
+		const u32 op = iopMemRead32(a);
+		if (ForjaIopPollReads(op) & writes_all & ~written)
+			return; // a value carried from the turn before
+		const u32 opcode = op >> 26, rs = (op >> 21) & 31;
+		if (opcode >= 0x20)
+		{
+			if (writes_all & (1u << rs))
+			{
+				// A base the loop makes itself: only from a LUI into the RAM.
+				if (!(lui_regs & (1u << rs)) || ((lui_value[rs] + static_cast<u32>(static_cast<s32>(static_cast<s16>(op & 0xffff)))) & 0x1fffffff) >= 0x00200000)
+					return;
+			}
+			else if (rs != 0)
+			{
+				if (bases == std::size(base))
+					return;
+				base[bases] = static_cast<u8>(rs);
+				imm[bases++] = static_cast<s16>(op & 0xffff);
+			}
+		}
+		const int rd = ForjaIopPollDest(op);
+		if (rd > 0)
+		{
+			written |= 1u << rd;
+			if (opcode == 15)
+			{
+				lui_regs |= 1u << rd;
+				lui_value[rd] = (op & 0xffff) << 16;
+			}
+			else
+				lui_regs &= ~(1u << rd);
+		}
+	}
+	ForjaIopIdleLoop* slot = nullptr;
+	for (ForjaIopIdleLoop& loop : s_forja_iop_idle)
+		if (loop.words != 0 && loop.pc == pc)
+			slot = &loop;
+	if (!slot)
+	{
+		slot = &s_forja_iop_idle[s_forja_iop_poll_next];
+		s_forja_iop_poll_next = s_forja_iop_poll_next == 7 ? 4 : s_forja_iop_poll_next + 1;
+		g_forja_iop_poll_loops++;
+	}
+	slot->pc = pc;
+	slot->words = words;
+	for (u32 i = 0; i < words; i++)
+		slot->code[i] = iopMemRead32(pc + i * 4);
+	slot->poll = true;
+	slot->bases = bases;
+	for (u32 i = 0; i < bases; i++)
+	{
+		slot->base[i] = base[i];
+		slot->imm[i] = imm[i];
+	}
+}
+
+std::string ForjaIopCodeText(u32 pc)
+{
+	std::string text;
+	char word[16];
+	pc &= ~3u;
+	for (u32 a = pc - 32; a < pc + 48; a += 4)
+	{
+		std::snprintf(word, sizeof(word), a == pc ? "[%08x]" : "%08x", iopMemRead32(a & 0x1fffff));
+		text += word;
+		text += ' ';
+	}
+	return text;
 }
 
 // recResetIOP (also a state load): no loop known, and no IOP behind.

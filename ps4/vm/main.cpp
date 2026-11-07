@@ -431,6 +431,7 @@ static bool s_iop_sleep_game = false;
 static void ForjaApplyIopSleep()
 {
 	g_forja_iop_sleep = (s_movie_settings || s_iop_sleep_game) && s_iop_sleep_allowed;
+	g_forja_iop_sleep_poll = s_iop_sleep_game && s_iop_sleep_allowed; // compilation 123: the reading loops, with the row only
 }
 
 static void ForjaApplyFgFluid()
@@ -4125,7 +4126,7 @@ static std::string ReportLogLines(const char* path, size_t read_bytes, size_t ma
 		"CPU auto:", "[fg]", "VM heartbeat:", "Game settings", "Game profile:", "Render configuration:", "Hitch:", "Audio SPU2 split:",
 		"PS4 audio queue:", "EE JIT cumulative:", "Patches:", "VU1 programs:", "Recommended settings:", "Emulator menu:",
 		"EE guest PC:", "Vulkan compute GS:", "Cycle skip auto:", "GS skip on the fly:", "Speed limit:", "Frame limiter:", "EE cycle skip:", // compilation 106
-		"GS thread split:", "EE-VU1 waits:", "Compilation 122 rows:"}; // compilation 110; 122
+		"GS thread split:", "EE-VU1 waits:", "Compilation 122 rows:", "Threads:"}; // compilation 110; 122; 123
 	std::string text;
 	std::FILE* file = std::fopen(path, "rb");
 	if (!file)
@@ -4441,6 +4442,17 @@ void VMHostPoll()
 			s_last_vuring = vuring;
 		}
 		{
+			// Forja SX2 (compilation 123, Joseph: "ataca los hilos, los núcleos"): the threads besides the EE, the VU1 and the GS. The audio
+			// mix thread's CPU time (ThreadCPUMetricsPS4, sampled by the thread itself every 100 ms) and the core plan; the GS recorder writes
+			// its own line ("GS recorder: ... worker_busy_ms").
+			static u64 s_last_audio_us = 0;
+			const u64 audio_us = PS4ThreadCPUMetrics::Read(PS4ThreadCPUMetrics::Role::Audio);
+			if (s_last_audio_us != 0 && audio_us >= s_last_audio_us && vm_state == VMState::Running)
+				ProbeLog("Threads: audio_mix_pct=%.1f plan=\"%s\"\n", 100.0 * static_cast<double>(audio_us - s_last_audio_us) / (interval * 1000000.0),
+					s_profile.cores.empty() ? "global" : s_profile.cores.c_str());
+			s_last_audio_us = audio_us;
+		}
+		{
 			// Forja SX2: the SPU2 mixing cost measured in IopCounters.cpp (EE thread, like this heartbeat).
 			extern u64 g_forja_spu2_calls, g_forja_spu2_sampled_ticks;
 			const double spu2_ms = Common::Timer::ConvertValueToMilliseconds(g_forja_spu2_sampled_ticks);
@@ -4506,8 +4518,19 @@ void VMHostPoll()
 						g_ps4_ipu_feed ? "on" : "off", iop_sleeps / interval, iop_runs / interval,
 						g_forja_iop_sleep ? "sleep on" : "sleep off");
 				else if (s_iop_sleep_game) // compilation 122
-					ProbeLog("IOP asleep in the game: asleep at %.0f, run at %.0f a second (%s)\n", iop_sleeps / interval, iop_runs / interval,
-						g_forja_iop_sleep ? "sleep on" : "sleep off");
+				{
+					// Compilation 123: and the reading loops it knows (R3000A.cpp, ForjaNoteIopPollLoop).
+					ProbeLog("IOP asleep in the game: asleep at %.0f, run at %.0f a second (%s), reading loops known %u\n", iop_sleeps / interval,
+						iop_runs / interval, g_forja_iop_sleep ? "sleep on" : "sleep off", g_forja_iop_poll_loops);
+					// Compilation 123: the IOP awake most of its turns: its code where it is now, once a game (Bully's waited at 0x11efc-0x11f28
+					// in a loop nothing recognized, 2026-11-07), so the next rule can be made from what it really runs.
+					static u32 s_iop_code_logged_crc = 0;
+					if (iop_runs > 4 * iop_sleeps && iop_runs > 1000 && s_iop_code_logged_crc != VMManager::GetDiscCRC())
+					{
+						s_iop_code_logged_crc = VMManager::GetDiscCRC();
+						ProbeLog("IOP code where it waits awake: pc=%08x %s\n", psxRegs.pc, ForjaIopCodeText(psxRegs.pc).c_str());
+					}
+				}
 			}
 			g_forja_spu2_split_voices = g_forja_spu2_split_mix = g_forja_spu2_split_output = 0;
 			g_forja_spu2_split_samples = g_forja_spu2_split_active = g_forja_spu2_split_irq = 0;

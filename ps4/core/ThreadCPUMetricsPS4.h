@@ -11,6 +11,7 @@ namespace PS4ThreadCPUMetrics
 		EE,
 		GS,
 		VU1,
+		Audio, // compilation 123: the SPU2 mix thread (pcsx2/SPU2/spu2.cpp, ForjaSPU2Thread)
 		Count
 	};
 

@@ -1833,6 +1833,8 @@ StartRecomp:
 #if defined(PCSX2_PS4_VM_BOOT)
 	if (s_nBlockFF && EmuConfig.Speedhacks.WaitLoop)
 		ForjaNoteIopIdleLoop(startpc, s_nEndBlock); // Forja SX2 (compilation 67): where the IOP may sleep (R3000A.cpp)
+	else if (s_branchTo == startpc && EmuConfig.Speedhacks.WaitLoop)
+		ForjaNoteIopPollLoop(startpc, s_nEndBlock); // compilation 123: and the loops that only read memory (R3000A.cpp)
 #endif
 
 	// rec info //

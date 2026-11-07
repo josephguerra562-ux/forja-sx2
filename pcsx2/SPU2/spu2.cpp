@@ -16,6 +16,7 @@
 #include "common/Timer.h"
 
 #include "ps4/core/ThreadAffinityPS4.h"
+#include "ps4/core/ThreadCPUMetricsPS4.h" // compilation 123
 
 #include <atomic>
 #include <condition_variable>
@@ -94,6 +95,7 @@ namespace
 		u32 idle_checks = 0;
 		for (;;)
 		{
+			PS4ThreadCPUMetrics::Sample(PS4ThreadCPUMetrics::Role::Audio); // compilation 123: its CPU time for the "Threads" line
 			const u32 head = s_forja_spu2_head.load(std::memory_order_acquire);
 			if (s_forja_spu2_tail.load(std::memory_order_relaxed) == head || s_forja_spu2_ee_wants.load(std::memory_order_relaxed))
 			{

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0+
 
 #pragma once
+#include <string>
 
 #include "common/Pcsx2Defs.h"
 
@@ -176,6 +177,12 @@ extern bool g_forja_iop_sleep;
 extern u32 g_forja_iop_sleep_lag;
 extern u64 g_forja_iop_sleeps, g_forja_iop_runs;
 extern void ForjaNoteIopIdleLoop(u32 pc, u32 end);
+// Compilation 123: a loop that only reads memory and tests what it read (R3000A.cpp), how many are known, and the IOP's code around an
+// address as text (for the log, where it waits without sleeping).
+extern void ForjaNoteIopPollLoop(u32 pc, u32 end);
+extern u32 g_forja_iop_poll_loops;
+extern bool g_forja_iop_sleep_poll;
+extern std::string ForjaIopCodeText(u32 pc);
 extern void ForjaForgetIopIdleLoops();
 extern bool ForjaIopMaySleep(s32 ee_behind);
 #endif
