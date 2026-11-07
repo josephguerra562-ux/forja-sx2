@@ -324,6 +324,37 @@ target_compile_definitions(vm_boot PRIVATE PCSX2_PS4=1 PCSX2_PS4_VM_BOOT=1 PS4=1
 target_compile_options(vm_boot PRIVATE -march=btver2 -msse4.1 -mno-avx2 -mno-bmi2 -ffunction-sections -fdata-sections -fvisibility=hidden
   "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include compare>" "SHELL:-include strings.h")
 target_link_options(vm_boot PRIVATE --gc-sections --error-limit=0)
+# Forja SX2 (compilation 121): ThinLTO for vm_boot's own sources (the emulator's C++: events, IOP, VIF, GS, the menus), so the
+# compiler optimizes across files. Only if the linker ps4.cmake calls can read this clang's bitcode: love-ps4's ps4.cmake used
+# ld.lld 12, and clang 21's bitcode needs an lld 21. The check and the result go to the build log (compile.log); the eboot's own
+# log says "lto=1" or "lto=0" next to the build number. FORJA_LTO=OFF turns it off. Mesa and the static libraries stay as they
+# are (lld links bitcode and plain objects together). The 119's sampler: in Bully ~32 % of the EE thread is this C++.
+option(FORJA_LTO "ThinLTO for vm_boot when the linker reads this compiler's bitcode" ON)
+set(_forja_ld "${CMAKE_LINKER}")
+string(REGEX MATCH "^[^ ]+" _forja_link_first "${CMAKE_CXX_LINK_EXECUTABLE}")
+if(_forja_link_first AND NOT _forja_link_first MATCHES "^<")
+  set(_forja_ld "${_forja_link_first}")
+endif()
+set(_forja_ld_version "")
+if(_forja_ld)
+  execute_process(COMMAND "${_forja_ld}" --version OUTPUT_VARIABLE _forja_ld_version ERROR_VARIABLE _forja_ld_error
+    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE _forja_ld_result)
+endif()
+set(CMAKE_MATCH_1 "")
+string(REGEX MATCH "LLD ([0-9]+)" _forja_ld_match "${_forja_ld_version}")
+set(_forja_ld_major "${CMAKE_MATCH_1}")
+set(CMAKE_MATCH_1 "")
+string(REGEX MATCH "^([0-9]+)" _forja_cc_match "${CMAKE_CXX_COMPILER_VERSION}")
+set(_forja_cc_major "${CMAKE_MATCH_1}")
+message(STATUS "Forja SX2 LTO check: linker '${_forja_ld}' says '${_forja_ld_version}'; link rule '${CMAKE_CXX_LINK_EXECUTABLE}'; clang ${CMAKE_CXX_COMPILER_VERSION}")
+set(FORJA_LTO_ON 0)
+if(FORJA_LTO AND _forja_ld_major AND _forja_cc_major AND NOT _forja_ld_major LESS _forja_cc_major)
+  set(FORJA_LTO_ON 1)
+  target_compile_options(vm_boot PRIVATE -flto=thin)
+  message(STATUS "Forja SX2: ThinLTO ON (lld ${_forja_ld_major}, clang ${_forja_cc_major})")
+else()
+  message(STATUS "Forja SX2: ThinLTO OFF (option ${FORJA_LTO}, lld '${_forja_ld_major}', clang '${_forja_cc_major}')")
+endif()
 # Forja SX2: the GitHub Actions run number, shown in the library and the log so a tester can tell which build is installed.
 set(FORJA_BUILD_NUMBER "$ENV{GITHUB_RUN_NUMBER}")
 if(NOT FORJA_BUILD_NUMBER MATCHES "^[0-9]+$")
@@ -353,7 +384,7 @@ else()
 endif()
 set_source_files_properties(ForjaReport.cpp PROPERTIES COMPILE_DEFINITIONS "FORJA_REPORT_HEX=\"${FORJA_REPORT_HEX}\"")
 set_source_files_properties(main.cpp GameMenu.cpp PatchDownload.cpp PROPERTIES COMPILE_DEFINITIONS
-  "FORJA_BUILD_NUMBER=${FORJA_BUILD_NUMBER};FORJA_VERSION_MAJOR=${FORJA_VERSION_MAJOR};FORJA_VERSION_MINOR=${FORJA_VERSION_MINOR}")
+  "FORJA_BUILD_NUMBER=${FORJA_BUILD_NUMBER};FORJA_VERSION_MAJOR=${FORJA_VERSION_MAJOR};FORJA_VERSION_MINOR=${FORJA_VERSION_MINOR};FORJA_LTO_ON=${FORJA_LTO_ON}")
 ps4_link_mesa(vm_boot)
 target_link_libraries(vm_boot PRIVATE glslang glslang-default-resource-limits ryml ps4_audio_resampler ps4_chd
   png jpeg webp z ${PCSX2_ROOT}/ps4/deps/prefix/lib/libzstd.a ${PCSX2_ROOT}/ps4/deps/prefix/lib/liblz4.a

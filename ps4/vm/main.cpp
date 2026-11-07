@@ -5451,8 +5451,12 @@ int main()
 	// Live telemetry to PC debug server (reads /data/ForjaSX2/telemetry.conf). Needs proper testing.
 	const bool telemetry_started = PS4Telemetry::Start();
 	// Record entry before module loading, so a stalled re-launch still has a startup marker.
-	ProbeLog("Forja SX2 %d.%02d (base PS4SX2 1.00) BUILD: FORJASX2-%d.%02d compilacion=%d\n", FORJA_VERSION_MAJOR,
-		FORJA_VERSION_MINOR, FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER);
+	// Compilation 121: and whether the build went through ThinLTO (ps4/vm/CMakeLists.txt, FORJA_LTO_ON).
+#ifndef FORJA_LTO_ON
+#define FORJA_LTO_ON 0
+#endif
+	ProbeLog("Forja SX2 %d.%02d (base PS4SX2 1.00) BUILD: FORJASX2-%d.%02d compilacion=%d lto=%d\n", FORJA_VERSION_MAJOR,
+		FORJA_VERSION_MINOR, FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER, FORJA_LTO_ON);
 	ProbeLog("Telemetry: start=%d\n", telemetry_started ? 1 : 0);
 	// Compilation 78: whether this build sends the players' reports (ForjaReport.cpp), so a log says it without trying one.
 	ProbeLog("Reports: %s\n", ForjaReport::HasChannel() ? "the reports channel is set (Reportar este juego sends to Forja's Discord)" :
