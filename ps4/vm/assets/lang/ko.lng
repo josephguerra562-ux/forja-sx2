@@ -610,9 +610,6 @@ tr: 보고서
 es: Sistema
 tr: 시스템
 
-es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
-tr: 게임을 측정하고 개선하기 위한 실험 기능 (테스트 중). 무엇을 하는지 모르면 그대로 두세요.
-
 es: AJUSTAR
 tr: 조절
 
@@ -631,11 +628,14 @@ tr: 전환
 es: X  ·  RANURA
 tr: X  ·  슬롯
 
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: 게임을 측정하고 개선하기 위한 실험 기능 (테스트 중). 무엇을 하는지 모르면 그대로 두세요.
+
 es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
 tr: 해상도: 1x-%ux (3x 이상은 실험 기능이며 PS4 Pro 전용).   '화면'과 '성능'에서 바꾼 것은 이 게임에만 저장됩니다.
 
-es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
-tr: L1 / R1: 탭 전환     위/아래: 선택     왼쪽/오른쪽: 값이나 슬롯 변경
+es: L1 / R1: otra sección     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1: 다른 섹션     위/아래: 선택     왼쪽/오른쪽: 값이나 슬롯 변경
 
 es: Volver
 tr: 돌아가기
@@ -1005,6 +1005,12 @@ tr: CPU 자동 조절 다시 올리기:  < %s >
 
 es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
 tr: 테스트, CPU 자동 조절이 켜져 있을 때: 게임이 문제없이 돌아가면 PS2 CPU를 고른 값까지 다시 올립니다. 건너뛰기가 자동이면 먼저 건너뛰고, 건너뛰기로 안 될 때만 CPU를 내립니다. CPU를 바꿀 때마다 잠깐 멈춥니다. 이 게임에 저장됩니다
+
+es: Revisión rápida del código:  < %s >
+tr: 코드 빠른 검사:  < %s >
+
+es: Prueba: el EE deja de revisar el código del juego antes de cada bloque y trabaja menos. Algunos juegos que cambian su propio código (GTA San Andreas) no arrancan así: si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: 테스트: EE가 코드 조각마다 게임 코드를 검사하지 않아 일이 줄어듭니다. 자기 코드를 바꾸는 일부 게임(GTA San Andreas)은 이 설정으로는 시작되지 않습니다. 게임이 종료되거나 멈추면 아니요로 하세요. 이 게임에 저장됩니다
 
 es: Grabar dibujos en otro hilo:  < %s >
 tr: 다른 스레드에서 그리기 기록:  < %s >

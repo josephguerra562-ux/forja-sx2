@@ -69,6 +69,9 @@ namespace PS4GameMenu
 		ROW_IOP_SLEEP,
 		ROW_SKIP_AUTO_FINE,
 		ROW_CPU_AUTO_UP,
+		// Compilation 124: "Revisión rápida del código" ([Forja] RevisionRapida): the EE recompiler without the check of every block's
+		// code (x86/ix86-32/iR5900.cpp, g_ps4_skip_smc_checks; until now only by FTP with vm-skip-smc). Off until each game is tested.
+		ROW_FAST_CODE_CHECK,
 		// Reportes (compilation 86, Joseph, 2026-10-24: "entre no tocar y sistema ... para que diga reportes"; until 85 in Sistema)
 		ROW_REPORT, // compilation 77: "Reportar este juego" (main.cpp, SendReport; ForjaReport.cpp)
 		// Compilation 80: what went wrong, for the report: the picture, the sound and the controls are what no meter sees.

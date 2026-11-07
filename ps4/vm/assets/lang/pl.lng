@@ -610,9 +610,6 @@ tr: Zgłoszenia
 es: Sistema
 tr: System
 
-es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
-tr: Eksperymenty do mierzenia i ulepszania gier (w testach). Jeśli nie wiesz, co coś robi, zostaw to.
-
 es: AJUSTAR
 tr: DOSTOSUJ
 
@@ -631,11 +628,14 @@ tr: ZMIEŃ
 es: X  ·  RANURA
 tr: X  ·  SLOT
 
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: Eksperymenty do mierzenia i ulepszania gier (w testach). Jeśli nie wiesz, co coś robi, zostaw to.
+
 es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
 tr: Rozdzielczość: 1x-%ux (3x i więcej to eksperyment, tylko PS4 Pro).   Zmiany w Obrazie i Wydajności zapisują się tylko dla tej gry.
 
-es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
-tr: L1 / R1: zmień kartę     Góra/Dół: wybierz     Lewo/Prawo: zmień wartość lub slot
+es: L1 / R1: otra sección     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1: inna sekcja     Góra/Dół: wybierz     Lewo/Prawo: zmień wartość lub slot
 
 es: Volver
 tr: Wróć
@@ -1005,6 +1005,12 @@ tr: Automatyczny CPU znów podnosi:  < %s >
 
 es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
 tr: Test, z automatycznym CPU: gdy gra działa dobrze, znów podnosi CPU PS2 aż do tego, który wybrałeś. Gdy pomijanie jest na Auto, najpierw pomija, a CPU spada tylko wtedy, gdy pomijanie nie wystarcza. Każda zmiana CPU to krótkie szarpnięcie. Zapisane dla tej gry
+
+es: Revisión rápida del código:  < %s >
+tr: Szybkie sprawdzanie kodu:  < %s >
+
+es: Prueba: el EE deja de revisar el código del juego antes de cada bloque y trabaja menos. Algunos juegos que cambian su propio código (GTA San Andreas) no arrancan así: si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: Test: EE przestaje sprawdzać kod gry przed każdym blokiem i pracuje mniej. Niektóre gry, które zmieniają własny kod (GTA San Andreas), tak się nie uruchomią: jeśli gra się zamyka lub zawiesza, ustaw Nie. Zapisane dla tej gry
 
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Nagrywaj rysowanie w innym wątku:  < %s >

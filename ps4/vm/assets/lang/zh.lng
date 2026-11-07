@@ -610,9 +610,6 @@ tr: 报告
 es: Sistema
 tr: 系统
 
-es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
-tr: 用于测量和改进游戏的实验功能（测试中）。如果不清楚某项的作用，请保持原样。
-
 es: AJUSTAR
 tr: 调整
 
@@ -631,11 +628,14 @@ tr: 切换
 es: X  ·  RANURA
 tr: X  ·  存档位
 
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: 用于测量和改进游戏的实验功能（测试中）。如果不清楚某项的作用，请保持原样。
+
 es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
 tr: 分辨率：1x-%ux（3x 及以上为实验功能，仅限 PS4 Pro）。   在“画面”和“性能”中的更改只为此游戏保存。
 
-es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
-tr: L1 / R1：切换分页     上/下：选择     左/右：更改数值或存档位
+es: L1 / R1: otra sección     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1：其他部分     上/下：选择     左/右：更改值或存档位
 
 es: Volver
 tr: 返回
@@ -1005,6 +1005,12 @@ tr: 自动 CPU 重新提高：  < %s >
 
 es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
 tr: 测试，自动 CPU 打开时：游戏运行正常时，把 PS2 的 CPU 重新提高到你选的值。跳过为自动时，先用跳过，跳过不足时才降低 CPU。每次改变 CPU 都会短暂卡一下。仅为此游戏保存
+
+es: Revisión rápida del código:  < %s >
+tr: 快速程序检查：  < %s >
+
+es: Prueba: el EE deja de revisar el código del juego antes de cada bloque y trabaja menos. Algunos juegos que cambian su propio código (GTA San Andreas) no arrancan así: si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: 测试：EE 不再在每段程序前检查游戏的程序，工作更少。有些会改变自己程序的游戏（GTA San Andreas）这样无法启动：如果游戏关闭或卡住，请设为否。仅为此游戏保存
 
 es: Grabar dibujos en otro hilo:  < %s >
 tr: 在另一个线程中记录绘制：  < %s >

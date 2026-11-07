@@ -353,6 +353,8 @@ static unsigned s_cpu_auto_room_checks = 0;
 // help (a step up left and not blocked) and whether it is at the game's factory value. The CPU's tries up: when the last one was, how long
 // until the next may be, and the wait after a failed one.
 static bool s_cpu_auto_up = false, s_skip_auto_fine = false;
+// Compilation 124: "Revisión rápida del código" for this game ([Forja] RevisionRapida), and the FTP marker vm-skip-smc (for every game).
+static bool s_fast_code_game = false, s_fast_code_marker = false;
 static bool s_skip_auto_can_help = false, s_skip_auto_at_factory = true;
 static unsigned s_cpu_auto_good_checks = 0;
 static double s_cpu_auto_probe_at = -1000.0, s_cpu_auto_no_probe_until = 0.0, s_cpu_auto_probe_wait = 60.0;
@@ -1807,11 +1809,11 @@ static void ChangeToSelectedDisc()
 static void LogGameSettings(const char* why)
 {
 	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d "
-			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d\n", why,
+			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d fast_code=%d\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
 		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str(),
 		s_draw_thread ? 1 : 0, s_sw_jit ? 1 : 0, EmuConfig.Cpu.Recompiler.fpuFullMode ? 1 : 0, s_iop_fast ? 1 : 0, s_iop_sleep_game ? 1 : 0,
-		s_skip_auto_fine ? 1 : 0, s_cpu_auto_up ? 1 : 0);
+		s_skip_auto_fine ? 1 : 0, s_cpu_auto_up ? 1 : 0, g_ps4_skip_smc_checks ? 1 : 0);
 }
 
 // Compilation 76: two rows say so when their Auto can do nothing in this game, in place of their usual line (GameMenu.cpp's
@@ -2027,6 +2029,17 @@ static void PublishCpuAutoUpText()
 	std::snprintf(label, sizeof(label), TF("CPU automático vuelve a subir:  < %s >"), T(s_cpu_auto_up ? N_("Sí") : N_("No")));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CPU_AUTO_UP, label,
 		T("Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego"));
+}
+
+// Compilation 124: "Revisión rápida del código".
+static void PublishFastCodeText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("Revisión rápida del código:  < %s >"), T(s_fast_code_game ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_FAST_CODE_CHECK, label,
+		T("Prueba: el EE deja de revisar el código del juego antes de cada bloque y trabaja menos. Algunos juegos que cambian su propio código (GTA San Andreas) no arrancan así: si el juego se cierra o se traba, ponlo en No. Se guarda para este juego"));
 }
 
 static void PublishDrawThreadText()
@@ -2294,6 +2307,7 @@ static void PublishGameMenu()
 	PublishIopSleepText(); // compilation 122
 	PublishSkipAutoFineText();
 	PublishCpuAutoUpText();
+	PublishFastCodeText(); // compilation 124
 	PublishCycleSkipText(); // compilation 100
 	PublishSpeedLimitText();
 	PublishImageOptionsText(); // compilation 104
@@ -2466,6 +2480,9 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	ForjaApplyIopSleep();
 	s_skip_auto_fine = s_profile.skip_auto_fine == 1;
 	s_cpu_auto_up = s_profile.cpu_auto_up == 1;
+	s_fast_code_game = s_profile.fast_code == 1; // compilation 124: the recompiler takes it at the game's start (or from the row, with a reset)
+	if (s_fast_code_game || s_profile.fast_code_origin != ForjaGameProfile::Origin::Global)
+		ProbeLog("Fast code check (compilation 124): %s (%s)\n", s_fast_code_game ? "on" : "off", ProfileOriginName(s_profile.fast_code_origin));
 	if (s_iop_sleep_game || s_skip_auto_fine || s_cpu_auto_up || s_profile.iop_sleep_origin != ForjaGameProfile::Origin::Global ||
 		s_profile.skip_auto_fine_origin != ForjaGameProfile::Origin::Global || s_profile.cpu_auto_up_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("Compilation 122 rows: IOP asleep in the game %s (%s), cycle skip auto fine %s (%s), CPU auto back up %s (%s)\n",
@@ -3838,6 +3855,22 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			SavePlayerProfile("Cycle skip auto fine", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "SaltoAutoAfinado", next); }, false);
 			break;
 		}
+		case PS4GameMenu::ROW_FAST_CODE_CHECK: // compilation 124: No / Sí ([Forja] RevisionRapida); the recompiler starts over in the new mode
+		{
+			const int next = s_fast_code_game ? 0 : 1;
+			SavePlayerProfile("Fast code check", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "RevisionRapida", next); }, false);
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+			const bool skip = s_fast_code_marker || s_fast_code_game;
+			if (skip != g_ps4_skip_smc_checks && VMManager::GetDiscCRC() != 0)
+			{
+				g_ps4_skip_smc_checks = skip;
+				g_ps4_bytecopy_fusion = skip && access("/data/ForjaSX2/vm-no-bytecopy-fusion", F_OK) != 0;
+				Cpu->Reset();
+				ProbeLog("EE JIT manual SMC validation: %s (the game's row; recompiler reset)\n", skip ? "relaxed" : "exact");
+			}
+#endif
+			break;
+		}
 		case PS4GameMenu::ROW_CPU_AUTO_UP: // compilation 122: No / Sí ([Forja] CpuAutoSube)
 		{
 			const int next = s_cpu_auto_up ? 0 : 1;
@@ -4785,7 +4818,7 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
 						   row == PS4GameMenu::ROW_TEXTURES || row == PS4GameMenu::ROW_DRAW_THREAD || row == PS4GameMenu::ROW_SW_JIT ||
 						   row == PS4GameMenu::ROW_FPU_EXACT || row == PS4GameMenu::ROW_IOP_FAST || row == PS4GameMenu::ROW_IOP_SLEEP ||
-						   row == PS4GameMenu::ROW_SKIP_AUTO_FINE || row == PS4GameMenu::ROW_CPU_AUTO_UP ||
+						   row == PS4GameMenu::ROW_SKIP_AUTO_FINE || row == PS4GameMenu::ROW_CPU_AUTO_UP || row == PS4GameMenu::ROW_FAST_CODE_CHECK ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
 						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT || row == PS4GameMenu::ROW_REPORT_WHERE))
 		{
@@ -4892,9 +4925,9 @@ void VMHostPoll()
 		if (navigation && (navigation != s_game_menu_direction || elapsed >= s_game_menu_next_repeat))
 		{
 			s_game_menu_next_repeat = elapsed + (navigation == s_game_menu_direction ? 0.12 : 0.35);
-			// Up and Down stay in the tab, wrapping around inside it.
-			const unsigned tab = PS4GameMenu::TabOfRow(row);
-			const unsigned first = PS4GameMenu::TAB_FIRST_ROW[tab], count = PS4GameMenu::TAB_FIRST_ROW[tab + 1] - first;
+			// Compilation 124: Up and Down go along the whole list (one list since this compilation, GameMenu.cpp), wrapping around it;
+			// L1/R1 still jump between its sections.
+			const unsigned first = 0, count = PS4GameMenu::TAB_FIRST_ROW[PS4GameMenu::TAB_COUNT];
 			if (navigation == ORBIS_PAD_BUTTON_UP)
 				s_game_menu_selection = first + (row - first + count - 1) % count;
 			else if (navigation == ORBIS_PAD_BUTTON_DOWN)
@@ -5164,10 +5197,12 @@ static void* RunVM(void*)
 	// (AI-assisted) Fase 3-B REVERTED 2026-10-12: SMC skip default ON broke GTA SLUS-20946
 	// (Unknown SPECIAL 00000001 at 00eaa1c4, Trap 00eaa1d4, stuck at 8000fe74 100% unavailable).
 	// GoW gained +18pp but GTA unbootable -> revert to exact SMC. Opt-in via /data/ForjaSX2/vm-skip-smc. Needs proper testing.
-	g_ps4_skip_smc_checks = access("/data/ForjaSX2/vm-skip-smc", F_OK) == 0;
+	// Compilation 124: or the game's row ("Revisión rápida del código"), read by ApplyGameProfile before this.
+	s_fast_code_marker = access("/data/ForjaSX2/vm-skip-smc", F_OK) == 0;
+	g_ps4_skip_smc_checks = s_fast_code_marker || s_fast_code_game;
 	ProbeLog("EE JIT manual SMC validation: %s (%s)\n",
 		g_ps4_skip_smc_checks ? "relaxed (skip per-block checks, manual protection only)" : "enabled for all games (exact block checks)",
-		g_ps4_skip_smc_checks ? "enabled by /data/ForjaSX2/vm-skip-smc" : "exact (reverted Fase 3-B)");
+		s_fast_code_marker ? "enabled by /data/ForjaSX2/vm-skip-smc" : s_fast_code_game ? "the game's row, Revisión rápida del código" : "exact (reverted Fase 3-B)");
 	// (AI-assisted) Exact SMC mode must inspect code on every loop iteration.
 	g_ps4_bytecopy_fusion = g_ps4_skip_smc_checks && access("/data/ForjaSX2/vm-no-bytecopy-fusion", F_OK) != 0;
 	g_ps4_bytecopy_blocks = g_ps4_bytecopy_runs = g_ps4_bytecopy_bytes = 0;

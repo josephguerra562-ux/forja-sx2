@@ -610,9 +610,6 @@ tr: Raporlar
 es: Sistema
 tr: Sistem
 
-es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
-tr: Oyunları ölçmek ve iyileştirmek için deneyler (test aşamasında). Bir şeyin ne yaptığını bilmiyorsan olduğu gibi bırak.
-
 es: AJUSTAR
 tr: AYARLA
 
@@ -631,11 +628,14 @@ tr: DEĞİŞTİR
 es: X  ·  RANURA
 tr: X  ·  YUVA
 
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: Oyunları ölçmek ve iyileştirmek için deneyler (test aşamasında). Bir şeyin ne yaptığını bilmiyorsan olduğu gibi bırak.
+
 es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
 tr: Çözünürlük: 1x-%ux (3x ve üstü deneysel, yalnızca PS4 Pro için).   Görüntü ve Performans'ta değiştirdiklerin yalnızca bu oyun için kaydedilir.
 
-es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
-tr: L1 / R1: sekme değiştir     Yukarı/Aşağı: seç     Sol/Sağ: değeri veya yuvayı değiştir
+es: L1 / R1: otra sección     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1: başka bölüm     Yukarı/Aşağı: seç     Sol/Sağ: değeri veya yuvayı değiştir
 
 es: Volver
 tr: Geri
@@ -1005,6 +1005,12 @@ tr: Otomatik CPU yeniden yükselir:  < %s >
 
 es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
 tr: Test, Otomatik CPU ile: oyun iyi giderken PS2 CPU'sunu seçtiğin değere kadar yeniden yükseltir. Atlama Otomatik iken önce atlar, CPU yalnızca atlama yetmezse düşer. Her CPU değişimi kısa bir takılmadır. Bu oyun için kaydedilir
+
+es: Revisión rápida del código:  < %s >
+tr: Hızlı kod denetimi:  < %s >
+
+es: Prueba: el EE deja de revisar el código del juego antes de cada bloque y trabaja menos. Algunos juegos que cambian su propio código (GTA San Andreas) no arrancan así: si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: Test: EE her bloktan önce oyunun kodunu denetlemeyi bırakır ve daha az çalışır. Kendi kodunu değiştiren bazı oyunlar (GTA San Andreas) böyle açılmaz: oyun kapanırsa veya takılırsa Hayır yapın. Bu oyun için kaydedilir
 
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Çizimleri başka bir iş parçacığında kaydet:  < %s >

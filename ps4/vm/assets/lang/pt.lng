@@ -610,9 +610,6 @@ tr: Relatórios
 es: Sistema
 tr: Sistema
 
-es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
-tr: Experimentos para medir e melhorar os jogos (em teste). Se não souber o que algo faz, deixe como está.
-
 es: AJUSTAR
 tr: AJUSTAR
 
@@ -631,11 +628,14 @@ tr: ALTERAR
 es: X  ·  RANURA
 tr: X  ·  SLOT
 
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: Experimentos para medir e melhorar os jogos (em teste). Se não souber o que algo faz, deixe como está.
+
 es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
 tr: Resolução: 1x-%ux (3x ou mais é experimental e só para PS4 Pro).   O que você muda em Imagem e Desempenho fica salvo só para este jogo.
 
-es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
-tr: L1 / R1: trocar de aba     Cima/Baixo: escolher     Esq./Dir.: mudar valor ou slot
+es: L1 / R1: otra sección     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1: outra seção     Cima/Baixo: escolher     Esq./Dir.: mudar valor ou slot
 
 es: Volver
 tr: Voltar
@@ -1005,6 +1005,12 @@ tr: CPU automática volta a subir:  < %s >
 
 es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
 tr: Teste, com a CPU automática: quando o jogo vai bem, volta a subir a CPU do PS2 até a que você escolheu. Com o Salto em Auto, primeiro salta e a CPU só baixa se o salto não bastar. Cada mudança de CPU é um tranco curto. Salvo para este jogo
+
+es: Revisión rápida del código:  < %s >
+tr: Verificação rápida do código:  < %s >
+
+es: Prueba: el EE deja de revisar el código del juego antes de cada bloque y trabaja menos. Algunos juegos que cambian su propio código (GTA San Andreas) no arrancan así: si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: Teste: o EE para de verificar o código do jogo antes de cada bloco e trabalha menos. Alguns jogos que mudam o próprio código (GTA San Andreas) não iniciam assim: se o jogo fechar ou travar, coloque em Não. Salvo para este jogo
 
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Gravar desenhos em outra thread:  < %s >

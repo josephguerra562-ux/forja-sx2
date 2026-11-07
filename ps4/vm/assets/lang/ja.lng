@@ -610,9 +610,6 @@ tr: レポート
 es: Sistema
 tr: システム
 
-es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
-tr: ゲームを測定・改善するための実験機能（テスト中）。何をするかわからない項目はそのままにしてください。
-
 es: AJUSTAR
 tr: 調整
 
@@ -631,11 +628,14 @@ tr: 切替
 es: X  ·  RANURA
 tr: X  ·  スロット
 
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: ゲームを測定・改善するための実験機能（テスト中）。何をするかわからない項目はそのままにしてください。
+
 es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
 tr: 解像度：1x-%ux（3x以上は実験的でPS4 Pro専用）。   「画面」と「パフォーマンス」の変更はこのゲームだけに保存されます。
 
-es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
-tr: L1 / R1：タブ切替     上/下：選択     左/右：値やスロットを変更
+es: L1 / R1: otra sección     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1：別のセクション     上/下：選ぶ     左/右：値やスロットを変える
 
 es: Volver
 tr: 戻る
@@ -1005,6 +1005,12 @@ tr: CPU自動調整で上げ直す：  < %s >
 
 es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
 tr: テスト、CPU自動調整がオンの時：ゲームが問題なく動くならPS2のCPUを選んだ値まで上げ直します。スキップが自動なら先にスキップを使い、足りない時だけCPUを下げます。CPUを変えるたびに短く止まります。このゲーム用に保存
+
+es: Revisión rápida del código:  < %s >
+tr: コードの高速チェック：  < %s >
+
+es: Prueba: el EE deja de revisar el código del juego antes de cada bloque y trabaja menos. Algunos juegos que cambian su propio código (GTA San Andreas) no arrancan así: si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: テスト：EEがブロックごとにゲームのコードをチェックするのをやめ、処理が減ります。自分のコードを書き換えるゲーム（GTA San Andreas）はこの設定では起動しません。ゲームが終了したり止まったら「いいえ」に。このゲーム用に保存
 
 es: Grabar dibujos en otro hilo:  < %s >
 tr: 描画を別のスレッドで書き込み：  < %s >

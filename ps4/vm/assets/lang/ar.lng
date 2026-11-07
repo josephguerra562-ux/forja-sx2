@@ -610,9 +610,6 @@ tr: التقارير
 es: Sistema
 tr: النظام
 
-es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
-tr: تجارب لقياس الألعاب وتحسينها (قيد الاختبار). إن لم تعرف ما يفعله خيار فاتركه كما هو.
-
 es: AJUSTAR
 tr: ضبط
 
@@ -631,11 +628,14 @@ tr: تبديل
 es: X  ·  RANURA
 tr: X  ·  الخانة
 
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: تجارب لقياس الألعاب وتحسينها (قيد الاختبار). إن لم تعرف ما يفعله خيار فاتركه كما هو.
+
 es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
 tr: الدقة: 1x-%ux (3x أو أكثر تجريبي ولـ PS4 Pro فقط).   ما تغيّره في الصورة والأداء يُحفظ لهذه اللعبة فقط.
 
-es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
-tr: L1 / R1: تغيير التبويب     أعلى/أسفل: اختيار     يسار/يمين: تغيير القيمة أو الخانة
+es: L1 / R1: otra sección     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1: قسم آخر     أعلى/أسفل: اختيار     يسار/يمين: تغيير القيمة أو الخانة
 
 es: Volver
 tr: رجوع
@@ -1005,6 +1005,12 @@ tr: المعالج التلقائي يرتفع من جديد:  < %s >
 
 es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
 tr: تجربة، مع المعالج التلقائي: عندما تعمل اللعبة جيدًا، يرفع معالج PS2 من جديد حتى الذي اخترته. مع التخطي على تلقائي، يتخطى أولًا ولا ينخفض المعالج إلا إذا لم يكفِ التخطي. كل تغيير للمعالج تقطع قصير. تُحفظ لهذه اللعبة
+
+es: Revisión rápida del código:  < %s >
+tr: فحص سريع للشيفرة:  < %s >
+
+es: Prueba: el EE deja de revisar el código del juego antes de cada bloque y trabaja menos. Algunos juegos que cambian su propio código (GTA San Andreas) no arrancan así: si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: تجربة: يتوقف الـ EE عن فحص شيفرة اللعبة قبل كل كتلة ويعمل أقل. بعض الألعاب التي تغيّر شيفرتها (GTA San Andreas) لا تبدأ هكذا: إذا أُغلقت اللعبة أو توقفت، اجعلها لا. تُحفظ لهذه اللعبة
 
 es: Grabar dibujos en otro hilo:  < %s >
 tr: تسجيل الرسم في خيط آخر:  < %s >

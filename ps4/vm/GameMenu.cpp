@@ -2057,23 +2057,24 @@ namespace PS4GameMenu
 			const ImU32 white = IM_COL32(239, 246, 253, 255);
 			const ImU32 muted = IM_COL32(145, 171, 193, 255);
 			const ImU32 accent = IM_COL32(45, 153, 255, 255);
-			const ImU32 panel = IM_COL32(7, 24, 40, 218);
-			draw->AddRectFilled(ImVec2(0, 0), size, IM_COL32(0, 5, 14, 158));
-			draw->AddRectFilled(point(64, 38), point(1856, 1042), panel, 24.0f * scale);
-			draw->AddRect(point(64, 38), point(1856, 1042), IM_COL32(36, 127, 204, 235), 24.0f * scale,
-				2.0f * scale, 0);
-			draw->AddRectFilled(point(64, 38), point(1856, 170), IM_COL32(4, 19, 34, 205), 24.0f * scale);
-			draw->AddLine(point(64, 170), point(1856, 170), IM_COL32(38, 103, 157, 150), 1.0f * scale);
-			image("status_controle", 126, 82, 40, 34);
-			DrawText(draw, font, 34.0f * scale, point(196, 82), white, T("Menú del emulador"), 960.0f * scale);
-			DrawText(draw, font, 18.0f * scale, point(1180, 66), muted, T("JUEGO EN PAUSA"), 640.0f * scale);
+			// Compilation 124 (Joseph, 2026-11-07, after DolphinPS4's L3+R3 menu): one list on the left, half see-through, the game still
+			// there on the right. The tabs of compilation 35 are the list's sections; L1/R1 jump between them (main.cpp).
+			constexpr float PANEL_W = 860.0f;
+			const ImU32 panel = IM_COL32(7, 24, 40, 205);
+			draw->AddRectFilled(ImVec2(0, 0), size, IM_COL32(0, 5, 14, 80));
+			draw->AddRectFilled(point(0, 0), point(PANEL_W, 1080), panel, 0.0f);
+			draw->AddLine(point(PANEL_W, 0), point(PANEL_W, 1080), IM_COL32(36, 127, 204, 200), 2.0f * scale);
+			image("status_controle", 40, 38, 40, 34);
+			DrawText(draw, font, 32.0f * scale, point(96, 34), white, T("Menú del emulador"), 520.0f * scale);
+			DrawText(draw, font, 17.0f * scale, point(640, 46), muted, T("JUEGO EN PAUSA"), 190.0f * scale);
 			// Forja SX2: which profiles this game has (pcsx2/ForjaGameProfile.h). The buffers are big for the translations
 			// (2026-10-19): a Russian or Chinese letter takes two or three bytes.
 			const auto yes_no = [](bool on) { return on ? T("Sí") : T("No"); };
 			char profile_label[256];
 			std::snprintf(profile_label, sizeof(profile_label), TF("Perfil de este juego:  de fábrica %s  ·  tuyo %s"),
 				menu_state.has_factory ? T("sí") : T("no"), menu_state.has_player ? T("sí") : T("no"));
-			DrawText(draw, font, 18.0f * scale, point(1180, 104), muted, profile_label, 640.0f * scale);
+			DrawText(draw, font, 17.0f * scale, point(40, 92), muted, profile_label, 790.0f * scale);
+			draw->AddLine(point(40, 128), point(PANEL_W - 30, 128), IM_COL32(38, 103, 157, 150), 1.0f * scale);
 			static constexpr const char* origin_names[] = {N_("global"), N_("perfil de fábrica"), N_("tu perfil")};
 			const auto origin = [&](unsigned index) { return T(origin_names[std::min(index, 2u)]); };
 			char resolution[256];
@@ -2364,6 +2365,15 @@ namespace PS4GameMenu
 						draw->AddLine(ip(5, -12), ip(15, -12), icon_line, lw);
 						draw->AddLine(ip(12, 6), ip(12, 12), icon_line, lw);
 						break;
+					case ROW_FAST_CODE_CHECK: // a page with a check mark and a speed line (compilation 124)
+						draw->AddLine(ip(-12, -14), ip(6, -14), icon_line, lw);
+						draw->AddLine(ip(6, -14), ip(12, -8), icon_line, lw);
+						draw->AddLine(ip(12, -8), ip(12, 14), icon_line, lw);
+						draw->AddLine(ip(12, 14), ip(-12, 14), icon_line, lw);
+						draw->AddLine(ip(-12, 14), ip(-12, -14), icon_line, lw);
+						draw->AddLine(ip(-7, 1), ip(-2, 6), icon_line, lw);
+						draw->AddLine(ip(-2, 6), ip(7, -5), icon_line, lw);
+						break;
 					case ROW_CPU_AUTO_UP: // a chip with an arrow up (compilation 122)
 						draw->AddLine(ip(-12, -4), ip(-12, 14), icon_line, lw);
 						draw->AddLine(ip(-12, 14), ip(6, 14), icon_line, lw);
@@ -2476,109 +2486,148 @@ namespace PS4GameMenu
 						break;
 				}
 			};
-			// Forja SX2 (compilation 35): the rows in four tabs, as Dolphin's quick menu (Joseph, 2026-10-16: one list of fifteen
-			// rows was hard to follow). L1/R1 move between the tabs (main.cpp). Compilation 101: a tab with more than six rows scrolls.
-			// Compilation 86: "Reportes", between No tocar and Sistema.
+			// Forja SX2 (compilation 35): the rows in tabs (Joseph, 2026-10-16: one list of fifteen rows was hard to follow). Compilation 124:
+			// one list again, as DolphinPS4's menu, but each option on one line, its explanation in a box under the list, and the old tabs as
+			// the list's sections, so the ~55 rows read in groups.
 			static constexpr const char* tab_names[TAB_COUNT] = {N_("Partida"), N_("Imagen"), N_("Rendimiento"), N_("Extras"),
 				N_("No tocar"), N_("Reportes"), N_("Sistema")};
-			const unsigned active_tab = TabOfRow(selected_row);
-			draw->AddText(font, 20.0f * scale, point(112, 198), muted, "L1");
-			// The tabs shrink together when a language's names don't fit between L1 and R1 (2026-10-19).
-			float tabs_w = 0.0f;
-			for (unsigned tab = 0; tab < TAB_COUNT; tab++)
-				tabs_w += TextWidth(font, 26.0f * scale, T(tab_names[tab])) / scale + 64.0f + 16.0f;
-			const float tab_fit = std::min(1.0f, (1760.0f - 152.0f) / tabs_w);
-			const float tab_pixels = std::floor(26.0f * tab_fit * scale);
-			float tab_x = 152.0f;
-			for (unsigned tab = 0; tab < TAB_COUNT; tab++)
-			{
-				const float text_w = TextWidth(font, tab_pixels, T(tab_names[tab])) / scale;
-				const float w = text_w + 64.0f * tab_fit;
-				const bool on = tab == active_tab;
-				draw->AddRectFilled(point(tab_x, 186), point(tab_x + w, 238), on ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 255),
-					26.0f * scale);
-				if (on)
-					draw->AddRect(point(tab_x, 186), point(tab_x + w, 238), accent, 26.0f * scale, 2.0f * scale, 0);
-				DrawText(draw, font, tab_pixels, point(tab_x + 32.0f * tab_fit, 196 + (26.0f * scale - tab_pixels) * 0.5f / scale),
-					on ? white : muted, T(tab_names[tab]));
-				tab_x += w + 16.0f * tab_fit;
-			}
-			draw->AddText(font, 20.0f * scale, point(tab_x + 8, 198), muted, "R1");
-			// Compilation 53: the labs' tab says what it is.
-			if (active_tab == TAB_LAB)
-				DrawText(draw, font, 18.0f * scale, point(112, 244), muted,
-					T("Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está."), 1690.0f * scale);
-			constexpr float ROW_TOP = 270.0f, ROW_PITCH = 112.0f, ROW_HEIGHT = 100.0f;
-			// Compilation 101 (Joseph, 2026-10-31: Rendimiento's seventh row was over the L1/R1 line): six rows on screen, following the cursor.
-			constexpr unsigned ROWS_VISIBLE = 6;
-			const unsigned tab_first = TAB_FIRST_ROW[active_tab], tab_rows = TAB_FIRST_ROW[active_tab + 1] - tab_first;
-			const unsigned first_index = selected_row >= tab_first + ROWS_VISIBLE ? selected_row - tab_first - ROWS_VISIBLE + 1 : 0u;
-			for (unsigned row = tab_first + first_index; row < tab_first + tab_rows && row < tab_first + first_index + ROWS_VISIBLE; row++)
-			{
-				const float y = ROW_TOP + static_cast<float>(row - tab_first - first_index) * ROW_PITCH;
-				const bool selected = selected_row == row;
-				draw->AddRectFilled(point(112, y), point(1808, y + ROW_HEIGHT),
-					selected ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 255), 14.0f * scale);
-				if (selected)
-					draw->AddRect(point(112, y), point(1808, y + ROW_HEIGHT), accent, 14.0f * scale, 2.5f * scale, 0);
-				draw_option_icon(row, 176, y + ROW_HEIGHT * 0.5f, selected);
-				const char* action = nullptr;
+			const auto action_of = [&](unsigned row) -> const char* {
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
-					action = T("AJUSTAR");
-				else if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
-				         row == ROW_SHARPNESS || row == ROW_DEINTERLACE || row == ROW_TEXTURE_FILTER || row == ROW_GS_SKIP || row == ROW_CROWD || row == ROW_CYCLE_SKIP ||
-				         row == ROW_SPEED_LIMIT)
-					action = T("ELEGIR");
-				else if (row == ROW_REPORT_ISSUE || row == ROW_REPORT_WHERE) // compilation 82: X sends the report from here too; 98: and the last
-					action = T("ELEGIR  ·  X");
-				else if (row == ROW_REPORT_COMMENT) // compilation 86: X writes, Cuadrado clears; 87: Left/Right, a phrase
-					action = T("ELEGIR  ·  X  ·  CUADRADO");
-				else if (row == ROW_VU1_FILTER || row == ROW_GS_FILTER)
-					action = T("ELEGIR  ·  X  ·  CUADRADO"); // compilation 52: Cuadrado brings everything back
-				else if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)
-					action = T("ELEGIR  ·  X");
-				else if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD || row == ROW_SW_JIT || row == ROW_FPU_EXACT || row == ROW_IOP_FAST ||
-				         row == ROW_IOP_SLEEP || row == ROW_SKIP_AUTO_FINE || row == ROW_CPU_AUTO_UP) // compilation 122
-					action = T("ELEGIR");
-				else if (row == ROW_RECOMMENDED)
-					action = "X";
-				else if (row == ROW_OVERLAY)
-					action = T("CAMBIAR");
-				else if (row == ROW_SAVE_STATE || (row == ROW_LOAD_STATE && menu_state.slot_used))
-					action = T("X  ·  RANURA");
-				else if (row == ROW_RESTART || (row == ROW_RESET_PROFILE && menu_state.has_player))
-					action = "X";
-				// 2026-10-19: the action ends at the row's right edge, so a longer word in another language stays inside it and the
-				// texts on the left get the room left.
-				float text_right = 1780.0f;
-				if (action)
-				{
-					const float action_w = std::min(TextWidth(font, 24.0f * scale, action) / scale, 420.0f);
-					DrawText(draw, font, 24.0f * scale, point(1780.0f - action_w, y + 36), selected ? white : muted, action, 420.0f * scale);
-					text_right = 1780.0f - action_w - 28.0f;
-				}
-				DrawText(draw, font, 32.0f * scale, point(240, y + 12), white, label_of(row), (text_right - 240.0f) * scale);
-				DrawText(draw, font, 20.0f * scale, point(240, y + 60), muted, description_of(row), (text_right - 240.0f) * scale);
-			}
-			if (tab_rows > ROWS_VISIBLE)
+					return T("AJUSTAR");
+				if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
+				    row == ROW_SHARPNESS || row == ROW_DEINTERLACE || row == ROW_TEXTURE_FILTER || row == ROW_GS_SKIP || row == ROW_CROWD || row == ROW_CYCLE_SKIP ||
+				    row == ROW_SPEED_LIMIT)
+					return T("ELEGIR");
+				if (row == ROW_REPORT_ISSUE || row == ROW_REPORT_WHERE) // compilation 82: X sends the report from here too; 98: and the last
+					return T("ELEGIR  ·  X");
+				if (row == ROW_REPORT_COMMENT) // compilation 86: X writes, Cuadrado clears; 87: Left/Right, a phrase
+					return T("ELEGIR  ·  X  ·  CUADRADO");
+				if (row == ROW_VU1_FILTER || row == ROW_GS_FILTER)
+					return T("ELEGIR  ·  X  ·  CUADRADO"); // compilation 52: Cuadrado brings everything back
+				if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)
+					return T("ELEGIR  ·  X");
+				if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD || row == ROW_SW_JIT || row == ROW_FPU_EXACT || row == ROW_IOP_FAST ||
+				    row == ROW_IOP_SLEEP || row == ROW_SKIP_AUTO_FINE || row == ROW_CPU_AUTO_UP || row == ROW_FAST_CODE_CHECK) // 122; 124
+					return T("ELEGIR");
+				if (row == ROW_RECOMMENDED)
+					return "X";
+				if (row == ROW_OVERLAY)
+					return T("CAMBIAR");
+				if (row == ROW_SAVE_STATE || (row == ROW_LOAD_STATE && menu_state.slot_used))
+					return T("X  ·  RANURA");
+				if (row == ROW_RESTART || (row == ROW_RESET_PROFILE && menu_state.has_player))
+					return "X";
+				return nullptr;
+			};
+			// The list: where each section's header and each row go, in 1080p units from the list's top.
+			constexpr float LIST_TOP = 140.0f, LIST_BOTTOM = 818.0f, HEADER_H = 48.0f, ROW_H = 54.0f, ROW_PITCH = 58.0f;
+			const unsigned total_rows = TAB_FIRST_ROW[TAB_COUNT];
+			const auto row_offset = [&](unsigned row) {
+				return static_cast<float>(TabOfRow(row) + 1) * HEADER_H + static_cast<float>(row) * ROW_PITCH;
+			};
+			const float content_h = static_cast<float>(TAB_COUNT) * HEADER_H + static_cast<float>(total_rows) * ROW_PITCH;
+			const float view_h = LIST_BOTTOM - LIST_TOP;
+			// The list scrolls only when the cursor would leave it, keeping one row of room (and the section's header for its first row).
+			static float s_list_scroll = 0.0f;
 			{
-				const float track_h = ROWS_VISIBLE * ROW_PITCH - (ROW_PITCH - ROW_HEIGHT);
-				const float thumb_h = track_h * static_cast<float>(ROWS_VISIBLE) / static_cast<float>(tab_rows);
-				const float thumb_y = ROW_TOP + (track_h - thumb_h) * static_cast<float>(first_index) / static_cast<float>(tab_rows - ROWS_VISIBLE);
-				draw->AddRectFilled(point(1820, ROW_TOP), point(1826, ROW_TOP + track_h), IM_COL32(30, 66, 94, 180), 3.0f * scale);
-				draw->AddRectFilled(point(1820, thumb_y), point(1826, thumb_y + thumb_h), accent, 3.0f * scale);
+				const unsigned sel = std::min(selected_row, total_rows - 1);
+				const bool first_of_tab = sel == TAB_FIRST_ROW[TabOfRow(sel)];
+				const float top = row_offset(sel) - (first_of_tab ? HEADER_H : ROW_PITCH);
+				const float bottom = row_offset(sel) + ROW_H + ROW_PITCH;
+				if (top < s_list_scroll)
+					s_list_scroll = top;
+				if (bottom > s_list_scroll + view_h)
+					s_list_scroll = bottom - view_h;
+				s_list_scroll = std::clamp(s_list_scroll, 0.0f, std::max(0.0f, content_h - view_h));
+			}
+			draw->PushClipRect(point(0, LIST_TOP), point(PANEL_W, LIST_BOTTOM), true);
+			for (unsigned tab = 0; tab < TAB_COUNT; tab++)
+			{
+				const float hy = LIST_TOP + row_offset(TAB_FIRST_ROW[tab]) - HEADER_H - s_list_scroll;
+				if (hy + HEADER_H >= LIST_TOP && hy <= LIST_BOTTOM)
+				{
+					const char* name = T(tab_names[tab]);
+					const float name_w = std::min(TextWidth(font, 19.0f * scale, name) / scale, 600.0f);
+					DrawText(draw, font, 19.0f * scale, point(40, hy + 16), tab == TabOfRow(selected_row) ? accent : muted, name, 600.0f * scale);
+					draw->AddLine(point(52 + name_w, hy + 28), point(PANEL_W - 30, hy + 28), IM_COL32(38, 103, 157, 120), 1.0f * scale);
+				}
+				for (unsigned row = TAB_FIRST_ROW[tab]; row < TAB_FIRST_ROW[tab + 1]; row++)
+				{
+					const float y = LIST_TOP + row_offset(row) - s_list_scroll;
+					if (y + ROW_H < LIST_TOP || y > LIST_BOTTOM)
+						continue;
+					const bool selected = selected_row == row;
+					if (selected)
+					{
+						draw->AddRectFilled(point(24, y), point(PANEL_W - 24, y + ROW_H), IM_COL32(20, 77, 125, 235), 10.0f * scale);
+						draw->AddRect(point(24, y), point(PANEL_W - 24, y + ROW_H), accent, 10.0f * scale, 2.0f * scale, 0);
+					}
+					float text_right = PANEL_W - 44.0f;
+					const char* action = selected ? action_of(row) : nullptr;
+					if (action)
+					{
+						const float action_w = std::min(TextWidth(font, 18.0f * scale, action) / scale, 260.0f);
+						DrawText(draw, font, 18.0f * scale, point(PANEL_W - 44.0f - action_w, y + 18), white, action, 260.0f * scale);
+						text_right = PANEL_W - 44.0f - action_w - 20.0f;
+					}
+					DrawText(draw, font, 25.0f * scale, point(44, y + 13), selected ? white : IM_COL32(205, 222, 238, 255), label_of(row),
+						(text_right - 44.0f) * scale);
+				}
+			}
+			draw->PopClipRect();
+			if (content_h > view_h)
+			{
+				const float thumb_h = view_h * view_h / content_h;
+				const float thumb_y = LIST_TOP + (view_h - thumb_h) * s_list_scroll / (content_h - view_h);
+				draw->AddRectFilled(point(PANEL_W - 14, LIST_TOP), point(PANEL_W - 9, LIST_BOTTOM), IM_COL32(30, 66, 94, 180), 3.0f * scale);
+				draw->AddRectFilled(point(PANEL_W - 14, thumb_y), point(PANEL_W - 9, thumb_y + thumb_h), accent, 3.0f * scale);
+			}
+			// The chosen option: its icon and its explanation, in up to four lines (the last one cut with "…" if it doesn't fit).
+			constexpr float BOX_TOP = 830.0f;
+			draw->AddRectFilled(point(24, BOX_TOP), point(PANEL_W - 24, BOX_TOP + 150), IM_COL32(4, 19, 34, 215), 12.0f * scale);
+			draw_option_icon(selected_row, 76, BOX_TOP + 75, true);
+			{
+				std::string help = description_of(selected_row);
+				// Compilation 53: the labs say what they are.
+				if (TabOfRow(selected_row) == TAB_LAB)
+					help = std::string(T("Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.")) + " " + help;
+				const float max_w = PANEL_W - 48.0f - 136.0f;
+				const float pixels = 18.0f * scale;
+				std::vector<std::string> lines(1);
+				size_t start = 0;
+				while (start < help.size())
+				{
+					size_t end = help.find(' ', start);
+					if (end == std::string::npos)
+						end = help.size();
+					const std::string word = help.substr(start, end - start);
+					const std::string tried = lines.back().empty() ? word : lines.back() + " " + word;
+					if (!lines.back().empty() && TextWidth(font, pixels, tried.c_str()) / scale > max_w)
+						lines.push_back(word);
+					else
+						lines.back() = tried;
+					start = end + 1;
+				}
+				for (size_t i = 0; i < lines.size() && i < 4; i++)
+				{
+					std::string line = lines[i];
+					if (i == 3 && lines.size() > 4)
+						for (size_t j = 4; j < lines.size(); j++)
+							line += " " + lines[j];
+					DrawText(draw, font, pixels, point(136, BOX_TOP + 18 + static_cast<float>(i) * 30.0f), muted, line.c_str(), max_w * scale);
+				}
 			}
 			char hint[512];
 			std::snprintf(hint, sizeof(hint),
 				TF("Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego."),
 				max_upscale);
-			DrawText(draw, font, 20.0f * scale, point(138, 940), muted,
-				T("L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura"), 1660.0f * scale);
-			DrawText(draw, font, 17.0f * scale, point(138, 972), muted, hint, 1660.0f * scale);
-			image("controle_x", 1480, 998, 30, 30);
-			DrawText(draw, font, 21.0f * scale, point(1522, 1001), white, T("Aceptar"), 160.0f * scale);
-			image("controle_bola", 1690, 998, 30, 30);
-			DrawText(draw, font, 21.0f * scale, point(1732, 1001), muted, T("Volver"), 110.0f * scale);
+			DrawText(draw, font, 16.0f * scale, point(40, 992), muted,
+				T("L1 / R1: otra sección     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura"), 790.0f * scale);
+			DrawText(draw, font, 14.0f * scale, point(40, 1016), muted, hint, 790.0f * scale);
+			image("controle_x", 480, 1040, 26, 26);
+			DrawText(draw, font, 19.0f * scale, point(514, 1042), white, T("Aceptar"), 140.0f * scale);
+			image("controle_bola", 664, 1040, 26, 26);
+			DrawText(draw, font, 19.0f * scale, point(698, 1042), muted, T("Volver"), 130.0f * scale);
 			return true;
 		}
 		if (!s_visible || s_items.empty())

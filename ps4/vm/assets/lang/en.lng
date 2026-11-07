@@ -610,9 +610,6 @@ tr: Reports
 es: Sistema
 tr: System
 
-es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
-tr: Experiments to measure and improve games (in testing). If you don't know what something does, leave it as it is.
-
 es: AJUSTAR
 tr: ADJUST
 
@@ -631,11 +628,14 @@ tr: SWITCH
 es: X  ·  RANURA
 tr: X  ·  SLOT
 
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: Experiments to measure and improve games (in testing). If you don't know what something does, leave it as it is.
+
 es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
 tr: Resolution: 1x-%ux (3x or more is experimental and for PS4 Pro only).   What you change in Picture and Performance is saved for this game only.
 
-es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
-tr: L1 / R1: change tab     Up/Down: choose     Left/Right: change value or slot
+es: L1 / R1: otra sección     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1: other section     Up/Down: choose     Left/Right: change value or slot
 
 es: Volver
 tr: Back
@@ -1005,6 +1005,12 @@ tr: Automatic CPU goes back up:  < %s >
 
 es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
 tr: Test, with Automatic CPU: when the game runs well, it raises the PS2 CPU again, up to the one you chose. With the skip on Auto, it skips first and the CPU only goes down if the skip isn't enough. Each CPU change is a short stutter. Saved for this game
+
+es: Revisión rápida del código:  < %s >
+tr: Fast code check:  < %s >
+
+es: Prueba: el EE deja de revisar el código del juego antes de cada bloque y trabaja menos. Algunos juegos que cambian su propio código (GTA San Andreas) no arrancan así: si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: Test: the EE stops checking the game's code before each block and does less work. Some games that change their own code (GTA San Andreas) don't start this way: if the game closes or freezes, set it to No. Saved for this game
 
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Record draws on another thread:  < %s >

@@ -610,9 +610,6 @@ tr: Отчёты
 es: Sistema
 tr: Система
 
-es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
-tr: Эксперименты для замеров и улучшения игр (в тесте). Если не знаете, что делает пункт, не меняйте его.
-
 es: AJUSTAR
 tr: НАСТРОИТЬ
 
@@ -631,11 +628,14 @@ tr: СМЕНИТЬ
 es: X  ·  RANURA
 tr: X  ·  СЛОТ
 
+es: Experimentos para medir y mejorar los juegos (en prueba). Si no sabes qué hace algo, déjalo como está.
+tr: Эксперименты для замеров и улучшения игр (в тесте). Если не знаете, что делает пункт, не меняйте его.
+
 es: Resolución: 1x-%ux (3x o más es experimental y solo para PS4 Pro).   Lo que cambias en Imagen y Rendimiento se guarda solo para este juego.
 tr: Разрешение: 1x-%ux (3x и выше — эксперимент, только для PS4 Pro).   Изменения в «Изображении» и «Производительности» сохраняются только для этой игры.
 
-es: L1 / R1: cambiar de pestaña     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
-tr: L1 / R1: сменить вкладку     Вверх/Вниз: выбрать     Влево/Вправо: изменить значение или слот
+es: L1 / R1: otra sección     Arriba/Abajo: elegir     Izq./Der.: cambiar valor o ranura
+tr: L1 / R1: другой раздел     Вверх/Вниз: выбрать     Влево/Вправо: изменить значение или слот
 
 es: Volver
 tr: Назад
@@ -1005,6 +1005,12 @@ tr: Автоматический ЦП снова повышает:  < %s >
 
 es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
 tr: Тест, с автоматическим ЦП: когда игра идёт хорошо, он снова повышает ЦП PS2 до выбранного вами. Когда пропуск на «Авто», сначала идёт пропуск, а ЦП снижается, только если пропуска не хватает. Каждая смена ЦП — короткий рывок. Сохраняется для этой игры
+
+es: Revisión rápida del código:  < %s >
+tr: Быстрая проверка кода:  < %s >
+
+es: Prueba: el EE deja de revisar el código del juego antes de cada bloque y trabaja menos. Algunos juegos que cambian su propio código (GTA San Andreas) no arrancan así: si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: Тест: EE перестаёт проверять код игры перед каждым блоком и работает меньше. Некоторые игры, которые меняют свой код (GTA San Andreas), так не запускаются: если игра закрывается или зависает, поставьте «Нет». Сохраняется для этой игры
 
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Запись отрисовки в другом потоке:  < %s >
