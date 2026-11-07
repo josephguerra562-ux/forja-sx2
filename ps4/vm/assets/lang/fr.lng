@@ -988,6 +988,24 @@ tr: Écritures rapides de l'IOP :  < %s >
 es: Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego
 tr: Test : quand l'IOP (le processeur du disque et du son) écrit dans sa mémoire, il n'efface le code traduit que là où il y en a vraiment. L'image et le son devraient rester identiques. Si le jeu se ferme ou plante, mettez Non. Enregistré pour ce jeu
 
+es: IOP dormido en el juego:  < %s >
+tr: IOP en veille dans le jeu :  < %s >
+
+es: Prueba: el IOP (el procesador del disco y del sonido) duerme mientras espera, como ya hace en los videos, y deja más tiempo al juego. Si el sonido se corta o el juego se traba, ponlo en No. Se guarda para este juego
+tr: Test : l'IOP (le processeur du disque et du son) dort pendant qu'il attend, comme il le fait déjà dans les vidéos, et laisse plus de temps au jeu. Si le son se coupe ou si le jeu se bloque, mettez Non. Enregistré pour ce jeu
+
+es: Salto Auto afinado:  < %s >
+tr: Saut Auto affiné :  < %s >
+
+es: Prueba, con el Salto de ciclo en Auto: vuelve a probar con menos salto cada minuto cuando el juego va bien, para recuperar los cuadros al salir de un lugar pesado. Se guarda para este juego
+tr: Test, avec le Saut de cycle sur Auto : il réessaie avec moins de saut chaque minute quand le jeu tourne bien, pour retrouver les images en quittant un endroit lourd. Enregistré pour ce jeu
+
+es: CPU automático vuelve a subir:  < %s >
+tr: CPU automatique remonte :  < %s >
+
+es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
+tr: Test, avec le CPU automatique : quand le jeu tourne bien, il remonte le CPU de la PS2 jusqu'à celui que vous avez choisi. Avec le Saut sur Auto, il saute d'abord et le CPU ne baisse que si le saut ne suffit pas. Chaque changement de CPU est un court à-coup. Enregistré pour ce jeu
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Enregistrer les dessins dans un autre thread :  < %s >
 

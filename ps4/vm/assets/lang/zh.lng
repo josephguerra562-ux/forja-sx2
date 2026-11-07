@@ -988,6 +988,24 @@ tr: IOP 快速写入：  < %s >
 es: Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego
 tr: 测试：IOP（光盘和声音的处理器）写入它的内存时，只在真的有变换生成的程序的地方清除它。画面和声音应该不变。如果游戏关闭或出错，请设为否。仅为此游戏保存
 
+es: IOP dormido en el juego:  < %s >
+tr: IOP 在游戏中暂停：  < %s >
+
+es: Prueba: el IOP (el procesador del disco y del sonido) duerme mientras espera, como ya hace en los videos, y deja más tiempo al juego. Si el sonido se corta o el juego se traba, ponlo en No. Se guarda para este juego
+tr: 测试：IOP（光盘和声音的处理器）在等待时暂停，就像在视频中那样，给游戏留出更多时间。如果声音中断或游戏卡住，请设为否。仅为此游戏保存
+
+es: Salto Auto afinado:  < %s >
+tr: 精细的自动跳过：  < %s >
+
+es: Prueba, con el Salto de ciclo en Auto: vuelve a probar con menos salto cada minuto cuando el juego va bien, para recuperar los cuadros al salir de un lugar pesado. Se guarda para este juego
+tr: 测试，周期跳过为自动时：游戏运行正常时，每分钟再试一次更少的跳过，从较重的场景出来后找回帧数。仅为此游戏保存
+
+es: CPU automático vuelve a subir:  < %s >
+tr: 自动 CPU 重新提高：  < %s >
+
+es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
+tr: 测试，自动 CPU 打开时：游戏运行正常时，把 PS2 的 CPU 重新提高到你选的值。跳过为自动时，先用跳过，跳过不足时才降低 CPU。每次改变 CPU 都会短暂卡一下。仅为此游戏保存
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: 在另一个线程中记录绘制：  < %s >
 

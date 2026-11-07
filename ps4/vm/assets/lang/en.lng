@@ -988,6 +988,24 @@ tr: Fast IOP writes:  < %s >
 es: Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego
 tr: Test: when the IOP (the disc and sound processor) writes to its memory, it only clears translated code where there really is some. It should look and sound the same. If the game closes or fails, set it to No. Saved for this game
 
+es: IOP dormido en el juego:  < %s >
+tr: IOP asleep in the game:  < %s >
+
+es: Prueba: el IOP (el procesador del disco y del sonido) duerme mientras espera, como ya hace en los videos, y deja más tiempo al juego. Si el sonido se corta o el juego se traba, ponlo en No. Se guarda para este juego
+tr: Test: the IOP (the disc and sound processor) sleeps while it waits, as it already does in videos, and leaves more time for the game. If the sound cuts out or the game gets stuck, set it to No. Saved for this game
+
+es: Salto Auto afinado:  < %s >
+tr: Fine-tuned Auto skip:  < %s >
+
+es: Prueba, con el Salto de ciclo en Auto: vuelve a probar con menos salto cada minuto cuando el juego va bien, para recuperar los cuadros al salir de un lugar pesado. Se guarda para este juego
+tr: Test, with Cycle skip on Auto: it tries less skip again every minute while the game runs well, to get the frames back after leaving a heavy place. Saved for this game
+
+es: CPU automático vuelve a subir:  < %s >
+tr: Automatic CPU goes back up:  < %s >
+
+es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
+tr: Test, with Automatic CPU: when the game runs well, it raises the PS2 CPU again, up to the one you chose. With the skip on Auto, it skips first and the CPU only goes down if the skip isn't enough. Each CPU change is a short stutter. Saved for this game
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Record draws on another thread:  < %s >
 

@@ -988,6 +988,24 @@ tr: IOP 빠른 쓰기:  < %s >
 es: Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego
 tr: 테스트: IOP(디스크와 사운드 프로세서)가 자기 메모리에 쓸 때, 변환된 코드가 실제로 있는 곳만 지웁니다. 화면과 소리는 같아야 합니다. 게임이 종료되거나 오류가 나면 아니요로 설정하세요. 이 게임에 저장됩니다
 
+es: IOP dormido en el juego:  < %s >
+tr: 게임 중 IOP 대기:  < %s >
+
+es: Prueba: el IOP (el procesador del disco y del sonido) duerme mientras espera, como ya hace en los videos, y deja más tiempo al juego. Si el sonido se corta o el juego se traba, ponlo en No. Se guarda para este juego
+tr: 테스트: IOP(디스크와 사운드 프로세서)가 기다리는 동안 멈춰서, 비디오에서처럼 게임에 시간을 더 줍니다. 소리가 끊기거나 게임이 멈추면 아니요로 하세요. 이 게임에 저장됩니다
+
+es: Salto Auto afinado:  < %s >
+tr: 세밀한 자동 건너뛰기:  < %s >
+
+es: Prueba, con el Salto de ciclo en Auto: vuelve a probar con menos salto cada minuto cuando el juego va bien, para recuperar los cuadros al salir de un lugar pesado. Se guarda para este juego
+tr: 테스트, 사이클 건너뛰기가 자동일 때: 게임이 문제없이 돌아가면 1분마다 더 적은 건너뛰기를 다시 시도해, 무거운 곳에서 나와서 프레임을 되찾습니다. 이 게임에 저장됩니다
+
+es: CPU automático vuelve a subir:  < %s >
+tr: CPU 자동 조절 다시 올리기:  < %s >
+
+es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
+tr: 테스트, CPU 자동 조절이 켜져 있을 때: 게임이 문제없이 돌아가면 PS2 CPU를 고른 값까지 다시 올립니다. 건너뛰기가 자동이면 먼저 건너뛰고, 건너뛰기로 안 될 때만 CPU를 내립니다. CPU를 바꿀 때마다 잠깐 멈춥니다. 이 게임에 저장됩니다
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: 다른 스레드에서 그리기 기록:  < %s >
 

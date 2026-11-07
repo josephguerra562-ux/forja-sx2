@@ -2348,6 +2348,31 @@ namespace PS4GameMenu
 						draw->AddLine(ip(6, 0), ip(0, -6), icon_line, lw);
 						draw->AddLine(ip(6, 0), ip(0, 6), icon_line, lw);
 						break;
+					case ROW_IOP_SLEEP: // a crescent moon over a line (compilation 122)
+						draw->AddLine(ip(-4, -14), ip(-12, -4), icon_line, lw);
+						draw->AddLine(ip(-12, -4), ip(-4, 6), icon_line, lw);
+						draw->AddLine(ip(-4, 6), ip(8, 4), icon_line, lw);
+						draw->AddLine(ip(-4, -14), ip(2, -6), icon_line, lw);
+						draw->AddLine(ip(2, -6), ip(8, 4), icon_line, lw);
+						draw->AddLine(ip(-16, 13), ip(16, 13), icon_line, lw);
+						break;
+					case ROW_SKIP_AUTO_FINE: // two steps with a fine mark (compilation 122)
+						draw->AddLine(ip(-15, 12), ip(-5, 12), icon_line, lw);
+						draw->AddLine(ip(-5, 12), ip(-5, 0), icon_line, lw);
+						draw->AddLine(ip(-5, 0), ip(5, 0), icon_line, lw);
+						draw->AddLine(ip(5, 0), ip(5, -12), icon_line, lw);
+						draw->AddLine(ip(5, -12), ip(15, -12), icon_line, lw);
+						draw->AddLine(ip(12, 6), ip(12, 12), icon_line, lw);
+						break;
+					case ROW_CPU_AUTO_UP: // a chip with an arrow up (compilation 122)
+						draw->AddLine(ip(-12, -4), ip(-12, 14), icon_line, lw);
+						draw->AddLine(ip(-12, 14), ip(6, 14), icon_line, lw);
+						draw->AddLine(ip(6, 14), ip(6, -4), icon_line, lw);
+						draw->AddLine(ip(6, -4), ip(-12, -4), icon_line, lw);
+						draw->AddLine(ip(12, 6), ip(12, -14), icon_line, lw);
+						draw->AddLine(ip(12, -14), ip(7, -9), icon_line, lw);
+						draw->AddLine(ip(12, -14), ip(17, -9), icon_line, lw);
+						break;
 					case ROW_GS_FILTER: // a picture crossed out (compilation 51)
 						draw->AddRect(ip(-15, -11), ip(15, 11), icon_line, 3 * scale, lw, 0);
 						draw->AddLine(ip(-11, 8), ip(11, -8), icon_line, lw);
@@ -2512,7 +2537,8 @@ namespace PS4GameMenu
 					action = T("ELEGIR  ·  X  ·  CUADRADO"); // compilation 52: Cuadrado brings everything back
 				else if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)
 					action = T("ELEGIR  ·  X");
-				else if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD || row == ROW_SW_JIT || row == ROW_FPU_EXACT || row == ROW_IOP_FAST)
+				else if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD || row == ROW_SW_JIT || row == ROW_FPU_EXACT || row == ROW_IOP_FAST ||
+				         row == ROW_IOP_SLEEP || row == ROW_SKIP_AUTO_FINE || row == ROW_CPU_AUTO_UP) // compilation 122
 					action = T("ELEGIR");
 				else if (row == ROW_RECOMMENDED)
 					action = "X";

@@ -89,6 +89,15 @@ namespace ForjaGameProfile
 		// (pcsx2/IopMem.cpp, ForjaIopMayHaveCode): 0 off; 1 on; -1 not set, off until it is measured.
 		int iop_fast = -1;
 		Origin iop_fast_origin = Origin::Global;
+		// Compilation 122, each 0 off, 1 on, -1 not set (off until measured): [Forja] IopDormido, the IOP asleep in its idle loop in
+		// the game too, not only in movies (pcsx2/R3000A.cpp, ForjaIopMaySleep); [Forja] SaltoAutoAfinado and [Forja] CpuAutoSube,
+		// the rules of main.cpp's UpdateCycleSkipAuto and UpdateCpuAuto tried in herramientas/simulaciones/simular_automaticos_escenas.py.
+		int iop_sleep = -1;
+		Origin iop_sleep_origin = Origin::Global;
+		int skip_auto_fine = -1;
+		Origin skip_auto_fine_origin = Origin::Global;
+		int cpu_auto_up = -1;
+		Origin cpu_auto_up_origin = Origin::Global;
 		// [EmuCore/Speedhacks] EECycleSkip * 4 + EECycleSkipQuarters of the factory profile only (compilation 109): where the cycle
 		// skip's Auto starts and the least it goes to (main.cpp, UpdateCycleSkipAuto). 0 with no factory profile.
 		int cycle_skip_factory = 0;
@@ -192,6 +201,9 @@ namespace ForjaGameProfile
 		read_int("GrabarEnOtroHilo", &v.draw_thread, &v.draw_thread_origin);
 		read_int("TraductorSoftware", &v.sw_jit, &v.sw_jit_origin);
 		read_int("IopRapido", &v.iop_fast, &v.iop_fast_origin);
+		read_int("IopDormido", &v.iop_sleep, &v.iop_sleep_origin); // compilation 122
+		read_int("SaltoAutoAfinado", &v.skip_auto_fine, &v.skip_auto_fine_origin);
+		read_int("CpuAutoSube", &v.cpu_auto_up, &v.cpu_auto_up_origin);
 		// Forja 1.06: [Forja] SaltarCuadrosConGuardian, a factory profile's frame skip for the versions with the guard (73 on),
 		// which wins over its SaltarCuadros (never over the player's). The versions before 1.06 fetch the factory profiles from
 		// main and read only SaltarCuadros: there it keeps what suits their skip without the guard (Dragon Ball: off).

@@ -988,6 +988,24 @@ tr: Scritture rapide dell'IOP:  < %s >
 es: Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego
 tr: Prova: quando l'IOP (il processore del disco e del suono) scrive nella sua memoria, cancella il codice tradotto solo dove c'è davvero. Immagine e suono dovrebbero restare uguali. Se il gioco si chiude o va in errore, mettilo su No. Salvato per questo gioco
 
+es: IOP dormido en el juego:  < %s >
+tr: IOP a riposo nel gioco:  < %s >
+
+es: Prueba: el IOP (el procesador del disco y del sonido) duerme mientras espera, como ya hace en los videos, y deja más tiempo al juego. Si el sonido se corta o el juego se traba, ponlo en No. Se guarda para este juego
+tr: Prova: l'IOP (il processore del disco e del suono) dorme mentre aspetta, come fa già nei video, e lascia più tempo al gioco. Se il suono si interrompe o il gioco si blocca, mettilo su No. Salvato per questo gioco
+
+es: Salto Auto afinado:  < %s >
+tr: Salto Auto affinato:  < %s >
+
+es: Prueba, con el Salto de ciclo en Auto: vuelve a probar con menos salto cada minuto cuando el juego va bien, para recuperar los cuadros al salir de un lugar pesado. Se guarda para este juego
+tr: Prova, con il Salto di ciclo su Auto: riprova con meno salto ogni minuto quando il gioco va bene, per recuperare i fotogrammi uscendo da un posto pesante. Salvato per questo gioco
+
+es: CPU automático vuelve a subir:  < %s >
+tr: CPU automatica risale:  < %s >
+
+es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
+tr: Prova, con la CPU automatica: quando il gioco va bene, rialza la CPU della PS2 fino a quella che hai scelto. Con il Salto su Auto, prima salta e la CPU scende solo se il salto non basta. Ogni cambio di CPU è un breve scatto. Salvato per questo gioco
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Registra i disegni in un altro thread:  < %s >
 

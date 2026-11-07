@@ -348,6 +348,14 @@ static double s_cpu_auto_last_check = 0.0;
 static double s_cpu_auto_last_change = -100.0;
 static unsigned s_cpu_auto_slow_checks = 0;
 static unsigned s_cpu_auto_room_checks = 0;
+// Compilation 122: "CPU automático vuelve a subir" ([Forja] CpuAutoSube) and "Salto Auto afinado" ([Forja] SaltoAutoAfinado), both off until
+// measured (herramientas/simulaciones/simular_automaticos_escenas.py). What the cycle skip's Auto tells UpdateCpuAuto: whether it can still
+// help (a step up left and not blocked) and whether it is at the game's factory value. The CPU's tries up: when the last one was, how long
+// until the next may be, and the wait after a failed one.
+static bool s_cpu_auto_up = false, s_skip_auto_fine = false;
+static bool s_skip_auto_can_help = false, s_skip_auto_at_factory = true;
+static unsigned s_cpu_auto_good_checks = 0;
+static double s_cpu_auto_probe_at = -1000.0, s_cpu_auto_no_probe_until = 0.0, s_cpu_auto_probe_wait = 60.0;
 // Forja SX2 (compilation 47): "Saltar cuadros" (UpdateGsSkip). mode: 0 off, 1 auto, 2 always; the GS reads the atomic.
 extern std::atomic<bool> g_forja_gs_skip_active;     // ps4/core/GSRendererPS4.cpp
 extern std::atomic<unsigned> g_forja_gs_skipped_frames;
@@ -416,6 +424,14 @@ static double s_fg_engaged_seen = -100.0;
 static bool s_fg_fluid_profile = false; // the game's own fluid mode (FrameGen = 2), ApplyGameProfile
 static bool s_iop_sleep_allowed = true; // compilation 67: vm-no-iop-sleep
 static bool s_movie_settings = false;
+// Compilation 122: "IOP dormido en el juego" ([Forja] IopDormido, off until measured): the IOP's sleep of compilation 67 in the game too,
+// not only in movies. The IOP spends most of its time in its idle loop waiting for the next event, and each of its turns costs the EE
+// thread (~60 ms a second in Bully, the 119's sampler, 2026-11-04). Its wake-ups are the same as in a movie (R3000A.cpp, ForjaIopMaySleep).
+static bool s_iop_sleep_game = false;
+static void ForjaApplyIopSleep()
+{
+	g_forja_iop_sleep = (s_movie_settings || s_iop_sleep_game) && s_iop_sleep_allowed;
+}
 
 static void ForjaApplyFgFluid()
 {
@@ -442,7 +458,7 @@ static void ForjaMovieSettings(bool movie)
 	// 2026-10-20 ("about as with them"), 10 s of the game's own uneven frames each time.
 	g_orbis_fg_movie = movie;
 	// Compilation 67: the IOP asleep in its idle loop between the events it needs (pcsx2/R3000A.cpp, ForjaIopMaySleep).
-	g_forja_iop_sleep = movie && s_iop_sleep_allowed;
+	ForjaApplyIopSleep(); // compilation 122: in the game too, with its row
 	if (movie)
 	{
 		g_forja_gs_skip_active.store(false, std::memory_order_relaxed);
@@ -1790,10 +1806,11 @@ static void ChangeToSelectedDisc()
 static void LogGameSettings(const char* why)
 {
 	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d "
-			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d\n", why,
+			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
 		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str(),
-		s_draw_thread ? 1 : 0, s_sw_jit ? 1 : 0, EmuConfig.Cpu.Recompiler.fpuFullMode ? 1 : 0, s_iop_fast ? 1 : 0);
+		s_draw_thread ? 1 : 0, s_sw_jit ? 1 : 0, EmuConfig.Cpu.Recompiler.fpuFullMode ? 1 : 0, s_iop_fast ? 1 : 0, s_iop_sleep_game ? 1 : 0,
+		s_skip_auto_fine ? 1 : 0, s_cpu_auto_up ? 1 : 0);
 }
 
 // Compilation 76: two rows say so when their Auto can do nothing in this game, in place of their usual line (GameMenu.cpp's
@@ -1978,6 +1995,37 @@ static void PublishIopFastText()
 	std::snprintf(label, sizeof(label), TF("Escrituras rápidas del IOP:  < %s >"), T(s_iop_fast ? N_("Sí") : N_("No")));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_IOP_FAST, label,
 		T("Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego"));
+}
+
+// Compilation 122: the three rows of No tocar for Shadow of the Colossus's "aumentan los FPS pero disminuye la velocidad" (Joseph, 2026-11-07).
+static void PublishIopSleepText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("IOP dormido en el juego:  < %s >"), T(s_iop_sleep_game ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_IOP_SLEEP, label,
+		T("Prueba: el IOP (el procesador del disco y del sonido) duerme mientras espera, como ya hace en los videos, y deja más tiempo al juego. Si el sonido se corta o el juego se traba, ponlo en No. Se guarda para este juego"));
+}
+
+static void PublishSkipAutoFineText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("Salto Auto afinado:  < %s >"), T(s_skip_auto_fine ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_SKIP_AUTO_FINE, label,
+		T("Prueba, con el Salto de ciclo en Auto: vuelve a probar con menos salto cada minuto cuando el juego va bien, para recuperar los cuadros al salir de un lugar pesado. Se guarda para este juego"));
+}
+
+static void PublishCpuAutoUpText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("CPU automático vuelve a subir:  < %s >"), T(s_cpu_auto_up ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CPU_AUTO_UP, label,
+		T("Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego"));
 }
 
 static void PublishDrawThreadText()
@@ -2242,6 +2290,9 @@ static void PublishGameMenu()
 	PublishSwJitText(); // compilation 117
 	PublishFpuExactText(); // compilation 120
 	PublishIopFastText(); // compilation 120
+	PublishIopSleepText(); // compilation 122
+	PublishSkipAutoFineText();
+	PublishCpuAutoUpText();
 	PublishCycleSkipText(); // compilation 100
 	PublishSpeedLimitText();
 	PublishImageOptionsText(); // compilation 104
@@ -2409,6 +2460,16 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	g_forja_iop_fast.store(s_iop_fast, std::memory_order_relaxed);
 	if (s_iop_fast || s_profile.iop_fast_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("IOP fast writes: %s (%s)\n", s_iop_fast ? "on" : "off", ProfileOriginName(s_profile.iop_fast_origin));
+	// Compilation 122: the three rows, each off unless the profile says 1.
+	s_iop_sleep_game = s_profile.iop_sleep == 1;
+	ForjaApplyIopSleep();
+	s_skip_auto_fine = s_profile.skip_auto_fine == 1;
+	s_cpu_auto_up = s_profile.cpu_auto_up == 1;
+	if (s_iop_sleep_game || s_skip_auto_fine || s_cpu_auto_up || s_profile.iop_sleep_origin != ForjaGameProfile::Origin::Global ||
+		s_profile.skip_auto_fine_origin != ForjaGameProfile::Origin::Global || s_profile.cpu_auto_up_origin != ForjaGameProfile::Origin::Global)
+		ProbeLog("Compilation 122 rows: IOP asleep in the game %s (%s), cycle skip auto fine %s (%s), CPU auto back up %s (%s)\n",
+			s_iop_sleep_game ? "on" : "off", ProfileOriginName(s_profile.iop_sleep_origin), s_skip_auto_fine ? "on" : "off",
+			ProfileOriginName(s_profile.skip_auto_fine_origin), s_cpu_auto_up ? "on" : "off", ProfileOriginName(s_profile.cpu_auto_up_origin));
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
 	ApplyVu1SkipList(s_profile.vu1_skip); // compilation 44: the VU1 filter
 	ApplyGsFilterList(s_profile.gs_filter); // compilation 51: the GS filter
@@ -3022,14 +3083,39 @@ static void UpdateCpuAuto(double elapsed)
 	const double speed = PerformanceMetrics::GetSpeed();
 	const double busiest = std::max({PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()),
 		static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
-	s_cpu_auto_slow_checks = speed < 92.0 ? s_cpu_auto_slow_checks + 1 : 0;
+	// Compilation 122 ("CPU automático vuelve a subir", [Forja] CpuAutoSube; Joseph, 2026-11-07, Shadow of the Colossus: 57 -> 44 % in a
+	// cave and never back up in the open air). The room below assumes the whole busiest thread grows with the rate, and with the EE at
+	// 85-92 % that never happens (in Bully ~75-80 % of it doesn't grow, simular_techos_cpu.py). With the row on:
+	// - slow is under 95 % (92 until now): with tries up and 92, the speed stayed lower (Bully 12.5 FPS but 69 % of the time at 95 % or more);
+	// - with the cycle skip's Auto on, the CPU comes down only when the skip can't help (at its top or blocked): a skip changes with no hitch;
+	// - a try up: 20 s at 97 % or more, with the skip's Auto (if on) at the game's factory value, one step up, to the rate the player chose at
+	//   most. Down again within 30 s: no try for 60 s, doubled with each failed try up to 300; a try that held 120 s brings the wait back to 60.
+	// herramientas/simulaciones/simular_automaticos_escenas.py, 57 % chosen, with "Salto Auto afinado": Bully 11.4 -> 12.2 FPS (74 -> 73 % of
+	// the time at 95 % or more), Shadow 13.1 -> 13.5 FPS (79 -> 74 %); a hitch every ~2 minutes in Bully.
+	s_cpu_auto_slow_checks = speed < (s_cpu_auto_up ? 95.0 : 92.0) ? s_cpu_auto_slow_checks + 1 : 0;
 	const bool room = s_cpu_auto_steps > 0 && speed >= 98.0 &&
 					  busiest * EERatePercent(rate + 1) / EERatePercent(rate) < 90.0;
 	s_cpu_auto_room_checks = room ? s_cpu_auto_room_checks + 1 : 0;
+	s_cpu_auto_good_checks = speed >= 97.0 ? s_cpu_auto_good_checks + 1 : 0;
+	const bool skip_auto = EmuConfig.Speedhacks.EECycleSkipAuto;
+	if (s_cpu_auto_probe_at > 0.0 && elapsed - s_cpu_auto_probe_at >= 120.0)
+	{
+		s_cpu_auto_probe_wait = 60.0;
+		s_cpu_auto_probe_at = -1000.0;
+	}
+	const bool probe = s_cpu_auto_up && s_cpu_auto_steps > 0 && s_cpu_auto_good_checks >= 40 && elapsed >= s_cpu_auto_no_probe_until &&
+					   (!skip_auto || s_skip_auto_at_factory);
 	if (elapsed - s_cpu_auto_last_change < 6.0)
 		return;
-	if (s_cpu_auto_slow_checks >= 6 && rate > s_cpu_auto_floor)
+	if (s_cpu_auto_slow_checks >= 6 && rate > s_cpu_auto_floor && (!s_cpu_auto_up || !skip_auto || !s_skip_auto_can_help))
 	{
+		if (s_cpu_auto_up && elapsed - s_cpu_auto_probe_at < 30.0)
+		{
+			s_cpu_auto_no_probe_until = elapsed + s_cpu_auto_probe_wait;
+			ProbeLog("CPU auto: the try up didn't hold; no other for %.0f s\n", s_cpu_auto_probe_wait);
+			s_cpu_auto_probe_wait = std::min(s_cpu_auto_probe_wait * 2.0, 300.0);
+		}
+		s_cpu_auto_probe_at = -1000.0;
 		// Compilation 87: as far down as the speed says, up to 4 steps at once. Each change resets the EE's recompiler: a
 		// hitch of 100-600 ms, and then every block of the game compiled again. FIFA Street 2 (report F-3420, another
 		// player's PS4, 2026-10-25) started at 300 % (its PCSX2 database entry) and 13 % speed; one step every 6-10 s took 11
@@ -3042,15 +3128,17 @@ static void UpdateCpuAuto(double elapsed)
 		s_cpu_auto_steps += rate - next;
 		SetCpuAutoRate(next, rate - next > 1 ? "slow, several steps at once" : "slow", speed, busiest);
 	}
-	else if (s_cpu_auto_room_checks >= 16)
+	else if (s_cpu_auto_room_checks >= 16 || probe)
 	{
 		s_cpu_auto_steps--;
-		SetCpuAutoRate(rate + 1, "room", speed, busiest);
+		if (probe && s_cpu_auto_room_checks < 16)
+			s_cpu_auto_probe_at = elapsed;
+		SetCpuAutoRate(rate + 1, s_cpu_auto_room_checks >= 16 ? "room" : "a try up (20 s at full speed)", speed, busiest);
 	}
 	else
 		return;
 	s_cpu_auto_last_change = elapsed;
-	s_cpu_auto_slow_checks = s_cpu_auto_room_checks = 0;
+	s_cpu_auto_slow_checks = s_cpu_auto_room_checks = s_cpu_auto_good_checks = 0;
 }
 
 // Compilation 103: "Salto de ciclo: Auto". The least that holds the game's speed: each frame repeated is a frame less, and the best
@@ -3241,6 +3329,10 @@ static void UpdateCycleSkipAuto(double elapsed)
 	int step = 0;
 	while (step < top_step && ForjaCycleSkipSteps[step] < quarters)
 		step++;
+	// Compilation 122: what UpdateCpuAuto reads with "CPU automático vuelve a subir": the skip can still help (a step up left, and not blocked
+	// or a step being judged), and whether it is at the game's factory value.
+	s_skip_auto_at_factory = quarters <= factory_q;
+	s_skip_auto_can_help = step < top_step && (elapsed >= s_no_up_until || s_tried_speed >= 0.0 || s_down_from >= 0);
 	// Compilation 120: a window that touched 20 % is the game stopping (a pause coming in, the PS4's own menu), not a slowdown a skip
 	// can fix: Bully (2026-11-04) went 1 -> 2 -> 8 quarters at 3-4 % while its pause came in, and a step down was "judged" at 18 %.
 	// Nothing is judged and nothing tried; the next windows start again after the settling time.
@@ -3285,6 +3377,10 @@ static void UpdateCycleSkipAuto(double elapsed)
 		{
 			// Compilation 113: and under 95 % it comes back even with more FPS (Guitar Hero at 2x, the music at 86-92 %).
 			const auto down_bad = [](double s, double f) {
+				// Compilation 122 ("Salto Auto afinado"): 15 % more FPS with the game at 93 % or more stays (the 115's first open point: a step
+				// down that gained FPS was judged by the speed alone; 93, not 90, for Guitar Hero III at 2x, whose music went to 86-92 %).
+				if (s_skip_auto_fine && s >= 93.0 && f >= s_down_base_fps * 1.15)
+					return false;
 				return (s < s_down_base_speed - 3.0 && f < s_down_base_fps * 1.05) || (s_down_base_speed >= 90.0 && f < s_down_base_fps * 0.85) ||
 					   (s < 95.0 && s_down_base_speed >= 95.0);
 			};
@@ -3303,9 +3399,11 @@ static void UpdateCycleSkipAuto(double elapsed)
 				if (bad)
 				{
 					next = s_down_from;
-					s_no_down_until = elapsed + s_down_wait;
-					s_down_wait = std::min(s_down_wait * 2.0, 240.0);
+					s_no_down_until = elapsed + (s_skip_auto_fine ? std::min(s_down_wait, 60.0) : s_down_wait);
+					s_down_wait = std::min(s_down_wait * 2.0, s_skip_auto_fine ? 60.0 : 240.0);
 				}
+				else if (s_skip_auto_fine)
+					s_down_wait = 60.0;
 				ProbeLog("Cycle skip auto: the step down %s: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f\n", bad ? "cost, back up" : "holds", s_down_base_speed,
 					judged_speed, s_down_base_fps, judged_fps);
 				s_down_from = -1;
@@ -3381,10 +3479,23 @@ static void UpdateCycleSkipAuto(double elapsed)
 				s_base_fps = fps;
 				s_base_speed = speed;
 			}
+			// Compilation 122 ("Salto Auto afinado"): a normal more than 15 points of speed away is another scene's. Shadow of the Colossus
+			// (2026-11-07): 4 -> 8 quarters in a cave at 71 %, judged against the open air's 18.7 FPS at 96 %, "no use", back to 4 and 60 s
+			// without steps up (its share of frames, 0.2 against 0.33, was within the 0.25 of "the same scene").
+			else if (s_skip_auto_fine && std::abs(s_base_speed - speed) > 15.0)
+			{
+				s_base_fps = fps;
+				s_base_speed = speed;
+			}
+			// Compilation 122 ("Salto Auto afinado"): these waits are 60 s and don't grow. They came back to 120 only after a video or a load,
+			// and in an open world with no loads (Shadow of the Colossus, 2026-11-07) they stayed at 240: the skip kept a cave's 8 quarters
+			// in the open air for minutes. In simular_automaticos_escenas.py this is what gives the most (Shadow 12.2 -> 13.5 FPS).
+			if (s_skip_auto_fine)
+				s_down_wait = std::min(s_down_wait, 60.0);
 			if (elapsed - s_last_down < 30.0)
 				{
 					s_no_down_until = elapsed + s_down_wait;
-					s_down_wait = std::min(s_down_wait * 2.0, 240.0);
+					s_down_wait = std::min(s_down_wait * 2.0, s_skip_auto_fine ? 60.0 : 240.0);
 				}
 		}
 		// A window with no step being tried is part of the value's normal; a slow one counts towards the three in a row.
@@ -3447,6 +3558,14 @@ static void UpdateGameProfile(double elapsed)
 	{
 		VMManager::ReloadPatches(true, true, false, true);
 		ProbeLog("Community patches: reloaded\n");
+	}
+	// Compilation 122: the game's settings once PCSX2 runs it, the GameDB's fixes in. The first "Game settings" line comes from
+	// ApplyGameProfile, before the GameDB (Bully's said fpu_full=0 while it ran with it, 2026-11-07).
+	static u32 s_settings_logged_crc = 0;
+	if (crc != 0 && crc != s_settings_logged_crc)
+	{
+		s_settings_logged_crc = crc;
+		LogGameSettings("running, after the GameDB");
 	}
 	if (crc == 0 || crc == s_profile.crc)
 		return;
@@ -3704,6 +3823,24 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		{
 			const int next = s_iop_fast ? 0 : 1;
 			SavePlayerProfile("IOP fast writes", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "IopRapido", next); }, false);
+			break;
+		}
+		case PS4GameMenu::ROW_IOP_SLEEP: // compilation 122: No / Sí ([Forja] IopDormido); ApplyGameProfile takes it
+		{
+			const int next = s_iop_sleep_game ? 0 : 1;
+			SavePlayerProfile("IOP asleep in the game", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "IopDormido", next); }, false);
+			break;
+		}
+		case PS4GameMenu::ROW_SKIP_AUTO_FINE: // compilation 122: No / Sí ([Forja] SaltoAutoAfinado)
+		{
+			const int next = s_skip_auto_fine ? 0 : 1;
+			SavePlayerProfile("Cycle skip auto fine", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "SaltoAutoAfinado", next); }, false);
+			break;
+		}
+		case PS4GameMenu::ROW_CPU_AUTO_UP: // compilation 122: No / Sí ([Forja] CpuAutoSube)
+		{
+			const int next = s_cpu_auto_up ? 0 : 1;
+			SavePlayerProfile("CPU auto back up", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "CpuAutoSube", next); }, false);
 			break;
 		}
 		case PS4GameMenu::ROW_SW_JIT: // compilation 117: No / Sí ([Forja] TraductorSoftware); ApplyGameProfile takes it
@@ -3988,7 +4125,7 @@ static std::string ReportLogLines(const char* path, size_t read_bytes, size_t ma
 		"CPU auto:", "[fg]", "VM heartbeat:", "Game settings", "Game profile:", "Render configuration:", "Hitch:", "Audio SPU2 split:",
 		"PS4 audio queue:", "EE JIT cumulative:", "Patches:", "VU1 programs:", "Recommended settings:", "Emulator menu:",
 		"EE guest PC:", "Vulkan compute GS:", "Cycle skip auto:", "GS skip on the fly:", "Speed limit:", "Frame limiter:", "EE cycle skip:", // compilation 106
-		"GS thread split:"}; // compilation 110
+		"GS thread split:", "EE-VU1 waits:", "Compilation 122 rows:"}; // compilation 110; 122
 	std::string text;
 	std::FILE* file = std::fopen(path, "rb");
 	if (!file)
@@ -4282,6 +4419,28 @@ void VMHostPoll()
 		}
 		PS4EEHotspots::LogInterval(interval);
 		{
+			// Forja SX2 (compilation 122): how long the EE waits for the VU1, writes into its ring, and how long the VU1 has no work, as a share
+			// of the interval's time. MTVU.cpp counts the three in TSC ticks (eerec-281) and nothing wrote them. God of War II (2026-11-07,
+			// the 121's sampler): the EE and the VU1 each waiting ~35 % and the GS waiting for the VU1 20 %: is the brake that they wait for
+			// each other? This says how much of the EE's wait is for the VU1 (the VU1's idle time is counted when it wakes up, so an idle
+			// spell across two intervals lands in the second).
+			extern unsigned long long g_orbis_vu_idle_ticks, g_orbis_ee_waitvu_ticks, g_orbis_ee_vuring_ticks;
+			static unsigned long long s_last_tsc = 0, s_last_waitvu = 0, s_last_vu_idle = 0, s_last_vuring = 0;
+			const unsigned long long tsc = __builtin_ia32_rdtsc();
+			const unsigned long long waitvu = g_orbis_ee_waitvu_ticks, vu_idle = g_orbis_vu_idle_ticks, vuring = g_orbis_ee_vuring_ticks;
+			if (s_last_tsc != 0 && tsc > s_last_tsc && vm_state == VMState::Running)
+			{
+				const double span = static_cast<double>(tsc - s_last_tsc);
+				ProbeLog("EE-VU1 waits: EE_waits_VU1_pct=%.1f EE_writes_ring_pct=%.1f VU1_idle_pct=%.1f vu_thread=%d\n",
+					100.0 * static_cast<double>(waitvu - s_last_waitvu) / span, 100.0 * static_cast<double>(vuring - s_last_vuring) / span,
+					100.0 * static_cast<double>(vu_idle - s_last_vu_idle) / span, EmuConfig.Speedhacks.vuThread ? 1 : 0);
+			}
+			s_last_tsc = tsc;
+			s_last_waitvu = waitvu;
+			s_last_vu_idle = vu_idle;
+			s_last_vuring = vuring;
+		}
+		{
 			// Forja SX2: the SPU2 mixing cost measured in IopCounters.cpp (EE thread, like this heartbeat).
 			extern u64 g_forja_spu2_calls, g_forja_spu2_sampled_ticks;
 			const double spu2_ms = Common::Timer::ConvertValueToMilliseconds(g_forja_spu2_sampled_ticks);
@@ -4345,6 +4504,9 @@ void VMHostPoll()
 						host_polls_per_second, (events[0] + events[1] + events[2]) / interval, events[0] / interval,
 						events[1] / interval, events[2] / interval, fills[0] / interval, fills[1] / interval,
 						g_ps4_ipu_feed ? "on" : "off", iop_sleeps / interval, iop_runs / interval,
+						g_forja_iop_sleep ? "sleep on" : "sleep off");
+				else if (s_iop_sleep_game) // compilation 122
+					ProbeLog("IOP asleep in the game: asleep at %.0f, run at %.0f a second (%s)\n", iop_sleeps / interval, iop_runs / interval,
 						g_forja_iop_sleep ? "sleep on" : "sleep off");
 			}
 			g_forja_spu2_split_voices = g_forja_spu2_split_mix = g_forja_spu2_split_output = 0;
@@ -4599,7 +4761,8 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_CHEATS ||
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
 						   row == PS4GameMenu::ROW_TEXTURES || row == PS4GameMenu::ROW_DRAW_THREAD || row == PS4GameMenu::ROW_SW_JIT ||
-						   row == PS4GameMenu::ROW_FPU_EXACT || row == PS4GameMenu::ROW_IOP_FAST ||
+						   row == PS4GameMenu::ROW_FPU_EXACT || row == PS4GameMenu::ROW_IOP_FAST || row == PS4GameMenu::ROW_IOP_SLEEP ||
+						   row == PS4GameMenu::ROW_SKIP_AUTO_FINE || row == PS4GameMenu::ROW_CPU_AUTO_UP ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
 						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT || row == PS4GameMenu::ROW_REPORT_WHERE))
 		{

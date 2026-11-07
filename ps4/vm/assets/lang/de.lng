@@ -988,6 +988,24 @@ tr: Schnelle IOP-Schreibzugriffe:  < %s >
 es: Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego
 tr: Test: Wenn der IOP (der Prozessor für Disc und Ton) in seinen Speicher schreibt, löscht er übersetzten Code nur dort, wo wirklich welcher ist. Bild und Ton sollten gleich bleiben. Wenn das Spiel schließt oder Fehler macht, auf Nein stellen. Für dieses Spiel gespeichert
 
+es: IOP dormido en el juego:  < %s >
+tr: IOP schläft im Spiel:  < %s >
+
+es: Prueba: el IOP (el procesador del disco y del sonido) duerme mientras espera, como ya hace en los videos, y deja más tiempo al juego. Si el sonido se corta o el juego se traba, ponlo en No. Se guarda para este juego
+tr: Test: Der IOP (der Prozessor für Disc und Ton) schläft, während er wartet, wie schon in den Videos, und lässt dem Spiel mehr Zeit. Wenn der Ton abbricht oder das Spiel hängt, auf Nein stellen. Für dieses Spiel gespeichert
+
+es: Salto Auto afinado:  < %s >
+tr: Feiner Auto-Sprung:  < %s >
+
+es: Prueba, con el Salto de ciclo en Auto: vuelve a probar con menos salto cada minuto cuando el juego va bien, para recuperar los cuadros al salir de un lugar pesado. Se guarda para este juego
+tr: Test, mit Zyklussprung auf Auto: Er versucht jede Minute wieder weniger Sprung, wenn das Spiel gut läuft, um nach einer schweren Stelle die Bilder zurückzuholen. Für dieses Spiel gespeichert
+
+es: CPU automático vuelve a subir:  < %s >
+tr: Automatische CPU steigt wieder:  < %s >
+
+es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
+tr: Test, mit automatischer CPU: Wenn das Spiel gut läuft, wird die PS2-CPU wieder erhöht, bis zu der, die du gewählt hast. Mit dem Sprung auf Auto wird zuerst gesprungen, und die CPU sinkt nur, wenn der Sprung nicht reicht. Jeder CPU-Wechsel ist ein kurzes Ruckeln. Für dieses Spiel gespeichert
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Zeichnungen in eigenem Thread aufzeichnen:  < %s >
 

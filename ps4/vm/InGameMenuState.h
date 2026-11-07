@@ -63,6 +63,12 @@ namespace PS4GameMenu
 		// chapter 2); and "Escrituras rápidas del IOP" ([Forja] IopRapido, pcsx2/IopMem.cpp). Both measured with vm-sampler.
 		ROW_FPU_EXACT,
 		ROW_IOP_FAST,
+		// Compilation 122 (Joseph, 2026-11-07, Shadow of the Colossus: "aumentan los FPS pero disminuye la velocidad"): "IOP dormido en el
+		// juego" (the IOP's sleep of compilation 67, until now in movies only; [Forja] IopDormido), "Salto Auto afinado" ([Forja]
+		// SaltoAutoAfinado) and "CPU automático vuelve a subir" ([Forja] CpuAutoSube), main.cpp. All three off until measured.
+		ROW_IOP_SLEEP,
+		ROW_SKIP_AUTO_FINE,
+		ROW_CPU_AUTO_UP,
 		// Reportes (compilation 86, Joseph, 2026-10-24: "entre no tocar y sistema ... para que diga reportes"; until 85 in Sistema)
 		ROW_REPORT, // compilation 77: "Reportar este juego" (main.cpp, SendReport; ForjaReport.cpp)
 		// Compilation 80: what went wrong, for the report: the picture, the sound and the controls are what no meter sees.
