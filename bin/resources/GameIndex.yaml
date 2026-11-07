@@ -1472,6 +1472,11 @@ SCAJ-20028:
   region: "NTSC-Unk"
   speedHacks:
     mvuFlag: 0 # Fixes graphical corruptions.
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SCAJ-20029:
   name: "R-Type Final"
   region: "NTSC-Unk"
@@ -1943,6 +1948,9 @@ SCAJ-20112:
     mvuFlag: 0 # Fixes graphical corruptions.
   gsHWFixes:
     estimateTextureRegion: 1 # Improves performance and reduces hash cache size.
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SCAJ-20113:
   name: "Dragon Quest & Final Fantasy in Itadaki Street"
   region: "NTSC-Unk"
@@ -2195,6 +2203,10 @@ SCAJ-20145:
     - SoftwareRendererFMVHack # Fixes garbage textures presumably from texture cache issue.
   gsHWFixes:
     getSkipCount: "GSC_TalesOfLegendia"
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SCAJ-20146:
   name: "Wang Da Yu Ju Xiang"
   region: "NTSC-C"
@@ -2470,6 +2482,11 @@ SCAJ-20182:
   region: "NTSC-Unk"
   gameFixes:
     - FpuMulHack
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SCAJ-20183:
   name: "ワイルドアームズ ザ フィフスヴァンガード"
   name-sort: "わいるどあーむず ざ ふぃふすゔぁんがーど"
@@ -2517,6 +2534,11 @@ SCAJ-20193:
   region: "NTSC-C-J"
   gameFixes:
     - FpuMulHack
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SCAJ-20194:
   name: "Minna no Golf 4 [PlayStation2 the Best]"
   region: "NTSC-Unk"
@@ -7194,6 +7216,11 @@ SCKA-20008:
   compat: 5
   speedHacks:
     mvuFlag: 0 # Fixes graphical corruptions.
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SCKA-20009:
   name: "R-Type Final" # No listed Korean name on ReDump
   region: "NTSC-K"
@@ -7588,6 +7615,12 @@ SCKA-20050:
   compat: 5
   gsHWFixes:
     getSkipCount: "GSC_TalesOfLegendia"
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+  gameFixes:
+    - SoftwareRendererFMVHack # NetherSX2-patch (Unlicense)
 SCKA-20051:
   name: "데굴 데굴~ 쫀득 쫀득~ 괴혼"
   name-sort: "Degul Degul Jjondeuk Jjondeuk: Goehon"
@@ -7625,6 +7658,11 @@ SCKA-20054:
   region: "NTSC-K"
   speedHacks:
     mvuFlag: 0 # Fixes graphical corruptions.
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SCKA-20055:
   name: "미스틱 나이츠"
   name-en: "MN - Mystic Nights"
@@ -8001,6 +8039,11 @@ SCKA-20100:
   region: "NTSC-K"
   gameFixes:
     - FpuMulHack
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SCKA-20101:
   name: "성검전설 4"
   name-en: "Seiken Densetsu 4"
@@ -8103,6 +8146,11 @@ SCKA-20119:
   region: "NTSC-K"
   gameFixes:
     - FpuMulHack
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SCKA-20120:
   name: "라쳇 & 클랭크 - 공구들고 바캉스" # Undumped on ReDump as of 2025-08-28
   name-en: "Ratchet & Clank - Vacation with Tools" # Ratchet & Clank - Size Matters
@@ -8149,6 +8197,12 @@ SCKA-20129:
   region: "NTSC-K"
   gsHWFixes:
     getSkipCount: "GSC_TalesOfLegendia"
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+  gameFixes:
+    - SoftwareRendererFMVHack # NetherSX2-patch (Unlicense)
 SCKA-20130:
   name: "모두의 테니스 [PlayStation 2 BigHit Series]" # Undumped on ReDump as of 2025-08-28
   name-en: "Everybody's Tennis [PlayStation 2 BigHit Series]"
@@ -10804,6 +10858,11 @@ SCPS-55050:
   region: "NTSC-J"
   speedHacks:
     mvuFlag: 0 # Fixes graphical corruptions.
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SCPS-55901:
   name: "ゼノサーガ エピソードⅠ 力への意志 [Asia版]"
   name-sort: "ぜのさーが えぴそーど1 ちからへのいし [Asiaばん]"
@@ -20853,6 +20912,9 @@ SLES-52584:
     nativeScaling: 2 # Smooths speed blur and corrects some lighting.
     getSkipCount: "GSC_BurnoutGames"
     beforeDraw: "OI_BurnoutGames"
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SLES-52585:
   name: "Burnout 3 - Takedown"
   region: "PAL-F-G-I"
@@ -45430,6 +45492,9 @@ SLPM-65719:
     nativeScaling: 2 # Smooths speed blur and corrects some lighting.
     getSkipCount: "GSC_BurnoutGames"
     beforeDraw: "OI_BurnoutGames"
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SLPM-65720:
   name: "真・三國無双2 猛将伝 [KOEI The Best]"
   name-sort: "しんさんごくむそう2 もうしょうでん [KOEI The Best]"
@@ -58450,6 +58515,11 @@ SLPS-25172:
   region: "NTSC-J"
   speedHacks:
     mvuFlag: 0 # Fixes graphical corruptions.
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SLPS-25173:
   name: "想い出に変わる君 ～Memories Off～"
   name-sort: "おもいでにかわるきみ めもりーずおふ"
@@ -60140,6 +60210,9 @@ SLPS-25450:
     mvuFlag: 0 # Fixes graphical corruptions.
   gsHWFixes:
     estimateTextureRegion: 1 # Improves performance and reduces hash cache size.
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SLPS-25451:
   name: "花と太陽と雨と Super Best Collection"
   name-sort: "はなとたいようとあめと Super Best Collection"
@@ -60629,6 +60702,12 @@ SLPS-25533:
   compat: 5
   gsHWFixes:
     getSkipCount: "GSC_TalesOfLegendia"
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+  gameFixes:
+    - SoftwareRendererFMVHack # NetherSX2-patch (Unlicense)
 SLPS-25534:
   name: "ティンクルスタースプライツーLa Petite Princesse-"
   name-sort: "てぃんくるすたーすぷらいつ La Petite Princesse"
@@ -61812,6 +61891,11 @@ SLPS-25715:
   region: "NTSC-J"
   gameFixes:
     - FpuMulHack
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SLPS-25716:
   name: "デジモンセイバーズ アナザーミッション"
   name-sort: "でじもんせいばーず あなざーみっしょん"
@@ -62603,6 +62687,11 @@ SLPS-25841:
     - "SLPS-25841"
     - "SLPS-25842"
     - "SLPS-25715"
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SLPS-25842:
   name: "テイルズ オブ デスティニー ディレクターズカット"
   name-sort: "ているず おぶ ですてぃにー でぃれくたーずかっと"
@@ -62615,6 +62704,11 @@ SLPS-25842:
     - "SLPS-25841"
     - "SLPS-25842"
     - "SLPS-25715"
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SLPS-25843:
   name: "ティル・ナ・ノーグ ～悠久の仁～"
   name-sort: "てぃる・な・のーぐ ゆうきゅうのじん"
@@ -63529,6 +63623,11 @@ SLPS-72502:
   region: "NTSC-J"
   speedHacks:
     mvuFlag: 0 # Fixes graphical corruptions.
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SLPS-73001:
   name: "パイロットになろう！ 2"
   name-sort: "ぱいろっとになろう！ 2"
@@ -63813,6 +63912,11 @@ SLPS-73219:
   region: "NTSC-J"
   speedHacks:
     mvuFlag: 0 # Fixes graphical corruptions.
+  gsHWFixes:
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SLPS-73220:
   name: "ウルトラマン [PlayStation2 the Best]"
   name-sort: "うるとらまん [PlayStation2 the Best]"
@@ -64060,6 +64164,12 @@ SLPS-73242:
   region: "NTSC-J"
   gsHWFixes:
     getSkipCount: "GSC_TalesOfLegendia"
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+  gameFixes:
+    - SoftwareRendererFMVHack # NetherSX2-patch (Unlicense)
 SLPS-73243:
   name: "NAMCO×CAPCOM [PlayStation2 the Best]"
   name-sort: "なむこ くろす かぷこん [PlayStation2 the Best]"
@@ -69992,6 +70102,9 @@ SLUS-21050:
     nativeScaling: 2 # Smooths speed blur and corrects some lighting.
     getSkipCount: "GSC_BurnoutGames"
     beforeDraw: "OI_BurnoutGames"
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
 SLUS-21051:
   name: "FIFA Soccer 2005"
   region: "NTSC-U"
@@ -70874,6 +70987,12 @@ SLUS-21201:
   compat: 5
   gsHWFixes:
     getSkipCount: "GSC_TalesOfLegendia"
+    disablePartialInvalidation: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    estimateTextureRegion: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    preloadFrameData: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+    texturePreloading: 1 # NetherSX2-patch (Unlicense): menos texturas basura en la caché del GS
+  gameFixes:
+    - SoftwareRendererFMVHack # NetherSX2-patch (Unlicense)
 SLUS-21202:
   name: "Romance of the Three Kingdoms X"
   region: "NTSC-U"
