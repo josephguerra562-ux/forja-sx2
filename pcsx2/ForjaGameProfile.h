@@ -85,6 +85,10 @@ namespace ForjaGameProfile
 		// Guitar Hero, 2026-11-04).
 		int sw_jit = -1;
 		Origin sw_jit_origin = Origin::Global;
+		// [Forja] IopRapido (compilation 120): an IOP write into its RAM clears translated code only where there is some
+		// (pcsx2/IopMem.cpp, ForjaIopMayHaveCode): 0 off; 1 on; -1 not set, off until it is measured.
+		int iop_fast = -1;
+		Origin iop_fast_origin = Origin::Global;
 		// [EmuCore/Speedhacks] EECycleSkip * 4 + EECycleSkipQuarters of the factory profile only (compilation 109): where the cycle
 		// skip's Auto starts and the least it goes to (main.cpp, UpdateCycleSkipAuto). 0 with no factory profile.
 		int cycle_skip_factory = 0;
@@ -187,6 +191,7 @@ namespace ForjaGameProfile
 		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);
 		read_int("GrabarEnOtroHilo", &v.draw_thread, &v.draw_thread_origin);
 		read_int("TraductorSoftware", &v.sw_jit, &v.sw_jit_origin);
+		read_int("IopRapido", &v.iop_fast, &v.iop_fast_origin);
 		// Forja 1.06: [Forja] SaltarCuadrosConGuardian, a factory profile's frame skip for the versions with the guard (73 on),
 		// which wins over its SaltarCuadros (never over the player's). The versions before 1.06 fetch the factory profiles from
 		// main and read only SaltarCuadros: there it keeps what suits their skip without the guard (Dragon Ball: off).

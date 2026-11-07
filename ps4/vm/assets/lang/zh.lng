@@ -976,6 +976,18 @@ tr: 使用变换生成的软件绘制：  < %s >
 es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
 tr: 测试：游戏用 CPU 绘制的内容（Guitar Hero 的观众、Dragon Ball 的调色板）使用变换生成的程序，而不是慢的程序。如果游戏关闭或画面出错，请设为否。仅为此游戏保存
 
+es: FPU exacto:  < %s >
+tr: 精确 FPU：  < %s >
+
+es: Prueba: las cuentas con decimales del juego, exactas pero más lentas. La base de datos lo prende en algunos juegos (Bully) por un detalle puntual. En No puede ir más rápido; si algo sale mal, vuelve a Sí. Se guarda para este juego
+tr: 测试：游戏的小数运算，精确但更慢。游戏数据库会在部分游戏（Bully）中为一个具体细节打开它。设为否可能更快；如果出现问题，请改回是。仅为此游戏保存
+
+es: Escrituras rápidas del IOP:  < %s >
+tr: IOP 快速写入：  < %s >
+
+es: Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego
+tr: 测试：IOP（光盘和声音的处理器）写入它的内存时，只在真的有变换生成的程序的地方清除它。画面和声音应该不变。如果游戏关闭或出错，请设为否。仅为此游戏保存
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: 在另一个线程中记录绘制：  < %s >
 

@@ -8,6 +8,16 @@
 #include "SPU2/spu2.h"
 #include "DEV9/DEV9.h"
 #include "IopHw.h"
+#if defined(PCSX2_PS4_VM_BOOT)
+#include <atomic>
+// Forja SX2 (compilation 120): "Escrituras rápidas del IOP" (No tocar; [Forja] IopRapido). Each IOP write into its RAM below
+// went through psxCpu->Clear (a virtual call, recClearIOP, psxRecClearMem) to find, nearly always, that no translated code was
+// there: 1.9 % of Bully's EE in recClearIOP and 1.9 % in iopMemWrite32 (the 119's sampler, 2026-11-04). With the row on, the
+// block table is looked at first (x86/iR3000A.cpp, the same test psxRecClearMem starts with) and Clear runs only where there
+// is code, so the result is the same. Off, nothing changes.
+extern std::atomic<bool> g_forja_iop_fast;
+bool ForjaIopMayHaveCode(u32 mem);
+#endif
 
 uptr *psxMemWLUT = nullptr;
 const uptr *psxMemRLUT = nullptr;
@@ -285,6 +295,9 @@ void iopMemWrite8(u32 mem, u8 value)
 		if (p != NULL && !(psxRegs.CP0.n.Status & 0x10000) )
 		{
 			*(u8  *)(p + (mem & 0xffff)) = value;
+#if defined(PCSX2_PS4_VM_BOOT)
+			if (!g_forja_iop_fast.load(std::memory_order_relaxed) || ForjaIopMayHaveCode(mem & ~3))
+#endif
 			psxCpu->Clear(mem&~3, 1);
 		}
 		else
@@ -328,6 +341,9 @@ void iopMemWrite16(u32 mem, u16 value)
 		{
 			if( t==0x1D00 ) Console.WriteLn("sw16 [0x%08X]=0x%08X", mem, value);
 			*(u16 *)(p + (mem & 0xffff)) = value;
+#if defined(PCSX2_PS4_VM_BOOT)
+			if (!g_forja_iop_fast.load(std::memory_order_relaxed) || ForjaIopMayHaveCode(mem & ~3))
+#endif
 			psxCpu->Clear(mem&~3, 1);
 		}
 		else
@@ -401,6 +417,9 @@ void iopMemWrite32(u32 mem, u32 value)
 		if( p != NULL && !(psxRegs.CP0.n.Status & 0x10000) )
 		{
 			*(u32 *)(p + (mem & 0xffff)) = value;
+#if defined(PCSX2_PS4_VM_BOOT)
+			if (!g_forja_iop_fast.load(std::memory_order_relaxed) || ForjaIopMayHaveCode(mem & ~3))
+#endif
 			psxCpu->Clear(mem&~3, 1);
 		}
 		else

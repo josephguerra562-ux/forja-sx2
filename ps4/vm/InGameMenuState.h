@@ -58,6 +58,11 @@ namespace PS4GameMenu
 		// Compilation 117: "Dibujo por software con traductor", the software draws' JIT (GS/Renderers/SW/GSDrawScanline.cpp),
 		// here until it is measured ([Forja] TraductorSoftware).
 		ROW_SW_JIT,
+		// Compilation 120 (Joseph, 2026-11-04: "las mejoras para medirlas"): "FPU exacto", PCSX2's full FPU mode (the EE's
+		// floating point in double precision, x86/iFPUd.cpp) that the GameDB turns on in some games (Bully, for one bottle in
+		// chapter 2); and "Escrituras rápidas del IOP" ([Forja] IopRapido, pcsx2/IopMem.cpp). Both measured with vm-sampler.
+		ROW_FPU_EXACT,
+		ROW_IOP_FAST,
 		// Reportes (compilation 86, Joseph, 2026-10-24: "entre no tocar y sistema ... para que diga reportes"; until 85 in Sistema)
 		ROW_REPORT, // compilation 77: "Reportar este juego" (main.cpp, SendReport; ForjaReport.cpp)
 		// Compilation 80: what went wrong, for the report: the picture, the sound and the controls are what no meter sees.

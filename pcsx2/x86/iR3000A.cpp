@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2002-2026 PCSX2 Dev Team
 // SPDX-License-Identifier: GPL-3.0+
 
+#include <atomic>
 #include "iR3000A.h"
 #include "R5900.h"
 #include "Host.h"
@@ -1168,6 +1169,18 @@ static __fi u32 psxRecClearMem(u32 pc)
 
 	return upperextent - pc;
 }
+
+#if defined(PCSX2_PS4_VM_BOOT)
+// Forja SX2 (compilation 120): "Escrituras rápidas del IOP" (pcsx2/IopMem.cpp). True where a write may hit translated IOP code:
+// the tests PSXREC_CLEARM and psxRecClearMem start with. Where it says false, recClearIOP would have returned without clearing.
+std::atomic<bool> g_forja_iop_fast{false};
+bool ForjaIopMayHaveCode(u32 mem)
+{
+	if (mem >= g_psxMaxRecMem || !(psxRecLUT[mem >> 16] + mem))
+		return false;
+	return PSX_GETBLOCK(mem)->GetFnptr() != (uptr)iopJITCompile;
+}
+#endif
 
 static __fi void recClearIOP(u32 Addr, u32 Size)
 {

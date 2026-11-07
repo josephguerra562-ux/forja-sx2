@@ -370,6 +370,11 @@ static bool s_draw_thread = false;
 // generated code (the JIT) instead of the C version (GS/Renderers/SW/GSDrawScanline.cpp, read at each draw's setup).
 extern std::atomic<bool> g_forja_sw_jit;
 static bool s_sw_jit = false;
+// Compilation 120: "Escrituras rápidas del IOP" (No tocar; [Forja] IopRapido, off until measured): an IOP write into its RAM
+// clears translated code only where the IOP has some (pcsx2/IopMem.cpp, x86/iR3000A.cpp ForjaIopMayHaveCode). Bully's EE
+// spent 1.9 % in recClearIOP and 1.9 % in iopMemWrite32 (the 119's sampler, 2026-11-04), nearly all of it on RAM with no code.
+extern std::atomic<bool> g_forja_iop_fast;
+static bool s_iop_fast = false;
 // Compilation 88: 16 and 32 too (Joseph, 2026-10-25, Guitar Hero III: "el público sigue siendo el problema").
 static constexpr unsigned CROWD_EVERY_STEPS[] = {1u, 2u, 4u, 8u, 16u, 32u};
 static constexpr unsigned CROWD_EVERY_DEFAULT = 2u;
@@ -1785,10 +1790,10 @@ static void ChangeToSelectedDisc()
 static void LogGameSettings(const char* why)
 {
 	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d "
-			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d\n", why,
+			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
 		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str(),
-		s_draw_thread ? 1 : 0, s_sw_jit ? 1 : 0);
+		s_draw_thread ? 1 : 0, s_sw_jit ? 1 : 0, EmuConfig.Cpu.Recompiler.fpuFullMode ? 1 : 0, s_iop_fast ? 1 : 0);
 }
 
 // Compilation 76: two rows say so when their Auto can do nothing in this game, in place of their usual line (GameMenu.cpp's
@@ -1951,6 +1956,28 @@ static void PublishSwJitText()
 	std::snprintf(label, sizeof(label), TF("Dibujo por software con traductor:  < %s >"), T(s_sw_jit ? N_("Sí") : N_("No")));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_SW_JIT, label,
 		T("Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego"));
+}
+
+// Compilation 120: "FPU exacto" (PCSX2's fpuFullMode, from the GameDB's eeClampMode 3 or the player's profile) and "Escrituras
+// rápidas del IOP", both in No tocar until they are measured.
+static void PublishFpuExactText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("FPU exacto:  < %s >"), T(EmuConfig.Cpu.Recompiler.fpuFullMode ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_FPU_EXACT, label,
+		T("Prueba: las cuentas con decimales del juego, exactas pero más lentas. La base de datos lo prende en algunos juegos (Bully) por un detalle puntual. En No puede ir más rápido; si algo sale mal, vuelve a Sí. Se guarda para este juego"));
+}
+
+static void PublishIopFastText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("Escrituras rápidas del IOP:  < %s >"), T(s_iop_fast ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_IOP_FAST, label,
+		T("Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego"));
 }
 
 static void PublishDrawThreadText()
@@ -2213,6 +2240,8 @@ static void PublishGameMenu()
 	PublishCrowdText(); // compilation 82
 	PublishDrawThreadText(); // compilation 116
 	PublishSwJitText(); // compilation 117
+	PublishFpuExactText(); // compilation 120
+	PublishIopFastText(); // compilation 120
 	PublishCycleSkipText(); // compilation 100
 	PublishSpeedLimitText();
 	PublishImageOptionsText(); // compilation 104
@@ -2375,6 +2404,11 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	g_forja_sw_jit.store(s_sw_jit, std::memory_order_relaxed);
 	if (s_sw_jit || s_profile.sw_jit_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("Software draws JIT: %s (%s)\n", s_sw_jit ? "on" : "off", ProfileOriginName(s_profile.sw_jit_origin));
+	// Compilation 120: the IOP's writes, off unless the profile says 1.
+	s_iop_fast = s_profile.iop_fast == 1;
+	g_forja_iop_fast.store(s_iop_fast, std::memory_order_relaxed);
+	if (s_iop_fast || s_profile.iop_fast_origin != ForjaGameProfile::Origin::Global)
+		ProbeLog("IOP fast writes: %s (%s)\n", s_iop_fast ? "on" : "off", ProfileOriginName(s_profile.iop_fast_origin));
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
 	ApplyVu1SkipList(s_profile.vu1_skip); // compilation 44: the VU1 filter
 	ApplyGsFilterList(s_profile.gs_filter); // compilation 51: the GS filter
@@ -3207,6 +3241,16 @@ static void UpdateCycleSkipAuto(double elapsed)
 	int step = 0;
 	while (step < top_step && ForjaCycleSkipSteps[step] < quarters)
 		step++;
+	// Compilation 120: a window that touched 20 % is the game stopping (a pause coming in, the PS4's own menu), not a slowdown a skip
+	// can fix: Bully (2026-11-04) went 1 -> 2 -> 8 quarters at 3-4 % while its pause came in, and a step down was "judged" at 18 %.
+	// Nothing is judged and nothing tried; the next windows start again after the settling time.
+	if (s_up.checks >= 6 && s_up.slowest < 20.0)
+	{
+		s_up = {};
+		s_down = {};
+		s_settle_until = elapsed + 2.0;
+		return;
+	}
 	if (s_up.checks >= 6)
 	{
 		const double speed = s_up.speed / s_up.checks;
@@ -3637,6 +3681,29 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			}
 			const int next = static_cast<int>(CROWD_EVERY_STEPS[(position + delta + count) % count]);
 			SavePlayerProfile("Crowd", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "PublicoCada", next); }, false);
+			break;
+		}
+		case PS4GameMenu::ROW_FPU_EXACT: // compilation 120: PCSX2's key, so the game layer is reloaded (the recompilers start over)
+		{
+			// Turning it on needs the two lighter modes too (Pcsx2Config::RecompilerOptions::ApplySanityCheck resets all three
+			// otherwise); turning it off keeps them as the GameDB left them (Bully: 3 -> 2, the extra overflow stays).
+			const bool next = !EmuConfig.Cpu.Recompiler.fpuFullMode;
+			SavePlayerProfile("FPU exact", [next](INISettingsInterface& ini) {
+				if (next)
+				{
+					ini.SetBoolValue("EmuCore/CPU/Recompiler", "fpuOverflow", true);
+					ini.SetBoolValue("EmuCore/CPU/Recompiler", "fpuExtraOverflow", true);
+				}
+				ini.SetBoolValue("EmuCore/CPU/Recompiler", "fpuFullMode", next);
+			}, true);
+			ProbeLog("FPU exact: requested=%d active=%d overflow=%d extra=%d\n", next ? 1 : 0, EmuConfig.Cpu.Recompiler.fpuFullMode ? 1 : 0,
+				EmuConfig.Cpu.Recompiler.fpuOverflow ? 1 : 0, EmuConfig.Cpu.Recompiler.fpuExtraOverflow ? 1 : 0);
+			break;
+		}
+		case PS4GameMenu::ROW_IOP_FAST: // compilation 120: No / Sí ([Forja] IopRapido); ApplyGameProfile takes it
+		{
+			const int next = s_iop_fast ? 0 : 1;
+			SavePlayerProfile("IOP fast writes", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "IopRapido", next); }, false);
 			break;
 		}
 		case PS4GameMenu::ROW_SW_JIT: // compilation 117: No / Sí ([Forja] TraductorSoftware); ApplyGameProfile takes it
@@ -4532,6 +4599,7 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_CHEATS ||
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
 						   row == PS4GameMenu::ROW_TEXTURES || row == PS4GameMenu::ROW_DRAW_THREAD || row == PS4GameMenu::ROW_SW_JIT ||
+						   row == PS4GameMenu::ROW_FPU_EXACT || row == PS4GameMenu::ROW_IOP_FAST ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
 						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT || row == PS4GameMenu::ROW_REPORT_WHERE))
 		{

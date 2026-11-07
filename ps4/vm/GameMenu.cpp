@@ -2332,6 +2332,22 @@ namespace PS4GameMenu
 						draw->AddLine(ip(4, -15), ip(4, -9), icon_line, lw);
 						draw->AddLine(ip(1, -12), ip(7, -12), icon_line, lw);
 						break;
+					case ROW_FPU_EXACT: // a decimal point between two digits' strokes (compilation 120)
+						draw->AddLine(ip(-14, -10), ip(-14, 10), icon_line, lw);
+						draw->AddLine(ip(4, -10), ip(14, -10), icon_line, lw);
+						draw->AddLine(ip(14, -10), ip(14, 10), icon_line, lw);
+						draw->AddLine(ip(4, 10), ip(14, 10), icon_line, lw);
+						draw->AddLine(ip(4, -10), ip(4, 10), icon_line, lw);
+						draw->AddLine(ip(-5, 8), ip(-5, 11), icon_line, lw);
+						break;
+					case ROW_IOP_FAST: // an arrow into a box (compilation 120)
+						draw->AddLine(ip(-4, -12), ip(14, -12), icon_line, lw);
+						draw->AddLine(ip(14, -12), ip(14, 12), icon_line, lw);
+						draw->AddLine(ip(14, 12), ip(-4, 12), icon_line, lw);
+						draw->AddLine(ip(-16, 0), ip(6, 0), icon_line, lw);
+						draw->AddLine(ip(6, 0), ip(0, -6), icon_line, lw);
+						draw->AddLine(ip(6, 0), ip(0, 6), icon_line, lw);
+						break;
 					case ROW_GS_FILTER: // a picture crossed out (compilation 51)
 						draw->AddRect(ip(-15, -11), ip(15, 11), icon_line, 3 * scale, lw, 0);
 						draw->AddLine(ip(-11, 8), ip(11, -8), icon_line, lw);
@@ -2496,7 +2512,7 @@ namespace PS4GameMenu
 					action = T("ELEGIR  ·  X  ·  CUADRADO"); // compilation 52: Cuadrado brings everything back
 				else if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)
 					action = T("ELEGIR  ·  X");
-				else if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD || row == ROW_SW_JIT)
+				else if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD || row == ROW_SW_JIT || row == ROW_FPU_EXACT || row == ROW_IOP_FAST)
 					action = T("ELEGIR");
 				else if (row == ROW_RECOMMENDED)
 					action = "X";

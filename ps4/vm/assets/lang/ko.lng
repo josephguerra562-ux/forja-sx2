@@ -976,6 +976,18 @@ tr: 변환기로 소프트웨어 그리기:  < %s >
 es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
 tr: 테스트: 게임이 CPU로 그리는 것(Guitar Hero의 관중, Dragon Ball의 색상표)에 느린 코드 대신 변환된 코드를 사용합니다. 게임이 종료되거나 화면이 이상하면 아니요로 설정하세요. 이 게임에 저장됩니다
 
+es: FPU exacto:  < %s >
+tr: 정확한 FPU:  < %s >
+
+es: Prueba: las cuentas con decimales del juego, exactas pero más lentas. La base de datos lo prende en algunos juegos (Bully) por un detalle puntual. En No puede ir más rápido; si algo sale mal, vuelve a Sí. Se guarda para este juego
+tr: 테스트: 게임의 FPU 처리를 정확하게 하지만 더 느립니다. 일부 게임(Bully)에서는 특정 문제 때문에 처음부터 켜져 있습니다. 아니요로 하면 더 빨라질 수 있습니다. 문제가 생기면 예로 되돌리세요. 이 게임에 저장됩니다
+
+es: Escrituras rápidas del IOP:  < %s >
+tr: IOP 빠른 쓰기:  < %s >
+
+es: Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego
+tr: 테스트: IOP(디스크와 사운드 프로세서)가 자기 메모리에 쓸 때, 변환된 코드가 실제로 있는 곳만 지웁니다. 화면과 소리는 같아야 합니다. 게임이 종료되거나 오류가 나면 아니요로 설정하세요. 이 게임에 저장됩니다
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: 다른 스레드에서 그리기 기록:  < %s >
 

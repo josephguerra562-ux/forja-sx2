@@ -976,6 +976,18 @@ tr: الرسم البرمجي مع المترجم:  < %s >
 es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
 tr: تجربة: ما ترسمه اللعبة بالمعالج (جمهور Guitar Hero، ولوحات ألوان Dragon Ball) يستخدم شيفرة مترجمة بدل البطيئة. إذا أُغلقت اللعبة أو ظهرت بشكل خاطئ، اجعلها لا. تُحفظ لهذه اللعبة
 
+es: FPU exacto:  < %s >
+tr: FPU دقيق:  < %s >
+
+es: Prueba: las cuentas con decimales del juego, exactas pero más lentas. La base de datos lo prende en algunos juegos (Bully) por un detalle puntual. En No puede ir más rápido; si algo sale mal, vuelve a Sí. Se guarda para este juego
+tr: تجربة: حسابات اللعبة بالأعداد العشرية، دقيقة لكنها أبطأ. تفعّلها قاعدة بيانات الألعاب في بعض الألعاب (Bully) لتفصيل محدد. مع لا قد تعمل أسرع؛ إذا حدث خطأ، أعدها إلى نعم. تُحفظ لهذه اللعبة
+
+es: Escrituras rápidas del IOP:  < %s >
+tr: كتابة سريعة للـ IOP:  < %s >
+
+es: Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego
+tr: تجربة: عندما يكتب الـ IOP (معالج القرص والصوت) في ذاكرته، يمسح الشيفرة المترجمة فقط حيث توجد فعلًا. يجب أن تبقى الصورة والصوت كما هما. إذا أُغلقت اللعبة أو تعطلت، اجعلها لا. تُحفظ لهذه اللعبة
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: تسجيل الرسم في خيط آخر:  < %s >
 

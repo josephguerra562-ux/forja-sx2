@@ -976,6 +976,18 @@ tr: Rysowanie programowe z translatorem:  < %s >
 es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
 tr: Test: to, co gra rysuje procesorem (publiczność w Guitar Hero, palety w Dragon Ball), używa przetłumaczonego kodu zamiast wolnego. Jeśli gra się zamyka lub źle wygląda, ustaw Nie. Zapisane dla tej gry
 
+es: FPU exacto:  < %s >
+tr: Dokładne FPU:  < %s >
+
+es: Prueba: las cuentas con decimales del juego, exactas pero más lentas. La base de datos lo prende en algunos juegos (Bully) por un detalle puntual. En No puede ir más rápido; si algo sale mal, vuelve a Sí. Se guarda para este juego
+tr: Test: obliczenia gry na liczbach dziesiętnych, dokładne, ale wolniejsze. Baza danych gier włącza to w niektórych grach (Bully) z powodu jednego szczegółu. Na Nie może działać szybciej; jeśli coś pójdzie źle, wróć na Tak. Zapisane dla tej gry
+
+es: Escrituras rápidas del IOP:  < %s >
+tr: Szybkie zapisy IOP:  < %s >
+
+es: Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego
+tr: Test: gdy IOP (procesor płyty i dźwięku) zapisuje do swojej pamięci, kasuje przetłumaczony kod tylko tam, gdzie naprawdę jest. Obraz i dźwięk powinny zostać takie same. Jeśli gra się zamyka lub zawiesza, ustaw Nie. Zapisane dla tej gry
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Nagrywaj rysowanie w innym wątku:  < %s >
 

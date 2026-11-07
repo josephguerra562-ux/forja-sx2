@@ -976,6 +976,18 @@ tr: Программная отрисовка с транслятором:  < %s
 es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
 tr: Тест: то, что игра рисует процессором (публика в Guitar Hero, палитры в Dragon Ball), использует транслированный код вместо медленного. Если игра закрывается или выглядит неправильно, выберите «Нет». Сохраняется для этой игры
 
+es: FPU exacto:  < %s >
+tr: Точный FPU:  < %s >
+
+es: Prueba: las cuentas con decimales del juego, exactas pero más lentas. La base de datos lo prende en algunos juegos (Bully) por un detalle puntual. En No puede ir más rápido; si algo sale mal, vuelve a Sí. Se guarda para este juego
+tr: Тест: вычисления игры с дробными числами, точные, но медленнее. База данных игр включает это в некоторых играх (Bully) из-за одной детали. В положении «Нет» игра может идти быстрее; если что-то пойдёт не так, верните «Да». Сохраняется для этой игры
+
+es: Escrituras rápidas del IOP:  < %s >
+tr: Быстрая запись IOP:  < %s >
+
+es: Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego
+tr: Тест: когда IOP (процессор диска и звука) пишет в свою память, он стирает транслированный код только там, где он действительно есть. Изображение и звук должны остаться такими же. Если игра закрывается или сбоит, выберите «Нет». Сохраняется для этой игры
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Запись отрисовки в другом потоке:  < %s >
 

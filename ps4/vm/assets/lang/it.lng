@@ -976,6 +976,18 @@ tr: Disegno software con traduttore:  < %s >
 es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
 tr: Prova: ciò che il gioco disegna con la CPU (il pubblico di Guitar Hero, le palette di Dragon Ball) usa codice tradotto invece di quello lento. Se il gioco si chiude o si vede male, mettilo su No. Salvato per questo gioco
 
+es: FPU exacto:  < %s >
+tr: FPU esatta:  < %s >
+
+es: Prueba: las cuentas con decimales del juego, exactas pero más lentas. La base de datos lo prende en algunos juegos (Bully) por un detalle puntual. En No puede ir más rápido; si algo sale mal, vuelve a Sí. Se guarda para este juego
+tr: Prova: i calcoli con i decimali del gioco, esatti ma più lenti. Il database dei giochi lo attiva in alcuni giochi (Bully) per un dettaglio preciso. Su No può andare più veloce; se qualcosa va storto, rimettilo su Sì. Salvato per questo gioco
+
+es: Escrituras rápidas del IOP:  < %s >
+tr: Scritture rapide dell'IOP:  < %s >
+
+es: Prueba: cuando el IOP (el procesador del disco y del sonido) escribe en su memoria, solo borra código traducido donde de verdad lo hay. Debería verse y sonar igual. Si el juego se cierra o falla, ponlo en No. Se guarda para este juego
+tr: Prova: quando l'IOP (il processore del disco e del suono) scrive nella sua memoria, cancella il codice tradotto solo dove c'è davvero. Immagine e suono dovrebbero restare uguali. Se il gioco si chiude o va in errore, mettilo su No. Salvato per questo gioco
+
 es: Grabar dibujos en otro hilo:  < %s >
 tr: Registra i disegni in un altro thread:  < %s >
 
