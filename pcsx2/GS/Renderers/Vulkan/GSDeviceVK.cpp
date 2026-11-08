@@ -7843,10 +7843,16 @@ namespace
 	}
 
 	// Compilation 128: the package's list (resources/efectos/<serial>.bin, made on Joseph's console), for every player's first session.
+	// Compilation 129: the settings center's copy (centro/efectos, fetched from the project's GitHub by ps4/vm/PatchDownload.cpp at the
+	// game's start) wins over the package's, as the factory profiles do: a list measured later reaches everyone without a new package.
 	static std::string ForjaEffectsFactoryPath(const std::string& serial)
 	{
 		const std::string mine = ForjaEffectsPath(serial);
-		return Path::Combine(EmuFolders::Resources, "efectos/" + mine.substr(mine.rfind('/') + 1));
+		const std::string name = mine.substr(mine.rfind('/') + 1);
+		const std::string center = Path::Combine(EmuFolders::DataRoot, "centro/efectos/" + name);
+		if (access(center.c_str(), F_OK) == 0)
+			return center;
+		return Path::Combine(EmuFolders::Resources, "efectos/" + name);
 	}
 
 	// Reads a list into out (nothing when it is not one, or from other effects' code); says what it found.

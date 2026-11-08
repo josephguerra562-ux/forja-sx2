@@ -29,7 +29,9 @@
 #include "CoverDownload.h"
 
 #include <atomic>
+#include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <ctime>
 #include <memory>
 #include <mutex>
@@ -68,6 +70,7 @@ namespace
 		CenterProfile,
 		CenterPatches,
 		CenterRules, // compilation 55: huellas.ini, the draw fingerprints for every game
+		CenterEffects, // compilation 129: efectos/<SERIAL>.bin, the game's list for "Efectos listos al arrancar" (binary)
 	};
 
 	struct Job
@@ -85,7 +88,7 @@ namespace
 	const char* KindName(Kind kind)
 	{
 		return kind == Kind::CommunityPatches ? "Community patches" : kind == Kind::CenterProfile ? "Settings center profile" :
-		       kind == Kind::CenterRules ? "Settings center fingerprints" :
+		       kind == Kind::CenterRules ? "Settings center fingerprints" : kind == Kind::CenterEffects ? "Settings center effects" :
 		                                                                                        "Settings center patches";
 	}
 
@@ -120,6 +123,8 @@ namespace
 			else if (job.kind == Kind::CenterPatches)
 				header = "// Forja SX2's patches for this game, from its settings center (the project's GitHub), fetched on " +
 				         Today() + ".\n\n";
+			else if (job.kind == Kind::CenterEffects)
+				header.clear(); // compilation 129: a binary list, kept byte for byte
 			else
 				header = "; Forja SX2's factory profile for this game, from its settings center (the project's GitHub), fetched on " +
 				         Today() + ".\n\n";
@@ -188,8 +193,21 @@ namespace
 			std::vector<unsigned char> bytes;
 			const bool got = PS4CoverHttp::Get(url, "ForjaSX2 downloads", bytes, MaxBytes);
 			const std::string text(bytes.begin(), bytes.end());
-			const bool looks_right = job.kind == Kind::CenterProfile || job.kind == Kind::CenterRules ? text.find('[') != std::string::npos :
-			                                                          text.find("patch=") != std::string::npos;
+			// Compilation 129: a list of effects is 'FJEF', a version, its effects' code, a count and 32 bytes per effect.
+			bool looks_right;
+			if (job.kind == Kind::CenterEffects)
+			{
+				uint32_t magic = 0, count = 0;
+				if (bytes.size() >= 24)
+				{
+					std::memcpy(&magic, bytes.data(), 4);
+					std::memcpy(&count, bytes.data() + 16, 4);
+				}
+				looks_right = magic == 0x46454A46u && count <= 2048 && bytes.size() == 24 + static_cast<size_t>(count) * 32;
+			}
+			else
+				looks_right = job.kind == Kind::CenterProfile || job.kind == Kind::CenterRules ? text.find('[') != std::string::npos :
+				                                                                     text.find("patch=") != std::string::npos;
 			if (!got || !looks_right)
 			{
 				ProbeLog("%s: none at %s (%s)\n", KindName(job.kind), url.c_str(), got ? "not the expected format" : "not there, or offline");
@@ -201,9 +219,9 @@ namespace
 				continue;
 			}
 			ProbeLog("%s: %s saved (%zu bytes)%s\n", KindName(job.kind), job.path.c_str(), text.size(),
-				job.kind == Kind::CenterRules ? "; used from the game's next start" :
+				job.kind == Kind::CenterRules || job.kind == Kind::CenterEffects ? "; used from the game's next start" :
 				job.kind == Kind::CenterProfile ? "; used from the game's next start, or at once by Ajustes recomendados" : "");
-			if (job.kind != Kind::CenterProfile && job.kind != Kind::CenterRules)
+			if (job.kind != Kind::CenterProfile && job.kind != Kind::CenterRules && job.kind != Kind::CenterEffects)
 				s_arrived.store(true, std::memory_order_release);
 		}
 		s_busy.store(false, std::memory_order_release);
@@ -247,6 +265,10 @@ namespace ForjaPatches
 			const std::string rules = root + "/centro/huellas.ini"; // compilation 55
 			if (force || !Fresh(rules, center_age))
 				jobs->push_back({Kind::CenterRules, "huellas.ini", rules});
+			// Compilation 129: the game's list of effects measured on the console (GSDeviceVK.cpp reads it after the player's own).
+			const std::string effects = root + "/centro/efectos/" + serial + ".bin";
+			if (force || !Fresh(effects, center_age))
+				jobs->push_back({Kind::CenterEffects, "efectos/" + serial + ".bin", effects});
 		}
 		if (jobs->empty() || s_busy.exchange(true, std::memory_order_acq_rel))
 			return;
@@ -254,6 +276,7 @@ namespace ForjaPatches
 		mkdir((root + "/centro").c_str(), 0777);
 		mkdir((root + "/centro/perfiles").c_str(), 0777);
 		mkdir((root + "/centro/parches").c_str(), 0777);
+		mkdir((root + "/centro/efectos").c_str(), 0777); // compilation 129
 		std::vector<Job>* argument = jobs.release();
 		// Compilation 59: a stack of its own size, as the app's other threads. With the default one it could not start once a game
 		// had started (every God of War II session of 2026-10-19 said "the thread could not start").

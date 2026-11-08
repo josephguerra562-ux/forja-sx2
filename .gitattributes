@@ -17,3 +17,6 @@ CMakeLists.txt text eol=lf
 # Forja SX2 (2026-10-19): the language files (read on the PS4, any line end works) and their fonts.
 *.lng text eol=lf
 *.ttf binary
+
+# Forja SX2 (compilation 129): the lists of effects ("Efectos listos al arrancar") are binary, byte for byte.
+ps4/vm/assets/efectos/*.bin binary
