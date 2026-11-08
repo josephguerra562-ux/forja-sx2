@@ -136,7 +136,7 @@ void recMFC0()
 	{
 		// This case needs to be handled even if the write-back is ignored (_Rt_ == 0 )
 		xMOV(rcx, ptr64[&cpuRegs.cycle]);
-		xADD(rcx, scaleblockcycles_clear());
+		ForjaCycleAddClear(rcx);
 		xMOV(ptr64[&cpuRegs.cycle], rcx); // update cycles
 		xMOV(rax, rcx);
 		xSUB(rax, ptr[&cpuRegs.lastCOP0Cycle]);
@@ -165,7 +165,7 @@ void recMFC0()
 		{
 			iFlushCall(FLUSH_INTERPRETER);
 			xMOV(rax, ptr64[&cpuRegs.cycle]);
-			xADD(rax, scaleblockcycles_clear());
+			ForjaCycleAddClear(rax);
 			xMOV(ptr64[&cpuRegs.cycle], rax); // update cycles
 			xFastCall((void*)COP0_UpdatePCCR);
 
@@ -176,7 +176,7 @@ void recMFC0()
 		{
 			iFlushCall(FLUSH_INTERPRETER);
 			xMOV(rax, ptr64[&cpuRegs.cycle]);
-			xADD(rax, scaleblockcycles_clear());
+			ForjaCycleAddClear(rax);
 			xMOV(ptr64[&cpuRegs.cycle], rax); // update cycles
 			xFastCall((void*)COP0_UpdatePCCR);
 
@@ -205,7 +205,7 @@ void recMTC0()
 			case 12:
 				iFlushCall(FLUSH_INTERPRETER);
 				xMOV(rax, ptr64[&cpuRegs.cycle]);
-				xADD(rax, scaleblockcycles_clear());
+				ForjaCycleAddClear(rax);
 				xMOV(ptr64[&cpuRegs.cycle], rax); // update cycles
 				xFastCall((void*)WriteCP0Status, g_cpuConstRegs[_Rt_].UL[0]);
 				break;
@@ -217,7 +217,7 @@ void recMTC0()
 
 			case 9:
 				xMOV(rcx, ptr64[&cpuRegs.cycle]);
-				xADD(rcx, scaleblockcycles_clear());
+				ForjaCycleAddClear(rcx);
 				xMOV(ptr64[&cpuRegs.cycle], rcx); // update cycles
 				xMOV(ptr64[&cpuRegs.lastCOP0Cycle], rcx);
 				xMOV(ptr32[&cpuRegs.CP0.r[9]], g_cpuConstRegs[_Rt_].UL[0]);
@@ -231,7 +231,7 @@ void recMTC0()
 					// Updates PCRs and sets the PCCR.
 					iFlushCall(FLUSH_INTERPRETER);
 					xMOV(rax, ptr64[&cpuRegs.cycle]);
-					xADD(rax, scaleblockcycles_clear());
+					ForjaCycleAddClear(rax);
 					xMOV(ptr64[&cpuRegs.cycle], rax); // update cycles
 					xFastCall((void*)COP0_UpdatePCCR);
 					xMOV(ptr32[&cpuRegs.PERF.n.pccr], g_cpuConstRegs[_Rt_].UL[0]);
@@ -240,7 +240,7 @@ void recMTC0()
 				else if (0 == (_Imm_ & 2)) // MTPC 0, only LSB of register matters
 				{
 					xMOV(rax, ptr64[&cpuRegs.cycle]);
-					xADD(rax, scaleblockcycles_clear());
+					ForjaCycleAddClear(rax);
 					xMOV(ptr64[&cpuRegs.cycle], rax); // update cycles
 					xMOV(ptr32[&cpuRegs.PERF.n.pcr0], g_cpuConstRegs[_Rt_].UL[0]);
 					xMOV(ptr64[&cpuRegs.lastPERFCycle[0]], rax);
@@ -248,7 +248,7 @@ void recMTC0()
 				else // MTPC 1
 				{
 					xMOV(rax, ptr64[&cpuRegs.cycle]);
-					xADD(rax, scaleblockcycles_clear());
+					ForjaCycleAddClear(rax);
 					xMOV(ptr64[&cpuRegs.cycle], rax); // update cycles
 					xMOV(ptr32[&cpuRegs.PERF.n.pcr1], g_cpuConstRegs[_Rt_].UL[0]);
 					xMOV(ptr64[&cpuRegs.lastPERFCycle[1]], rax);
@@ -272,7 +272,7 @@ void recMTC0()
 				_eeMoveGPRtoR(arg1reg, _Rt_);
 				iFlushCall(FLUSH_INTERPRETER);
 				xMOV(rax, ptr64[&cpuRegs.cycle]);
-				xADD(rax, scaleblockcycles_clear());
+				ForjaCycleAddClear(rax);
 				xMOV(ptr64[&cpuRegs.cycle], rax); // update cycles
 				xFastCall((void*)WriteCP0Status);
 				break;
@@ -285,7 +285,7 @@ void recMTC0()
 
 			case 9:
 				xMOV(rcx, ptr64[&cpuRegs.cycle]);
-				xADD(rcx, scaleblockcycles_clear());
+				ForjaCycleAddClear(rcx);
 				xMOV(ptr64[&cpuRegs.cycle], rcx); // update cycles
 				_eeMoveGPRtoM((uptr)&cpuRegs.CP0.r[9], _Rt_);
 				xMOV(ptr64[&cpuRegs.lastCOP0Cycle], rcx);
@@ -298,7 +298,7 @@ void recMTC0()
 						break;
 					iFlushCall(FLUSH_INTERPRETER);
 					xMOV(rax, ptr64[&cpuRegs.cycle]);
-					xADD(rax, scaleblockcycles_clear());
+					ForjaCycleAddClear(rax);
 					xMOV(ptr64[&cpuRegs.cycle], rax); // update cycles
 					xFastCall((void*)COP0_UpdatePCCR);
 					_eeMoveGPRtoM((uptr)&cpuRegs.PERF.n.pccr, _Rt_);
@@ -307,7 +307,7 @@ void recMTC0()
 				else if (0 == (_Imm_ & 2)) // MTPC 0, only LSB of register matters
 				{
 					xMOV(rcx, ptr64[&cpuRegs.cycle]);
-					xADD(rcx, scaleblockcycles_clear());
+					ForjaCycleAddClear(rcx);
 					xMOV(ptr64[&cpuRegs.cycle], rcx); // update cycles
 					_eeMoveGPRtoM((uptr)&cpuRegs.PERF.n.pcr0, _Rt_);
 					xMOV(ptr64[&cpuRegs.lastPERFCycle[0]], rcx);
@@ -315,7 +315,7 @@ void recMTC0()
 				else // MTPC 1
 				{
 					xMOV(rcx, ptr64[&cpuRegs.cycle]);
-					xADD(rcx, scaleblockcycles_clear());
+					ForjaCycleAddClear(rcx);
 					xMOV(ptr64[&cpuRegs.cycle], rcx); // update cycles
 					_eeMoveGPRtoM((uptr)&cpuRegs.PERF.n.pcr1, _Rt_);
 					xMOV(ptr64[&cpuRegs.lastPERFCycle[1]], rcx);

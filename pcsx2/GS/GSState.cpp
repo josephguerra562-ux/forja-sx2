@@ -1365,12 +1365,28 @@ void GSState::DumpTransferImages()
 	}
 }
 
+#if defined(PCSX2_PS4)
+// Forja SX2 (compilation 128): why the game's draws are split. In Shadow of the Colossus' heavy view (2026-11-08) the game sends twice
+// the draws a frame (3,726 against 1,831) and each costs the GS thread ~17 us: these say, per draw cut, which registers changed
+// (GSRendererHW.cpp's "GS draw splits" line), and the other reasons a draw was flushed. GS thread only.
+u32 g_forja_split_regs[32] = {}, g_forja_split_reasons[16] = {}, g_forja_split_count = 0;
+static inline void ForjaNoteDrawSplit(u32 dirty)
+{
+	g_forja_split_count++;
+	for (u32 d = dirty; d != 0; d &= d - 1)
+		g_forja_split_regs[__builtin_ctz(d) & 31]++;
+}
+#endif
+
 __inline void GSState::CheckFlushes()
 {
 	if (m_dirty_gs_regs && m_index->tail > 0)
 	{
 		if (TestDrawChanged())
 		{
+#if defined(PCSX2_PS4)
+			ForjaNoteDrawSplit(m_dirty_gs_regs);
+#endif
 			SetDrawBuffDirty();
 			if (!CanBufferNewDraw())
 			{
@@ -2378,6 +2394,10 @@ void GSState::FlushDraw(GSFlushReason reason)
 				return;
 		}
 		m_state_flush_reason = reason;
+#if defined(PCSX2_PS4)
+		if (reason != GSFlushReason::UNKNOWN) // compilation 128: a draw flushed for something other than its registers
+			g_forja_split_reasons[__builtin_ctz(static_cast<u32>(reason)) & 15]++;
+#endif
 
 		// Used to prompt the current draw that it's modifying its own CLUT.
 		CheckCLUTValidity(m_prev_env.PRIM.PRIM);

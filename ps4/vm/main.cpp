@@ -358,6 +358,24 @@ static bool s_fast_code_game = false, s_fast_code_marker = false;
 // Compilation 127: "Efectos listos al arrancar" for this game ([Forja] EfectosListos); the GS thread reads the atomic at every vsync.
 static bool s_effects_ahead_game = false;
 extern std::atomic<bool> g_forja_effects_ahead; // ps4/core/GSRendererPS4.cpp
+// Compilation 128: "CPU sin tirones" for this game ([Forja] CpuSinTirones). The EE recompiler takes the mode at its next reset
+// (x86/ix86-32/iR5900.cpp: g_forja_cpu_seamless is what is wanted, g_forja_cpu_seamless_active what its blocks were made with).
+static bool s_cpu_seamless_game = false;
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+extern std::atomic<bool> g_forja_cpu_seamless;
+extern bool g_forja_cpu_seamless_active;
+#endif
+// The video mode and the CPU automático change the rate here, not through the settings: with "CPU sin tirones" on, the EE blocks'
+// cycle adds are rewritten in place (x86/ix86-32/iR5900.cpp; weak: the builds without it reset as before); otherwise, or when it
+// cannot (rates over 130 %, too many adds), the EE recompiler starts over as before.
+extern bool ForjaEERecRepatchCycleRate(int old_rate, int new_rate) __attribute__((weak));
+static void ForjaEERateChanged(int old_rate)
+{
+	const int new_rate = EmuConfig.Speedhacks.EECycleRate;
+	if (old_rate != new_rate && ForjaEERecRepatchCycleRate && ForjaEERecRepatchCycleRate(old_rate, new_rate))
+		return;
+	Cpu->Reset();
+}
 static bool s_skip_auto_can_help = false, s_skip_auto_at_factory = true;
 static unsigned s_cpu_auto_good_checks = 0;
 static double s_cpu_auto_probe_at = -1000.0, s_cpu_auto_no_probe_until = 0.0, s_cpu_auto_probe_wait = 60.0;
@@ -1815,11 +1833,12 @@ static bool Vu1FastOn(); // compilation 126
 static void LogGameSettings(const char* why)
 {
 	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d "
-			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d fast_code=%d vu1_fast=%d effects_ahead=%d\n", why,
+			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d fast_code=%d vu1_fast=%d effects_ahead=%d skip_repeats=%d cpu_seamless=%d\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
 		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str(),
 		s_draw_thread ? 1 : 0, s_sw_jit ? 1 : 0, EmuConfig.Cpu.Recompiler.fpuFullMode ? 1 : 0, s_iop_fast ? 1 : 0, s_iop_sleep_game ? 1 : 0,
-		s_skip_auto_fine ? 1 : 0, s_cpu_auto_up ? 1 : 0, g_ps4_skip_smc_checks ? 1 : 0, Vu1FastOn() ? 1 : 0, s_effects_ahead_game ? 1 : 0);
+		s_skip_auto_fine ? 1 : 0, s_cpu_auto_up ? 1 : 0, g_ps4_skip_smc_checks ? 1 : 0, Vu1FastOn() ? 1 : 0, s_effects_ahead_game ? 1 : 0,
+		EmuConfig.GS.SkipDuplicateFrames ? 1 : 0, s_cpu_seamless_game ? 1 : 0);
 }
 
 // Compilation 76: two rows say so when their Auto can do nothing in this game, in place of their usual line (GameMenu.cpp's
@@ -2061,7 +2080,29 @@ static void PublishEffectsAheadText()
 	char label[256];
 	std::snprintf(label, sizeof(label), TF("Efectos listos al arrancar:  < %s >"), T(s_effects_ahead_game ? N_("Sí") : N_("No")));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_EFFECTS_AHEAD, label,
-		T("Prueba: al arrancar el juego, la gráfica prepara los efectos que usó en las partidas anteriores, para que no se armen en pleno juego y den tirones. La primera partida arma la lista; desde la segunda se notan menos tirones. Se guarda para este juego"));
+		T("Al arrancar el juego, la gráfica prepara los efectos que usó en las partidas anteriores, para que no se armen en pleno juego y den tirones. Viene en Sí; la primera partida de cada juego arma la lista. Se guarda para este juego"));
+}
+
+// Compilation 128: "Refrescos sin repetir" (PCSX2's SkipDuplicateFrames, read from the running settings).
+static void PublishSkipRepeatsText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("Refrescos sin repetir:  < %s >"), T(EmuConfig.GS.SkipDuplicateFrames ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_SKIP_REPEATS, label,
+		T("Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego"));
+}
+
+// Compilation 128: "CPU sin tirones".
+static void PublishCpuSeamlessText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("CPU sin tirones:  < %s >"), T(s_cpu_seamless_game ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CPU_SEAMLESS, label,
+		T("Prueba: al cambiar la velocidad de la CPU de la PS2 (tú, el CPU automático o el modo video en los videos), el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego"));
 }
 
 // Compilation 124: "Revisión rápida del código".
@@ -2343,6 +2384,8 @@ static void PublishGameMenu()
 	PublishFastCodeText(); // compilation 124
 	PublishVu1FastText(); // compilation 126
 	PublishEffectsAheadText(); // compilation 127
+	PublishSkipRepeatsText(); // compilation 128
+	PublishCpuSeamlessText(); // compilation 128
 	PublishCycleSkipText(); // compilation 100
 	PublishSpeedLimitText();
 	PublishImageOptionsText(); // compilation 104
@@ -2518,11 +2561,24 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	s_fast_code_game = s_profile.fast_code == 1; // compilation 124: the recompiler takes it at the game's start (or from the row, with a reset)
 	if (s_fast_code_game || s_profile.fast_code_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("Fast code check (compilation 124): %s (%s)\n", s_fast_code_game ? "on" : "off", ProfileOriginName(s_profile.fast_code_origin));
-	s_effects_ahead_game = s_profile.effects_ahead == 1; // compilation 127
+	// Compilation 128: on unless the profile says 0 (measured on 2026-11-08: Bully's effect hitches 6 -> 1, Shadow's 14 -> 2).
+	s_effects_ahead_game = s_profile.effects_ahead != 0; // compilation 127
 	g_forja_effects_ahead.store(s_effects_ahead_game, std::memory_order_relaxed);
 	if (s_effects_ahead_game || s_profile.effects_ahead_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("Effects ready ahead (compilation 127): %s (%s)\n", s_effects_ahead_game ? "on" : "off",
 			ProfileOriginName(s_profile.effects_ahead_origin));
+	// Compilation 128: "CPU sin tirones". When the mode the EE blocks were made with is not the one wanted, the recompiler starts over
+	// (at the game's start it does anyway; from the row, once).
+	s_cpu_seamless_game = s_profile.cpu_seamless == 1;
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+	g_forja_cpu_seamless.store(s_cpu_seamless_game, std::memory_order_relaxed);
+	if (s_cpu_seamless_game != g_forja_cpu_seamless_active && VMManager::GetDiscCRC() != 0)
+	{
+		Cpu->Reset();
+		ProbeLog("CPU seamless (compilation 128): %s (%s); EE recompiler reset for the new mode\n", s_cpu_seamless_game ? "on" : "off",
+			ProfileOriginName(s_profile.cpu_seamless_origin));
+	}
+#endif
 	if (s_iop_sleep_game || s_skip_auto_fine || s_cpu_auto_up || s_profile.iop_sleep_origin != ForjaGameProfile::Origin::Global ||
 		s_profile.skip_auto_fine_origin != ForjaGameProfile::Origin::Global || s_profile.cpu_auto_up_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("Compilation 122 rows: IOP asleep in the game %s (%s), cycle skip auto fine %s (%s), CPU auto back up %s (%s)\n",
@@ -2704,8 +2760,9 @@ static void UpdateVideoMode(double elapsed)
 			s_video_busy_checks = 0;
 			if (EmuConfig.Speedhacks.EECycleRate != s_video_saved_rate)
 			{
+				const int rate_before = EmuConfig.Speedhacks.EECycleRate;
 				EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(s_video_saved_rate);
-				Cpu->Reset();
+				ForjaEERateChanged(rate_before); // compilation 128 (was Cpu->Reset())
 			}
 			ProbeLog("Video mode: turned off for this game, EE rate back to %d\n", s_video_saved_rate);
 			ForjaVideoMeter(false); // compilation 65
@@ -2830,8 +2887,9 @@ static void UpdateVideoMode(double elapsed)
 			s_video_probe_busy_samples = 0;
 			if (next != rate)
 			{
+				const int rate_before = EmuConfig.Speedhacks.EECycleRate;
 				EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(next);
-				Cpu->Reset();
+				ForjaEERateChanged(rate_before); // compilation 128
 			}
 		}
 	}
@@ -2855,6 +2913,7 @@ static void UpdateVideoMode(double elapsed)
 		s_video_last_off = elapsed;
 	ForjaVideoMeter(want); // compilation 65
 	ForjaMovieSettings(want); // compilation 65
+	const int rate_before = EmuConfig.Speedhacks.EECycleRate; // compilation 128
 
 	if (want)
 	{
@@ -2889,7 +2948,7 @@ static void UpdateVideoMode(double elapsed)
 		}
 		EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(s_video_saved_rate);
 	}
-	Cpu->Reset();
+	ForjaEERateChanged(rate_before); // compilation 128
 	ProbeLog("Video mode: %s (%.0f decodes/s), EE rate now %d (game's own %d)\n", want ? "ON" : "OFF", per_second,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), s_video_saved_rate);
 }
@@ -2932,7 +2991,7 @@ static void SetCpuAutoRate(int rate, const char* why, double speed, double busie
 {
 	const int before = EmuConfig.Speedhacks.EECycleRate;
 	EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(rate);
-	Cpu->Reset();
+	ForjaEERateChanged(before); // compilation 128
 	ProbeLog("CPU auto: %s at %.0f %% speed (busiest thread %.0f %%): EE rate %d -> %d (game's own %d, floor %d)\n", why, speed,
 		busiest, before, rate, s_cpu_auto_base, s_cpu_auto_floor);
 }
@@ -3928,6 +3987,19 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 				EmuConfig.Speedhacks.vuFlagHack ? 1 : 0, EmuConfig.Cpu.Recompiler.vu1Overflow ? 1 : 0);
 			break;
 		}
+		case PS4GameMenu::ROW_SKIP_REPEATS: // compilation 128: PCSX2's [EmuCore/GS] SkipDuplicateFrames for this game (the settings reload)
+		{
+			const bool next = !EmuConfig.GS.SkipDuplicateFrames;
+			SavePlayerProfile("Skip repeats", [next](INISettingsInterface& ini) { ini.SetBoolValue("EmuCore/GS", "SkipDuplicateFrames", next); }, true);
+			ProbeLog("Skip repeated presents: requested=%d active=%d\n", next ? 1 : 0, EmuConfig.GS.SkipDuplicateFrames ? 1 : 0);
+			break;
+		}
+		case PS4GameMenu::ROW_CPU_SEAMLESS: // compilation 128: No / Sí ([Forja] CpuSinTirones); the profile's apply resets the EE recompiler
+		{
+			const int next = s_cpu_seamless_game ? 0 : 1;
+			SavePlayerProfile("CPU seamless", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "CpuSinTirones", next); }, false);
+			break;
+		}
 		case PS4GameMenu::ROW_EFFECTS_AHEAD: // compilation 127: No / Sí ([Forja] EfectosListos); the GS thread makes the list's next start
 		{
 			const int next = s_effects_ahead_game ? 0 : 1;
@@ -4891,7 +4963,7 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
 						   row == PS4GameMenu::ROW_TEXTURES || row == PS4GameMenu::ROW_DRAW_THREAD || row == PS4GameMenu::ROW_SW_JIT ||
 						   row == PS4GameMenu::ROW_FPU_EXACT || row == PS4GameMenu::ROW_IOP_FAST || row == PS4GameMenu::ROW_IOP_SLEEP ||
-						   row == PS4GameMenu::ROW_SKIP_AUTO_FINE || row == PS4GameMenu::ROW_CPU_AUTO_UP || row == PS4GameMenu::ROW_FAST_CODE_CHECK || row == PS4GameMenu::ROW_VU1_FAST || row == PS4GameMenu::ROW_EFFECTS_AHEAD ||
+						   row == PS4GameMenu::ROW_SKIP_AUTO_FINE || row == PS4GameMenu::ROW_CPU_AUTO_UP || row == PS4GameMenu::ROW_FAST_CODE_CHECK || row == PS4GameMenu::ROW_VU1_FAST || row == PS4GameMenu::ROW_EFFECTS_AHEAD || row == PS4GameMenu::ROW_SKIP_REPEATS || row == PS4GameMenu::ROW_CPU_SEAMLESS ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
 						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT || row == PS4GameMenu::ROW_REPORT_WHERE))
 		{

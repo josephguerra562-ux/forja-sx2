@@ -24,6 +24,11 @@
 #define printf OrbisDeferredPrintf
 #define fflush OrbisDeferredFlush
 
+#if defined(PCSX2_PS4)
+// Forja SX2 (compilation 128): why the draws were split (GSState.cpp, GS thread only); printed with the GS groups line.
+extern u32 g_forja_split_regs[32], g_forja_split_reasons[16], g_forja_split_count;
+#endif
+
 using PS_ATST  = GSShader::PS_ATST;
 using PS_AFAIL = GSShader::PS_AFAIL;
 
@@ -3105,6 +3110,30 @@ namespace
 					static_cast<double>(group.ticks) * 100.0 / static_cast<double>(total), group.draws / seconds);
 			}
 			ProbeLog("%s\n", line);
+#if defined(PCSX2_PS4)
+			// Compilation 128: why the draws were split (GSState.cpp), per second: the cuts by the registers that changed (one cut can
+			// count for several), and the draws flushed for another reason.
+			{
+				static constexpr const char* reg_names[20] = {"alpha", "clamp", "colclamp", "dimx", "dthe", "fba", "fogcol", "frame",
+					"miptbp1", "miptbp2", "pabe", "prim", "scanmsk", "scissor", "test", "tex0", "tex1", "texa", "xyoffset", "zbuf"};
+				static constexpr const char* reason_names[16] = {"unknown", "reset", "context", "clut", "transfer", "dirty_tex",
+					"dirty_frame", "dirty_zbuf", "local_move", "download", "savestate", "loadstate", "autoflush", "vsync", "reopen",
+					"vertex_count"};
+				int n = std::snprintf(line, sizeof(line), "GS draw splits: cuts_per_s=%.0f regs:", g_forja_split_count / seconds);
+				for (unsigned r = 0; r < 20 && n > 0 && n < static_cast<int>(sizeof(line)); r++)
+					if (g_forja_split_regs[r] != 0)
+						n += std::snprintf(line + n, sizeof(line) - n, " %s=%.0f", reg_names[r], g_forja_split_regs[r] / seconds);
+				if (n > 0 && n < static_cast<int>(sizeof(line)))
+					n += std::snprintf(line + n, sizeof(line) - n, " other_flushes:");
+				for (unsigned r = 0; r < 16 && n > 0 && n < static_cast<int>(sizeof(line)); r++)
+					if (g_forja_split_reasons[r] != 0)
+						n += std::snprintf(line + n, sizeof(line) - n, " %s=%.0f", reason_names[r], g_forja_split_reasons[r] / seconds);
+				ProbeLog("%s\n", line);
+				std::memset(g_forja_split_regs, 0, sizeof(g_forja_split_regs));
+				std::memset(g_forja_split_reasons, 0, sizeof(g_forja_split_reasons));
+				g_forja_split_count = 0;
+			}
+#endif
 			// Compilation 52: the four costliest groups' textures, blending and palettes.
 			len = std::snprintf(line, sizeof(line), "GS group details:");
 			for (unsigned k = 0; k < found && k < 4 && len > 0 && len < static_cast<int>(sizeof(line)); k++)

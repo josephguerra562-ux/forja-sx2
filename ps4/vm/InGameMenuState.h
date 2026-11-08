@@ -78,6 +78,12 @@ namespace PS4GameMenu
 		// Compilation 127: "Efectos listos al arrancar" ([Forja] EfectosListos): the effects (Vulkan pipelines) this game used in
 		// earlier sessions are made at its start, before it asks for them (GSDeviceVK.cpp, ForjaEffectsTick). Off until measured.
 		ROW_EFFECTS_AHEAD,
+		// Compilation 128: "Refrescos sin repetir", PCSX2's [EmuCore/GS] SkipDuplicateFrames for this game: a vsync that only repeats the
+		// game's last frame is not presented again (Shadow of the Colossus: each frame lasts 3-4 vsyncs). Off until measured.
+		ROW_SKIP_REPEATS,
+		// Compilation 128: "CPU sin tirones" ([Forja] CpuSinTirones): a change of the PS2 CPU speed patches the EE blocks' cycle adds in
+		// place instead of throwing away all the translated code (x86/ix86-32/iR5900.cpp). Off until measured.
+		ROW_CPU_SEAMLESS,
 		// Reportes (compilation 86, Joseph, 2026-10-24: "entre no tocar y sistema ... para que diga reportes"; until 85 in Sistema)
 		ROW_REPORT, // compilation 77: "Reportar este juego" (main.cpp, SendReport; ForjaReport.cpp)
 		// Compilation 80: what went wrong, for the report: the picture, the sound and the controls are what no meter sees.

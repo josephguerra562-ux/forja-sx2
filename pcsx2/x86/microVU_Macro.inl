@@ -143,7 +143,7 @@ bool mVUIsReservedCOP2(int hostreg)
 	void recV##f() \
 	{ \
 		iFlushCall(FLUSH_FOR_POSSIBLE_MICRO_EXEC); \
-		xADD(ptr64[&cpuRegs.cycle], scaleblockcycles_clear()); \
+		ForjaCycleAddClear(ptr64[&cpuRegs.cycle]); \
 		recCall(V##f); \
 	}
 
@@ -332,7 +332,7 @@ static void COP2_Interlock(bool mBitSync)
 			iFlushCall(FLUSH_FOR_POSSIBLE_MICRO_EXEC);
 			_freeX86reg(eax);
 			xMOV(rax, ptr64[&cpuRegs.cycle]);
-			xADD(rax, scaleblockcycles_clear());
+			ForjaCycleAddClear(rax);
 			xMOV(ptr64[&cpuRegs.cycle], rax); // update cycles
 
 			xTEST(ptr32[&VU0.VI[REG_VPU_STAT].UL], 0x1);
@@ -367,7 +367,7 @@ static void mVUSyncVU0()
 	iFlushCall(FLUSH_FOR_POSSIBLE_MICRO_EXEC);
 	_freeX86reg(eax);
 	xMOV(rax, ptr64[&cpuRegs.cycle]);
-	xADD(rax, scaleblockcycles_clear());
+	ForjaCycleAddClear(rax);
 	xMOV(ptr64[&cpuRegs.cycle], rax); // update cycles
 
 	xTEST(ptr32[&VU0.VI[REG_VPU_STAT].UL], 0x1);

@@ -1015,8 +1015,20 @@ tr: O VU1 para de calcular dados que quase nenhum programa usa e de cortar núme
 es: Efectos listos al arrancar:  < %s >
 tr: Efeitos prontos ao iniciar:  < %s >
 
-es: Prueba: al arrancar el juego, la gráfica prepara los efectos que usó en las partidas anteriores, para que no se armen en pleno juego y den tirones. La primera partida arma la lista; desde la segunda se notan menos tirones. Se guarda para este juego
-tr: Teste: ao iniciar o jogo, a parte gráfica prepara os efeitos que usou nas partidas anteriores, para que não sejam montados no meio do jogo e causem travadas. A primeira partida monta a lista; a partir da segunda há menos travadas. Salvo para este jogo
+es: Al arrancar el juego, la gráfica prepara los efectos que usó en las partidas anteriores, para que no se armen en pleno juego y den tirones. Viene en Sí; la primera partida de cada juego arma la lista. Se guarda para este juego
+tr: Ao iniciar o jogo, a parte gráfica prepara os efeitos que usou nas partidas anteriores, para que não sejam montados no meio do jogo e causem travadas. Vem em Sim; a primeira partida de cada jogo monta a lista. Salvo para este jogo
+
+es: Refrescos sin repetir:  < %s >
+tr: Atualizações sem repetir:  < %s >
+
+es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
+tr: Teste: quando o jogo não fez um quadro novo, o emulador não mostra o mesmo de novo e o GS economiza esse trabalho. Serve nos jogos lentos que o GS segura (Shadow of the Colossus). Se a imagem der saltos estranhos, coloque em Não. Salvo para este jogo
+
+es: CPU sin tirones:  < %s >
+tr: CPU sem travadas:  < %s >
+
+es: Prueba: al cambiar la velocidad de la CPU de la PS2 (tú, el CPU automático o el modo video en los videos), el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: Teste: ao mudar a velocidade da CPU do PS2 (você, a CPU automática ou o modo vídeo nos vídeos), o emulador não apaga mais o código traduzido do jogo e muda sem travadas. Se o jogo fechar ou travar, coloque em Não. Salvo para este jogo
 
 es: Revisión rápida del código:  < %s >
 tr: Verificação rápida do código:  < %s >

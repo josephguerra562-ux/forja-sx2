@@ -1015,8 +1015,20 @@ tr: VU1 перестаёт вычислять данные, которые по�
 es: Efectos listos al arrancar:  < %s >
 tr: Эффекты готовы при запуске:  < %s >
 
-es: Prueba: al arrancar el juego, la gráfica prepara los efectos que usó en las partidas anteriores, para que no se armen en pleno juego y den tirones. La primera partida arma la lista; desde la segunda se notan menos tirones. Se guarda para este juego
-tr: Тест: при запуске игры графика заранее готовит эффекты из прошлых сессий, чтобы они не создавались посреди игры и не вызывали рывки. Первая сессия составляет список; со второй рывков меньше. Сохраняется для этой игры
+es: Al arrancar el juego, la gráfica prepara los efectos que usó en las partidas anteriores, para que no se armen en pleno juego y den tirones. Viene en Sí; la primera partida de cada juego arma la lista. Se guarda para este juego
+tr: При запуске игры графика заранее готовит эффекты из прошлых сессий, чтобы они не создавались посреди игры и не вызывали рывки. По умолчанию «Да»; первая сессия каждой игры составляет список. Сохраняется для этой игры
+
+es: Refrescos sin repetir:  < %s >
+tr: Без повторных кадров:  < %s >
+
+es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
+tr: Тест: когда игра не сделала новый кадр, эмулятор не показывает тот же кадр снова, и GS экономит эту работу. Помогает медленным играм, которые тормозит GS (Shadow of the Colossus). Если картинка странно скачет, поставьте «Нет». Сохраняется для этой игры
+
+es: CPU sin tirones:  < %s >
+tr: CPU без рывков:  < %s >
+
+es: Prueba: al cambiar la velocidad de la CPU de la PS2 (tú, el CPU automático o el modo video en los videos), el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: Тест: при смене скорости CPU PS2 (вами, автоматическим CPU или режимом видео в роликах) эмулятор больше не стирает переведённый код игры и меняет её без рывков. Если игра закрывается или зависает, поставьте «Нет». Сохраняется для этой игры
 
 es: Revisión rápida del código:  < %s >
 tr: Быстрая проверка кода:  < %s >

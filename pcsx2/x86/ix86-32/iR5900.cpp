@@ -20,6 +20,9 @@
 #include "x86/iR5900Analysis.h"
 
 #include <atomic>
+#include <chrono> // Forja SX2 (compilation 128): "CPU sin tirones"
+#include <cstring>
+#include <vector>
 #include "common/AlignedMalloc.h"
 #include "common/FastJmp.h"
 #include "common/HeapArray.h"
@@ -163,6 +166,27 @@ static void iBranchTest(u32 newpc = 0xffffffff);
 static void ClearRecLUT(BASEBLOCK* base, int count);
 static u32 scaleblockcycles();
 static void recExitExecution();
+
+// Forja SX2 (compilation 128): "CPU sin tirones". The PS2 CPU speed (EECycleRate) goes into every block as the immediate of its cycle
+// add (scaleblockcycles), so a change used to throw away all the translated code: in Bully (2026-11-08) the movies' video mode and the
+// CPU automático reset the EE recompiler (and the IOP's and the VUs') and the next frames recompiled 2,000-6,000 blocks, 100-230 ms
+// hitches. With the game's row on, the recompiler writes those adds with a 32-bit immediate and keeps where each one is and its
+// unscaled cycles; a change of the rate alone rewrites them in place (VMManager::CheckForCPUConfigChanges -> ForjaEERecRepatchCycleRate),
+// outside the recompiled code (recExecute), and nothing is reset. The mode is taken at each reset.
+struct ForjaCycleSite
+{
+	u8* imm; // the add's 32-bit immediate in the code buffer
+	u32 raw; // the block's cycles at the add, before scaling (3-bit fixed point)
+};
+static std::vector<ForjaCycleSite> s_forja_cycle_sites;
+static bool s_forja_cycle_patchable = false; // the mode of the blocks in the buffer
+static bool s_forja_cycle_overflow = false; // too many adds kept: a change resets as before
+static bool s_forja_repatch_pending = false;
+static int s_forja_repatch_from = 0;
+static constexpr size_t FORJA_CYCLE_SITES_MAX = 200000;
+std::atomic<bool> g_forja_cpu_seamless{false}; // ps4/vm/main.cpp: the game's row
+bool g_forja_cpu_seamless_active = false; // what the blocks in the buffer were made with
+static void ForjaRepatchNow();
 
 #ifdef TRACE_BLOCKS
 static void pauseAAA()
@@ -836,6 +860,12 @@ static void recResetRaw()
 {
 	g_orbis_rec_full_resets.fetch_add(1, std::memory_order_relaxed); // vk-285-27
 	Console.WriteLn(Color_StrongBlack, "EE/iR5900 Recompiler Reset");
+	// Compilation 128: the code buffer starts over, and with it the list of cycle adds; the mode is taken now.
+	s_forja_cycle_sites.clear();
+	s_forja_cycle_overflow = false;
+	s_forja_repatch_pending = false;
+	s_forja_cycle_patchable = g_forja_cpu_seamless.load(std::memory_order_relaxed);
+	g_forja_cpu_seamless_active = s_forja_cycle_patchable;
 
 	if (CHECK_EXTRAMEM != extraRam)
 	{
@@ -1044,6 +1074,12 @@ static void recExecute()
 	{
 		eeRecNeedsReset = false;
 		recResetRaw();
+	}
+	// Compilation 128: a CPU speed change waiting for the recompiled code to be left.
+	if (s_forja_repatch_pending)
+	{
+		s_forja_repatch_pending = false;
+		ForjaRepatchNow();
 	}
 
 	// setjmp will save the register context and will return 0
@@ -1606,30 +1642,130 @@ void iFlushCall(int flushtype)
 
 #define DEFAULT_SCALED_BLOCKS() (s_nBlockCycles >> 3)
 
-static u32 scaleblockcycles_calculation()
+// Forja SX2 (compilation 128): the same arithmetic for any block's cycles and rate, so "CPU sin tirones" can rewrite an add later.
+static u32 ForjaScaledCycles(const u32 raw, const s8 cyclerate)
 {
-	const bool lowcycles = (s_nBlockCycles <= 40);
-	const s8 cyclerate = EmuConfig.Speedhacks.EECycleRate;
+	const bool lowcycles = (raw <= 40);
 	u32 scale_cycles = 0;
 
 	if (cyclerate == 0 || lowcycles || cyclerate < -99 || cyclerate > 3)
-		scale_cycles = DEFAULT_SCALED_BLOCKS();
+		scale_cycles = raw >> 3;
 
 	else if (cyclerate > 1)
-		scale_cycles = s_nBlockCycles >> (2 + cyclerate);
+		scale_cycles = raw >> (2 + cyclerate);
 
 	else if (cyclerate == 1)
-		scale_cycles = DEFAULT_SCALED_BLOCKS() / 1.3f; // Adds a mild 30% increase in clockspeed for value 1.
+		scale_cycles = (raw >> 3) / 1.3f; // Adds a mild 30% increase in clockspeed for value 1.
 
 	else if (cyclerate == -1) // the mildest value.
 		// These values were manually tuned to yield mild speedup with high compatibility
-		scale_cycles = (s_nBlockCycles <= 80 || s_nBlockCycles > 168 ? 5 : 7) * s_nBlockCycles / 32;
+		scale_cycles = (raw <= 80 || raw > 168 ? 5 : 7) * raw / 32;
 
 	else
-		scale_cycles = ((5 + (-2 * (cyclerate + 1))) * s_nBlockCycles) >> 5;
+		scale_cycles = ((5 + (-2 * (cyclerate + 1))) * raw) >> 5;
 
 	// Ensure block cycle count is never less than 1.
 	return (scale_cycles < 1) ? 1 : scale_cycles;
+}
+
+static u32 scaleblockcycles_calculation()
+{
+	return ForjaScaledCycles(s_nBlockCycles, EmuConfig.Speedhacks.EECycleRate);
+}
+
+// Compilation 128: the cycle adds. A block of 40 cycles or less is never scaled, so its add stays as it was.
+static void ForjaCycleNote(u8* imm, u32 raw)
+{
+	if (s_forja_cycle_sites.size() >= FORJA_CYCLE_SITES_MAX)
+	{
+		s_forja_cycle_overflow = true;
+		return;
+	}
+	if (s_forja_cycle_sites.capacity() == 0)
+		s_forja_cycle_sites.reserve(32768);
+	s_forja_cycle_sites.push_back({imm, raw});
+}
+
+static void ForjaEmitCycleAdd(const xIndirect64orLess& mem, u32 raw, u32 scaled)
+{
+	if (!s_forja_cycle_patchable || raw <= 40)
+	{
+		xADD(mem, scaled);
+		return;
+	}
+	xOpWrite(mem.GetPrefix16(), 0x81, G1Type_ADD, mem, 4); // add [mem], imm32 (never the 8-bit form)
+	ForjaCycleNote(xGetPtr(), raw);
+	xWrite32(scaled);
+}
+
+static void ForjaEmitCycleAdd(const xRegister64& reg, u32 raw, u32 scaled)
+{
+	if (!s_forja_cycle_patchable || raw <= 40)
+	{
+		xADD(reg, scaled);
+		return;
+	}
+	xOpWrite(reg.GetPrefix16(), 0x81, G1Type_ADD, reg); // add reg, imm32 (never the 8-bit form)
+	ForjaCycleNote(xGetPtr(), raw);
+	xWrite32(scaled);
+}
+
+static void ForjaCycleAdd(const xIndirect64orLess& mem)
+{
+	const u32 raw = s_nBlockCycles;
+	ForjaEmitCycleAdd(mem, raw, scaleblockcycles());
+}
+
+static void ForjaCycleAdd(const xRegister64& reg)
+{
+	const u32 raw = s_nBlockCycles;
+	ForjaEmitCycleAdd(reg, raw, scaleblockcycles());
+}
+
+void ForjaCycleAddClear(const xIndirect64orLess& mem)
+{
+	const u32 raw = s_nBlockCycles;
+	const u32 scaled = scaleblockcycles_clear();
+	ForjaEmitCycleAdd(mem, raw, scaled);
+}
+
+void ForjaCycleAddClear(const xRegister64& reg)
+{
+	const u32 raw = s_nBlockCycles;
+	const u32 scaled = scaleblockcycles_clear();
+	ForjaEmitCycleAdd(reg, raw, scaled);
+}
+
+static void ForjaRepatchNow()
+{
+	const s8 rate = EmuConfig.Speedhacks.EECycleRate;
+	const auto start = std::chrono::steady_clock::now();
+	for (const ForjaCycleSite& site : s_forja_cycle_sites)
+	{
+		const u32 value = ForjaScaledCycles(site.raw, rate);
+		std::memcpy(site.imm, &value, sizeof(value));
+	}
+	const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+	Console.WriteLn("Forja SX2: CPU change without a recompiler reset: EE rate %d -> %d, %u cycle adds rewritten in %.2f ms",
+		s_forja_repatch_from, static_cast<int>(rate), static_cast<unsigned>(s_forja_cycle_sites.size()), ms);
+}
+
+// VMManager::CheckForCPUConfigChanges, when only EECycleRate changed: true when it was taken care of without a reset. The scaling
+// left in a block by scaleblockcycles_clear is the same for every rate up to 1 (130 %), so only those are rewritten.
+bool ForjaEERecRepatchCycleRate(int old_rate, int new_rate)
+{
+	if (!g_forja_cpu_seamless_active || s_forja_cycle_overflow || old_rate > 1 || new_rate > 1 || old_rate < -99 || new_rate < -99)
+		return false;
+	s_forja_repatch_from = old_rate;
+	if (eeCpuExecuting)
+	{
+		// Outside the recompiled code: recExecute does it before going back in.
+		s_forja_repatch_pending = true;
+		recSafeExitExecution();
+	}
+	else
+		ForjaRepatchNow();
+	return true;
 }
 
 static u32 scaleblockcycles()
@@ -1881,7 +2017,7 @@ static void iBranchTest(u32 newpc)
 
 	if (EmuConfig.Speedhacks.WaitLoop && s_ps4_multiblock_wait && newpc == s_branchTo)
 	{
-		xADD(ptr64[&cpuRegs.cycle], scaleblockcycles());
+		ForjaCycleAdd(ptr64[&cpuRegs.cycle]); // compilation 128 (was xADD with scaleblockcycles())
 		xFastCall((void*)PS4FastForwardMultiBlockWait, s_ps4_multiblock_wait_config);
 		xJMP((void*)DispatcherEvent);
 	}
@@ -1890,7 +2026,7 @@ static void iBranchTest(u32 newpc)
 		if (s_orbis_ff_ext) // vk-285-126: counted for the [eefast] line
 			xADD(ptr64[&g_orbis_waitloop_ext_runs], 1);
 		xMOV(rax, ptr64[&cpuRegs.nextEventCycle]);
-		xADD(ptr64[&cpuRegs.cycle], scaleblockcycles());
+		ForjaCycleAdd(ptr64[&cpuRegs.cycle]); // compilation 128
 		xCMP(rax, ptr64[&cpuRegs.cycle]);
 		xCMOVS(rax, ptr64[&cpuRegs.cycle]);
 		xMOV(ptr64[&cpuRegs.cycle], rax);
@@ -1900,7 +2036,7 @@ static void iBranchTest(u32 newpc)
 	else
 	{
 		xMOV(rax, ptr64[&cpuRegs.cycle]);
-		xADD(rax, scaleblockcycles());
+		ForjaCycleAdd(rax); // compilation 128
 		xMOV(ptr64[&cpuRegs.cycle], rax); // update cycles
 		xSUB(rax, ptr64[&cpuRegs.nextEventCycle]);
 
@@ -3285,7 +3421,7 @@ StartRecomp:
 		                           rt(destination_increment) == destination_reg &&
 		                           static_cast<s16>(destination_increment & 0xffff) == 1;
 
-		if (distinct_nonzero_registers && shape_matches)
+		if (distinct_nonzero_registers && shape_matches && !s_forja_cycle_patchable) // compilation 128: its cycles are fixed in its word
 		{
 			// (AI-assisted) Match the opcode table and normal JIT scaling, including
 			// load/store and branch costs (66 fixed-point units, not six cycles).
@@ -3518,7 +3654,7 @@ StartRecomp:
 			else
 			{
 				xMOV(ptr32[&cpuRegs.pc], pc);
-				xADD(ptr64[&cpuRegs.cycle], scaleblockcycles());
+				ForjaCycleAdd(ptr64[&cpuRegs.cycle]); // compilation 128
 				recBlocks.Link(HWADDR(pc), xJcc32());
 			}
 		}

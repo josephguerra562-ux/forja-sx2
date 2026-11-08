@@ -2365,6 +2365,26 @@ namespace PS4GameMenu
 						draw->AddLine(ip(5, -12), ip(15, -12), icon_line, lw);
 						draw->AddLine(ip(12, 6), ip(12, 12), icon_line, lw);
 						break;
+					case ROW_SKIP_REPEATS: // two frames, the second crossed out (compilation 128)
+						draw->AddLine(ip(-18, -8), ip(-4, -8), icon_line, lw);
+						draw->AddLine(ip(-4, -8), ip(-4, 8), icon_line, lw);
+						draw->AddLine(ip(-4, 8), ip(-18, 8), icon_line, lw);
+						draw->AddLine(ip(-18, 8), ip(-18, -8), icon_line, lw);
+						draw->AddLine(ip(2, -8), ip(16, -8), icon_line, lw);
+						draw->AddLine(ip(16, -8), ip(16, 8), icon_line, lw);
+						draw->AddLine(ip(16, 8), ip(2, 8), icon_line, lw);
+						draw->AddLine(ip(2, 8), ip(2, -8), icon_line, lw);
+						draw->AddLine(ip(2, 8), ip(16, -8), icon_line, lw);
+						break;
+					case ROW_CPU_SEAMLESS: // a chip with a smooth wave (compilation 128)
+						draw->AddLine(ip(-10, -10), ip(10, -10), icon_line, lw);
+						draw->AddLine(ip(10, -10), ip(10, 10), icon_line, lw);
+						draw->AddLine(ip(10, 10), ip(-10, 10), icon_line, lw);
+						draw->AddLine(ip(-10, 10), ip(-10, -10), icon_line, lw);
+						draw->AddLine(ip(-7, 2), ip(-3, -3), icon_line, lw);
+						draw->AddLine(ip(-3, -3), ip(2, 3), icon_line, lw);
+						draw->AddLine(ip(2, 3), ip(7, -2), icon_line, lw);
+						break;
 					case ROW_EFFECTS_AHEAD: // a square ready and two arrows ahead (compilation 127)
 						draw->AddLine(ip(-16, -8), ip(0, -8), icon_line, lw);
 						draw->AddLine(ip(0, -8), ip(0, 8), icon_line, lw);
@@ -2527,7 +2547,7 @@ namespace PS4GameMenu
 				if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)
 					return T("ELEGIR  ·  X");
 				if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD || row == ROW_SW_JIT || row == ROW_FPU_EXACT || row == ROW_IOP_FAST ||
-				    row == ROW_IOP_SLEEP || row == ROW_SKIP_AUTO_FINE || row == ROW_CPU_AUTO_UP || row == ROW_FAST_CODE_CHECK || row == ROW_VU1_FAST || row == ROW_EFFECTS_AHEAD) // 122; 124; 126; 127
+				    row == ROW_IOP_SLEEP || row == ROW_SKIP_AUTO_FINE || row == ROW_CPU_AUTO_UP || row == ROW_FAST_CODE_CHECK || row == ROW_VU1_FAST || row == ROW_EFFECTS_AHEAD || row == ROW_SKIP_REPEATS || row == ROW_CPU_SEAMLESS) // 122; 124; 126; 127; 128
 					return T("ELEGIR");
 				if (row == ROW_RECOMMENDED)
 					return "X";

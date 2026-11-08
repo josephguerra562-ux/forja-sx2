@@ -95,6 +95,20 @@ foreach ($profileFile in $profileFiles) {
   Copy-Item -LiteralPath $profileFile.FullName -Destination (Join-Path $packageDir $relative)
   $packageFiles += $relative
 }
+# Forja SX2 (compilation 128): the factory lists of effects (resources/efectos/<SERIAL>.bin, "Efectos listos al arrancar"), made on
+# the console; none is fine.
+$effectsRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'assets/efectos'))
+if (Test-Path -LiteralPath $effectsRoot) {
+  $effectsFiles = @(Get-ChildItem -LiteralPath $effectsRoot -Filter '*.bin' -File)
+  if ($effectsFiles.Count -gt 0) {
+    New-Item -ItemType Directory -Force -Path (Join-Path $packageDir 'resources/efectos') | Out-Null
+    foreach ($effectsFile in $effectsFiles) {
+      $relative = 'resources/efectos/' + $effectsFile.Name
+      Copy-Item -LiteralPath $effectsFile.FullName -Destination (Join-Path $packageDir $relative)
+      $packageFiles += $relative
+    }
+  }
+}
 # Forja SX2 (compilation 35): factory patches (resources/parches/<SERIAL>_<CRC>_forja.pnach), which pcsx2/Patch.cpp reads after
 # the player's own /data/ForjaSX2/patches. The Orbis build has no zip, so they go as loose files.
 $patchRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'assets/parches'))

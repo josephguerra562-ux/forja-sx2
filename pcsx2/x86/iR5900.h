@@ -80,6 +80,9 @@ void iFlushCall(int flushtype);
 void recBranchCall(void (*func)());
 void recCall(void (*func)());
 u32 scaleblockcycles_clear();
+// Forja SX2 (compilation 128): "CPU sin tirones": the add of the block's cycles so far, rewritable when only the CPU speed changes.
+void ForjaCycleAddClear(const x86Emitter::xIndirect64orLess& mem);
+void ForjaCycleAddClear(const x86Emitter::xRegister64& reg);
 
 namespace R5900
 {

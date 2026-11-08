@@ -7842,6 +7842,39 @@ namespace
 		return std::string(FORJA_EFFECTS_DIR) + "/" + name + ".bin";
 	}
 
+	// Compilation 128: the package's list (resources/efectos/<serial>.bin, made on Joseph's console), for every player's first session.
+	static std::string ForjaEffectsFactoryPath(const std::string& serial)
+	{
+		const std::string mine = ForjaEffectsPath(serial);
+		return Path::Combine(EmuFolders::Resources, "efectos/" + mine.substr(mine.rfind('/') + 1));
+	}
+
+	// Reads a list into out (nothing when it is not one, or from other effects' code); says what it found.
+	static const char* ForjaEffectsRead(const std::string& path, u64 code, std::vector<GSDeviceVK::PipelineSelector>& out)
+	{
+		FILE* f = std::fopen(path.c_str(), "rb");
+		if (!f)
+			return "none";
+		ForjaEffectsHeader header = {};
+		const char* what = "read";
+		if (std::fread(&header, sizeof(header), 1, f) != 1 || header.magic != FORJA_EFFECTS_MAGIC || header.version != 1u ||
+			header.count > FORJA_EFFECTS_MAX)
+			what = "not a list";
+		else if (header.code != code)
+			what = "from other effects' code";
+		else
+		{
+			out.resize(header.count);
+			if (std::fread(out.data(), sizeof(GSDeviceVK::PipelineSelector), header.count, f) != header.count)
+			{
+				out.clear();
+				what = "cut short";
+			}
+		}
+		std::fclose(f);
+		return what;
+	}
+
 	static u64 ForjaEffectsCode(const std::string& source)
 	{
 		u64 h = 1469598103934665603ull;
@@ -7907,8 +7940,11 @@ void GSDeviceVK::ForjaEffectsTick()
 	s_fx.vsyncs++;
 	if (s_fx.device != this)
 	{
-		// A new device has no effects: the list is made again from its start.
+		// A new device has no effects: the list is made again from its start, read again from its file (compilation 128: the device
+		// that went saved it from Destroy) at the next check of the game.
 		s_fx.device = this;
+		s_fx.serial.clear();
+		s_fx.list.clear();
 		s_fx.next = 0;
 		s_fx.made = s_fx.had = 0;
 		s_fx.ahead_ms = s_fx.longest_ms = 0.0;
@@ -7932,26 +7968,26 @@ void GSDeviceVK::ForjaEffectsTick()
 			s_fx.saved_created = g_forja_pipelines_created;
 			if (!serial.empty())
 			{
-				const std::string path = ForjaEffectsPath(serial);
-				FILE* f = std::fopen(path.c_str(), "rb");
-				ForjaEffectsHeader header = {};
-				if (!f)
-					ProbeLog("Effects list: %s has none yet (this session makes it)\n", serial.c_str());
-				else if (std::fread(&header, sizeof(header), 1, f) != 1 || header.magic != FORJA_EFFECTS_MAGIC || header.version != 1u ||
-						 header.count > FORJA_EFFECTS_MAX)
-					ProbeLog("Effects list: %s's file is not a list, not used\n", serial.c_str());
-				else if (header.code != ForjaEffectsCode(m_tfx_source))
-					ProbeLog("Effects list: %s's is from other effects' code, not used (this session makes a new one)\n", serial.c_str());
-				else
+				// Compilation 128: the player's list, then the package's for what it lacks.
+				const u64 code = ForjaEffectsCode(m_tfx_source);
+				const char* mine = ForjaEffectsRead(ForjaEffectsPath(serial), code, s_fx.list);
+				std::vector<PipelineSelector> factory;
+				const char* theirs = ForjaEffectsRead(ForjaEffectsFactoryPath(serial), code, factory);
+				size_t added = 0;
+				if (!factory.empty())
 				{
-					s_fx.list.resize(header.count);
-					if (std::fread(s_fx.list.data(), sizeof(PipelineSelector), header.count, f) != header.count)
-						s_fx.list.clear();
-					ProbeLog("Effects list: %s, %zu effects; made ahead: %s\n", serial.c_str(), s_fx.list.size(),
-						g_forja_effects_ahead.load(std::memory_order_relaxed) ? "yes" : "no (the row is off)");
+					std::unordered_set<PipelineSelector, PipelineSelectorHash> seen(s_fx.list.begin(), s_fx.list.end());
+					for (const PipelineSelector& p : factory)
+					{
+						if (s_fx.list.size() < FORJA_EFFECTS_MAX && seen.insert(p).second)
+						{
+							s_fx.list.push_back(p);
+							added++;
+						}
+					}
 				}
-				if (f)
-					std::fclose(f);
+				ProbeLog("Effects list: %s, %zu effects (the player's: %s; the package's: %s, %zu added); made ahead: %s\n", serial.c_str(),
+					s_fx.list.size(), mine, theirs, added, g_forja_effects_ahead.load(std::memory_order_relaxed) ? "yes" : "no (the row is off)");
 			}
 		}
 	}

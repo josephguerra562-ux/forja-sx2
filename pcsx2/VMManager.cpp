@@ -3143,6 +3143,11 @@ void VMManager::Internal::PollInputOnCPUThread()
 	}
 }
 
+#if defined(PCSX2_PS4)
+// Forja SX2 (compilation 128): "CPU sin tirones" (x86/ix86-32/iR5900.cpp; weak: the builds without the EE recompiler have none).
+extern bool ForjaEERecRepatchCycleRate(int old_rate, int new_rate) __attribute__((weak));
+#endif
+
 void VMManager::CheckForCPUConfigChanges(const Pcsx2Config& old_config)
 {
 	if (EmuConfig.Cpu == old_config.Cpu && EmuConfig.Gamefixes == old_config.Gamefixes &&
@@ -3150,6 +3155,19 @@ void VMManager::CheckForCPUConfigChanges(const Pcsx2Config& old_config)
 	{
 		return;
 	}
+#if defined(PCSX2_PS4)
+	// Only the PS2 CPU speed changed (the row, the CPU automático, the video mode): with the game's row on, the EE blocks' cycle adds
+	// are rewritten in place and no recompiler (EE, IOP, VU) starts over.
+	if (ForjaEERecRepatchCycleRate && EmuConfig.Cpu == old_config.Cpu && EmuConfig.Gamefixes == old_config.Gamefixes &&
+		EmuConfig.Profiler == old_config.Profiler)
+	{
+		Pcsx2Config::SpeedhackOptions only_rate = old_config.Speedhacks;
+		only_rate.EECycleRate = EmuConfig.Speedhacks.EECycleRate;
+		if (only_rate == EmuConfig.Speedhacks &&
+			ForjaEERecRepatchCycleRate(old_config.Speedhacks.EECycleRate, EmuConfig.Speedhacks.EECycleRate))
+			return;
+	}
+#endif
 
 	Console.WriteLn("Updating CPU configuration...");
 	FPControlRegister::SetCurrent(EmuConfig.Cpu.FPUFPCR);
