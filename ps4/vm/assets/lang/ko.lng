@@ -1009,8 +1009,14 @@ tr: 테스트, CPU 자동 조절이 켜져 있을 때: 게임이 문제없이 �
 es: VU1 rápido:  < %s >
 tr: VU1 빠르게:  < %s >
 
-es: Prueba: el VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Sirve en los juegos que frena el VU1 (God of War II). Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
-tr: 테스트: VU1이 거의 어떤 프로그램도 쓰지 않는 데이터 처리와 값 제한을 멈춰 일이 줄어듭니다. VU1이 느리게 하는 게임(God of War II)에 도움이 됩니다. 늘어진 폴리곤이나 이상한 모양이 보이면 아니요로 하세요. 이 게임에 저장됩니다
+es: El VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Viene en Sí, salvo en los juegos que la base de datos marca como delicados. Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
+tr: VU1이 거의 어떤 프로그램도 쓰지 않는 데이터 처리와 값 제한을 멈춰 일이 줄어듭니다. 기본값은 예이며, 문제가 있다고 알려진 게임은 아니요입니다. 늘어진 폴리곤이나 이상한 모양이 보이면 아니요로 하세요. 이 게임에 저장됩니다
+
+es: Efectos listos al arrancar:  < %s >
+tr: 시작할 때 효과 준비:  < %s >
+
+es: Prueba: al arrancar el juego, la gráfica prepara los efectos que usó en las partidas anteriores, para que no se armen en pleno juego y den tirones. La primera partida arma la lista; desde la segunda se notan menos tirones. Se guarda para este juego
+tr: 테스트: 게임을 시작할 때 이전에 사용한 효과를 미리 준비해서, 게임 도중에 만들어지며 끊기는 일을 줄입니다. 처음 플레이에서 목록을 만들고, 그다음부터 끊김이 줄어듭니다. 이 게임에 저장됩니다
 
 es: Revisión rápida del código:  < %s >
 tr: 코드 빠른 검사:  < %s >

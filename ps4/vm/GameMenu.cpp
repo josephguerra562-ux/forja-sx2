@@ -2365,6 +2365,16 @@ namespace PS4GameMenu
 						draw->AddLine(ip(5, -12), ip(15, -12), icon_line, lw);
 						draw->AddLine(ip(12, 6), ip(12, 12), icon_line, lw);
 						break;
+					case ROW_EFFECTS_AHEAD: // a square ready and two arrows ahead (compilation 127)
+						draw->AddLine(ip(-16, -8), ip(0, -8), icon_line, lw);
+						draw->AddLine(ip(0, -8), ip(0, 8), icon_line, lw);
+						draw->AddLine(ip(0, 8), ip(-16, 8), icon_line, lw);
+						draw->AddLine(ip(-16, 8), ip(-16, -8), icon_line, lw);
+						draw->AddLine(ip(4, -7), ip(10, 0), icon_line, lw);
+						draw->AddLine(ip(10, 0), ip(4, 7), icon_line, lw);
+						draw->AddLine(ip(11, -7), ip(17, 0), icon_line, lw);
+						draw->AddLine(ip(17, 0), ip(11, 7), icon_line, lw);
+						break;
 					case ROW_VU1_FAST: // a chip with two speed lines (compilation 126)
 						draw->AddLine(ip(-10, -10), ip(10, -10), icon_line, lw);
 						draw->AddLine(ip(10, -10), ip(10, 10), icon_line, lw);
@@ -2517,7 +2527,7 @@ namespace PS4GameMenu
 				if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)
 					return T("ELEGIR  ·  X");
 				if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD || row == ROW_SW_JIT || row == ROW_FPU_EXACT || row == ROW_IOP_FAST ||
-				    row == ROW_IOP_SLEEP || row == ROW_SKIP_AUTO_FINE || row == ROW_CPU_AUTO_UP || row == ROW_FAST_CODE_CHECK || row == ROW_VU1_FAST) // 122; 124; 126
+				    row == ROW_IOP_SLEEP || row == ROW_SKIP_AUTO_FINE || row == ROW_CPU_AUTO_UP || row == ROW_FAST_CODE_CHECK || row == ROW_VU1_FAST || row == ROW_EFFECTS_AHEAD) // 122; 124; 126; 127
 					return T("ELEGIR");
 				if (row == ROW_RECOMMENDED)
 					return "X";

@@ -864,6 +864,11 @@ void GSRenderer::EndPresentFrame()
 extern void ProbeLog(const char* format, ...);
 extern std::atomic<u32> g_orbis_rec_compiles, g_orbis_rec_full_resets; // pcsx2/x86/ix86-32/iR5900.cpp
 u32 g_forja_pipelines_created = 0; // GSDeviceVK::CreateTFXPipeline, GS thread only
+// Compilation 127: the time making effects in the game (CreateTFXPipeline), and making them ahead ("Efectos listos al arrancar":
+// GSDeviceVK.cpp, ForjaEffectsTick, which also sets them back so a hitch's line counts only the game's). GS thread only.
+u64 g_forja_pipeline_us = 0, g_forja_effects_ahead_us = 0;
+std::atomic<bool> g_forja_effects_ahead{false}; // main.cpp: the game's row ([Forja] EfectosListos)
+extern void ForjaEffectsAheadTick() __attribute__((weak)); // GSDeviceVK.cpp (weak: the probes link without it)
 std::atomic<u64> g_forja_disc_bytes{0}; // ThreadedFileReader, reader thread
 std::atomic<u64> g_forja_gs_vsyncs{0}; // every GS vsync; the watchdog in main.cpp checks it moves
 std::atomic<u32> g_forja_resumes{0}; // main.cpp, each time the L3+R3 menu resumes the game (the hitch detector skips that gap)
@@ -889,7 +894,7 @@ static void ForjaReportHitch(bool new_frame)
 {
 	static Common::Timer::Value s_last = 0;
 	static u32 s_compiles = 0, s_resets = 0, s_pipelines = 0;
-	static u64 s_disc = 0;
+	static u64 s_disc = 0, s_pipeline_us = 0, s_ahead_us = 0;
 	static unsigned s_reported = 0;
 	static u32 s_resumes = 0;
 	if (const u32 resumes = g_forja_resumes.load(std::memory_order_relaxed); resumes != s_resumes)
@@ -953,9 +958,10 @@ static void ForjaReportHitch(bool new_frame)
 			if (s_reported < 2000)
 			{
 				++s_reported;
-				ProbeLog("Hitch: frame_gap_ms=%.0f ee_blocks_compiled=%u ee_rec_resets=%u pipelines_created=%u disc_kb=%llu\n",
+				ProbeLog("Hitch: frame_gap_ms=%.0f ee_blocks_compiled=%u ee_rec_resets=%u pipelines_created=%u disc_kb=%llu pipeline_ms=%.0f ahead_ms=%.0f\n",
 					gap_ms, compiles - s_compiles, resets - s_resets, g_forja_pipelines_created - s_pipelines,
-					static_cast<unsigned long long>((disc - s_disc) / 1024));
+					static_cast<unsigned long long>((disc - s_disc) / 1024), (g_forja_pipeline_us - s_pipeline_us) / 1000.0,
+					(g_forja_effects_ahead_us - s_ahead_us) / 1000.0);
 			}
 			// Forja 1.06: the session's summary counts them all, by cause (ps4/vm/SessionStats.cpp; weak: the probes have none).
 			if (ForjaSessionHitch)
@@ -968,6 +974,8 @@ static void ForjaReportHitch(bool new_frame)
 	s_resets = resets;
 	s_pipelines = g_forja_pipelines_created;
 	s_disc = disc;
+	s_pipeline_us = g_forja_pipeline_us;
+	s_ahead_us = g_forja_effects_ahead_us;
 }
 
 void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
@@ -1032,6 +1040,9 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 #else
 	ForjaReportHitch(true);
 #endif
+	// Compilation 127: the game's list of effects, kept and made ahead (after the hitch's line, so its time counts on the next one).
+	if (ForjaEffectsAheadTick)
+		ForjaEffectsAheadTick();
 	bool skip_frame = false;
 #if !defined(PCSX2_GS_RENDERER_PROBE)
 	if ((GSConfig.SkipDuplicateFrames || fg_skips_repeats) && !GSCapture::IsCapturingVideo())

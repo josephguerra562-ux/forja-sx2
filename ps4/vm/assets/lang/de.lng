@@ -1009,8 +1009,14 @@ tr: Test, mit automatischer CPU: Wenn das Spiel gut läuft, wird die PS2-CPU wie
 es: VU1 rápido:  < %s >
 tr: Schneller VU1:  < %s >
 
-es: Prueba: el VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Sirve en los juegos que frena el VU1 (God of War II). Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
-tr: Test: Der VU1 berechnet keine Daten mehr, die fast kein Programm nutzt, und begrenzt keine Zahlen mehr, so arbeitet er weniger. Hilft bei Spielen, die der VU1 bremst (God of War II). Wenn gestreckte Polygone oder seltsame Formen auftauchen, auf Nein stellen. Für dieses Spiel gespeichert
+es: El VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Viene en Sí, salvo en los juegos que la base de datos marca como delicados. Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
+tr: Der VU1 berechnet keine Daten mehr, die fast kein Programm nutzt, und begrenzt keine Zahlen mehr, so arbeitet er weniger. Standardmäßig Ja, außer bei Spielen, die die Datenbank als heikel markiert. Wenn gestreckte Polygone oder seltsame Formen auftauchen, auf Nein stellen. Für dieses Spiel gespeichert
+
+es: Efectos listos al arrancar:  < %s >
+tr: Effekte beim Start bereit:  < %s >
+
+es: Prueba: al arrancar el juego, la gráfica prepara los efectos que usó en las partidas anteriores, para que no se armen en pleno juego y den tirones. La primera partida arma la lista; desde la segunda se notan menos tirones. Se guarda para este juego
+tr: Test: Beim Spielstart bereitet die Grafik die Effekte vor, die in früheren Sitzungen benutzt wurden, damit sie nicht mitten im Spiel erstellt werden und Ruckler verursachen. Die erste Sitzung erstellt die Liste; ab der zweiten gibt es weniger Ruckler. Für dieses Spiel gespeichert
 
 es: Revisión rápida del código:  < %s >
 tr: Schnelle Codeprüfung:  < %s >

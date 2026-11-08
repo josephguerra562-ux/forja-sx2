@@ -54,6 +54,10 @@
 // Forja SX2: frame generation (AMD FSR3 frame interpolation), ported from PS5SX2.
 #include "ps4/core/framegen/ps5_framegen.h"
 #include "ps4/core/framegen/OrbisFrameGenPacing.h"
+#include "VMManager.h" // compilation 127: the disc's serial, for the game's list of effects
+#include <cctype>
+#include <sys/stat.h>
+#include <unordered_set>
 #include "fmt/format.h"
 #include <chrono>
 #include <memory>
@@ -3721,6 +3725,9 @@ bool GSDeviceVK::Create(GSVSyncMode vsync_mode, bool allow_present_throttle)
 void GSDeviceVK::Destroy()
 {
 	std::unique_lock lock(s_instance_mutex);
+#if defined(PCSX2_PS4)
+	ForjaEffectsSave(); // compilation 127: the game's list of effects, with this session's last ones
+#endif
 
 	GSDevice::Destroy();
 
@@ -7613,12 +7620,22 @@ VkShaderModule GSDeviceVK::GetTFXFragmentShader(const GSHWDrawConfig::PSSelector
 
 #if defined(PCSX2_PS4)
 extern u32 g_forja_pipelines_created; // ps4/core/GSRendererPS4.cpp, GS thread only
+extern u64 g_forja_pipeline_us; // compilation 127: the time making them (the hitch's line)
 #endif
 
 VkPipeline GSDeviceVK::CreateTFXPipeline(const PipelineSelector& p)
 {
 #if defined(PCSX2_PS4)
 	++g_forja_pipelines_created;
+	struct ForjaPipelineTimer
+	{
+		std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+		~ForjaPipelineTimer()
+		{
+			g_forja_pipeline_us += static_cast<u64>(
+				std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count());
+		}
+	} forja_pipeline_timer;
 #endif
 	static constexpr std::array<VkPrimitiveTopology, 3> topology_lookup = {{
 		VK_PRIMITIVE_TOPOLOGY_POINT_LIST, // Point
@@ -7777,6 +7794,206 @@ VkPipeline GSDeviceVK::GetTFXPipeline(const PipelineSelector& p)
 #endif
 	return pipeline;
 }
+
+#if defined(PCSX2_PS4)
+// Forja SX2 (compilation 127): "Efectos listos al arrancar". On the console every game paid 12-14 hitches a session for effects it
+// had used before (2026-11-08: in Shadow of the Colossus' 14 the pipeline cache's file stayed at 2,704,332 bytes the whole session,
+// so the driver had every one, and making each still cost the frame 50-500 ms; Downhill Domination 13, God of War II 14). Each game's
+// list of effects goes to /data/ForjaSX2/cache/efectos/<serial>.bin: when the game changes, every ~30 s while new ones come, and when
+// the device goes. With the game's row on, the list's effects are made at its start (the disc's serial is known in the BIOS, before
+// the game draws), up to ~4 ms a vsync and at least one, so the game finds them made. A list from other effects' code is not used.
+extern u64 g_forja_effects_ahead_us; // ps4/core/GSRendererPS4.cpp, GS thread only
+extern std::atomic<bool> g_forja_effects_ahead; // main.cpp sets it from the game's row
+extern void ProbeLog(const char* format, ...);
+
+namespace
+{
+	struct ForjaEffectsHeader
+	{
+		u32 magic; // 'FJEF'
+		u32 version; // 1
+		u64 code; // FNV-1a of the TFX source and the selector's size: another version's list is thrown away
+		u32 count;
+		u32 reserved;
+	};
+	static constexpr u32 FORJA_EFFECTS_MAGIC = 0x46454A46u;
+	static constexpr size_t FORJA_EFFECTS_MAX = 2048;
+	static constexpr const char* FORJA_EFFECTS_DIR = "/data/ForjaSX2/cache/efectos";
+
+	struct ForjaEffectsState
+	{
+		std::string serial; // the game whose list is loaded ("" in the BIOS or with no disc)
+		std::vector<GSDeviceVK::PipelineSelector> list; // the file's
+		size_t next = 0; // the next of the list to make ahead
+		const void* device = nullptr;
+		u32 vsyncs = 0;
+		u32 saved_created = 0; // g_forja_pipelines_created at the last save
+		unsigned made = 0, had = 0;
+		double ahead_ms = 0.0, longest_ms = 0.0;
+		bool ahead_logged = false;
+	};
+	static ForjaEffectsState s_fx;
+
+	static std::string ForjaEffectsPath(const std::string& serial)
+	{
+		std::string name;
+		for (const char c : serial)
+			name += (std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_') ? c : '_';
+		return std::string(FORJA_EFFECTS_DIR) + "/" + name + ".bin";
+	}
+
+	static u64 ForjaEffectsCode(const std::string& source)
+	{
+		u64 h = 1469598103934665603ull;
+		for (const char c : source)
+			h = (h ^ static_cast<u8>(c)) * 1099511628211ull;
+		h = (h ^ sizeof(GSDeviceVK::PipelineSelector)) * 1099511628211ull;
+		return h;
+	}
+
+	static double ForjaMsSince(std::chrono::steady_clock::time_point t)
+	{
+		return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t).count();
+	}
+} // namespace
+
+void ForjaEffectsAheadTick()
+{
+	GSDevice* const dev = g_gs_device.get();
+	if (dev && dev->GetRenderAPI() == RenderAPI::Vulkan)
+		static_cast<GSDeviceVK*>(dev)->ForjaEffectsTick();
+}
+
+void GSDeviceVK::ForjaEffectsSave()
+{
+	if (s_fx.serial.empty())
+		return;
+	// This session's effects first, then the file's that it did not use, up to the cap.
+	std::unordered_set<PipelineSelector, PipelineSelectorHash> seen;
+	std::vector<PipelineSelector> out;
+	out.reserve(std::min(m_tfx_pipelines.size() + s_fx.list.size(), FORJA_EFFECTS_MAX));
+	for (const auto& it : m_tfx_pipelines)
+	{
+		if (it.second != VK_NULL_HANDLE && out.size() < FORJA_EFFECTS_MAX && seen.insert(it.first).second)
+			out.push_back(it.first);
+	}
+	for (const PipelineSelector& p : s_fx.list)
+	{
+		if (out.size() < FORJA_EFFECTS_MAX && seen.insert(p).second)
+			out.push_back(p);
+	}
+	s_fx.saved_created = g_forja_pipelines_created;
+	if (out.empty())
+		return;
+	mkdir("/data/ForjaSX2/cache", 0777);
+	mkdir(FORJA_EFFECTS_DIR, 0777);
+	const std::string path = ForjaEffectsPath(s_fx.serial);
+	const std::string tmp = path + ".tmp";
+	FILE* f = std::fopen(tmp.c_str(), "wb");
+	if (!f)
+		return;
+	const ForjaEffectsHeader header = {FORJA_EFFECTS_MAGIC, 1u, ForjaEffectsCode(m_tfx_source), static_cast<u32>(out.size()), 0u};
+	const bool ok = std::fwrite(&header, sizeof(header), 1, f) == 1 &&
+	                std::fwrite(out.data(), sizeof(PipelineSelector), out.size(), f) == out.size();
+	std::fclose(f);
+	if (ok && std::rename(tmp.c_str(), path.c_str()) == 0)
+		ProbeLog("Effects list saved: %s, %zu effects (%zu made in this session)\n", s_fx.serial.c_str(), out.size(), m_tfx_pipelines.size());
+	else
+		std::remove(tmp.c_str());
+}
+
+void GSDeviceVK::ForjaEffectsTick()
+{
+	s_fx.vsyncs++;
+	if (s_fx.device != this)
+	{
+		// A new device has no effects: the list is made again from its start.
+		s_fx.device = this;
+		s_fx.next = 0;
+		s_fx.made = s_fx.had = 0;
+		s_fx.ahead_ms = s_fx.longest_ms = 0.0;
+		s_fx.ahead_logged = false;
+		s_fx.saved_created = g_forja_pipelines_created;
+	}
+
+	// About once a second: which game runs.
+	if (s_fx.vsyncs % 60 == 1)
+	{
+		const std::string serial = VMManager::HasValidVM() ? VMManager::GetDiscSerial() : std::string();
+		if (serial != s_fx.serial)
+		{
+			ForjaEffectsSave(); // the last game's (nothing when there was none)
+			s_fx.serial = serial;
+			s_fx.list.clear();
+			s_fx.next = 0;
+			s_fx.made = s_fx.had = 0;
+			s_fx.ahead_ms = s_fx.longest_ms = 0.0;
+			s_fx.ahead_logged = false;
+			s_fx.saved_created = g_forja_pipelines_created;
+			if (!serial.empty())
+			{
+				const std::string path = ForjaEffectsPath(serial);
+				FILE* f = std::fopen(path.c_str(), "rb");
+				ForjaEffectsHeader header = {};
+				if (!f)
+					ProbeLog("Effects list: %s has none yet (this session makes it)\n", serial.c_str());
+				else if (std::fread(&header, sizeof(header), 1, f) != 1 || header.magic != FORJA_EFFECTS_MAGIC || header.version != 1u ||
+						 header.count > FORJA_EFFECTS_MAX)
+					ProbeLog("Effects list: %s's file is not a list, not used\n", serial.c_str());
+				else if (header.code != ForjaEffectsCode(m_tfx_source))
+					ProbeLog("Effects list: %s's is from other effects' code, not used (this session makes a new one)\n", serial.c_str());
+				else
+				{
+					s_fx.list.resize(header.count);
+					if (std::fread(s_fx.list.data(), sizeof(PipelineSelector), header.count, f) != header.count)
+						s_fx.list.clear();
+					ProbeLog("Effects list: %s, %zu effects; made ahead: %s\n", serial.c_str(), s_fx.list.size(),
+						g_forja_effects_ahead.load(std::memory_order_relaxed) ? "yes" : "no (the row is off)");
+				}
+				if (f)
+					std::fclose(f);
+			}
+		}
+	}
+
+	// New effects in the game: the list is saved at most every ~30 s.
+	if (s_fx.vsyncs % 1800 == 0 && g_forja_pipelines_created != s_fx.saved_created)
+		ForjaEffectsSave();
+
+	if (!g_forja_effects_ahead.load(std::memory_order_relaxed) || s_fx.next >= s_fx.list.size())
+		return;
+	const u32 counted = g_forja_pipelines_created;
+	const u64 counted_us = g_forja_pipeline_us;
+	const auto start = std::chrono::steady_clock::now();
+	do
+	{
+		const PipelineSelector& p = s_fx.list[s_fx.next++];
+		if (m_tfx_pipelines.find(p) != m_tfx_pipelines.end())
+		{
+			s_fx.had++;
+			continue;
+		}
+		const auto one = std::chrono::steady_clock::now();
+		VkPipeline pipeline = CreateTFXPipeline(p);
+		m_tfx_pipelines.emplace(p, pipeline);
+		s_fx.made++;
+		s_fx.longest_ms = std::max(s_fx.longest_ms, ForjaMsSince(one));
+	} while (s_fx.next < s_fx.list.size() && ForjaMsSince(start) < 4.0);
+	const double spent = ForjaMsSince(start);
+	s_fx.ahead_ms += spent;
+	// Made ahead, not by the game: the hitch's line and the session's summary count only the game's.
+	g_forja_pipelines_created = counted;
+	g_forja_pipeline_us = counted_us;
+	s_fx.saved_created = counted;
+	g_forja_effects_ahead_us += static_cast<u64>(spent * 1000.0);
+	if (s_fx.next >= s_fx.list.size() && !s_fx.ahead_logged)
+	{
+		s_fx.ahead_logged = true;
+		ProbeLog("Effects made ahead: %s, %u of the list's %zu in %.0f ms (the longest %.1f ms), %u were made already\n",
+			s_fx.serial.c_str(), s_fx.made, s_fx.list.size(), s_fx.ahead_ms, s_fx.longest_ms, s_fx.had);
+	}
+}
+#endif
 
 bool GSDeviceVK::BindDrawPipeline(const PipelineSelector& p)
 {

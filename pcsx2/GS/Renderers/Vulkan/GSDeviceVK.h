@@ -636,6 +636,12 @@ public:
 		float shader_time, Filter filter, u32 vsyncs, u32 already, double ps2_hz, float speed, bool nominal);
 	void OrbisFrameGenDraw();
 	void OrbisFrameGenRelease();
+	// Forja SX2 (compilation 127): "Efectos listos al arrancar". Called at every vsync (ps4/core/GSRendererPS4.cpp, through
+	// ForjaEffectsAheadTick): keeps each game's list of effects (TFX pipelines) in /data/ForjaSX2/cache/efectos/<serial>.bin and,
+	// with the row on, makes the list's effects at the game's start, ~4 ms a vsync, before the game asks for them. Save: the list
+	// now (also when the device goes, from Destroy).
+	void ForjaEffectsTick();
+	void ForjaEffectsSave();
 #endif
 
 	bool SetGPUTimingEnabled(bool enabled) override;

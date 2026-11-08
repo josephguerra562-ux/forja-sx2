@@ -1009,8 +1009,14 @@ tr: Тест, с автоматическим ЦП: когда игра идёт
 es: VU1 rápido:  < %s >
 tr: Быстрый VU1:  < %s >
 
-es: Prueba: el VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Sirve en los juegos que frena el VU1 (God of War II). Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
-tr: Тест: VU1 перестаёт вычислять данные, которые почти не нужны программам, и не ограничивает числа, поэтому работает меньше. Помогает играм, которые тормозит VU1 (God of War II). Если появятся растянутые полигоны или странные формы, поставьте «Нет». Сохраняется для этой игры
+es: El VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Viene en Sí, salvo en los juegos que la base de datos marca como delicados. Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
+tr: VU1 перестаёт вычислять данные, которые почти не нужны программам, и не ограничивает числа, поэтому работает меньше. По умолчанию «Да», кроме игр, которые база данных отмечает как чувствительные. Если появятся растянутые полигоны или странные формы, поставьте «Нет». Сохраняется для этой игры
+
+es: Efectos listos al arrancar:  < %s >
+tr: Эффекты готовы при запуске:  < %s >
+
+es: Prueba: al arrancar el juego, la gráfica prepara los efectos que usó en las partidas anteriores, para que no se armen en pleno juego y den tirones. La primera partida arma la lista; desde la segunda se notan menos tirones. Se guarda para este juego
+tr: Тест: при запуске игры графика заранее готовит эффекты из прошлых сессий, чтобы они не создавались посреди игры и не вызывали рывки. Первая сессия составляет список; со второй рывков меньше. Сохраняется для этой игры
 
 es: Revisión rápida del código:  < %s >
 tr: Быстрая проверка кода:  < %s >

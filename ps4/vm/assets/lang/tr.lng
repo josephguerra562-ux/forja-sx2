@@ -1009,8 +1009,14 @@ tr: Test, Otomatik CPU ile: oyun iyi giderken PS2 CPU'sunu seçtiğin değere ka
 es: VU1 rápido:  < %s >
 tr: Hızlı VU1:  < %s >
 
-es: Prueba: el VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Sirve en los juegos que frena el VU1 (God of War II). Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
-tr: Test: VU1 neredeyse hiçbir programın kullanmadığı verileri hesaplamayı ve sayıları sınırlamayı bırakır, daha az çalışır. VU1'in yavaşlattığı oyunlarda işe yarar (God of War II). Uzamış çokgenler veya tuhaf şekiller görünürse Hayır yapın. Bu oyun için kaydedilir
+es: El VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Viene en Sí, salvo en los juegos que la base de datos marca como delicados. Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
+tr: VU1 neredeyse hiçbir programın kullanmadığı verileri hesaplamayı ve sayıları sınırlamayı bırakır, daha az çalışır. Varsayılan olarak Evet'tir; veritabanının hassas olarak işaretlediği oyunlar hariç. Uzamış çokgenler veya tuhaf şekiller görünürse Hayır yapın. Bu oyun için kaydedilir
+
+es: Efectos listos al arrancar:  < %s >
+tr: Efektler başlangıçta hazır:  < %s >
+
+es: Prueba: al arrancar el juego, la gráfica prepara los efectos que usó en las partidas anteriores, para que no se armen en pleno juego y den tirones. La primera partida arma la lista; desde la segunda se notan menos tirones. Se guarda para este juego
+tr: Test: oyun başlarken grafik, önceki oturumlarda kullanılan efektleri önceden hazırlar; böylece oyunun ortasında oluşturulup takılmaya yol açmazlar. İlk oturum listeyi oluşturur; ikinciden itibaren daha az takılma olur. Bu oyun için kaydedilir
 
 es: Revisión rápida del código:  < %s >
 tr: Hızlı kod denetimi:  < %s >

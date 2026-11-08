@@ -1009,8 +1009,14 @@ tr: Teste, com a CPU automática: quando o jogo vai bem, volta a subir a CPU do 
 es: VU1 rápido:  < %s >
 tr: VU1 rápido:  < %s >
 
-es: Prueba: el VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Sirve en los juegos que frena el VU1 (God of War II). Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
-tr: Teste: o VU1 para de calcular dados que quase nenhum programa usa e de cortar números, e trabalha menos. Serve nos jogos que o VU1 segura (God of War II). Se aparecerem polígonos esticados ou formas estranhas, coloque em Não. Salvo para este jogo
+es: El VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Viene en Sí, salvo en los juegos que la base de datos marca como delicados. Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
+tr: O VU1 para de calcular dados que quase nenhum programa usa e de cortar números, e trabalha menos. Vem em Sim, exceto nos jogos que o banco de dados marca como delicados. Se aparecerem polígonos esticados ou formas estranhas, coloque em Não. Salvo para este jogo
+
+es: Efectos listos al arrancar:  < %s >
+tr: Efeitos prontos ao iniciar:  < %s >
+
+es: Prueba: al arrancar el juego, la gráfica prepara los efectos que usó en las partidas anteriores, para que no se armen en pleno juego y den tirones. La primera partida arma la lista; desde la segunda se notan menos tirones. Se guarda para este juego
+tr: Teste: ao iniciar o jogo, a parte gráfica prepara os efeitos que usou nas partidas anteriores, para que não sejam montados no meio do jogo e causem travadas. A primeira partida monta a lista; a partir da segunda há menos travadas. Salvo para este jogo
 
 es: Revisión rápida del código:  < %s >
 tr: Verificação rápida do código:  < %s >

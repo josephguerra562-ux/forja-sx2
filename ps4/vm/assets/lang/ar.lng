@@ -1009,8 +1009,14 @@ tr: تجربة، مع المعالج التلقائي: عندما تعمل ال�
 es: VU1 rápido:  < %s >
 tr: VU1 سريع:  < %s >
 
-es: Prueba: el VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Sirve en los juegos que frena el VU1 (God of War II). Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
-tr: تجربة: يتوقف الـ VU1 عن حساب بيانات لا يستخدمها أي برنامج تقريبًا وعن تقييد الأرقام، فيعمل أقل. يفيد الألعاب التي يبطئها الـ VU1 (God of War II). إذا ظهرت مضلعات ممدودة أو أشكال غريبة، اجعلها لا. تُحفظ لهذه اللعبة
+es: El VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Viene en Sí, salvo en los juegos que la base de datos marca como delicados. Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
+tr: يتوقف الـ VU1 عن حساب بيانات لا يستخدمها أي برنامج تقريبًا وعن تقييد الأرقام، فيعمل أقل. يأتي على نعم، إلا في الألعاب التي تصنّفها قاعدة البيانات كحساسة. إذا ظهرت مضلعات ممدودة أو أشكال غريبة، اجعلها لا. تُحفظ لهذه اللعبة
+
+es: Efectos listos al arrancar:  < %s >
+tr: تجهيز المؤثرات عند البدء:  < %s >
+
+es: Prueba: al arrancar el juego, la gráfica prepara los efectos que usó en las partidas anteriores, para que no se armen en pleno juego y den tirones. La primera partida arma la lista; desde la segunda se notan menos tirones. Se guarda para este juego
+tr: تجربة: عند بدء اللعبة، تجهّز الرسوميات المؤثرات التي استُخدمت في الجلسات السابقة، حتى لا تُبنى في منتصف اللعب وتسبب تقطعًا. الجلسة الأولى تصنع القائمة؛ ومن الثانية يقل التقطع. تُحفظ لهذه اللعبة
 
 es: Revisión rápida del código:  < %s >
 tr: فحص سريع للشيفرة:  < %s >

@@ -1009,8 +1009,14 @@ tr: 测试，自动 CPU 打开时：游戏运行正常时，把 PS2 的 CPU 重�
 es: VU1 rápido:  < %s >
 tr: 快速 VU1：  < %s >
 
-es: Prueba: el VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Sirve en los juegos que frena el VU1 (God of War II). Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
-tr: 测试：VU1 不再计算几乎没有程序使用的数据，也不再限制数值，工作更少。适用于被 VU1 拖慢的游戏（God of War II）。如果出现拉长的多边形或奇怪的形状，请设为否。仅为此游戏保存
+es: El VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Viene en Sí, salvo en los juegos que la base de datos marca como delicados. Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
+tr: VU1 不再计算几乎没有程序使用的数据，也不再限制数值，工作更少。开始时为是；数据库标记为敏感的游戏为否。如果出现拉长的多边形或奇怪的形状，请设为否。仅为此游戏保存
+
+es: Efectos listos al arrancar:  < %s >
+tr: 启动时准备效果：  < %s >
+
+es: Prueba: al arrancar el juego, la gráfica prepara los efectos que usó en las partidas anteriores, para que no se armen en pleno juego y den tirones. La primera partida arma la lista; desde la segunda se notan menos tirones. Se guarda para este juego
+tr: 测试：游戏启动时，图形部分会提前准备之前游戏中用过的效果，避免在游戏中创建效果时卡顿。头一次游戏会建立列表；之后卡顿会减少。仅为此游戏保存
 
 es: Revisión rápida del código:  < %s >
 tr: 快速程序检查：  < %s >

@@ -101,6 +101,9 @@ namespace ForjaGameProfile
 		// [Forja] RevisionRapida (compilation 124): the EE recompiler without the check of every block's code: 0 off, 1 on, -1 not set (off).
 		int fast_code = -1;
 		Origin fast_code_origin = Origin::Global;
+		// [Forja] EfectosListos (compilation 127): the effects of the game's list made at its start: 0 off, 1 on, -1 not set (off).
+		int effects_ahead = -1;
+		Origin effects_ahead_origin = Origin::Global;
 		// [EmuCore/Speedhacks] EECycleSkip * 4 + EECycleSkipQuarters of the factory profile only (compilation 109): where the cycle
 		// skip's Auto starts and the least it goes to (main.cpp, UpdateCycleSkipAuto). 0 with no factory profile.
 		int cycle_skip_factory = 0;
@@ -208,6 +211,7 @@ namespace ForjaGameProfile
 		read_int("SaltoAutoAfinado", &v.skip_auto_fine, &v.skip_auto_fine_origin);
 		read_int("CpuAutoSube", &v.cpu_auto_up, &v.cpu_auto_up_origin);
 		read_int("RevisionRapida", &v.fast_code, &v.fast_code_origin); // compilation 124
+		read_int("EfectosListos", &v.effects_ahead, &v.effects_ahead_origin); // compilation 127
 		// Forja 1.06: [Forja] SaltarCuadrosConGuardian, a factory profile's frame skip for the versions with the guard (73 on),
 		// which wins over its SaltarCuadros (never over the player's). The versions before 1.06 fetch the factory profiles from
 		// main and read only SaltarCuadros: there it keeps what suits their skip without the guard (Dragon Ball: off).

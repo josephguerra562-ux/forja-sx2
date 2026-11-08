@@ -75,6 +75,9 @@ namespace PS4GameMenu
 		// Compilation 126: "VU1 rápido", the microVU's flag hack on and its clamping off for this game (the profile's [EmuCore/Speedhacks]
 		// vuFlagHack and [EmuCore/CPU/Recompiler] vu1Overflow, which win over the GameDB: God of War II's turns the flag hack off).
 		ROW_VU1_FAST,
+		// Compilation 127: "Efectos listos al arrancar" ([Forja] EfectosListos): the effects (Vulkan pipelines) this game used in
+		// earlier sessions are made at its start, before it asks for them (GSDeviceVK.cpp, ForjaEffectsTick). Off until measured.
+		ROW_EFFECTS_AHEAD,
 		// Reportes (compilation 86, Joseph, 2026-10-24: "entre no tocar y sistema ... para que diga reportes"; until 85 in Sistema)
 		ROW_REPORT, // compilation 77: "Reportar este juego" (main.cpp, SendReport; ForjaReport.cpp)
 		// Compilation 80: what went wrong, for the report: the picture, the sound and the controls are what no meter sees.
