@@ -358,6 +358,8 @@ static bool s_fast_code_game = false, s_fast_code_marker = false;
 static bool s_skip_auto_can_help = false, s_skip_auto_at_factory = true;
 static unsigned s_cpu_auto_good_checks = 0;
 static double s_cpu_auto_probe_at = -1000.0, s_cpu_auto_no_probe_until = 0.0, s_cpu_auto_probe_wait = 60.0;
+// Compilation 125: when the CPU last came down (no step up for 60 s after it).
+static double s_cpu_auto_last_down = -1000.0;
 // Forja SX2 (compilation 47): "Saltar cuadros" (UpdateGsSkip). mode: 0 off, 1 auto, 2 always; the GS reads the atomic.
 extern std::atomic<bool> g_forja_gs_skip_active;     // ps4/core/GSRendererPS4.cpp
 extern std::atomic<unsigned> g_forja_gs_skipped_frames;
@@ -3111,7 +3113,12 @@ static void UpdateCpuAuto(double elapsed)
 	// herramientas/simulaciones/simular_automaticos_escenas.py, 57 % chosen, with "Salto Auto afinado": Bully 11.4 -> 12.2 FPS (74 -> 73 % of
 	// the time at 95 % or more), Shadow 13.1 -> 13.5 FPS (79 -> 74 %); a hitch every ~2 minutes in Bully.
 	s_cpu_auto_slow_checks = speed < (s_cpu_auto_up ? 95.0 : 92.0) ? s_cpu_auto_slow_checks + 1 : 0;
-	const bool room = s_cpu_auto_steps > 0 && speed >= 98.0 &&
+	// Compilation 125 (Downhill Domination, 2026-11-08: 38 changes of the CPU in an hour, between 44 and 100 %, each one a reset of the EE
+	// recompiler and a hitch): a loading screen or a menu has every thread nearly idle (busiest 20-42 %), the room looked enormous, the CPU went
+	// up and the race brought it down again. Room counts only with the game drawing in 3D (the VU1 at work) and not within 60 s of a step down.
+	const bool in_game_3d = PerformanceMetrics::GetVUThreadUsage() >= 8.0f && PerformanceMetrics::GetInternalFPS() >= 5.0f;
+	const bool calm = elapsed - s_cpu_auto_last_down >= 60.0;
+	const bool room = s_cpu_auto_steps > 0 && speed >= 98.0 && in_game_3d && calm &&
 					  busiest * EERatePercent(rate + 1) / EERatePercent(rate) < 90.0;
 	s_cpu_auto_room_checks = room ? s_cpu_auto_room_checks + 1 : 0;
 	s_cpu_auto_good_checks = speed >= 97.0 ? s_cpu_auto_good_checks + 1 : 0;
@@ -3121,8 +3128,10 @@ static void UpdateCpuAuto(double elapsed)
 		s_cpu_auto_probe_wait = 60.0;
 		s_cpu_auto_probe_at = -1000.0;
 	}
+	// Compilation 125: one try at a time (Downhill went 57 -> 80 -> 100 % in 56 s, three tries before the first was judged): the next try waits
+	// until the last one held 120 s, and none in a loading screen or a menu, nor within 60 s of a step down.
 	const bool probe = s_cpu_auto_up && s_cpu_auto_steps > 0 && s_cpu_auto_good_checks >= 40 && elapsed >= s_cpu_auto_no_probe_until &&
-					   (!skip_auto || s_skip_auto_at_factory);
+					   (!skip_auto || s_skip_auto_at_factory) && s_cpu_auto_probe_at < 0.0 && in_game_3d && calm;
 	if (elapsed - s_cpu_auto_last_change < 6.0)
 		return;
 	if (s_cpu_auto_slow_checks >= 6 && rate > s_cpu_auto_floor && (!s_cpu_auto_up || !skip_auto || !s_skip_auto_can_help))
@@ -3134,6 +3143,7 @@ static void UpdateCpuAuto(double elapsed)
 			s_cpu_auto_probe_wait = std::min(s_cpu_auto_probe_wait * 2.0, 300.0);
 		}
 		s_cpu_auto_probe_at = -1000.0;
+		s_cpu_auto_last_down = elapsed; // compilation 125: no step up for 60 s
 		// Compilation 87: as far down as the speed says, up to 4 steps at once. Each change resets the EE's recompiler: a
 		// hitch of 100-600 ms, and then every block of the game compiled again. FIFA Street 2 (report F-3420, another
 		// player's PS4, 2026-10-25) started at 300 % (its PCSX2 database entry) and 13 % speed; one step every 6-10 s took 11
@@ -4555,14 +4565,8 @@ void VMHostPoll()
 					// Compilation 123: and the reading loops it knows (R3000A.cpp, ForjaNoteIopPollLoop).
 					ProbeLog("IOP asleep in the game: asleep at %.0f, run at %.0f a second (%s), reading loops known %u\n", iop_sleeps / interval,
 						iop_runs / interval, g_forja_iop_sleep ? "sleep on" : "sleep off", g_forja_iop_poll_loops);
-					// Compilation 123: the IOP awake most of its turns: its code where it is now, once a game (Bully's waited at 0x11efc-0x11f28
-					// in a loop nothing recognized, 2026-11-07), so the next rule can be made from what it really runs.
-					static u32 s_iop_code_logged_crc = 0;
-					if (iop_runs > 4 * iop_sleeps && iop_runs > 1000 && s_iop_code_logged_crc != VMManager::GetDiscCRC())
-					{
-						s_iop_code_logged_crc = VMManager::GetDiscCRC();
-						ProbeLog("IOP code where it waits awake: pc=%08x %s\n", psxRegs.pc, ForjaIopCodeText(psxRegs.pc).c_str());
-					}
+					// Compilation 125: the 123 copied the IOP's code where it waited awake; at such low addresses that is the BIOS's code,
+					// which the house rule keeps out of the analysis. The heartbeat's IOP_PC says where it waits, without its code.
 				}
 			}
 			g_forja_spu2_split_voices = g_forja_spu2_split_mix = g_forja_spu2_split_output = 0;
@@ -5304,6 +5308,15 @@ static void* RunVM(void*)
 			StartHangWatch();
 			ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
 			RepinWorkersForProfile();
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+			// Compilation 125: "Revisión rápida del código" from the game's start. In the 124 it was read only when the row changed: Bully
+			// (2026-11-08) had it on in its profile and ran its whole session with the exact checks (EE at 101 % at 44 %), and a game after one
+			// that had it on kept the relaxed mode (GTA San Andreas doesn't start with it). Before the game's first block is compiled.
+			g_ps4_skip_smc_checks = s_fast_code_marker || s_fast_code_game;
+			g_ps4_bytecopy_fusion = g_ps4_skip_smc_checks && access("/data/ForjaSX2/vm-no-bytecopy-fusion", F_OK) != 0;
+			ProbeLog("EE JIT manual SMC validation: %s (at the game's start: %s)\n", g_ps4_skip_smc_checks ? "relaxed" : "exact",
+				s_fast_code_marker ? "the vm-skip-smc marker" : s_fast_code_game ? "the game's row, Revisión rápida del código" : "the row is off");
+#endif
 		}
 		VMManager::ApplySettings();
 		ProbeLog("Forja settings at game start: file=%d ee_rate=%d upscale=%dx aspect=%d overlay=%d stick=%d fast_cdvd=%d "

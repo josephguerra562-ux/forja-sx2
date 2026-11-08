@@ -934,8 +934,21 @@ static void ForjaReportHitch(bool new_frame)
 			}
 			s_frame_last = now;
 		}
+		// Compilation 125 (Dragon Ball Z BT4 with "Al vuelo", 2026-11-08: 463 "hitches" in 5 minutes, all of 53-58 ms): a frame Saltar
+		// cuadros leaves out shows the last picture twice, so its gap is about twice the usual one by design. While frames are being left
+		// out (in the last ~60 vsyncs), a hitch has to stand out three times over.
+		static unsigned s_skipped_seen = 0, s_skip_recent = 0;
+		const unsigned skipped_now = g_forja_gs_skipped_frames.load(std::memory_order_relaxed);
+		if (skipped_now != s_skipped_seen)
+		{
+			s_skipped_seen = skipped_now;
+			s_skip_recent = 60;
+		}
+		else if (s_skip_recent > 0)
+			s_skip_recent--;
+		const double stand_out = s_skip_recent > 0 ? 3.0 : 2.0;
 		// 50..2000 ms: a hitch. Longer gaps are a pause, a loading screen with no vsyncs, or the menu.
-		if (gap_ms > 50.0 && gap_ms < 2000.0 && gap_ms > 2.0 * usual && VMManager::GetState() == VMState::Running)
+		if (gap_ms > 50.0 && gap_ms < 2000.0 && gap_ms > stand_out * usual && VMManager::GetState() == VMState::Running)
 		{
 			if (s_reported < 2000)
 			{
