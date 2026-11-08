@@ -1006,6 +1006,12 @@ tr: المعالج التلقائي يرتفع من جديد:  < %s >
 es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
 tr: تجربة، مع المعالج التلقائي: عندما تعمل اللعبة جيدًا، يرفع معالج PS2 من جديد حتى الذي اخترته. مع التخطي على تلقائي، يتخطى أولًا ولا ينخفض المعالج إلا إذا لم يكفِ التخطي. كل تغيير للمعالج تقطع قصير. تُحفظ لهذه اللعبة
 
+es: VU1 rápido:  < %s >
+tr: VU1 سريع:  < %s >
+
+es: Prueba: el VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Sirve en los juegos que frena el VU1 (God of War II). Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
+tr: تجربة: يتوقف الـ VU1 عن حساب بيانات لا يستخدمها أي برنامج تقريبًا وعن تقييد الأرقام، فيعمل أقل. يفيد الألعاب التي يبطئها الـ VU1 (God of War II). إذا ظهرت مضلعات ممدودة أو أشكال غريبة، اجعلها لا. تُحفظ لهذه اللعبة
+
 es: Revisión rápida del código:  < %s >
 tr: فحص سريع للشيفرة:  < %s >
 

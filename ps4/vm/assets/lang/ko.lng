@@ -1006,6 +1006,12 @@ tr: CPU 자동 조절 다시 올리기:  < %s >
 es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
 tr: 테스트, CPU 자동 조절이 켜져 있을 때: 게임이 문제없이 돌아가면 PS2 CPU를 고른 값까지 다시 올립니다. 건너뛰기가 자동이면 먼저 건너뛰고, 건너뛰기로 안 될 때만 CPU를 내립니다. CPU를 바꿀 때마다 잠깐 멈춥니다. 이 게임에 저장됩니다
 
+es: VU1 rápido:  < %s >
+tr: VU1 빠르게:  < %s >
+
+es: Prueba: el VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Sirve en los juegos que frena el VU1 (God of War II). Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
+tr: 테스트: VU1이 거의 어떤 프로그램도 쓰지 않는 데이터 처리와 값 제한을 멈춰 일이 줄어듭니다. VU1이 느리게 하는 게임(God of War II)에 도움이 됩니다. 늘어진 폴리곤이나 이상한 모양이 보이면 아니요로 하세요. 이 게임에 저장됩니다
+
 es: Revisión rápida del código:  < %s >
 tr: 코드 빠른 검사:  < %s >
 

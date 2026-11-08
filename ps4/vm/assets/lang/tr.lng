@@ -1006,6 +1006,12 @@ tr: Otomatik CPU yeniden yükselir:  < %s >
 es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
 tr: Test, Otomatik CPU ile: oyun iyi giderken PS2 CPU'sunu seçtiğin değere kadar yeniden yükseltir. Atlama Otomatik iken önce atlar, CPU yalnızca atlama yetmezse düşer. Her CPU değişimi kısa bir takılmadır. Bu oyun için kaydedilir
 
+es: VU1 rápido:  < %s >
+tr: Hızlı VU1:  < %s >
+
+es: Prueba: el VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Sirve en los juegos que frena el VU1 (God of War II). Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
+tr: Test: VU1 neredeyse hiçbir programın kullanmadığı verileri hesaplamayı ve sayıları sınırlamayı bırakır, daha az çalışır. VU1'in yavaşlattığı oyunlarda işe yarar (God of War II). Uzamış çokgenler veya tuhaf şekiller görünürse Hayır yapın. Bu oyun için kaydedilir
+
 es: Revisión rápida del código:  < %s >
 tr: Hızlı kod denetimi:  < %s >
 

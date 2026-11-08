@@ -1006,6 +1006,12 @@ tr: Автоматический ЦП снова повышает:  < %s >
 es: Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego
 tr: Тест, с автоматическим ЦП: когда игра идёт хорошо, он снова повышает ЦП PS2 до выбранного вами. Когда пропуск на «Авто», сначала идёт пропуск, а ЦП снижается, только если пропуска не хватает. Каждая смена ЦП — короткий рывок. Сохраняется для этой игры
 
+es: VU1 rápido:  < %s >
+tr: Быстрый VU1:  < %s >
+
+es: Prueba: el VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Sirve en los juegos que frena el VU1 (God of War II). Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego
+tr: Тест: VU1 перестаёт вычислять данные, которые почти не нужны программам, и не ограничивает числа, поэтому работает меньше. Помогает играм, которые тормозит VU1 (God of War II). Если появятся растянутые полигоны или странные формы, поставьте «Нет». Сохраняется для этой игры
+
 es: Revisión rápida del código:  < %s >
 tr: Быстрая проверка кода:  < %s >
 

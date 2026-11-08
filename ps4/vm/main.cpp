@@ -1808,14 +1808,15 @@ static void ChangeToSelectedDisc()
 
 // Forja SX2 (compilation 44): the settings the game runs with now, for the session's analysis (the log said the EE rate only
 // when it changed, so where a session started was a guess).
+static bool Vu1FastOn(); // compilation 126
 static void LogGameSettings(const char* why)
 {
 	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d "
-			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d fast_code=%d\n", why,
+			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d fast_code=%d vu1_fast=%d\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
 		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str(),
 		s_draw_thread ? 1 : 0, s_sw_jit ? 1 : 0, EmuConfig.Cpu.Recompiler.fpuFullMode ? 1 : 0, s_iop_fast ? 1 : 0, s_iop_sleep_game ? 1 : 0,
-		s_skip_auto_fine ? 1 : 0, s_cpu_auto_up ? 1 : 0, g_ps4_skip_smc_checks ? 1 : 0);
+		s_skip_auto_fine ? 1 : 0, s_cpu_auto_up ? 1 : 0, g_ps4_skip_smc_checks ? 1 : 0, Vu1FastOn() ? 1 : 0);
 }
 
 // Compilation 76: two rows say so when their Auto can do nothing in this game, in place of their usual line (GameMenu.cpp's
@@ -2031,6 +2032,22 @@ static void PublishCpuAutoUpText()
 	std::snprintf(label, sizeof(label), TF("CPU automático vuelve a subir:  < %s >"), T(s_cpu_auto_up ? N_("Sí") : N_("No")));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CPU_AUTO_UP, label,
 		T("Prueba, con el CPU automático: cuando el juego va bien, vuelve a subir la CPU de la PS2 hasta la que elegiste. Con el Salto en Auto, primero salta y la CPU baja solo si el salto no alcanza. Cada cambio de CPU es un tirón corto. Se guarda para este juego"));
+}
+
+// Compilation 126: "VU1 rápido", read from the running settings (the profile's keys win over the GameDB's).
+static bool Vu1FastOn()
+{
+	return EmuConfig.Speedhacks.vuFlagHack && !EmuConfig.Cpu.Recompiler.vu1Overflow;
+}
+
+static void PublishVu1FastText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("VU1 rápido:  < %s >"), T(Vu1FastOn() ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_VU1_FAST, label,
+		T("Prueba: el VU1 deja de calcular datos que casi ningún programa usa y de recortar números, y trabaja menos. Sirve en los juegos que frena el VU1 (God of War II). Si aparecen polígonos estirados o formas raras, ponlo en No. Se guarda para este juego"));
 }
 
 // Compilation 124: "Revisión rápida del código".
@@ -2310,6 +2327,7 @@ static void PublishGameMenu()
 	PublishSkipAutoFineText();
 	PublishCpuAutoUpText();
 	PublishFastCodeText(); // compilation 124
+	PublishVu1FastText(); // compilation 126
 	PublishCycleSkipText(); // compilation 100
 	PublishSpeedLimitText();
 	PublishImageOptionsText(); // compilation 104
@@ -3865,6 +3883,30 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			SavePlayerProfile("Cycle skip auto fine", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "SaltoAutoAfinado", next); }, false);
 			break;
 		}
+		case PS4GameMenu::ROW_VU1_FAST: // compilation 126: PCSX2's keys, so the game layer is reloaded (the VU recompilers start over)
+		{
+			// On: the flag hack and no clamping. Off: the keys go, and the GameDB's or the global values come back.
+			const bool next = !Vu1FastOn();
+			SavePlayerProfile("VU1 fast", [next](INISettingsInterface& ini) {
+				if (next)
+				{
+					ini.SetBoolValue("EmuCore/Speedhacks", "vuFlagHack", true);
+					ini.SetBoolValue("EmuCore/CPU/Recompiler", "vu1Overflow", false);
+					ini.SetBoolValue("EmuCore/CPU/Recompiler", "vu1ExtraOverflow", false);
+					ini.SetBoolValue("EmuCore/CPU/Recompiler", "vu1SignOverflow", false);
+				}
+				else
+				{
+					ini.DeleteValue("EmuCore/Speedhacks", "vuFlagHack");
+					ini.DeleteValue("EmuCore/CPU/Recompiler", "vu1Overflow");
+					ini.DeleteValue("EmuCore/CPU/Recompiler", "vu1ExtraOverflow");
+					ini.DeleteValue("EmuCore/CPU/Recompiler", "vu1SignOverflow");
+				}
+			}, true);
+			ProbeLog("VU1 fast: requested=%d active=%d flag_hack=%d vu1_clamp=%d\n", next ? 1 : 0, Vu1FastOn() ? 1 : 0,
+				EmuConfig.Speedhacks.vuFlagHack ? 1 : 0, EmuConfig.Cpu.Recompiler.vu1Overflow ? 1 : 0);
+			break;
+		}
 		case PS4GameMenu::ROW_FAST_CODE_CHECK: // compilation 124: No / Sí ([Forja] RevisionRapida); the recompiler starts over in the new mode
 		{
 			const int next = s_fast_code_game ? 0 : 1;
@@ -4822,7 +4864,7 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
 						   row == PS4GameMenu::ROW_TEXTURES || row == PS4GameMenu::ROW_DRAW_THREAD || row == PS4GameMenu::ROW_SW_JIT ||
 						   row == PS4GameMenu::ROW_FPU_EXACT || row == PS4GameMenu::ROW_IOP_FAST || row == PS4GameMenu::ROW_IOP_SLEEP ||
-						   row == PS4GameMenu::ROW_SKIP_AUTO_FINE || row == PS4GameMenu::ROW_CPU_AUTO_UP || row == PS4GameMenu::ROW_FAST_CODE_CHECK ||
+						   row == PS4GameMenu::ROW_SKIP_AUTO_FINE || row == PS4GameMenu::ROW_CPU_AUTO_UP || row == PS4GameMenu::ROW_FAST_CODE_CHECK || row == PS4GameMenu::ROW_VU1_FAST ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
 						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT || row == PS4GameMenu::ROW_REPORT_WHERE))
 		{
