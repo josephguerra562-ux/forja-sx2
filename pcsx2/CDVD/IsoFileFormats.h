@@ -55,6 +55,8 @@ public:
 	~InputIsoFile();
 
 	bool IsOpened() const;
+	// Forja SX2 (compilation 130): a sector asked for (BeginRead2) and not here yet.
+	bool ForjaReadPending() const { return m_read_inprogress && m_reader && m_reader->IsReadPending(); }
 
 	isoType GetType() const noexcept { return m_type; }
 	uint GetBlockCount() const noexcept { return m_blocks; }

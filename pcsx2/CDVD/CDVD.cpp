@@ -57,6 +57,18 @@ static __fi void SetSCMDResultSize(u8 size) noexcept
 	memset(&cdvd.SCMDResultBuff[0], 0, size);
 }
 
+#if defined(PCSX2_PS4)
+// Forja SX2 (compilation 130): "Disco sin esperas" ([Forja] DiscoSinEsperas, the game's row). When the read's interrupt comes and the
+// sector is not here yet from the console's disc, the interrupt comes back a little later (in the PS2's time) instead of the whole
+// emulator standing still until it arrives: the game waits for its disc as on a PS2, while its picture, sound and logic go on. Bully with
+// the fast disc reads (2026-11-09, the 129): 34 stalls of 60-250 ms in 3 minutes, each with one 2 kB sector read, the EE at 63 % and
+// in no known wait (the speed at 73 %). Only the ISO reader says whether a sector is here; the others wait as before.
+std::atomic<bool> g_forja_disc_no_wait{false};
+std::atomic<u32> g_forja_disc_deferrals{0};
+extern bool ForjaIsoReadPending(); // CDVDisoReader.cpp
+static constexpr u32 FORJA_DISC_RETRY_CYCLES = 3000; // ~80 us of the IOP's time
+#endif
+
 static void CDVDCancelReadAhead()
 {
 	cdvd.nextSectorsBuffered = 0;
@@ -1350,6 +1362,14 @@ __fi void cdvdReadInterrupt()
 
 	if (cdvd.Reading)
 	{
+#if defined(PCSX2_PS4)
+		if (cdvd.ReadErr == 0 && CDVD == &CDVDapi_Iso && g_forja_disc_no_wait.load(std::memory_order_relaxed) && ForjaIsoReadPending())
+		{
+			g_forja_disc_deferrals.fetch_add(1, std::memory_order_relaxed);
+			CDVDREAD_INT(FORJA_DISC_RETRY_CYCLES);
+			return;
+		}
+#endif
 		if (cdvd.ReadErr == 0)
 		{
 			while ((cdvd.ReadErr = DoCDVDgetBuffer(&cdr.Transfer[0])), cdvd.ReadErr == -2)

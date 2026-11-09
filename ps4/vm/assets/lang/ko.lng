@@ -1024,11 +1024,17 @@ tr: 같은 화면 반복 안 함:  < %s >
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: 테스트: 게임이 새 화면을 만들지 않았을 때 같은 화면을 다시 보여 주지 않아 GS의 일이 줄어듭니다. GS가 느리게 하는 게임(Shadow of the Colossus)에 도움이 됩니다. 화면이 이상하면 아니요로 하세요. 이 게임에 저장됩니다
 
+es: Disco sin esperas:  < %s >
+tr: 디스크 기다리지 않기:  < %s >
+
+es: Prueba: cuando el juego pide algo del disco y la PS4 todavía no lo leyó, el emulador sigue andando en vez de congelarse a esperarlo. Sirve con las cargas rápidas del disco (Bully). Si una carga se traba o un video se corta, ponlo en No. Se guarda para este juego
+tr: 테스트: 게임이 디스크의 데이터를 요청했는데 PS4가 아직 읽지 못했을 때, 멈춰서 기다리지 않고 계속 진행합니다. 디스크 빠른 로딩(Bully)과 함께 쓰세요. 로딩이 멈추거나 영상이 끊기면 아니요로 하세요. 이 게임에 저장됩니다
+
 es: CPU sin tirones:  < %s >
 tr: CPU 끊김 없이:  < %s >
 
-es: Prueba: al cambiar la velocidad de la CPU de la PS2 (tú, el CPU automático o el modo video en los videos), el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
-tr: 테스트: PS2 CPU 속도를 다르게 할 때(자동 CPU, 영상 중 비디오 모드) 에뮬레이터가 게임 코드를 지우지 않아 끊김이 없습니다. 게임이 닫히거나 멈추면 아니요로 하세요. 이 게임에 저장됩니다
+es: Prueba: al cambiar la velocidad de la CPU de la PS2, el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Con el CPU automático prendido, este sigue la escena en un segundo: baja en lo pesado y sube al salir. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: 테스트: PS2 CPU 속도를 다르게 할 때 에뮬레이터가 게임 코드를 지우지 않아 끊김이 없습니다. 자동 CPU를 켜면 1초 안에 장면을 따라가서, 무거운 곳에서는 낮추고 나오면 다시 올립니다. 게임이 닫히거나 멈추면 아니요로 하세요. 이 게임에 저장됩니다
 
 es: Revisión rápida del código:  < %s >
 tr: 코드 빠른 검사:  < %s >

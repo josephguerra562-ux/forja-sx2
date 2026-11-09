@@ -120,6 +120,8 @@ public:
 	int ReadSync(void* pBuffer, u32 sector, u32 count);
 	void BeginRead(void* pBuffer, u32 sector, u32 count);
 	int FinishRead();
+	// Forja SX2 (compilation 130): whether the read BeginRead asked for is still on its way ("Disco sin esperas" asks, never waits).
+	bool IsReadPending() const { return m_requestPtr.load(std::memory_order_acquire) != nullptr; }
 	void CancelRead();
 	void Close();
 	void SetBlockSize(u32 bytes);

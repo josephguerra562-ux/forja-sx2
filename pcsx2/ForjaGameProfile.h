@@ -107,6 +107,9 @@ namespace ForjaGameProfile
 		// [Forja] CpuSinTirones (compilation 128): a CPU speed change without a recompiler reset: 0 off, 1 on, -1 not set (off).
 		int cpu_seamless = -1;
 		Origin cpu_seamless_origin = Origin::Global;
+		// [Forja] DiscoSinEsperas (compilation 130): no standing still for the console's disc: 0 off, 1 on, -1 not set (off).
+		int disc_no_wait = -1;
+		Origin disc_no_wait_origin = Origin::Global;
 		// [EmuCore/Speedhacks] EECycleSkip * 4 + EECycleSkipQuarters of the factory profile only (compilation 109): where the cycle
 		// skip's Auto starts and the least it goes to (main.cpp, UpdateCycleSkipAuto). 0 with no factory profile.
 		int cycle_skip_factory = 0;
@@ -216,6 +219,7 @@ namespace ForjaGameProfile
 		read_int("RevisionRapida", &v.fast_code, &v.fast_code_origin); // compilation 124
 		read_int("EfectosListos", &v.effects_ahead, &v.effects_ahead_origin); // compilation 127
 		read_int("CpuSinTirones", &v.cpu_seamless, &v.cpu_seamless_origin); // compilation 128
+		read_int("DiscoSinEsperas", &v.disc_no_wait, &v.disc_no_wait_origin); // compilation 130
 		// Forja 1.06: [Forja] SaltarCuadrosConGuardian, a factory profile's frame skip for the versions with the guard (73 on),
 		// which wins over its SaltarCuadros (never over the player's). The versions before 1.06 fetch the factory profiles from
 		// main and read only SaltarCuadros: there it keeps what suits their skip without the guard (Dragon Ball: off).

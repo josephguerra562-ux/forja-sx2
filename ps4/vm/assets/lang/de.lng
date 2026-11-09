@@ -1024,11 +1024,17 @@ tr: Keine wiederholten Bilder:  < %s >
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: Test: Wenn das Spiel kein neues Bild gemacht hat, zeigt der Emulator dasselbe nicht noch einmal und der GS spart diese Arbeit. Hilft bei langsamen Spielen, die der GS bremst (Shadow of the Colossus). Wenn das Bild seltsam springt, auf Nein stellen. Für dieses Spiel gespeichert
 
+es: Disco sin esperas:  < %s >
+tr: Disc ohne Warten:  < %s >
+
+es: Prueba: cuando el juego pide algo del disco y la PS4 todavía no lo leyó, el emulador sigue andando en vez de congelarse a esperarlo. Sirve con las cargas rápidas del disco (Bully). Si una carga se traba o un video se corta, ponlo en No. Se guarda para este juego
+tr: Test: Wenn das Spiel etwas von der Disc anfordert und die PS4 es noch nicht gelesen hat, läuft der Emulator weiter, statt einzufrieren und zu warten. Hilft mit schnellem Laden von der Disc (Bully). Wenn ein Ladevorgang hängt oder ein Video abbricht, auf Nein stellen. Für dieses Spiel gespeichert
+
 es: CPU sin tirones:  < %s >
 tr: CPU ohne Ruckler:  < %s >
 
-es: Prueba: al cambiar la velocidad de la CPU de la PS2 (tú, el CPU automático o el modo video en los videos), el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
-tr: Test: Wenn sich die Geschwindigkeit der PS2-CPU ändert (du, die automatische CPU oder der Videomodus in Videos), löscht der Emulator den übersetzten Code des Spiels nicht mehr und wechselt ohne Ruckler. Wenn das Spiel sich schließt oder hängt, auf Nein stellen. Für dieses Spiel gespeichert
+es: Prueba: al cambiar la velocidad de la CPU de la PS2, el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Con el CPU automático prendido, este sigue la escena en un segundo: baja en lo pesado y sube al salir. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: Test: Wenn sich die Geschwindigkeit der PS2-CPU ändert, löscht der Emulator den übersetzten Code des Spiels nicht mehr und wechselt ohne Ruckler. Mit eingeschalteter automatischer CPU folgt sie der Szene in einer Sekunde: runter in schweren Stellen, wieder hoch danach. Wenn das Spiel sich schließt oder hängt, auf Nein stellen. Für dieses Spiel gespeichert
 
 es: Revisión rápida del código:  < %s >
 tr: Schnelle Codeprüfung:  < %s >

@@ -1024,11 +1024,17 @@ tr: بدون تكرار الإطارات:  < %s >
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: تجربة: عندما لا تصنع اللعبة إطارًا جديدًا، لا يعرض المحاكي الإطار نفسه مرة أخرى ويوفّر الـ GS هذا العمل. يفيد الألعاب البطيئة التي يبطئها الـ GS (Shadow of the Colossus). إذا قفزت الصورة بشكل غريب، اجعلها لا. تُحفظ لهذه اللعبة
 
+es: Disco sin esperas:  < %s >
+tr: القرص بدون انتظار:  < %s >
+
+es: Prueba: cuando el juego pide algo del disco y la PS4 todavía no lo leyó, el emulador sigue andando en vez de congelarse a esperarlo. Sirve con las cargas rápidas del disco (Bully). Si una carga se traba o un video se corta, ponlo en No. Se guarda para este juego
+tr: تجربة: عندما تطلب اللعبة شيئًا من القرص ولم يقرأه الـ PS4 بعد، يواصل المحاكي العمل بدل التجمد في انتظاره. يفيد مع التحميل السريع من القرص (Bully). إذا علق التحميل أو انقطع مقطع فيديو، اجعلها لا. تُحفظ لهذه اللعبة
+
 es: CPU sin tirones:  < %s >
 tr: المعالج بدون تقطع:  < %s >
 
-es: Prueba: al cambiar la velocidad de la CPU de la PS2 (tú, el CPU automático o el modo video en los videos), el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
-tr: تجربة: عند تغيير سرعة معالج PS2 (أنت أو المعالج التلقائي أو وضع الفيديو أثناء المقاطع)، لم يعد المحاكي يمسح الكود المترجم للعبة ويتغير بدون تقطع. إذا أُغلقت اللعبة أو توقفت، اجعلها لا. تُحفظ لهذه اللعبة
+es: Prueba: al cambiar la velocidad de la CPU de la PS2, el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Con el CPU automático prendido, este sigue la escena en un segundo: baja en lo pesado y sube al salir. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: تجربة: عند تغيير سرعة معالج PS2، لم يعد المحاكي يمسح الكود المترجم للعبة ويتغير بدون تقطع. مع تشغيل المعالج التلقائي، يتبع المشهد خلال ثانية: ينخفض في الأجزاء الثقيلة ويرتفع عند الخروج منها. إذا أُغلقت اللعبة أو توقفت، اجعلها لا. تُحفظ لهذه اللعبة
 
 es: Revisión rápida del código:  < %s >
 tr: فحص سريع للشيفرة:  < %s >

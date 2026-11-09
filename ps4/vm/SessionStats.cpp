@@ -39,6 +39,10 @@ namespace
 		uint64_t audio_cuts_movie = 0; // compilation 79: of audio_cuts, the ones while a movie played
 		// Compilation 79: the heap after the first minute (the game's load is in it), and the heartbeats since, for its growth.
 		uint64_t heap_at_minute = 0;
+		// Compilation 130: the save states loaded, the heartbeats left of the last load's 15 s, the heap at the last heartbeat and what
+		// it grew in those 15 s after each load (left out of the growth a minute).
+		uint32_t state_loads = 0, load_heartbeats_left = 0;
+		uint64_t heap_last = 0, heap_from_loads = 0;
 		uint32_t heap_base_heartbeat = 0; // compilation 87: the heartbeat heap_at_minute was taken at
 		uint32_t heartbeats = 0;
 		bool audio_seen = false;
@@ -307,6 +311,13 @@ namespace ForjaSession
 			s.hitch_other++;
 	}
 
+	void NoteStateLoad()
+	{
+		std::lock_guard lock(s_mutex);
+		s_stats.state_loads++;
+		s_stats.load_heartbeats_left = 3; // a heartbeat every 5 s: the next 15 s
+	}
+
 	void AddHeartbeat(uint64_t flexible_free, uint64_t heap_high, uint32_t audio_underruns, uint64_t audio_limited, bool movie)
 	{
 		std::lock_guard lock(s_mutex);
@@ -323,6 +334,14 @@ namespace ForjaSession
 			s.heap_at_minute = heap_high;
 			s.heap_base_heartbeat = s.heartbeats;
 		}
+		// Compilation 130: what the heap grew within 15 s of a save state's load.
+		if (s.load_heartbeats_left > 0)
+		{
+			if (s.heap_at_minute > 0 && s.heap_last > 0 && heap_high > s.heap_last)
+				s.heap_from_loads += heap_high - s.heap_last;
+			s.load_heartbeats_left--;
+		}
+		s.heap_last = heap_high;
 		// The sound's counters start over when its stream opens again: what they grew by, or all of it after a restart.
 		if (s.audio_seen)
 		{
@@ -477,10 +496,17 @@ namespace ForjaSession
 			// reaching the game, and with a minute of it at least.
 			if (s.heap_at_minute > 0 && s.heartbeats >= s.heap_base_heartbeat + 12)
 			{
-				const double grown_mb = static_cast<double>(s.heap_max - std::min(s.heap_max, s.heap_at_minute)) / (1024.0 * 1024.0);
+				// Compilation 130: without what the save states' loads added (God of War II, 2026-11-09: "17.1 MB a minute, too much" were
+				// four loads of 20-50 MB each; between them the heap stayed put).
+				const uint64_t grown = s.heap_max - std::min(s.heap_max, s.heap_at_minute);
+				const double grown_mb = static_cast<double>(grown - std::min(grown, s.heap_from_loads)) / (1024.0 * 1024.0);
 				const double after_minutes = (s.heartbeats - s.heap_base_heartbeat) * 5.0 / 60.0;
-				Append(text, " (desde poco después de llegar al juego creció %.1f MB por minuto%s)", grown_mb / after_minutes,
+				Append(text, " (desde poco después de llegar al juego creció %.1f MB por minuto%s", grown_mb / after_minutes,
 					grown_mb / after_minutes > 10.0 ? ": demasiado, puede llenarse" : "");
+				if (s.state_loads > 0)
+					Append(text, "; sin contar %u cargas de partida guardada, que sumaron %.0f MB", s.state_loads,
+						static_cast<double>(s.heap_from_loads) / (1024.0 * 1024.0));
+				text += ")";
 			}
 			text += "\n";
 		}

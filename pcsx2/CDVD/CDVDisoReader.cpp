@@ -13,6 +13,14 @@
 
 static InputIsoFile iso;
 
+#if defined(PCSX2_PS4)
+// Forja SX2 (compilation 130): "Disco sin esperas" (CDVD.cpp) asks whether the sector is here before taking it.
+bool ForjaIsoReadPending()
+{
+	return iso.ForjaReadPending();
+}
+#endif
+
 static int pmode, cdtype;
 
 static s32 layer1start = -1;

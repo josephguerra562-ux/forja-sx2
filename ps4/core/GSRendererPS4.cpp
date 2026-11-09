@@ -870,6 +870,8 @@ u64 g_forja_pipeline_us = 0, g_forja_effects_ahead_us = 0;
 std::atomic<bool> g_forja_effects_ahead{false}; // main.cpp: the game's row ([Forja] EfectosListos)
 extern void ForjaEffectsAheadTick() __attribute__((weak)); // GSDeviceVK.cpp (weak: the probes link without it)
 std::atomic<u64> g_forja_disc_bytes{0}; // ThreadedFileReader, reader thread
+// Compilation 130: the time the EE thread stood still waiting for a sector of the console's disc (InputIsoFile::FinishRead3).
+std::atomic<u64> g_forja_disc_wait_us{0};
 std::atomic<u64> g_forja_gs_vsyncs{0}; // every GS vsync; the watchdog in main.cpp checks it moves
 std::atomic<u32> g_forja_resumes{0}; // main.cpp, each time the L3+R3 menu resumes the game (the hitch detector skips that gap)
 std::atomic<u32> g_forja_presents{0}; // every frame shown in a game, the game's and the generated ones (UIVM.cpp's FPS box)
@@ -894,7 +896,7 @@ static void ForjaReportHitch(bool new_frame)
 {
 	static Common::Timer::Value s_last = 0;
 	static u32 s_compiles = 0, s_resets = 0, s_pipelines = 0;
-	static u64 s_disc = 0, s_pipeline_us = 0, s_ahead_us = 0;
+	static u64 s_disc = 0, s_pipeline_us = 0, s_ahead_us = 0, s_disc_wait_us = 0;
 	static unsigned s_reported = 0;
 	static u32 s_resumes = 0;
 	if (const u32 resumes = g_forja_resumes.load(std::memory_order_relaxed); resumes != s_resumes)
@@ -920,6 +922,8 @@ static void ForjaReportHitch(bool new_frame)
 		static double s_frame_gaps[16] = {};
 		static unsigned s_frame_count = 0, s_frame_next = 0;
 		static Common::Timer::Value s_frame_last = 0;
+		// Compilation 130: the game's last two frames, for a slow stretch (below).
+		static double s_frame_last_ms = 0.0, s_frame_prev_ms = 0.0;
 		double usual = 0.0;
 		if (s_frame_count >= 8)
 		{
@@ -933,6 +937,8 @@ static void ForjaReportHitch(bool new_frame)
 			const double frame_ms = s_frame_last ? Common::Timer::ConvertValueToMilliseconds(now - s_frame_last) : 0.0;
 			if (frame_ms > 0.0 && frame_ms < 2000.0)
 			{
+				s_frame_prev_ms = s_frame_last_ms;
+				s_frame_last_ms = frame_ms;
 				s_frame_gaps[s_frame_next] = frame_ms;
 				s_frame_next = (s_frame_next + 1) % 16;
 				s_frame_count = std::min(s_frame_count + 1, 16u);
@@ -952,21 +958,30 @@ static void ForjaReportHitch(bool new_frame)
 		else if (s_skip_recent > 0)
 			s_skip_recent--;
 		const double stand_out = s_skip_recent > 0 ? 3.0 : 2.0;
+		// Compilation 130 (Shadow of the Colossus' heavy view, 2026-11-09: 13 "other" hitches of 85-130 ms in 4 minutes): turning the camera
+		// to a heavy place makes every frame ~122 ms, and against the light view's usual ones (~53 ms) each stood out until the median caught
+		// up. A gap like the frame before it (within 1.6 times, that one already slow) is a slow stretch, not a hitch: only the first counts.
+		const double before = new_frame ? s_frame_prev_ms : s_frame_last_ms;
+		const bool slow_stretch = before > 50.0 && gap_ms < 1.6 * before;
 		// 50..2000 ms: a hitch. Longer gaps are a pause, a loading screen with no vsyncs, or the menu.
-		if (gap_ms > 50.0 && gap_ms < 2000.0 && gap_ms > stand_out * usual && VMManager::GetState() == VMState::Running)
+		const u64 disc_wait_now = g_forja_disc_wait_us.load(std::memory_order_relaxed);
+		const double disc_wait_ms = (disc_wait_now - s_disc_wait_us) / 1000.0;
+		if (gap_ms > 50.0 && gap_ms < 2000.0 && gap_ms > stand_out * usual && !slow_stretch && VMManager::GetState() == VMState::Running)
 		{
 			if (s_reported < 2000)
 			{
 				++s_reported;
-				ProbeLog("Hitch: frame_gap_ms=%.0f ee_blocks_compiled=%u ee_rec_resets=%u pipelines_created=%u disc_kb=%llu pipeline_ms=%.0f ahead_ms=%.0f\n",
+				ProbeLog("Hitch: frame_gap_ms=%.0f ee_blocks_compiled=%u ee_rec_resets=%u pipelines_created=%u disc_kb=%llu pipeline_ms=%.0f ahead_ms=%.0f disc_wait_ms=%.0f\n",
 					gap_ms, compiles - s_compiles, resets - s_resets, g_forja_pipelines_created - s_pipelines,
 					static_cast<unsigned long long>((disc - s_disc) / 1024), (g_forja_pipeline_us - s_pipeline_us) / 1000.0,
-					(g_forja_effects_ahead_us - s_ahead_us) / 1000.0);
+					(g_forja_effects_ahead_us - s_ahead_us) / 1000.0, disc_wait_ms);
 			}
 			// Forja 1.06: the session's summary counts them all, by cause (ps4/vm/SessionStats.cpp; weak: the probes have none).
+			// Compilation 130: the summary blames the disc only when the emulator stood waiting for it (a fifth of the gap or more); Bully
+			// reads a 2 kB sector every few seconds, so a hitch that only had one in it was counted as the disc's.
 			if (ForjaSessionHitch)
 				ForjaSessionHitch(gap_ms, compiles - s_compiles, resets - s_resets, g_forja_pipelines_created - s_pipelines,
-					static_cast<unsigned>((disc - s_disc) / 1024));
+					disc_wait_ms >= 0.2 * gap_ms ? static_cast<unsigned>((disc - s_disc) / 1024) : 0u);
 		}
 	}
 	s_last = now;
@@ -976,6 +991,7 @@ static void ForjaReportHitch(bool new_frame)
 	s_disc = disc;
 	s_pipeline_us = g_forja_pipeline_us;
 	s_ahead_us = g_forja_effects_ahead_us;
+	s_disc_wait_us = g_forja_disc_wait_us.load(std::memory_order_relaxed);
 }
 
 void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
@@ -1044,6 +1060,10 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 	if (ForjaEffectsAheadTick)
 		ForjaEffectsAheadTick();
 	bool skip_frame = false;
+	// Compilation 130: a refresh "Refrescos sin repetir" leaves out (the game made no new frame) is not composed either. With the row on
+	// in Shadow of the Colossus (2026-11-09, the 129) the GS thread's time at the refreshes stayed at 9.1 %: the picture (Merge) was still
+	// made at every refresh and only its presentation was left out.
+	bool forja_repeat_skipped = false;
 #if !defined(PCSX2_GS_RENDERER_PROBE)
 	if ((GSConfig.SkipDuplicateFrames || fg_skips_repeats) && !GSCapture::IsCapturingVideo())
 	{
@@ -1065,6 +1085,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 		{
 			m_skipped_duplicate_frames++;
 			skip_frame = true;
+			forja_repeat_skipped = GSConfig.SkipDuplicateFrames && !fg_skips_repeats; // compilation 130 (frame generation: as before)
 		}
 		else
 		{
@@ -1183,7 +1204,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 			g_forja_gs_skip_stats[5].fetch_add(1, std::memory_order_relaxed);
 	}
 
-	const bool blank_frame = !Merge(field);
+	const bool blank_frame = forja_repeat_skipped ? false : !Merge(field);
 
 	m_last_draw_n = s_n;
 	m_last_transfer_n = s_transfer_n;

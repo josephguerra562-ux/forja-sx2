@@ -1024,11 +1024,17 @@ tr: Tekrarsız yenileme:  < %s >
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: Test: oyun yeni bir kare yapmadığında emülatör aynı kareyi tekrar göstermez ve GS bu işten tasarruf eder. GS'nin yavaşlattığı yavaş oyunlarda işe yarar (Shadow of the Colossus). Görüntü tuhaf zıplarsa Hayır yapın. Bu oyun için kaydedilir
 
+es: Disco sin esperas:  < %s >
+tr: Beklemesiz disk:  < %s >
+
+es: Prueba: cuando el juego pide algo del disco y la PS4 todavía no lo leyó, el emulador sigue andando en vez de congelarse a esperarlo. Sirve con las cargas rápidas del disco (Bully). Si una carga se traba o un video se corta, ponlo en No. Se guarda para este juego
+tr: Test: oyun diskten bir şey istediğinde PS4 onu henüz okumadıysa emülatör donup beklemek yerine çalışmaya devam eder. Hızlı disk yüklemeyle işe yarar (Bully). Bir yükleme takılırsa veya video kesilirse Hayır yapın. Bu oyun için kaydedilir
+
 es: CPU sin tirones:  < %s >
 tr: Takılmasız CPU:  < %s >
 
-es: Prueba: al cambiar la velocidad de la CPU de la PS2 (tú, el CPU automático o el modo video en los videos), el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
-tr: Test: PS2 CPU hızı değiştiğinde (sen, otomatik CPU veya videolarda video modu) emülatör oyunun çevrilmiş kodunu artık silmez ve takılmadan değişir. Oyun kapanırsa veya donarsa Hayır yapın. Bu oyun için kaydedilir
+es: Prueba: al cambiar la velocidad de la CPU de la PS2, el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Con el CPU automático prendido, este sigue la escena en un segundo: baja en lo pesado y sube al salir. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: Test: PS2 CPU hızı değiştiğinde emülatör oyunun çevrilmiş kodunu artık silmez ve takılmadan değişir. Otomatik CPU açıkken sahneyi bir saniye içinde takip eder: ağır yerlerde düşer, çıkınca yeniden yükselir. Oyun kapanırsa veya donarsa Hayır yapın. Bu oyun için kaydedilir
 
 es: Revisión rápida del código:  < %s >
 tr: Hızlı kod denetimi:  < %s >

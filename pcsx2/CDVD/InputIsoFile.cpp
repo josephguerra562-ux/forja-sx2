@@ -7,6 +7,11 @@
 #include "CDVD/FlatFileReader.h"
 #include "CDVD/GzippedFileReader.h"
 #include "CDVD/IsoFileFormats.h"
+#if defined(PCSX2_PS4)
+#include <atomic>
+// Forja SX2 (compilation 130): the time the emulator stood still waiting for the console's disc (ps4/core/GSRendererPS4.cpp).
+extern std::atomic<u64> g_forja_disc_wait_us;
+#endif
 #include "Config.h"
 #include "Host.h"
 
@@ -113,6 +118,9 @@ int InputIsoFile::FinishRead3(u8* dst, uint mode)
 		const auto t0 = std::chrono::steady_clock::now();
 		const int ret = m_reader->FinishRead();
 		const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+#if defined(PCSX2_PS4)
+		g_forja_disc_wait_us.fetch_add(static_cast<u64>(ms * 1000.0), std::memory_order_relaxed); // compilation 130: the hitch line
+#endif
 		static unsigned cdvd_probe = 0;
 		static double cdvd_total_ms = 0;
 		cdvd_total_ms += ms;

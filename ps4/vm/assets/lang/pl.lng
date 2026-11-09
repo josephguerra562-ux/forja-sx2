@@ -1024,11 +1024,17 @@ tr: Bez powtarzania klatek:  < %s >
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: Test: gdy gra nie zrobiła nowej klatki, emulator nie pokazuje tej samej ponownie, a GS oszczędza tę pracę. Pomaga w wolnych grach, które hamuje GS (Shadow of the Colossus). Jeśli obraz dziwnie skacze, ustaw Nie. Zapisane dla tej gry
 
+es: Disco sin esperas:  < %s >
+tr: Dysk bez czekania:  < %s >
+
+es: Prueba: cuando el juego pide algo del disco y la PS4 todavía no lo leyó, el emulador sigue andando en vez de congelarse a esperarlo. Sirve con las cargas rápidas del disco (Bully). Si una carga se traba o un video se corta, ponlo en No. Se guarda para este juego
+tr: Test: gdy gra prosi o coś z dysku, a PS4 jeszcze tego nie odczytało, emulator działa dalej zamiast zamarzać w oczekiwaniu. Pomaga przy szybkim wczytywaniu z dysku (Bully). Jeśli wczytywanie się zawiesi lub film się urwie, ustaw Nie. Zapisane dla tej gry
+
 es: CPU sin tirones:  < %s >
 tr: CPU bez zacięć:  < %s >
 
-es: Prueba: al cambiar la velocidad de la CPU de la PS2 (tú, el CPU automático o el modo video en los videos), el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
-tr: Test: gdy zmienia się prędkość CPU PS2 (ty, automatyczny CPU lub tryb wideo w filmach), emulator nie kasuje już przetłumaczonego kodu gry i zmienia ją bez zacięć. Jeśli gra się zamknie lub zawiesi, ustaw Nie. Zapisane dla tej gry
+es: Prueba: al cambiar la velocidad de la CPU de la PS2, el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Con el CPU automático prendido, este sigue la escena en un segundo: baja en lo pesado y sube al salir. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: Test: gdy zmienia się prędkość CPU PS2, emulator nie kasuje już przetłumaczonego kodu gry i zmienia ją bez zacięć. Z włączonym automatycznym CPU podąża za sceną w sekundę: obniża się w ciężkich miejscach i wraca, gdy je opuścisz. Jeśli gra się zamknie lub zawiesi, ustaw Nie. Zapisane dla tej gry
 
 es: Revisión rápida del código:  < %s >
 tr: Szybkie sprawdzanie kodu:  < %s >

@@ -1024,11 +1024,17 @@ tr: 不重复刷新：  < %s >
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: 测试：当游戏没有生成新画面时，模拟器不会再次显示同一画面，GS 的工作会减少。适用于被 GS 拖慢的游戏（Shadow of the Colossus）。如果画面跳动奇怪，请设为否。仅为此游戏保存
 
+es: Disco sin esperas:  < %s >
+tr: 光盘不等待：  < %s >
+
+es: Prueba: cuando el juego pide algo del disco y la PS4 todavía no lo leyó, el emulador sigue andando en vez de congelarse a esperarlo. Sirve con las cargas rápidas del disco (Bully). Si una carga se traba o un video se corta, ponlo en No. Se guarda para este juego
+tr: 测试：当游戏需要光盘上的内容而 PS4 没有读到时，模拟器会继续运行，而不是停下来等待。适用于光盘快速加载（Bully）。如果加载卡住或视频中断，请设为否。仅为此游戏保存
+
 es: CPU sin tirones:  < %s >
 tr: CPU 无卡顿：  < %s >
 
-es: Prueba: al cambiar la velocidad de la CPU de la PS2 (tú, el CPU automático o el modo video en los videos), el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
-tr: 测试：PS2 CPU 速度改变时（你手动、自动 CPU 或视频中的视频模式），模拟器不再清除游戏的程序，切换时不会卡顿。如果游戏关闭或卡住，请设为否。仅为此游戏保存
+es: Prueba: al cambiar la velocidad de la CPU de la PS2, el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Con el CPU automático prendido, este sigue la escena en un segundo: baja en lo pesado y sube al salir. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego
+tr: 测试：PS2 CPU 速度改变时，模拟器不再清除游戏的程序，切换时不会卡顿。开启自动 CPU 时，它会在一秒内跟随画面：在重的地方降低，之后再升高。如果游戏关闭或卡住，请设为否。仅为此游戏保存
 
 es: Revisión rápida del código:  < %s >
 tr: 快速程序检查：  < %s >

@@ -67,6 +67,9 @@ namespace ForjaSession
 	// output counters (underruns since its stream opened, frames the limiter turned down). Compilation 79: and whether a movie
 	// plays, so the sound's cuts are told apart (in movies, in the game).
 	void AddHeartbeat(uint64_t flexible_free, uint64_t heap_high, uint32_t audio_underruns, uint64_t audio_limited, bool movie = false);
+	// Compilation 130: a save state was loaded. The heap jumps 20-50 MB with each load (God of War II, 2026-11-09: 316 -> 353 MB) and stays;
+	// what it grows in the next 15 s is the load's, not a leak, so the summary's growth a minute leaves it out.
+	void NoteStateLoad();
 	// CPU thread, the 5 s Saltar cuadros report (main.cpp): frames left out, and the guard's pauses.
 	void AddSkip(unsigned skipped, unsigned guard_pauses);
 

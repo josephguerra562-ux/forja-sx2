@@ -361,6 +361,11 @@ extern std::atomic<bool> g_forja_effects_ahead; // ps4/core/GSRendererPS4.cpp
 // Compilation 128: "CPU sin tirones" for this game ([Forja] CpuSinTirones). The EE recompiler takes the mode at its next reset
 // (x86/ix86-32/iR5900.cpp: g_forja_cpu_seamless is what is wanted, g_forja_cpu_seamless_active what its blocks were made with).
 static bool s_cpu_seamless_game = false;
+// Compilation 130: "Disco sin esperas" for this game ([Forja] DiscoSinEsperas); pcsx2/CDVD/CDVD.cpp reads the atomic at each read.
+static bool s_disc_no_wait_game = false;
+extern std::atomic<bool> g_forja_disc_no_wait; // pcsx2/CDVD/CDVD.cpp
+extern std::atomic<u32> g_forja_disc_deferrals;
+extern std::atomic<u64> g_forja_disc_wait_us; // ps4/core/GSRendererPS4.cpp
 #if defined(PCSX2_PS4_VM_BOOT_JIT)
 extern std::atomic<bool> g_forja_cpu_seamless;
 extern bool g_forja_cpu_seamless_active;
@@ -379,6 +384,10 @@ static void ForjaEERateChanged(int old_rate)
 static bool s_skip_auto_can_help = false, s_skip_auto_at_factory = true;
 static unsigned s_cpu_auto_good_checks = 0;
 static double s_cpu_auto_probe_at = -1000.0, s_cpu_auto_no_probe_until = 0.0, s_cpu_auto_probe_wait = 60.0;
+// Compilation 130: "CPU al vuelo", the CPU automático's fast mode while "CPU sin tirones" is in the EE blocks (a change costs ~0.5 ms
+// instead of a recompile). Its guard against going up and down: when a step up has to come down within 3 s, no step up for a while
+// (5 s, doubled up to 20 s; back to 5 after 30 s without one).
+static double s_cpu_fast_last_up = -100.0, s_cpu_fast_no_up_until = 0.0, s_cpu_fast_wait = 5.0;
 // Compilation 125: when the CPU last came down (no step up for 60 s after it).
 static double s_cpu_auto_last_down = -1000.0;
 // Forja SX2 (compilation 47): "Saltar cuadros" (UpdateGsSkip). mode: 0 off, 1 auto, 2 always; the GS reads the atomic.
@@ -1833,12 +1842,12 @@ static bool Vu1FastOn(); // compilation 126
 static void LogGameSettings(const char* why)
 {
 	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d "
-			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d fast_code=%d vu1_fast=%d effects_ahead=%d skip_repeats=%d cpu_seamless=%d\n", why,
+			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d fast_code=%d vu1_fast=%d effects_ahead=%d skip_repeats=%d cpu_seamless=%d disc_no_wait=%d\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
 		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str(),
 		s_draw_thread ? 1 : 0, s_sw_jit ? 1 : 0, EmuConfig.Cpu.Recompiler.fpuFullMode ? 1 : 0, s_iop_fast ? 1 : 0, s_iop_sleep_game ? 1 : 0,
 		s_skip_auto_fine ? 1 : 0, s_cpu_auto_up ? 1 : 0, g_ps4_skip_smc_checks ? 1 : 0, Vu1FastOn() ? 1 : 0, s_effects_ahead_game ? 1 : 0,
-		EmuConfig.GS.SkipDuplicateFrames ? 1 : 0, s_cpu_seamless_game ? 1 : 0);
+		EmuConfig.GS.SkipDuplicateFrames ? 1 : 0, s_cpu_seamless_game ? 1 : 0, s_disc_no_wait_game ? 1 : 0);
 }
 
 // Compilation 76: two rows say so when their Auto can do nothing in this game, in place of their usual line (GameMenu.cpp's
@@ -2094,6 +2103,17 @@ static void PublishSkipRepeatsText()
 		T("Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego"));
 }
 
+// Compilation 130: "Disco sin esperas".
+static void PublishDiscNoWaitText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("Disco sin esperas:  < %s >"), T(s_disc_no_wait_game ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_DISC_NO_WAIT, label,
+		T("Prueba: cuando el juego pide algo del disco y la PS4 todavía no lo leyó, el emulador sigue andando en vez de congelarse a esperarlo. Sirve con las cargas rápidas del disco (Bully). Si una carga se traba o un video se corta, ponlo en No. Se guarda para este juego"));
+}
+
 // Compilation 128: "CPU sin tirones".
 static void PublishCpuSeamlessText()
 {
@@ -2102,7 +2122,7 @@ static void PublishCpuSeamlessText()
 	char label[256];
 	std::snprintf(label, sizeof(label), TF("CPU sin tirones:  < %s >"), T(s_cpu_seamless_game ? N_("Sí") : N_("No")));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CPU_SEAMLESS, label,
-		T("Prueba: al cambiar la velocidad de la CPU de la PS2 (tú, el CPU automático o el modo video en los videos), el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego"));
+		T("Prueba: al cambiar la velocidad de la CPU de la PS2, el emulador ya no borra el código traducido del juego y cambia sin dar tirones. Con el CPU automático prendido, este sigue la escena en un segundo: baja en lo pesado y sube al salir. Si el juego se cierra o se traba, ponlo en No. Se guarda para este juego"));
 }
 
 // Compilation 124: "Revisión rápida del código".
@@ -2386,6 +2406,7 @@ static void PublishGameMenu()
 	PublishEffectsAheadText(); // compilation 127
 	PublishSkipRepeatsText(); // compilation 128
 	PublishCpuSeamlessText(); // compilation 128
+	PublishDiscNoWaitText(); // compilation 130
 	PublishCycleSkipText(); // compilation 100
 	PublishSpeedLimitText();
 	PublishImageOptionsText(); // compilation 104
@@ -2570,6 +2591,11 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	// Compilation 128: "CPU sin tirones". When the mode the EE blocks were made with is not the one wanted, the recompiler starts over
 	// (at the game's start it does anyway; from the row, once).
 	s_cpu_seamless_game = s_profile.cpu_seamless == 1;
+	s_disc_no_wait_game = s_profile.disc_no_wait == 1; // compilation 130
+	g_forja_disc_no_wait.store(s_disc_no_wait_game, std::memory_order_relaxed);
+	if (s_disc_no_wait_game || s_profile.disc_no_wait_origin != ForjaGameProfile::Origin::Global)
+		ProbeLog("Disc without waits (compilation 130): %s (%s)\n", s_disc_no_wait_game ? "on" : "off",
+			ProfileOriginName(s_profile.disc_no_wait_origin));
 #if defined(PCSX2_PS4_VM_BOOT_JIT)
 	g_forja_cpu_seamless.store(s_cpu_seamless_game, std::memory_order_relaxed);
 	if (s_cpu_seamless_game != g_forja_cpu_seamless_active && VMManager::GetDiscCRC() != 0)
@@ -3197,6 +3223,18 @@ static void UpdateCpuAuto(double elapsed)
 	s_cpu_auto_last_check = elapsed;
 	if (s_cpu_auto_steps == 0)
 		s_cpu_auto_base = rate;
+	// Compilation 130: "CPU al vuelo". Shadow of the Colossus' heavy view (2026-11-09, the 129): turning the camera to "that place"
+	// doubles the draws a frame (3,581 against 1,358) and the GS holds it back at 89 %; there a lower PS2 CPU keeps the frames (the GS
+	// decides them) and brings the speed back, while in the light view it would take frames away. So with every change free, the CPU
+	// automático follows the view: down after 1 s slow, up after 1 s with room, one change a second at most, no 60 s calm, no tries up.
+	// The audit (2026-11-09) against Shadow's session: in its heaviest view the game makes its frames at a nearly fixed pace (3-4
+	// refreshes), so a lower CPU barely helps there (44 -> 36 % with the cycle skip at 4: 39-57 -> 49-71 % speed); it helps where the frames
+	// follow the CPU (Bully, whose frames barely grow with it: a lower CPU is speed for free). herramientas/simulaciones/simular_tres_juegos.py.
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+	const bool fast = g_forja_cpu_seamless_active;
+#else
+	const bool fast = false;
+#endif
 	const double speed = PerformanceMetrics::GetSpeed();
 	const double busiest = std::max({PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()),
 		static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
@@ -3209,12 +3247,12 @@ static void UpdateCpuAuto(double elapsed)
 	//   most. Down again within 30 s: no try for 60 s, doubled with each failed try up to 300; a try that held 120 s brings the wait back to 60.
 	// herramientas/simulaciones/simular_automaticos_escenas.py, 57 % chosen, with "Salto Auto afinado": Bully 11.4 -> 12.2 FPS (74 -> 73 % of
 	// the time at 95 % or more), Shadow 13.1 -> 13.5 FPS (79 -> 74 %); a hitch every ~2 minutes in Bully.
-	s_cpu_auto_slow_checks = speed < (s_cpu_auto_up ? 95.0 : 92.0) ? s_cpu_auto_slow_checks + 1 : 0;
+	s_cpu_auto_slow_checks = speed < (s_cpu_auto_up && !fast ? 95.0 : 92.0) ? s_cpu_auto_slow_checks + 1 : 0;
 	// Compilation 125 (Downhill Domination, 2026-11-08: 38 changes of the CPU in an hour, between 44 and 100 %, each one a reset of the EE
 	// recompiler and a hitch): a loading screen or a menu has every thread nearly idle (busiest 20-42 %), the room looked enormous, the CPU went
 	// up and the race brought it down again. Room counts only with the game drawing in 3D (the VU1 at work) and not within 60 s of a step down.
 	const bool in_game_3d = PerformanceMetrics::GetVUThreadUsage() >= 8.0f && PerformanceMetrics::GetInternalFPS() >= 5.0f;
-	const bool calm = elapsed - s_cpu_auto_last_down >= 60.0;
+	const bool calm = fast ? elapsed >= s_cpu_fast_no_up_until : elapsed - s_cpu_auto_last_down >= 60.0; // compilation 130
 	const bool room = s_cpu_auto_steps > 0 && speed >= 98.0 && in_game_3d && calm &&
 					  busiest * EERatePercent(rate + 1) / EERatePercent(rate) < 90.0;
 	s_cpu_auto_room_checks = room ? s_cpu_auto_room_checks + 1 : 0;
@@ -3227,12 +3265,17 @@ static void UpdateCpuAuto(double elapsed)
 	}
 	// Compilation 125: one try at a time (Downhill went 57 -> 80 -> 100 % in 56 s, three tries before the first was judged): the next try waits
 	// until the last one held 120 s, and none in a loading screen or a menu, nor within 60 s of a step down.
-	const bool probe = s_cpu_auto_up && s_cpu_auto_steps > 0 && s_cpu_auto_good_checks >= 40 && elapsed >= s_cpu_auto_no_probe_until &&
+	const bool probe = !fast && s_cpu_auto_up && s_cpu_auto_steps > 0 && s_cpu_auto_good_checks >= 40 && elapsed >= s_cpu_auto_no_probe_until &&
 					   (!skip_auto || s_skip_auto_at_factory) && s_cpu_auto_probe_at < 0.0 && in_game_3d && calm;
-	if (elapsed - s_cpu_auto_last_change < 6.0)
+	if (elapsed - s_cpu_auto_last_change < (fast ? 1.0 : 6.0))
 		return;
-	if (s_cpu_auto_slow_checks >= 6 && rate > s_cpu_auto_floor && (!s_cpu_auto_up || !skip_auto || !s_skip_auto_can_help))
+	if (s_cpu_auto_slow_checks >= (fast ? 2u : 6u) && rate > s_cpu_auto_floor && (fast || !s_cpu_auto_up || !skip_auto || !s_skip_auto_can_help))
 	{
+		if (fast && elapsed - s_cpu_fast_last_up < 3.0) // compilation 130: a step up that did not hold
+		{
+			s_cpu_fast_no_up_until = elapsed + s_cpu_fast_wait;
+			s_cpu_fast_wait = std::min(s_cpu_fast_wait * 2.0, 20.0);
+		}
 		if (s_cpu_auto_up && elapsed - s_cpu_auto_probe_at < 30.0)
 		{
 			s_cpu_auto_no_probe_until = elapsed + s_cpu_auto_probe_wait;
@@ -3251,14 +3294,22 @@ static void UpdateCpuAuto(double elapsed)
 		while (next > s_cpu_auto_floor && rate - next < 4 && EERatePercent(next) > wanted)
 			next--;
 		s_cpu_auto_steps += rate - next;
-		SetCpuAutoRate(next, rate - next > 1 ? "slow, several steps at once" : "slow", speed, busiest);
+		SetCpuAutoRate(next, fast ? (rate - next > 1 ? "slow, several steps at once (al vuelo)" : "slow (al vuelo)") :
+		                            rate - next > 1 ? "slow, several steps at once" : "slow", speed, busiest);
 	}
-	else if (s_cpu_auto_room_checks >= 16 || probe)
+	else if (s_cpu_auto_room_checks >= (fast ? 2u : 16u) || probe)
 	{
 		s_cpu_auto_steps--;
 		if (probe && s_cpu_auto_room_checks < 16)
 			s_cpu_auto_probe_at = elapsed;
-		SetCpuAutoRate(rate + 1, s_cpu_auto_room_checks >= 16 ? "room" : "a try up (20 s at full speed)", speed, busiest);
+		if (fast)
+		{
+			if (elapsed - s_cpu_fast_no_up_until > 30.0)
+				s_cpu_fast_wait = 5.0;
+			s_cpu_fast_last_up = elapsed;
+		}
+		SetCpuAutoRate(rate + 1, fast ? "room (al vuelo)" : s_cpu_auto_room_checks >= 16 ? "room" : "a try up (20 s at full speed)", speed,
+			busiest);
 	}
 	else
 		return;
@@ -3994,6 +4045,12 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			ProbeLog("Skip repeated presents: requested=%d active=%d\n", next ? 1 : 0, EmuConfig.GS.SkipDuplicateFrames ? 1 : 0);
 			break;
 		}
+		case PS4GameMenu::ROW_DISC_NO_WAIT: // compilation 130: No / Sí ([Forja] DiscoSinEsperas); CDVD.cpp reads it at the next read
+		{
+			const int next = s_disc_no_wait_game ? 0 : 1;
+			SavePlayerProfile("Disc without waits", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "DiscoSinEsperas", next); }, false);
+			break;
+		}
 		case PS4GameMenu::ROW_CPU_SEAMLESS: // compilation 128: No / Sí ([Forja] CpuSinTirones); the profile's apply resets the EE recompiler
 		{
 			const int next = s_cpu_seamless_game ? 0 : 1;
@@ -4147,6 +4204,8 @@ static bool LoadGameState()
 	const bool loaded = VMManager::LoadStateFromSlot(slot, false, &error);
 	if (!loaded)
 		s_state_action = PS4GameMenu::STATE_LOAD_FAILED;
+	if (loaded)
+		ForjaSession::NoteStateLoad(); // compilation 130: the summary's memory growth leaves the load's own jump out
 	ProbeLog("Save state: slot %d %s in %.0f ms (the moment before kept in %.0f ms: %d) %s\n", slot, loaded ? "loaded" : "LOAD FAILED",
 		Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - t0), undo_ms, undo ? 1 : 0,
 		loaded ? "" : error.GetDescription().c_str());
@@ -4575,6 +4634,19 @@ void VMHostPoll()
 				unsigned long long limited = 0;
 				PS4Audio::Totals(underruns, limited);
 				ForjaSession::AddHeartbeat(flexible_free, ps4rt_heap_high_water(), underruns, limited, s_video_active);
+				// Compilation 130: how long the emulator stood waiting for the console's disc in these 5 s, and the reads "Disco sin
+				// esperas" let come back later.
+				{
+					static u64 s_disc_wait_seen = 0;
+					static u32 s_disc_defer_seen = 0;
+					const u64 waited = g_forja_disc_wait_us.load(std::memory_order_relaxed);
+					const u32 deferred = g_forja_disc_deferrals.load(std::memory_order_relaxed);
+					if (waited - s_disc_wait_seen >= 1000 || deferred != s_disc_defer_seen)
+						ProbeLog("Disc waits: stood_still_ms=%.0f reads_deferred=%u (5 s; Disco sin esperas %s)\n",
+							(waited - s_disc_wait_seen) / 1000.0, deferred - s_disc_defer_seen, s_disc_no_wait_game ? "on" : "off");
+					s_disc_wait_seen = waited;
+					s_disc_defer_seen = deferred;
+				}
 				if (vm_state == VMState::Running && ++s_session_beats % 12 == 0)
 					ForjaSessionWrite(false);
 			}
@@ -4963,7 +5035,7 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
 						   row == PS4GameMenu::ROW_TEXTURES || row == PS4GameMenu::ROW_DRAW_THREAD || row == PS4GameMenu::ROW_SW_JIT ||
 						   row == PS4GameMenu::ROW_FPU_EXACT || row == PS4GameMenu::ROW_IOP_FAST || row == PS4GameMenu::ROW_IOP_SLEEP ||
-						   row == PS4GameMenu::ROW_SKIP_AUTO_FINE || row == PS4GameMenu::ROW_CPU_AUTO_UP || row == PS4GameMenu::ROW_FAST_CODE_CHECK || row == PS4GameMenu::ROW_VU1_FAST || row == PS4GameMenu::ROW_EFFECTS_AHEAD || row == PS4GameMenu::ROW_SKIP_REPEATS || row == PS4GameMenu::ROW_CPU_SEAMLESS ||
+						   row == PS4GameMenu::ROW_SKIP_AUTO_FINE || row == PS4GameMenu::ROW_CPU_AUTO_UP || row == PS4GameMenu::ROW_FAST_CODE_CHECK || row == PS4GameMenu::ROW_VU1_FAST || row == PS4GameMenu::ROW_EFFECTS_AHEAD || row == PS4GameMenu::ROW_SKIP_REPEATS || row == PS4GameMenu::ROW_CPU_SEAMLESS || row == PS4GameMenu::ROW_DISC_NO_WAIT ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
 						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT || row == PS4GameMenu::ROW_REPORT_WHERE))
 		{
