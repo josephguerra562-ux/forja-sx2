@@ -925,8 +925,8 @@ tr: Não atua: a CPU do PS2 deste jogo (%d %%) já está igual ou mais baixa. Es
 es: Salto de ciclo:  < %s >
 tr: Salto de ciclo:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
-tr: Tira trabalho do console: a velocidade se aproxima de 100 %, mas o jogo pode repetir quadros. Auto ajusta sozinho. Fica salvo para este jogo
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo sube y lo baja cada segundo según la escena. Se guarda para este juego
+tr: Tira trabalho do console: a velocidade se aproxima de 100 %, mas o jogo pode repetir quadros. Auto ajusta sozinho; Na hora (teste) sobe e desce a cada segundo conforme a cena. Fica salvo para este jogo
 
 es: Límite de velocidad:  < %s >
 tr: Limite de velocidade:  < %s >
@@ -1023,6 +1023,18 @@ tr: Atualizações sem repetir:  < %s >
 
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: Teste: quando o jogo não fez um quadro novo, o emulador não mostra o mesmo de novo e o GS economiza esse trabalho. Serve nos jogos lentos que o GS segura (Shadow of the Colossus). Se a imagem der saltos estranhos, coloque em Não. Salvo para este jogo
+
+es: Parcial
+tr: Parcial
+
+es: Total
+tr: Total
+
+es: Modo seguro:  < %s >
+tr: Modo seguro:  < %s >
+
+es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego
+tr: Se este jogo fechar, travar ou ficar com a imagem errada, tente Parcial e depois Total: desligam melhorias internas de velocidade, e o jogo pode ficar mais lento. O Forja coloca Parcial sozinho se a partida anterior terminou mal. Fica salvo para este jogo
 
 es: Disco sin esperas:  < %s >
 tr: Disco sem esperas:  < %s >

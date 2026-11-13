@@ -30,6 +30,8 @@ namespace ForjaGameProfile
 		Global = 0,
 		Factory = 1,
 		Player = 2,
+		Lab = 3, // compilation 131: the lab's file, /data/ForjaSX2/pruebas.ini
+		Safe = 4, // compilation 131: turned off by "Modo seguro"
 	};
 
 	struct Values
@@ -113,6 +115,18 @@ namespace ForjaGameProfile
 		// [EmuCore/Speedhacks] EECycleSkip * 4 + EECycleSkipQuarters of the factory profile only (compilation 109): where the cycle
 		// skip's Auto starts and the least it goes to (main.cpp, UpdateCycleSkipAuto). 0 with no factory profile.
 		int cycle_skip_factory = 0;
+		// Compilation 131 (Joseph, 2026-11-13): the ten improvements above that were rows of No tocar (GrabarEnOtroHilo ... DiscoSinEsperas)
+		// are on for every game, and Load gives each as 0 or 1: the lab's file wins, then "Modo seguro", then the game's factory profile
+		// (GTA San Andreas does not start with RevisionRapida), then on. The player's own value counts only while the lab's file shows the
+		// rows: hidden, a value saved by an older version would stay out of reach.
+		// [Forja] ModoSeguro: 0 no; 1 partial, without the three that change how the game's code and disc are emulated (RevisionRapida,
+		// CpuSinTirones, DiscoSinEsperas); 2 total, without all ten (and VMManager.cpp takes back the VU1's clamp and the repeated refreshes).
+		int safe_mode = 0;
+		Origin safe_mode_origin = Origin::Global;
+		// The lab's file: read at all; [Forja] MostrarFilas = 1; [Forja] Guardian = 0 (main.cpp, ForjaGuardStart).
+		bool has_lab = false;
+		bool lab_rows = false;
+		bool guard = true;
 	};
 
 	// Forja SX2 (compilation 44): the settings center's copy (/data/ForjaSX2/centro/perfiles, fetched from the project's GitHub by
@@ -144,11 +158,10 @@ namespace ForjaGameProfile
 	// reader of its own (sections, "key = value", whole-line ';' or '#' comments), and nothing ever writes the file back.
 	// An INISettingsInterface saves itself when destroyed dirty: callers merging into one call ClearDirty() afterwards.
 	// A key the file repeats is a list, as PCSX2's own "Enable = A" / "Enable = B" (compilation 44: only the first was kept).
-	inline bool MergeFactory(SettingsInterface& si, std::string_view serial)
+	// Compilation 131: the reader by itself (MergeFile), for the lab's file too; with `over` the file's keys win over what `si` has.
+	inline bool MergeFile(SettingsInterface& si, const std::string& path, bool over = false)
 	{
-		if (serial.empty())
-			return false;
-		std::FILE* file = std::fopen(FactoryPath(serial).c_str(), "r");
+		std::FILE* file = std::fopen(path.c_str(), "r");
 		if (!file)
 			return false;
 		char line[512];
@@ -176,7 +189,7 @@ namespace ForjaGameProfile
 			const std::string id = section + '\n' + key;
 			if (own.count(id))
 				si.AddToStringList(section.c_str(), key.c_str(), value.c_str());
-			else if (!si.ContainsValue(section.c_str(), key.c_str()))
+			else if (over || !si.ContainsValue(section.c_str(), key.c_str()))
 			{
 				si.SetStringValue(section.c_str(), key.c_str(), value.c_str());
 				own.insert(id);
@@ -184,6 +197,25 @@ namespace ForjaGameProfile
 		}
 		std::fclose(file);
 		return true;
+	}
+
+	inline bool MergeFactory(SettingsInterface& si, std::string_view serial)
+	{
+		return !serial.empty() && MergeFile(si, FactoryPath(serial));
+	}
+
+	// Compilation 131: the lab's file, for tests on one console (Joseph, 2026-11-13: "si un día me requieras que desactive algo para
+	// probarlo ... a través de mi Play"). Sent by FTP, never made by the app. Its keys win over the player's, the factory's and the
+	// defaults, for every game: PCSX2's sections (VMManager.cpp merges them into the game's layer) and [Forja]'s (Load, below), where
+	// MostrarFilas = 1 brings back the hidden rows of No tocar and Guardian = 0 keeps the guardian from touching "Modo seguro".
+	inline std::string LabPath()
+	{
+		return Path::Combine(EmuFolders::DataRoot, "pruebas.ini");
+	}
+
+	inline bool MergeLab(SettingsInterface& si)
+	{
+		return MergeFile(si, LabPath(), true);
 	}
 
 	// The game's [Forja] values, each with the layer it came from.
@@ -220,6 +252,67 @@ namespace ForjaGameProfile
 		read_int("EfectosListos", &v.effects_ahead, &v.effects_ahead_origin); // compilation 127
 		read_int("CpuSinTirones", &v.cpu_seamless, &v.cpu_seamless_origin); // compilation 128
 		read_int("DiscoSinEsperas", &v.disc_no_wait, &v.disc_no_wait_origin); // compilation 130
+		// Compilation 131: "Modo seguro", the lab's file, and the ten hidden improvements, each 0 or 1 from here on (see Values).
+		read_int("ModoSeguro", &v.safe_mode, &v.safe_mode_origin);
+		MemorySettingsInterface lab;
+		v.has_lab = MergeFile(lab, LabPath());
+		if (v.has_lab)
+		{
+			int shown = 0, guard = 1;
+			lab.GetIntValue("Forja", "MostrarFilas", &shown);
+			lab.GetIntValue("Forja", "Guardian", &guard);
+			v.lab_rows = shown != 0;
+			v.guard = guard != 0;
+			if (lab.GetIntValue("Forja", "ModoSeguro", &v.safe_mode))
+				v.safe_mode_origin = Origin::Lab;
+		}
+		v.safe_mode = std::clamp(v.safe_mode, 0, 2);
+		struct Hidden
+		{
+			const char* key;
+			int* value;
+			Origin* origin;
+			int safe_level; // the "Modo seguro" that turns it off
+		};
+		const Hidden hidden[] = {
+			{"GrabarEnOtroHilo", &v.draw_thread, &v.draw_thread_origin, 2},
+			{"TraductorSoftware", &v.sw_jit, &v.sw_jit_origin, 2},
+			{"IopRapido", &v.iop_fast, &v.iop_fast_origin, 2},
+			{"IopDormido", &v.iop_sleep, &v.iop_sleep_origin, 2},
+			{"SaltoAutoAfinado", &v.skip_auto_fine, &v.skip_auto_fine_origin, 2},
+			{"CpuAutoSube", &v.cpu_auto_up, &v.cpu_auto_up_origin, 2},
+			{"RevisionRapida", &v.fast_code, &v.fast_code_origin, 1},
+			{"EfectosListos", &v.effects_ahead, &v.effects_ahead_origin, 2},
+			{"CpuSinTirones", &v.cpu_seamless, &v.cpu_seamless_origin, 1},
+			{"DiscoSinEsperas", &v.disc_no_wait, &v.disc_no_wait_origin, 1},
+		};
+		for (const Hidden& h : hidden)
+		{
+			int value = 1, read = 0;
+			Origin origin = Origin::Global;
+			if (v.has_lab && lab.GetIntValue("Forja", h.key, &read))
+			{
+				value = read != 0 ? 1 : 0;
+				origin = Origin::Lab;
+			}
+			else if (v.safe_mode >= h.safe_level)
+			{
+				value = 0;
+				origin = Origin::Safe;
+			}
+			else if (v.lab_rows && v.has_player && player.GetIntValue("Forja", h.key, &read))
+			{
+				value = read != 0 ? 1 : 0;
+				origin = Origin::Player;
+			}
+			else if (v.has_factory && factory.GetIntValue("Forja", h.key, &read))
+			{
+				value = read != 0 ? 1 : 0;
+				origin = Origin::Factory;
+			}
+			*h.value = value;
+			*h.origin = origin;
+		}
 		// Forja 1.06: [Forja] SaltarCuadrosConGuardian, a factory profile's frame skip for the versions with the guard (73 on),
 		// which wins over its SaltarCuadros (never over the player's). The versions before 1.06 fetch the factory profiles from
 		// main and read only SaltarCuadros: there it keeps what suits their skip without the guard (Dragon Ball: off).

@@ -925,8 +925,8 @@ tr: 動作しません：このゲームのPS2のCPU（%d %%）はすでにこ�
 es: Salto de ciclo:  < %s >
 tr: サイクルスキップ:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
-tr: 本体の負担を減らします。速度は 100 % に近づきますが、フレームが重複することがあります。Auto は自動で調整します。このゲームに保存されます
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo sube y lo baja cada segundo según la escena. Se guarda para este juego
+tr: 本体の負担を減らします。速度は 100 % に近づきますが、フレームが重複することがあります。Auto は自動で調整します。「必要なときだけ」(テスト)は場面に合わせて毎秒上げ下げします。このゲームに保存されます
 
 es: Límite de velocidad:  < %s >
 tr: 速度制限:  < %s >
@@ -1023,6 +1023,18 @@ tr: 同じ画面を出し直さない：  < %s >
 
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: テスト：ゲームが新しい画面を作っていないとき、同じ画面を出し直さず、GSの処理が減ります。GSが重い遅いゲーム（Shadow of the Colossus）用です。画面が変に飛ぶなら「いいえ」に。このゲーム用に保存
+
+es: Parcial
+tr: 一部
+
+es: Total
+tr: すべて
+
+es: Modo seguro:  < %s >
+tr: セーフモード:  < %s >
+
+es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego
+tr: このゲームが終了したり、止まったり、表示がおかしいときは、「一部」、次に「すべて」を試してください。内部の高速化をオフにするので、ゲームが遅くなることがあります。前回が正常に終了しなかった場合、Forja が自動で「一部」にします。このゲームに保存されます
 
 es: Disco sin esperas:  < %s >
 tr: ディスクを待たない：  < %s >

@@ -1076,6 +1076,17 @@ bool VMManager::UpdateGameSettingsLayer()
 				std::make_unique<INISettingsInterface>(GetGameSettingsPath(serial, s_disc_crc));
 			if (ForjaGameProfile::MergeFactory(*merged, serial))
 				Console.WriteLn("Forja SX2: factory profile '%s' under the player's settings", ForjaGameProfile::FactoryPath(serial).c_str());
+			// Compilation 131: the lab's file (/data/ForjaSX2/pruebas.ini, sent by FTP for a test) wins over all of it. And "Modo seguro:
+			// Total" takes back the two hidden improvements that are PCSX2 keys: the VU1 without its clamp and the repeated refreshes.
+			if (ForjaGameProfile::MergeLab(*merged))
+				Console.WriteLn("Forja SX2: lab file '%s' over the game's settings", ForjaGameProfile::LabPath().c_str());
+			int safe_mode = 0;
+			if (merged->GetIntValue("Forja", "ModoSeguro", &safe_mode) && safe_mode >= 2)
+			{
+				merged->SetBoolValue("EmuCore/CPU/Recompiler", "vu1Overflow", true);
+				merged->SetBoolValue("EmuCore/GS", "SkipDuplicateFrames", false);
+				Console.WriteLn("Forja SX2: Modo seguro total, the VU1's clamp and the repeated refreshes as PCSX2 has them");
+			}
 			merged->ClearDirty();
 			if (!merged->IsEmpty())
 				new_interface = std::move(merged);

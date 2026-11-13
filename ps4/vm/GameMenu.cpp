@@ -2475,6 +2475,15 @@ namespace PS4GameMenu
 						draw->AddRect(ip(-15, -12), ip(5, 6), icon_line, 2 * scale, lw, 0);
 						draw->AddRect(ip(-5, -6), ip(15, 12), icon_line, 2 * scale, lw, 0);
 						break;
+					case ROW_SAFE_MODE: // a shield with a check mark (compilation 131)
+						draw->AddLine(ip(-12, -12), ip(12, -12), icon_line, lw);
+						draw->AddLine(ip(12, -12), ip(12, 2), icon_line, lw);
+						draw->AddLine(ip(12, 2), ip(0, 14), icon_line, lw);
+						draw->AddLine(ip(0, 14), ip(-12, 2), icon_line, lw);
+						draw->AddLine(ip(-12, 2), ip(-12, -12), icon_line, lw);
+						draw->AddLine(ip(-5, -1), ip(-1, 4), icon_line, lw);
+						draw->AddLine(ip(-1, 4), ip(6, -5), icon_line, lw);
+						break;
 					case ROW_GS_SKIP: // two frames, the second one crossed out
 						draw->AddRect(ip(-16, -9), ip(-2, 9), icon_line, 2 * scale, lw, 0);
 						draw->AddRect(ip(2, -9), ip(16, 9), icon_line, 2 * scale, lw, 0);
@@ -2542,7 +2551,7 @@ namespace PS4GameMenu
 					return T("AJUSTAR");
 				if (row == ROW_ASPECT || row == ROW_VIDEO_MODE || row == ROW_CORES || row == ROW_CPU_AUTO || row == ROW_FRAME_GEN ||
 				    row == ROW_SHARPNESS || row == ROW_DEINTERLACE || row == ROW_TEXTURE_FILTER || row == ROW_GS_SKIP || row == ROW_CROWD || row == ROW_CYCLE_SKIP ||
-				    row == ROW_SPEED_LIMIT)
+				    row == ROW_SPEED_LIMIT || row == ROW_SAFE_MODE)
 					return T("ELEGIR");
 				if (row == ROW_REPORT_ISSUE || row == ROW_REPORT_WHERE) // compilation 82: X sends the report from here too; 98: and the last
 					return T("ELEGIR  ·  X");
@@ -2568,10 +2577,11 @@ namespace PS4GameMenu
 			// The list: where each section's header and each row go, in 1080p units from the list's top.
 			constexpr float LIST_TOP = 140.0f, LIST_BOTTOM = 818.0f, HEADER_H = 48.0f, ROW_H = 54.0f, ROW_PITCH = 58.0f;
 			const unsigned total_rows = TAB_FIRST_ROW[TAB_COUNT];
+			// Compilation 131: a hidden row takes no place (PS4GameMenu::RowHidden).
 			const auto row_offset = [&](unsigned row) {
-				return static_cast<float>(TabOfRow(row) + 1) * HEADER_H + static_cast<float>(row) * ROW_PITCH;
+				return static_cast<float>(TabOfRow(row) + 1) * HEADER_H + static_cast<float>(VisibleIndex(row)) * ROW_PITCH;
 			};
-			const float content_h = static_cast<float>(TAB_COUNT) * HEADER_H + static_cast<float>(total_rows) * ROW_PITCH;
+			const float content_h = static_cast<float>(TAB_COUNT) * HEADER_H + static_cast<float>(VisibleIndex(total_rows)) * ROW_PITCH;
 			const float view_h = LIST_BOTTOM - LIST_TOP;
 			// The list scrolls only when the cursor would leave it, keeping one row of room (and the section's header for its first row).
 			static float s_list_scroll = 0.0f;
@@ -2599,6 +2609,8 @@ namespace PS4GameMenu
 				}
 				for (unsigned row = TAB_FIRST_ROW[tab]; row < TAB_FIRST_ROW[tab + 1]; row++)
 				{
+					if (RowHidden(row))
+						continue;
 					const float y = LIST_TOP + row_offset(row) - s_list_scroll;
 					if (y + ROW_H < LIST_TOP || y > LIST_BOTTOM)
 						continue;

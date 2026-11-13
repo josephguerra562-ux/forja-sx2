@@ -3,6 +3,7 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <cstdint>
 
 namespace PS4GameMenu
@@ -36,6 +37,9 @@ namespace PS4GameMenu
 		// Compilation 47 here; No tocar from 59 to 74. 1.06 (Joseph, 2026-10-21: "lo coloquemos en el lugar que debe estar"):
 		// back here, once the guard of 73 kept Dragon Ball at full speed without the flicker.
 		ROW_GS_SKIP,
+		// Compilation 131: "Modo seguro" ([Forja] ModoSeguro): No / Parcial / Total. The improvements that were rows of No tocar are on for
+		// every game and hidden (RowHidden, below); this is the one switch a player has when a game misbehaves with them.
+		ROW_SAFE_MODE,
 		// Extras (compilation 42 "Parches", 44 "Extras"): the game's patch groups one at a time (main.cpp, PublishPatchMenuText)
 		// and where the recommended settings come from
 		ROW_PATCH,
@@ -114,6 +118,31 @@ namespace PS4GameMenu
 		while (tab + 1 < TAB_COUNT && row >= TAB_FIRST_ROW[tab + 1])
 			tab++;
 		return tab;
+	}
+
+	// Compilation 131 (Joseph, 2026-11-13: "siempre en sí, de fábrica, y que no esté al ojo público"): the improvements measured as rows of
+	// No tocar are on for every game (ForjaGameProfile::Load) and their rows are hidden, so nobody turns off what makes the games run. The
+	// lab's file, /data/ForjaSX2/pruebas.ini with [Forja] MostrarFilas = 1, shows them again on that console (main.cpp, ApplyGameProfile).
+	// "FPU exacto" stays in sight: it is the GameDB's accuracy fix, not one of these.
+	inline std::atomic<bool> g_lab_rows_shown{false};
+
+	constexpr bool RowIsHiddenLab(unsigned row)
+	{
+		return row >= ROW_DRAW_THREAD && row <= ROW_DISC_NO_WAIT && row != ROW_FPU_EXACT;
+	}
+
+	inline bool RowHidden(unsigned row)
+	{
+		return RowIsHiddenLab(row) && !g_lab_rows_shown.load(std::memory_order_relaxed);
+	}
+
+	// The row's place in the list: how many rows are shown before it.
+	inline unsigned VisibleIndex(unsigned row)
+	{
+		unsigned index = 0;
+		for (unsigned r = 0; r < row && r < ROW_COUNT; r++)
+			index += RowHidden(r) ? 0u : 1u;
+		return index;
 	}
 
 	struct InGameMenuState

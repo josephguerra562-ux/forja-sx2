@@ -227,10 +227,16 @@ void Host::ReportInfoAsync(std::string_view, std::string_view)
 {
 }
 
+extern "C" void forja_guard_mark(const char* reason); // ps4/runtime/ps4_crashlog.cpp (compilation 131)
+
 void Host::ReportErrorAsync(std::string_view title, std::string_view message)
 {
 	Console.Error("Host Error [%.*s]: %.*s", static_cast<int>(title.size()), title.data(),
 		static_cast<int>(message.size()), message.data());
+	// Compilation 131: the EE jumped where there is no code and the game stays stopped (Need for Speed Most Wanted, 2026-11-13, the 130:
+	// "Jump to unaligned address" 356 s in, after a storm of TLB misses). Nothing closes, so nothing else would tell the guardian.
+	if (title.find("R5900 Exception") != std::string_view::npos)
+		forja_guard_mark("ee exception");
 }
 
 bool Host::RequestResetSettings(bool, bool, bool, bool, bool)

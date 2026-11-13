@@ -925,8 +925,8 @@ tr: Nie działa: CPU PS2 tej gry (%d %%) jest już tak niskie lub niższe. Wybie
 es: Salto de ciclo:  < %s >
 tr: Pomijanie cykli:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
-tr: Odciąża konsolę: prędkość zbliża się do 100 %, ale gra może powtarzać klatki. Auto dostosowuje to samo. Zapisywane dla tej gry
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo sube y lo baja cada segundo según la escena. Se guarda para este juego
+tr: Odciąża konsolę: prędkość zbliża się do 100 %, ale gra może powtarzać klatki. Auto dostosowuje to samo; W locie (test) podnosi i obniża to co sekundę zależnie od sceny. Zapisywane dla tej gry
 
 es: Límite de velocidad:  < %s >
 tr: Limit prędkości:  < %s >
@@ -1023,6 +1023,18 @@ tr: Bez powtarzania klatek:  < %s >
 
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: Test: gdy gra nie zrobiła nowej klatki, emulator nie pokazuje tej samej ponownie, a GS oszczędza tę pracę. Pomaga w wolnych grach, które hamuje GS (Shadow of the Colossus). Jeśli obraz dziwnie skacze, ustaw Nie. Zapisane dla tej gry
+
+es: Parcial
+tr: Częściowy
+
+es: Total
+tr: Pełny
+
+es: Modo seguro:  < %s >
+tr: Tryb bezpieczny:  < %s >
+
+es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego
+tr: Jeśli ta gra się zamyka, zawiesza lub źle wygląda, spróbuj Częściowy, a potem Pełny: wyłączają wewnętrzne ulepszenia szybkości i gra może działać wolniej. Forja sama ustawia Częściowy, jeśli poprzednia sesja skończyła się źle. Zapisywane dla tej gry
 
 es: Disco sin esperas:  < %s >
 tr: Dysk bez czekania:  < %s >

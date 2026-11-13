@@ -925,8 +925,8 @@ tr: 不起作用：此游戏的 PS2 CPU（%d %%）已经等于或低于此限制
 es: Salto de ciclo:  < %s >
 tr: 周期跳过:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
-tr: 减轻主机负担:速度接近 100 %,但游戏可能重复画面。Auto 会自动调整。为此游戏保存
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo sube y lo baja cada segundo según la escena. Se guarda para este juego
+tr: 减轻主机负担:速度接近 100 %,但游戏可能重复画面。Auto 会自动调整;即时(测试)会根据场景每秒升高或降低。为此游戏保存
 
 es: Límite de velocidad:  < %s >
 tr: 速度限制:  < %s >
@@ -1023,6 +1023,18 @@ tr: 不重复刷新：  < %s >
 
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: 测试：当游戏没有生成新画面时，模拟器不会再次显示同一画面，GS 的工作会减少。适用于被 GS 拖慢的游戏（Shadow of the Colossus）。如果画面跳动奇怪，请设为否。仅为此游戏保存
+
+es: Parcial
+tr: 部分
+
+es: Total
+tr: 全部
+
+es: Modo seguro:  < %s >
+tr: 安全模式:  < %s >
+
+es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego
+tr: 如果此游戏关闭、卡住或画面不对,请先试"部分",再试"全部":它们会关闭内部的加速改进,游戏可能变慢。如果上次游戏没有正常结束,Forja 会自动设为"部分"。为此游戏保存
 
 es: Disco sin esperas:  < %s >
 tr: 光盘不等待：  < %s >

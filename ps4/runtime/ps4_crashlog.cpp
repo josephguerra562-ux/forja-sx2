@@ -26,6 +26,10 @@
 
 extern "C" char __text_start[];  // defined by the OpenOrbis link.x at the start of .text
 
+// Forja SX2 (compilation 131): the guardian's mark. main.cpp sets the path when a game starts; a session that ends badly (a signal
+// here, an EE exception in HostVM.cpp, a hang in main.cpp's HangWatch) leaves the file, and the game's next start reads it.
+extern "C" void forja_guard_mark(const char* reason);
+
 namespace {
 
 // FreeBSD values (the PS4 kernel's); the OpenOrbis musl headers may carry Linux ones.
@@ -93,8 +97,11 @@ void setHandler(int sig, void (*handler)(int, siginfo_t*, void*), int flags) {
 
 void crashHandler(int sig, siginfo_t* info, void* context) {
     static volatile int s_depth = 0;
-    if (s_depth++ > 0)
+    const int depth = s_depth;
+    s_depth = depth + 1;
+    if (depth > 0)
         return;  // crashed while reporting: give up
+    forja_guard_mark("signal");
 
     const int fd = open("/data/ForjaSX2/crash.log", O_WRONLY | O_CREAT | O_APPEND, 0666);
     if (fd >= 0) {
@@ -234,4 +241,26 @@ extern "C" void ps4_boot_trace(const char* stage) {
     if (written >= static_cast<int>(sizeof(line)))
         line[sizeof(line) - 2] = '\n';
     writeAll(fd, line);
+}
+
+// Forja SX2 (compilation 131): only open, write and close, so the signal handler can call it.
+extern "C" {
+char g_forja_guard_mark[160] = "";
+
+void forja_guard_mark(const char* reason) {
+    if (!g_forja_guard_mark[0])
+        return;
+    const int fd = open(g_forja_guard_mark, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if (fd < 0)
+        return;
+    size_t length = strlen(reason);
+    while (length > 0) {
+        const ssize_t written = write(fd, reason, length);
+        if (written <= 0)
+            break;
+        reason += written;
+        length -= static_cast<size_t>(written);
+    }
+    close(fd);
+}
 }

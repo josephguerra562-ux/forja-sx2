@@ -363,6 +363,9 @@ extern std::atomic<bool> g_forja_effects_ahead; // ps4/core/GSRendererPS4.cpp
 static bool s_cpu_seamless_game = false;
 // Compilation 130: "Disco sin esperas" for this game ([Forja] DiscoSinEsperas); pcsx2/CDVD/CDVD.cpp reads the atomic at each read.
 static bool s_disc_no_wait_game = false;
+static int s_safe_mode = 0; // compilation 131: [Forja] ModoSeguro, 0 no, 1 partial, 2 total
+static bool s_ps1_game = false; // compilation 131: the game chosen in the library is a PS1 one
+static bool s_skip_fast_running = false; // compilation 131: "Salto de ciclo: Al vuelo" has the game's skip (UpdateCycleSkipFast)
 extern std::atomic<bool> g_forja_disc_no_wait; // pcsx2/CDVD/CDVD.cpp
 extern std::atomic<u32> g_forja_disc_deferrals;
 extern std::atomic<u64> g_forja_disc_wait_us; // ps4/core/GSRendererPS4.cpp
@@ -1206,6 +1209,46 @@ static void ToggleCheat()
 }
 
 
+// Forja SX2 (compilation 131): the guardian. The improvements that were rows of No tocar are on for every game and hidden, so a game
+// that cannot take one of them needs a way out that asks nothing of the player. A session that ends badly leaves a mark for its game
+// (forja_guard_mark, ps4/runtime/ps4_crashlog.cpp: a signal, an EE exception, a hang); the game's next start finds it and puts "Modo
+// seguro" in Parcial (never further by itself), which the player sees in the menu and can put back. Need for Speed Most Wanted
+// (2026-11-13, the 130) stopped on an EE exception 80 s after "Disco sin esperas" and "CPU sin tirones" were turned on.
+extern "C" char g_forja_guard_mark[160];
+extern "C" void forja_guard_mark(const char* reason);
+
+static void ForjaGuardStart(const std::string& serial, u32 crc)
+{
+	g_forja_guard_mark[0] = '\0';
+	if (serial.empty() || crc == 0)
+		return;
+	mkdir("/data/ForjaSX2/guardian", 0777);
+	char path[160];
+	std::snprintf(path, sizeof(path), "/data/ForjaSX2/guardian/%s.txt", Path::SanitizeFileName(serial).c_str());
+	if (std::FILE* file = std::fopen(path, "r"))
+	{
+		char reason[64] = "";
+		if (!std::fgets(reason, sizeof(reason), file))
+			reason[0] = '\0';
+		std::fclose(file);
+		std::remove(path);
+		reason[std::strcspn(reason, "\r\n")] = '\0';
+		const ForjaGameProfile::Values before = ForjaGameProfile::Load(serial, crc);
+		if (!before.guard)
+			ProbeLog("Guardian: the last session of %s ended badly (%s); off in the lab's file, nothing changed\n", serial.c_str(), reason);
+		else if (before.safe_mode != 0)
+			ProbeLog("Guardian: the last session of %s ended badly (%s); Modo seguro was already %d, nothing changed\n", serial.c_str(), reason,
+				before.safe_mode);
+		else
+		{
+			const bool saved = ForjaGameProfile::EditPlayer(serial, crc, [](INISettingsInterface& ini) { ini.SetIntValue("Forja", "ModoSeguro", 1); });
+			ProbeLog("Guardian: the last session of %s ended badly (%s): Modo seguro -> Parcial for this game (saved=%d)\n", serial.c_str(),
+				reason, saved ? 1 : 0);
+		}
+	}
+	std::snprintf(g_forja_guard_mark, sizeof(g_forja_guard_mark), "%s", path);
+}
+
 // Forja SX2 (compilation 58): the hang log, an idea from M33's hang.log: a thread checks once a second that the game's frames
 // still advance (g_FrameCount, the PS2's vsyncs). After 10 s without one while the game runs (not paused, no menu) it writes
 // where the EE and the IOP were to logs/hang.log and to the session log, once per stop, so a freeze leaves something to read.
@@ -1224,7 +1267,12 @@ static void* HangWatch(void*)
 		if (!running || frame != last_frame)
 		{
 			if (reported && running)
+			{
 				ProbeLog("Hang watch: frames again after %u s without one\n", still);
+				// Compilation 131: the game came back (the PS4's own menu over it, a long stall): the guardian's mark goes away.
+				if (g_forja_guard_mark[0])
+					std::remove(g_forja_guard_mark);
+			}
 			last_frame = frame;
 			still = 0;
 			reported = false;
@@ -1233,6 +1281,7 @@ static void* HangWatch(void*)
 		if (++still < 10 || reported)
 			continue;
 		reported = true;
+		forja_guard_mark("hang"); // compilation 131
 		ForjaSession::AddHang(); // compilation 80: the summary's "Cuelgues"
 		char when[32] = "?";
 		const std::time_t now = std::time(nullptr);
@@ -1842,12 +1891,13 @@ static bool Vu1FastOn(); // compilation 126
 static void LogGameSettings(const char* why)
 {
 	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d "
-			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d fast_code=%d vu1_fast=%d effects_ahead=%d skip_repeats=%d cpu_seamless=%d disc_no_wait=%d\n", why,
+			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d fast_code=%d vu1_fast=%d effects_ahead=%d skip_repeats=%d cpu_seamless=%d disc_no_wait=%d safe_mode=%d skip_mode=%d\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
 		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str(),
 		s_draw_thread ? 1 : 0, s_sw_jit ? 1 : 0, EmuConfig.Cpu.Recompiler.fpuFullMode ? 1 : 0, s_iop_fast ? 1 : 0, s_iop_sleep_game ? 1 : 0,
 		s_skip_auto_fine ? 1 : 0, s_cpu_auto_up ? 1 : 0, g_ps4_skip_smc_checks ? 1 : 0, Vu1FastOn() ? 1 : 0, s_effects_ahead_game ? 1 : 0,
-		EmuConfig.GS.SkipDuplicateFrames ? 1 : 0, s_cpu_seamless_game ? 1 : 0, s_disc_no_wait_game ? 1 : 0);
+		EmuConfig.GS.SkipDuplicateFrames ? 1 : 0, s_cpu_seamless_game ? 1 : 0, s_disc_no_wait_game ? 1 : 0, s_safe_mode,
+		static_cast<int>(EmuConfig.Speedhacks.EECycleSkipAuto));
 }
 
 // Compilation 76: two rows say so when their Auto can do nothing in this game, in place of their usual line (GameMenu.cpp's
@@ -1909,7 +1959,7 @@ static constexpr unsigned ForjaCycleSkipAutoStep = std::size(ForjaCycleSkipSteps
 static unsigned ForjaCycleSkipStep()
 {
 	if (EmuConfig.Speedhacks.EECycleSkipAuto)
-		return ForjaCycleSkipAutoStep;
+		return ForjaCycleSkipAutoStep + (EmuConfig.Speedhacks.EECycleSkipAuto >= 2 ? 1u : 0u); // compilation 131: 2, "Al vuelo"
 	const unsigned quarters = EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters;
 	unsigned step = 0;
 	while (step + 1 < std::size(ForjaCycleSkipSteps) && ForjaCycleSkipSteps[step] < quarters)
@@ -1922,7 +1972,22 @@ static void PublishCycleSkipText()
 	char label[256];
 	static constexpr const char* names[] = {N_("No"), "1/4", "1/2", "3/4", "1", "2", "3"};
 	char value[64];
-	if (EmuConfig.Speedhacks.EECycleSkipAuto)
+	if (EmuConfig.Speedhacks.EECycleSkipAuto >= 2) // compilation 131: "Al vuelo", in quarters (it uses the values between the row's steps too)
+	{
+		const unsigned quarters = EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters;
+		static constexpr const char* parts[] = {"", "1/4", "1/2", "3/4"};
+		char amount[32];
+		if (quarters == 0)
+			std::snprintf(amount, sizeof(amount), "%s", ForjaLang::T("No"));
+		else if (quarters % 4 == 0)
+			std::snprintf(amount, sizeof(amount), "%u", quarters / 4);
+		else if (quarters < 4)
+			std::snprintf(amount, sizeof(amount), "%s", parts[quarters]);
+		else
+			std::snprintf(amount, sizeof(amount), "%u %s", quarters / 4, parts[quarters % 4]);
+		std::snprintf(value, sizeof(value), "%s: %s", ForjaLang::T("Al vuelo"), amount);
+	}
+	else if (EmuConfig.Speedhacks.EECycleSkipAuto)
 	{
 		const unsigned quarters = EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters;
 		unsigned step = 0;
@@ -1934,7 +1999,7 @@ static void PublishCycleSkipText()
 		std::snprintf(value, sizeof(value), "%s", ForjaLang::T(names[ForjaCycleSkipStep()]));
 	std::snprintf(label, sizeof(label), ForjaLang::TF("Salto de ciclo:  < %s >"), value);
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CYCLE_SKIP, label,
-		ForjaLang::T("Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego"));
+		ForjaLang::T("Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo sube y lo baja cada segundo según la escena. Se guarda para este juego"));
 }
 
 // Compilation 100 (Joseph liked God of War II without the limiter, as a setting and not as "fast forward"): the normal speed of a game
@@ -2101,6 +2166,18 @@ static void PublishSkipRepeatsText()
 	std::snprintf(label, sizeof(label), TF("Refrescos sin repetir:  < %s >"), T(EmuConfig.GS.SkipDuplicateFrames ? N_("Sí") : N_("No")));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_SKIP_REPEATS, label,
 		T("Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego"));
+}
+
+// Compilation 131: "Modo seguro".
+static void PublishSafeModeText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	static constexpr const char* names[] = {N_("No"), N_("Parcial"), N_("Total")};
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("Modo seguro:  < %s >"), T(names[std::clamp(s_safe_mode, 0, 2)]));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_SAFE_MODE, label,
+		T("Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego"));
 }
 
 // Compilation 130: "Disco sin esperas".
@@ -2407,6 +2484,7 @@ static void PublishGameMenu()
 	PublishSkipRepeatsText(); // compilation 128
 	PublishCpuSeamlessText(); // compilation 128
 	PublishDiscNoWaitText(); // compilation 130
+	PublishSafeModeText(); // compilation 131
 	PublishCycleSkipText(); // compilation 100
 	PublishSpeedLimitText();
 	PublishImageOptionsText(); // compilation 104
@@ -2495,7 +2573,8 @@ static void ApplyGameAspect(unsigned aspect)
 
 static const char* ProfileOriginName(ForjaGameProfile::Origin origin)
 {
-	return origin == ForjaGameProfile::Origin::Player ? "player" : origin == ForjaGameProfile::Origin::Factory ? "factory" : "global";
+	return origin == ForjaGameProfile::Origin::Player ? "player" : origin == ForjaGameProfile::Origin::Factory ? "factory" :
+	       origin == ForjaGameProfile::Origin::Lab ? "pruebas.ini" : origin == ForjaGameProfile::Origin::Safe ? "modo seguro" : "global";
 }
 
 // Forja SX2: makes the game's profile current: video mode, frame generation and cores. Its PCSX2 keys are not here: PCSX2
@@ -2504,6 +2583,13 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 {
 	const bool new_game = profile.serial != s_profile.serial || profile.crc != s_profile.crc; // compilation 76
 	s_profile = std::move(profile);
+	// Compilation 131: a PS1 game keeps what it had until the 130. Of the improvements that are now on for every game, only the GS's
+	// three stay on for it (the recorder, the software draws' JIT, the effects ready: the same renderer, on since the 118 and the 128).
+	// The others change how the EE's code, the IOP and the disc are emulated, which PS1DRV uses in its own way, and none was tried
+	// with a PS1 game (its start asks for the exact code validation, below in this file).
+	if (s_ps1_game)
+		s_profile.iop_fast = s_profile.iop_sleep = s_profile.skip_auto_fine = s_profile.cpu_auto_up = s_profile.fast_code =
+			s_profile.cpu_seamless = s_profile.disc_no_wait = 0;
 	const int previous_video_ee_rate = s_video_ee_rate;
 	s_video_mode_enabled = s_profile.video_mode >= 0 ? s_profile.video_mode != 0 : s_global_video_mode;
 	s_video_ee_rate = s_profile.video_ee_rate <= 0 ? s_profile.video_ee_rate : VIDEO_EE_RATE;
@@ -2610,6 +2696,30 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		ProbeLog("Compilation 122 rows: IOP asleep in the game %s (%s), cycle skip auto fine %s (%s), CPU auto back up %s (%s)\n",
 			s_iop_sleep_game ? "on" : "off", ProfileOriginName(s_profile.iop_sleep_origin), s_skip_auto_fine ? "on" : "off",
 			ProfileOriginName(s_profile.skip_auto_fine_origin), s_cpu_auto_up ? "on" : "off", ProfileOriginName(s_profile.cpu_auto_up_origin));
+	// Compilation 131 (Joseph, 2026-11-13: "siempre en sí, de fábrica ... y que no esté al ojo público"): the ten improvements read above
+	// are on for every game unless its factory profile, "Modo seguro" or the lab's file (/data/ForjaSX2/pruebas.ini) says otherwise
+	// (ForjaGameProfile::Load gives each as 0 or 1), and their rows show only when that file asks for them.
+	s_safe_mode = s_profile.safe_mode;
+	PS4GameMenu::g_lab_rows_shown.store(s_profile.lab_rows, std::memory_order_relaxed);
+	if (s_safe_mode != 0 || s_profile.has_lab)
+		ProbeLog("Safe mode (compilation 131): %d (%s); lab file pruebas.ini: %s, hidden rows %s, guardian %s\n", s_safe_mode,
+			ProfileOriginName(s_profile.safe_mode_origin), s_profile.has_lab ? "read" : "none", s_profile.lab_rows ? "shown" : "hidden",
+			s_profile.guard ? "on" : "off");
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+	// "Revisión rápida del código" changed under the running game ("Modo seguro", its row, or the profile of the game that really
+	// runs): the recompiler starts over in the new mode. Until the 130 only its row did this.
+	{
+		const bool skip = s_fast_code_marker || s_fast_code_game;
+		if (skip != g_ps4_skip_smc_checks && VMManager::GetDiscCRC() != 0)
+		{
+			g_ps4_skip_smc_checks = skip;
+			g_ps4_bytecopy_fusion = skip && access("/data/ForjaSX2/vm-no-bytecopy-fusion", F_OK) != 0;
+			Cpu->Reset();
+			ProbeLog("EE JIT manual SMC validation: %s (%s; recompiler reset)\n", skip ? "relaxed" : "exact",
+				ProfileOriginName(s_profile.fast_code_origin));
+		}
+	}
+#endif
 	PS4ThreadAffinity::SetGamePlan(s_profile.cores.c_str());
 	ApplyVu1SkipList(s_profile.vu1_skip); // compilation 44: the VU1 filter
 	ApplyGsFilterList(s_profile.gs_filter); // compilation 51: the GS filter
@@ -3254,6 +3364,7 @@ static void UpdateCpuAuto(double elapsed)
 	const bool in_game_3d = PerformanceMetrics::GetVUThreadUsage() >= 8.0f && PerformanceMetrics::GetInternalFPS() >= 5.0f;
 	const bool calm = fast ? elapsed >= s_cpu_fast_no_up_until : elapsed - s_cpu_auto_last_down >= 60.0; // compilation 130
 	const bool room = s_cpu_auto_steps > 0 && speed >= 98.0 && in_game_3d && calm &&
+					  (EmuConfig.Speedhacks.EECycleSkipAuto < 2 || s_skip_auto_at_factory) && // compilation 131: "Salto al vuelo" comes down first
 					  busiest * EERatePercent(rate + 1) / EERatePercent(rate) < 90.0;
 	s_cpu_auto_room_checks = room ? s_cpu_auto_room_checks + 1 : 0;
 	s_cpu_auto_good_checks = speed >= 97.0 ? s_cpu_auto_good_checks + 1 : 0;
@@ -3269,7 +3380,7 @@ static void UpdateCpuAuto(double elapsed)
 					   (!skip_auto || s_skip_auto_at_factory) && s_cpu_auto_probe_at < 0.0 && in_game_3d && calm;
 	if (elapsed - s_cpu_auto_last_change < (fast ? 1.0 : 6.0))
 		return;
-	if (s_cpu_auto_slow_checks >= (fast ? 2u : 6u) && rate > s_cpu_auto_floor && (fast || !s_cpu_auto_up || !skip_auto || !s_skip_auto_can_help))
+	if (s_cpu_auto_slow_checks >= (fast ? 2u : 6u) && rate > s_cpu_auto_floor && ((fast && EmuConfig.Speedhacks.EECycleSkipAuto < 2) || !s_cpu_auto_up || !skip_auto || !s_skip_auto_can_help))
 	{
 		if (fast && elapsed - s_cpu_fast_last_up < 3.0) // compilation 130: a step up that did not hold
 		{
@@ -3315,6 +3426,135 @@ static void UpdateCpuAuto(double elapsed)
 		return;
 	s_cpu_auto_last_change = elapsed;
 	s_cpu_auto_slow_checks = s_cpu_auto_room_checks = s_cpu_auto_good_checks = 0;
+}
+
+// Compilation 131: "Salto de ciclo: Al vuelo" (EECycleSkipAuto = 2), the row's value after Auto. A change of the skip costs nothing
+// (MTVU.cpp reads it at every VU1 program), so it can follow the scene second by second, in quarters, with the values between the row's
+// steps too. Shadow of the Colossus (2026-11-13, the 130, the stairs and the colossi, CPU 36 %): the Auto went to 8 quarters in the heavy
+// view 37 s after the view turned heavy (0 -> 2 -> 4 -> 8, each step judged over two windows; 50-88 % speed meanwhile), and kept them in
+// the lighter ones (a step that gained 25 points isn't taken back for 120 s). Rules, each half second:
+// - slow (under 92 % twice in a row, ~1 s): up as far as the speed says, 4 quarters at once at most. In that session the speed grew
+//   with the skip's load (1 + 0.177 quarters) to the power ~0.6 (0 -> 2: 67 -> 80 %; 2 -> 4: 64 -> 71 %; 4 -> 8: 70 -> 93 %), so the
+//   load wanted is the one now times (97 / speed) ^ (1 / 0.6). 3 s later the step is judged: without 3 points more and still under
+//   92 %, it goes back and no step up for 20 s (doubled up to 120);
+// - room (98 % or more twice in a row, and one quarter less would leave the busiest thread under 90 %): one quarter down; a step down
+//   that is slow again within 3 s holds the next ones for 5 s (doubled up to 40, back to 5 after 30 s without it);
+// - never under the game's factory value nor over 8 quarters (the Auto's own limits); nothing in a movie, a pause or the menu.
+// The CPU automático, when it is on too, lets the skip go first (UpdateCpuAuto).
+// What it does not do: in Shadow's heaviest view the frames stay at 7.5-8.8 a second whatever the skip (the GS at 86-89 %: its draws),
+// and in the colossus fight 4 or 8 quarters gave the same ~10 FPS with every thread under 80 % (the game's own pace at a PS2 CPU of
+// 36 %: that one asks for a higher CPU, which the CPU automático gives when it is on).
+// herramientas/simulaciones/simular_salto_al_vuelo.py, with that session's three views.
+static void UpdateCycleSkipFast(double elapsed)
+{
+	static constexpr int top = 8;
+	static constexpr double per_quarter = 0.177;
+	static double s_last_check = 0.0, s_settle_until = 0.0, s_last_change = 0.0, s_last_down = -1000.0, s_no_down_until = 0.0;
+	static double s_down_wait = 5.0, s_judge_at = -1.0, s_judge_speed = 0.0, s_no_up_until = 0.0, s_up_wait = 20.0;
+	static unsigned s_slow = 0, s_room = 0;
+	static int s_value = 0, s_judge_from = 0;
+	static u32 s_crc = 0;
+	const u32 crc = VMManager::GetDiscCRC();
+	const int floor_q = s_profile.crc == crc ? std::min(s_profile.cycle_skip_factory, top) : 0;
+	const auto set = [&](int next, const char* why, double speed, double busiest) {
+		ProbeLog("Cycle skip al vuelo: %d -> %d quarters (%s; speed %.0f %%, busiest %.0f %%)\n", s_value, next, why, speed, busiest);
+		s_value = next;
+		EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(next / 4);
+		EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(next % 4);
+		s_last_change = elapsed;
+		s_slow = s_room = 0;
+		PublishCycleSkipText();
+	};
+	if (!s_skip_fast_running || crc != s_crc)
+	{
+		s_skip_fast_running = true;
+		s_crc = crc;
+		s_value = floor_q;
+		s_slow = s_room = 0;
+		s_judge_at = -1.0;
+		s_no_down_until = s_no_up_until = 0.0;
+		s_down_wait = 5.0;
+		s_up_wait = 20.0;
+		s_last_down = -1000.0;
+		s_last_change = elapsed;
+		ProbeLog("Cycle skip al vuelo: starts at %d quarters, the game's factory value\n", floor_q);
+	}
+	s_value = std::clamp(s_value, floor_q, top);
+	// A reload of the game's settings brought the profile's value back, or the game has just started.
+	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(s_value / 4);
+	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(s_value % 4);
+	s_skip_auto_at_factory = s_value <= floor_q;
+	s_skip_auto_can_help = s_value < top && elapsed >= s_no_up_until;
+	if (s_video_active)
+	{
+		s_slow = s_room = 0;
+		s_judge_at = -1.0;
+		return;
+	}
+	if (elapsed - s_last_check < 0.5)
+		return;
+	// The menu paused the game: the first numbers after it count that pause.
+	if (elapsed - s_last_check > 1.0)
+	{
+		s_settle_until = elapsed + 2.0;
+		s_slow = s_room = 0;
+		s_judge_at = -1.0;
+	}
+	s_last_check = elapsed;
+	if (elapsed < s_settle_until)
+		return;
+	const double speed = PerformanceMetrics::GetSpeed();
+	// The game stopping (a pause coming in, the PS4's own menu), not a slowdown a skip can fix.
+	if (speed < 20.0)
+	{
+		s_settle_until = elapsed + 2.0;
+		s_slow = s_room = 0;
+		s_judge_at = -1.0;
+		return;
+	}
+	const double busiest = std::max({PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()),
+		static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
+	const double load = 1.0 + per_quarter * s_value;
+	if (s_judge_at >= 0.0)
+	{
+		if (elapsed < s_judge_at)
+			return;
+		s_judge_at = -1.0;
+		if (speed < 92.0 && speed < s_judge_speed + 3.0)
+		{
+			s_no_up_until = elapsed + s_up_wait;
+			s_up_wait = std::min(s_up_wait * 2.0, 120.0);
+			set(s_judge_from, "the step up did not bring the speed back", speed, busiest);
+			return;
+		}
+		s_up_wait = 20.0;
+	}
+	s_slow = speed < 92.0 ? s_slow + 1 : 0;
+	const double lighter = s_value > 0 ? busiest * load / (1.0 + per_quarter * (s_value - 1)) : 100.0;
+	s_room = (s_value > floor_q && speed >= 98.0 && lighter < 90.0 && elapsed >= s_no_down_until) ? s_room + 1 : 0;
+	if (elapsed - s_last_change < 1.0)
+		return;
+	if (s_slow >= 2 && s_value < top && elapsed >= s_no_up_until)
+	{
+		if (elapsed - s_last_down < 3.0) // the step down did not hold
+		{
+			s_no_down_until = elapsed + s_down_wait;
+			s_down_wait = std::min(s_down_wait * 2.0, 40.0);
+		}
+		const double wanted = load * std::pow(97.0 / std::max(speed, 20.0), 1.0 / 0.6);
+		const int next = std::clamp(static_cast<int>(std::ceil((wanted - 1.0) / per_quarter)), s_value + 1, std::min(top, s_value + 4));
+		s_judge_at = elapsed + 3.0;
+		s_judge_speed = speed;
+		s_judge_from = s_value;
+		set(next, "slow", speed, busiest);
+	}
+	else if (s_room >= 2)
+	{
+		if (elapsed - s_no_down_until > 30.0)
+			s_down_wait = 5.0;
+		s_last_down = elapsed;
+		set(s_value - 1, "room", speed, busiest);
+	}
 }
 
 // Compilation 103: "Salto de ciclo: Auto". The least that holds the game's speed: each frame repeated is a frame less, and the best
@@ -3420,6 +3660,15 @@ static void UpdateCycleSkipAuto(double elapsed)
 		*speed = speed_list[similar / 2];
 		return true;
 	};
+	if (EmuConfig.Speedhacks.EECycleSkipAuto >= 2) // compilation 131: "Al vuelo", with its own rules; the Auto starts over when it comes back
+	{
+		s_running = false;
+		s_up = {};
+		s_down = {};
+		UpdateCycleSkipFast(elapsed);
+		return;
+	}
+	s_skip_fast_running = false;
 	if (!EmuConfig.Speedhacks.EECycleSkipAuto || s_video_active)
 	{
 		s_up = {};
@@ -3748,6 +3997,7 @@ static void UpdateGameProfile(double elapsed)
 	const std::string serial = VMManager::GetDiscSerial();
 	ProbeLog("Game profile: PCSX2 runs %s %08X, the library's scan gave %s %08X; reading its profile\n", serial.c_str(), crc,
 		s_profile.serial.c_str(), s_profile.crc);
+	ForjaGuardStart(serial, crc); // compilation 131: the mark goes to the game that really runs
 	ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
 	RepinWorkersForProfile();
 }
@@ -3904,25 +4154,33 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 				false);
 			break;
 		}
+		case PS4GameMenu::ROW_SAFE_MODE: // compilation 131: No / Parcial / Total ([Forja] ModoSeguro); ApplyGameProfile takes it
+		{
+			const int next = (s_safe_mode + delta + 3) % 3;
+			// Total also changes two PCSX2 keys (VMManager.cpp), so the game's layer is read again going into it or out of it.
+			SavePlayerProfile("Safe mode", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "ModoSeguro", next); },
+				next == 2 || s_safe_mode == 2);
+			break;
+		}
 		case PS4GameMenu::ROW_CYCLE_SKIP: // compilation 100
 		{
 			// Compilation 103: no reload: only MTVU.cpp reads these, at every program. Reloading the game's settings reset the recompilers
 			// for nothing: 5-15 s at ~10 % speed with each press (God of War II, 2026-10-31).
-			constexpr int steps = static_cast<int>(std::size(ForjaCycleSkipSteps)) + 1;
+			constexpr int steps = static_cast<int>(std::size(ForjaCycleSkipSteps)) + 2; // compilation 131: and "Al vuelo" after Auto
 			const int step = (static_cast<int>(ForjaCycleSkipStep()) + delta + steps) % steps;
-			const bool automatic = step == static_cast<int>(ForjaCycleSkipAutoStep);
+			const int automatic = step < static_cast<int>(ForjaCycleSkipAutoStep) ? 0 : step - static_cast<int>(ForjaCycleSkipAutoStep) + 1;
 			// Compilation 105: Auto starts at no skip, what's best where the game can do without it. Compilation 109: UpdateCycleSkipAuto starts
 			// it at the game's factory value instead (Guitar Hero III: 2).
 			const int next = automatic ? 0 : ForjaCycleSkipSteps[step];
 			SavePlayerProfile("EE cycle skip", [next, automatic](INISettingsInterface& ini) {
 				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkip", next / 4);
 				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkipQuarters", next % 4);
-				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkipAuto", automatic ? 1 : 0);
+				ini.SetIntValue("EmuCore/Speedhacks", "EECycleSkipAuto", automatic);
 			}, false);
 			EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(next / 4);
 			EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(next % 4);
-			EmuConfig.Speedhacks.EECycleSkipAuto = automatic ? 1 : 0;
-			ProbeLog("EE cycle skip: requested=%d quarters, auto=%d\n", next, automatic ? 1 : 0);
+			EmuConfig.Speedhacks.EECycleSkipAuto = static_cast<u8>(automatic);
+			ProbeLog("EE cycle skip: requested=%d quarters, auto=%d\n", next, automatic);
 			PublishCycleSkipText();
 			break;
 		}
@@ -5029,7 +5287,7 @@ void VMHostPoll()
 		if (confirm && (row == PS4GameMenu::ROW_OVERLAY || row == PS4GameMenu::ROW_VIDEO_MODE || row == PS4GameMenu::ROW_FRAME_GEN ||
 						   row == PS4GameMenu::ROW_SHARPNESS || row == PS4GameMenu::ROW_DEINTERLACE || row == PS4GameMenu::ROW_TEXTURE_FILTER ||
 						   row == PS4GameMenu::ROW_CORES || row == PS4GameMenu::ROW_CPU_AUTO || row == PS4GameMenu::ROW_CYCLE_SKIP || row == PS4GameMenu::ROW_SPEED_LIMIT || row == PS4GameMenu::ROW_RESET_PROFILE ||
-						   row == PS4GameMenu::ROW_GS_SKIP || row == PS4GameMenu::ROW_CROWD ||
+						   row == PS4GameMenu::ROW_GS_SKIP || row == PS4GameMenu::ROW_SAFE_MODE || row == PS4GameMenu::ROW_CROWD ||
 						   row == PS4GameMenu::ROW_SAVE_STATE || row == PS4GameMenu::ROW_LOAD_STATE || row == PS4GameMenu::ROW_RESTART ||
 						   row == PS4GameMenu::ROW_CHEATS ||
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
@@ -5145,10 +5403,15 @@ void VMHostPoll()
 			// Compilation 124: Up and Down go along the whole list (one list since this compilation, GameMenu.cpp), wrapping around it;
 			// L1/R1 still jump between its sections.
 			const unsigned first = 0, count = PS4GameMenu::TAB_FIRST_ROW[PS4GameMenu::TAB_COUNT];
-			if (navigation == ORBIS_PAD_BUTTON_UP)
-				s_game_menu_selection = first + (row - first + count - 1) % count;
-			else if (navigation == ORBIS_PAD_BUTTON_DOWN)
-				s_game_menu_selection = first + (row - first + 1) % count;
+			if (navigation == ORBIS_PAD_BUTTON_UP || navigation == ORBIS_PAD_BUTTON_DOWN)
+			{
+				// Compilation 131: over the hidden rows (PS4GameMenu::RowHidden).
+				const unsigned move = navigation == ORBIS_PAD_BUTTON_UP ? count - 1 : 1;
+				unsigned next = first + (row - first + move) % count;
+				for (unsigned tries = 0; tries < count && PS4GameMenu::RowHidden(next); tries++)
+					next = first + (next - first + move) % count;
+				s_game_menu_selection = next;
+			}
 			// Compilation 79: and the report's word, the one row of Sistema with values (in the 77 Left/Right did nothing there, so
 			// every report said "Perfecto").
 			else if (row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
@@ -5270,6 +5533,9 @@ static void* RunVM(void*)
 	settings->SetBoolValue("EmuCore/CPU/Recompiler", "vu1SignOverflow", false);
 	settings->SetBoolValue("EmuCore/Speedhacks", "IntcStat", true);
 	settings->SetBoolValue("EmuCore/Speedhacks", "WaitLoop", true);
+	// Compilation 131 (Joseph, 2026-11-13: the improvements on from the factory): "Refrescos sin repetir" for every game, the row of the
+	// 128 (hidden now). A game's profile still wins, and "Modo seguro: Total" turns it off (VMManager.cpp).
+	settings->SetBoolValue("EmuCore/GS", "SkipDuplicateFrames", true);
 	const bool fast_cdvd = (access("/data/ForjaSX2/vm-fast-cdvd", F_OK) == 0 || forja.fast_cdvd) &&
 	                       access("/data/ForjaSX2/vm-no-fast-cdvd", F_OK) != 0;
 	settings->SetBoolValue("EmuCore/Speedhacks", "fastCDVD", fast_cdvd);
@@ -5525,6 +5791,8 @@ static void* RunVM(void*)
 			ResetGsFilterList(); // compilation 54: a new game's list starts empty
 			LoadRules(); // compilation 55: huellas.ini, before the profile turns its rules on
 			StartHangWatch();
+			s_ps1_game = platform == GamePlatform::PS1; // compilation 131
+			ForjaGuardStart(serial, crc); // compilation 131: before the profile is read
 			ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
 			RepinWorkersForProfile();
 #if defined(PCSX2_PS4_VM_BOOT_JIT)
@@ -5726,6 +5994,7 @@ static void* RunVM(void*)
 			s_log_direct_boot = false;
 			PS4ProbeLogger::SetDirect(false);
 		}
+		g_forja_guard_mark[0] = '\0'; // compilation 131: the game is over; what happens from here on is not its fault
 		VMManager::Shutdown(false);
 		// Forja SX2 (compilation 37): a normal end: the 50 Hz output worked or was never asked for.
 		PS4Port::g_output_hz_request.store(0, std::memory_order_relaxed);

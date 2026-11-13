@@ -925,8 +925,8 @@ tr: N'agit pas : le CPU de la PS2 de ce jeu (%d %%) est déjà aussi bas ou plus
 es: Salto de ciclo:  < %s >
 tr: Saut de cycle :  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
-tr: Allège la console : la vitesse s'approche de 100 %, mais le jeu peut répéter des images. Auto l'ajuste tout seul. Enregistré pour ce jeu
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo sube y lo baja cada segundo según la escena. Se guarda para este juego
+tr: Allège la console : la vitesse s'approche de 100 %, mais le jeu peut répéter des images. Auto l'ajuste tout seul ; À la volée (test) le monte et le baisse chaque seconde selon la scène. Enregistré pour ce jeu
 
 es: Límite de velocidad:  < %s >
 tr: Limite de vitesse :  < %s >
@@ -1023,6 +1023,18 @@ tr: Rafraîchissements sans répétition :  < %s >
 
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: Test : quand le jeu n'a pas fait de nouvelle image, l'émulateur ne réaffiche pas la même et le GS économise ce travail. Utile pour les jeux lents que le GS ralentit (Shadow of the Colossus). Si l'image saute bizarrement, mettez Non. Enregistré pour ce jeu
+
+es: Parcial
+tr: Partiel
+
+es: Total
+tr: Total
+
+es: Modo seguro:  < %s >
+tr: Mode sûr :  < %s >
+
+es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego
+tr: Si ce jeu se ferme, se bloque ou s'affiche mal, essayez Partiel puis Total : ils désactivent des améliorations internes de vitesse, et le jeu peut être plus lent. Forja met Partiel tout seul si la partie précédente s'est mal terminée. Enregistré pour ce jeu
 
 es: Disco sin esperas:  < %s >
 tr: Disque sans attente :  < %s >

@@ -925,8 +925,8 @@ tr: Wirkt nicht: Die PS2-CPU dieses Spiels (%d %%) ist schon so niedrig oder nie
 es: Salto de ciclo:  < %s >
 tr: Zyklussprung:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo. Se guarda para este juego
-tr: Entlastet die Konsole: Die Geschwindigkeit nähert sich 100 %, aber das Spiel kann Bilder wiederholen. Auto passt es selbst an. Für dieses Spiel gespeichert
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo sube y lo baja cada segundo según la escena. Se guarda para este juego
+tr: Entlastet die Konsole: Die Geschwindigkeit nähert sich 100 %, aber das Spiel kann Bilder wiederholen. Auto passt es selbst an; Bei Bedarf (Test) erhöht und senkt es jede Sekunde je nach Szene. Für dieses Spiel gespeichert
 
 es: Límite de velocidad:  < %s >
 tr: Geschwindigkeitslimit:  < %s >
@@ -1023,6 +1023,18 @@ tr: Keine wiederholten Bilder:  < %s >
 
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: Test: Wenn das Spiel kein neues Bild gemacht hat, zeigt der Emulator dasselbe nicht noch einmal und der GS spart diese Arbeit. Hilft bei langsamen Spielen, die der GS bremst (Shadow of the Colossus). Wenn das Bild seltsam springt, auf Nein stellen. Für dieses Spiel gespeichert
+
+es: Parcial
+tr: Teilweise
+
+es: Total
+tr: Vollständig
+
+es: Modo seguro:  < %s >
+tr: Sicherer Modus:  < %s >
+
+es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego
+tr: Wenn dieses Spiel sich schließt, hängt oder falsch aussieht, versuche Teilweise und dann Vollständig: Sie schalten interne Tempo-Verbesserungen aus, und das Spiel kann langsamer laufen. Forja stellt selbst Teilweise ein, wenn die letzte Sitzung schlecht endete. Für dieses Spiel gespeichert
 
 es: Disco sin esperas:  < %s >
 tr: Disc ohne Warten:  < %s >
