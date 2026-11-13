@@ -1024,6 +1024,24 @@ tr: Atualizações sem repetir:  < %s >
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: Teste: quando o jogo não fez um quadro novo, o emulador não mostra o mesmo de novo e o GS economiza esse trabalho. Serve nos jogos lentos que o GS segura (Shadow of the Colossus). Se a imagem der saltos estranhos, coloque em Não. Salvo para este jogo
 
+es: Código listo al arrancar:  < %s >
+tr: Código pronto ao iniciar:  < %s >
+
+es: Prueba: Forja recuerda qué partes del juego tradujo en partidas anteriores y las traduce de antemano en los ratos libres, para que no den tirones al llegar a ellas. La primera partida solo aprende; se nota desde la segunda. Si el juego falla, ponlo en No. Se guarda para este juego
+tr: Teste: o Forja lembra quais partes do jogo traduziu em partidas anteriores e as traduz antes, nos momentos livres, para que não causem travadas ao chegar nelas. A primeira partida só aprende; nota-se a partir da segunda. Se o jogo falhar, coloque em Não. Fica salvo para este jogo
+
+es: Saltos rápidos del VU1:  < %s >
+tr: Saltos rápidos do VU1:  < %s >
+
+es: Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego
+tr: Teste: os saltos dos programas do VU1 são resolvidos sem sair do código traduzido. Alivia o VU1 nos jogos que o enchem (God of War). Se a imagem quebrar ou o jogo falhar, coloque em Não. Fica salvo para este jogo
+
+es: Empujón de cuadros:  < %s >
+tr: Empurrão de quadros:  < %s >
+
+es: Prueba: cuando el juego queda dando menos cuadros que hace un momento aunque a la consola le sobre fuerza, sube la CPU de la PS2 dos segundos y la devuelve. Sirve con la CPU de la PS2 por debajo de 100 %. Se guarda para este juego
+tr: Teste: quando o jogo fica com menos quadros do que há um momento mesmo com o console sobrando força, sobe a CPU do PS2 por dois segundos e a devolve. Serve com a CPU do PS2 abaixo de 100 %. Fica salvo para este jogo
+
 es: Parcial
 tr: Parcial
 

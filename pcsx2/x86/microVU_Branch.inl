@@ -285,6 +285,10 @@ void normBranchCompile(microVU& mVU, u32 branchPC)
 		mVUcompile(mVU, branchPC, (uptr)&mVUregs);
 }
 
+// Forja SX2 (compilation 132): "Saltos rápidos del VU1" ([Forja] SaltosVU1), read when a block is compiled.
+#include <atomic>
+extern std::atomic<bool> g_forja_vu_jump_inline; // microVU.cpp
+
 void normJumpCompile(mV, microFlagCycles& mFC, bool isEvilJump)
 {
 	memcpy(&mVUpBlock->pStateEnd, &mVUregs, sizeof(microRegInfo));
@@ -303,7 +307,32 @@ void normJumpCompile(mV, microFlagCycles& mFC, bool isEvilJump)
 		xMOV(ptr32[&mVU.evilBranch], gprT1);
 	}
 	else
+	{
 		xMOV(arg1regd, ptr32[&mVU.branch]);
+		// Forja SX2 (compilation 132): the jump cache's check, here instead of in mVUcompileJIT. God of War II (2026-11-09, the 129, its
+		// VU1 thread at 96-100 %): 3.3 % of that thread's samples are in mVUcompileJIT, which a JR or JALR calls every time it runs
+		// only to find, nearly always, that the target it took last time is still good (jc.prog == quick[startPC / 8].prog) and
+		// return it; around the call the code saves and reloads registers. The same test in the block's own code: equal and not
+		// null, start_pc is set as that function sets it and the jump goes straight to the cached target; anything else takes the
+		// call below, which fills the cache as before. Both tables have 16-byte entries and startPC is a multiple of 8 inside the
+		// program (normJumpPass2), so an entry is at startPC * 2. Nothing is live in registers here but xmmPQ (mVUbackupRegs above
+		// flushed the rest and saved it), and the direct jump leaves it as it is, which is what mVUrestoreRegs would give back.
+		// The VU1 only: the VU0 runs on the EE thread and is not what holds any game back.
+		if (doJumpCaching && !doJumpAsSameProgram && mVU.index == 1 && g_forja_vu_jump_inline.load(std::memory_order_relaxed))
+		{
+			xLoadFarAddr(arg2reg, (void*)&mVU.prog.quick[0].prog);
+			xMOV(gprT1q, ptr64[arg1reg * 2 + arg2reg]); // the program that owns startPC now
+			xLoadFarAddr(arg2reg, (void*)&mVUpBlock->jumpCache[0]);
+			xTEST(gprT1q, gprT1q);
+			xForwardJZ8 no_program;
+			xCMP(gprT1q, ptr64[arg1reg * 2 + arg2reg]); // jc.prog
+			xForwardJNZ8 other_program;
+			xMOV(ptr32[&mVU.regs().start_pc], arg1regd);
+			xJMP(ptrNative[arg1reg * 2 + arg2reg + 8]); // jc.x86ptrStart
+			no_program.SetTarget();
+			other_program.SetTarget();
+		}
+	}
 	if (doJumpCaching)
 		xLoadFarAddr(arg2reg, mVUpBlock);
 	else

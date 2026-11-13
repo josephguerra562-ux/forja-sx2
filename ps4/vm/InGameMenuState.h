@@ -91,6 +91,12 @@ namespace PS4GameMenu
 		// Compilation 130: "Disco sin esperas" ([Forja] DiscoSinEsperas): a sector not here yet from the console's disc makes the read come
 		// back later in the PS2's time instead of the emulator standing still (pcsx2/CDVD/CDVD.cpp). Off until measured.
 		ROW_DISC_NO_WAIT,
+		// Compilation 132, in sight and off until each is tried on the console (the rows above this one are hidden since the 131):
+		// "Código listo al arrancar" ([Forja] CodigoListo), "Saltos rápidos del VU1" ([Forja] SaltosVU1) and "Empujón de cuadros"
+		// ([Forja] EmpujonCuadros); ForjaGameProfile.h says what each is.
+		ROW_CODE_AHEAD,
+		ROW_VU_JUMPS,
+		ROW_FRAME_PUSH,
 		// Reportes (compilation 86, Joseph, 2026-10-24: "entre no tocar y sistema ... para que diga reportes"; until 85 in Sistema)
 		ROW_REPORT, // compilation 77: "Reportar este juego" (main.cpp, SendReport; ForjaReport.cpp)
 		// Compilation 80: what went wrong, for the report: the picture, the sound and the controls are what no meter sees.

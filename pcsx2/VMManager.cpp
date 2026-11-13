@@ -2415,6 +2415,8 @@ void VMManager::ResetFrameLimiter()
 }
 
 unsigned long long g_orbis_ee_throttle_ticks; // eerec-281
+extern bool ForjaCodeAheadTick(double budget_ms) __attribute__((weak)); // x86/ix86-32/iR5900.cpp (compilation 132)
+
 void VMManager::Internal::Throttle()
 {
 	struct OrbisThrottleTimer
@@ -2425,6 +2427,11 @@ void VMManager::Internal::Throttle()
 	OrbisEEWaitScope orbis_wait; // vk-285-8
 	if (s_target_speed == 0.0f || s_use_vsync_for_timing)
 		return;
+
+	// Forja SX2 (compilation 132): "Código listo al arrancar", what it owes right after a save state's load (iR5900.cpp): up to 40 ms
+	// here, before the frame's time is read, so the limiter sees it as part of a long frame.
+	if (ForjaCodeAheadTick)
+		ForjaCodeAheadTick(0.0);
 
 	const u64 uExpectedEnd =
 		s_limiter_frame_start +
@@ -2449,7 +2456,14 @@ void VMManager::Internal::Throttle()
 	}
 
 	// Conversion of delta from CPU ticks (microseconds) to milliseconds
-	const s32 msec = static_cast<s32>((sDeltaTime * -1000) / static_cast<s64>(GetTickFrequency()));
+	s32 msec = static_cast<s32>((sDeltaTime * -1000) / static_cast<s64>(GetTickFrequency()));
+
+	// Forja SX2 (compilation 132): "Código listo al arrancar". With 3 ms or more to sleep, the EE recompiler makes blocks the game
+	// used in earlier sessions with all but the last 2 ms (x86/ix86-32/iR5900.cpp); what is left of the wait is counted again.
+	// (herramientas/simulaciones/simular_codigo_listo.py: in a race of Need for Speed Most Wanted the EE has 3.5-5 ms free a vsync,
+	// and a limit of 4 ms would have left most of them unused.)
+	if (msec > 2 && ForjaCodeAheadTick && ForjaCodeAheadTick(static_cast<double>(msec - 2)))
+		msec = static_cast<s32>(((static_cast<s64>(uExpectedEnd) - static_cast<s64>(GetCPUTicks())) * 1000) / static_cast<s64>(GetTickFrequency()));
 
 	// If any integer value of milliseconds exists, sleep it off.
 	// Prior comments suggested that 1-2 ms sleeps were inaccurate on some OSes;

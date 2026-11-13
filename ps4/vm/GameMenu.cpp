@@ -2382,6 +2382,9 @@ namespace PS4GameMenu
 						draw->AddLine(ip(9, -6), ip(17, 0), icon_line, lw);
 						draw->AddLine(ip(17, 0), ip(9, 6), icon_line, lw);
 						break;
+					case ROW_CODE_AHEAD: // compilation 132: the three new rows take the chip
+					case ROW_VU_JUMPS:
+					case ROW_FRAME_PUSH:
 					case ROW_CPU_SEAMLESS: // a chip with a smooth wave (compilation 128)
 						draw->AddLine(ip(-10, -10), ip(10, -10), icon_line, lw);
 						draw->AddLine(ip(10, -10), ip(10, 10), icon_line, lw);
@@ -2562,7 +2565,7 @@ namespace PS4GameMenu
 				if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)
 					return T("ELEGIR  ·  X");
 				if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD || row == ROW_SW_JIT || row == ROW_FPU_EXACT || row == ROW_IOP_FAST ||
-				    row == ROW_IOP_SLEEP || row == ROW_SKIP_AUTO_FINE || row == ROW_CPU_AUTO_UP || row == ROW_FAST_CODE_CHECK || row == ROW_VU1_FAST || row == ROW_EFFECTS_AHEAD || row == ROW_SKIP_REPEATS || row == ROW_CPU_SEAMLESS || row == ROW_DISC_NO_WAIT) // 122; 124; 126; 127; 128; 130
+				    row == ROW_IOP_SLEEP || row == ROW_SKIP_AUTO_FINE || row == ROW_CPU_AUTO_UP || row == ROW_FAST_CODE_CHECK || row == ROW_VU1_FAST || row == ROW_EFFECTS_AHEAD || row == ROW_SKIP_REPEATS || row == ROW_CPU_SEAMLESS || row == ROW_DISC_NO_WAIT || row == ROW_CODE_AHEAD || row == ROW_VU_JUMPS || row == ROW_FRAME_PUSH) // 122; 124; 126; 127; 128; 130; 132
 					return T("ELEGIR");
 				if (row == ROW_RECOMMENDED)
 					return "X";

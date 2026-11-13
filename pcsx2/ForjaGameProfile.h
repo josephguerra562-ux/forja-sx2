@@ -127,6 +127,17 @@ namespace ForjaGameProfile
 		bool has_lab = false;
 		bool lab_rows = false;
 		bool guard = true;
+		// Compilation 132, the three new rows of No tocar, in sight and off until each is tried on the console (0 or 1 from Load, like
+		// the hidden ones; "Modo seguro" turns them off too): [Forja] CodigoListo, the EE's blocks of earlier sessions made ahead
+		// (x86/ix86-32/iR5900.cpp); [Forja] SaltosVU1, a VU1 jump's cached target taken in the block's own code
+		// (x86/microVU_Branch.inl); [Forja] EmpujonCuadros, a two-second raise of the PS2 CPU when the game stays at fewer frames with
+		// room to spare (ps4/vm/main.cpp, UpdateFramePush).
+		int code_ahead = 0;
+		Origin code_ahead_origin = Origin::Global;
+		int vu_jumps = 0;
+		Origin vu_jumps_origin = Origin::Global;
+		int frame_push = 0;
+		Origin frame_push_origin = Origin::Global;
 	};
 
 	// Forja SX2 (compilation 44): the settings center's copy (/data/ForjaSX2/centro/perfiles, fetched from the project's GitHub by
@@ -273,22 +284,27 @@ namespace ForjaGameProfile
 			int* value;
 			Origin* origin;
 			int safe_level; // the "Modo seguro" that turns it off
+			int fallback; // with nothing said: 1 for the hidden ones, 0 for the rows still being tried (compilation 132)
+			bool in_sight; // its row shows, so the player's value counts
 		};
 		const Hidden hidden[] = {
-			{"GrabarEnOtroHilo", &v.draw_thread, &v.draw_thread_origin, 2},
-			{"TraductorSoftware", &v.sw_jit, &v.sw_jit_origin, 2},
-			{"IopRapido", &v.iop_fast, &v.iop_fast_origin, 2},
-			{"IopDormido", &v.iop_sleep, &v.iop_sleep_origin, 2},
-			{"SaltoAutoAfinado", &v.skip_auto_fine, &v.skip_auto_fine_origin, 2},
-			{"CpuAutoSube", &v.cpu_auto_up, &v.cpu_auto_up_origin, 2},
-			{"RevisionRapida", &v.fast_code, &v.fast_code_origin, 1},
-			{"EfectosListos", &v.effects_ahead, &v.effects_ahead_origin, 2},
-			{"CpuSinTirones", &v.cpu_seamless, &v.cpu_seamless_origin, 1},
-			{"DiscoSinEsperas", &v.disc_no_wait, &v.disc_no_wait_origin, 1},
+			{"GrabarEnOtroHilo", &v.draw_thread, &v.draw_thread_origin, 2, 1, false},
+			{"TraductorSoftware", &v.sw_jit, &v.sw_jit_origin, 2, 1, false},
+			{"IopRapido", &v.iop_fast, &v.iop_fast_origin, 2, 1, false},
+			{"IopDormido", &v.iop_sleep, &v.iop_sleep_origin, 2, 1, false},
+			{"SaltoAutoAfinado", &v.skip_auto_fine, &v.skip_auto_fine_origin, 2, 1, false},
+			{"CpuAutoSube", &v.cpu_auto_up, &v.cpu_auto_up_origin, 2, 1, false},
+			{"RevisionRapida", &v.fast_code, &v.fast_code_origin, 1, 1, false},
+			{"EfectosListos", &v.effects_ahead, &v.effects_ahead_origin, 2, 1, false},
+			{"CpuSinTirones", &v.cpu_seamless, &v.cpu_seamless_origin, 1, 1, false},
+			{"DiscoSinEsperas", &v.disc_no_wait, &v.disc_no_wait_origin, 1, 1, false},
+			{"CodigoListo", &v.code_ahead, &v.code_ahead_origin, 1, 0, true},
+			{"SaltosVU1", &v.vu_jumps, &v.vu_jumps_origin, 1, 0, true},
+			{"EmpujonCuadros", &v.frame_push, &v.frame_push_origin, 1, 0, true},
 		};
 		for (const Hidden& h : hidden)
 		{
-			int value = 1, read = 0;
+			int value = h.fallback, read = 0;
 			Origin origin = Origin::Global;
 			if (v.has_lab && lab.GetIntValue("Forja", h.key, &read))
 			{
@@ -300,7 +316,7 @@ namespace ForjaGameProfile
 				value = 0;
 				origin = Origin::Safe;
 			}
-			else if (v.lab_rows && v.has_player && player.GetIntValue("Forja", h.key, &read))
+			else if ((h.in_sight || v.lab_rows) && v.has_player && player.GetIntValue("Forja", h.key, &read))
 			{
 				value = read != 0 ? 1 : 0;
 				origin = Origin::Player;

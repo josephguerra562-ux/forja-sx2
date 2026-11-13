@@ -15,6 +15,9 @@
 #include <thread>
 #include <vector>
 
+// Forja SX2 (compilation 132): "Saltos rápidos del VU1" (microVU_Branch.inl, normJumpCompile), set by ps4/vm/main.cpp from the game's row.
+std::atomic<bool> g_forja_vu_jump_inline{false};
+
 //------------------------------------------------------------------
 // Micro VU - Main Functions
 //------------------------------------------------------------------

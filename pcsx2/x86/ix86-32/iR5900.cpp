@@ -856,6 +856,266 @@ alignas(16) static u16 manual_page[Ps2MemSize::TotalRam >> 12];
 alignas(16) static u8 manual_counter[Ps2MemSize::TotalRam >> 12];
 
 ////////////////////////////////////////////////////
+// Forja SX2 (compilation 132): "Código listo al arrancar" ([Forja] CodigoListo), "Efectos listos" for the EE's code.
+// Need for Speed Most Wanted (2026-11-13, the 131): 18 of its 24 hitches in 2 min 50 s were the game reaching code for the first time,
+// 800-3,000 blocks translated in one go (55-223 ms, ~70 us a block). The blocks a game runs are nearly the same from one session to the
+// next, so the list of what was translated (where each block starts, how long it is, and a hash of its instructions) is kept per game,
+// and in the next session those blocks are translated in the time the speed limiter would sleep (VMManager::Internal::Throttle), a
+// few at each vsync, before the game gets to them.
+// A block is made ahead only while the game's memory holds exactly the instructions it was made from last time (the hash), so it is
+// the block the game would get by reaching it now; from there on it is a block like any other (the same checks, the same clears).
+// Only main RAM above the kernel, only after the game's own entry point ran, never when a reset could come (the code buffer nearly
+// full, the counting rule about to change), and one block of work past the budget at most.
+#include "common/Timer.h"
+#include <cstdio>
+#include <unordered_set>
+#include <vector>
+
+std::atomic<bool> g_forja_code_ahead{false}; // ps4/vm/main.cpp: the game's row
+std::atomic<u32> g_forja_code_ahead_known{0}, g_forja_code_ahead_done{0}, g_forja_code_ahead_left{0};
+
+namespace
+{
+	struct ForjaCodeEntry
+	{
+		u32 pc;
+		u32 hash;
+		u16 words;
+		u8 done;
+		u8 spare;
+	};
+	constexpr size_t FORJA_CODE_MAX = 200000;
+	constexpr u32 FORJA_CODE_FIRST = 0x00100000, FORJA_CODE_END = 0x02000000;
+	constexpr u32 FORJA_CODE_MAGIC = 0x41434A46; // "FJCA"
+
+	struct
+	{
+		std::vector<ForjaCodeEntry> entries;
+		std::unordered_set<u64> known; // pc and hash: the same place with other code (an overlay) is another entry
+		size_t limit = 0, cursor = 0, saved = 0;
+		u32 left = 0, done = 0, generation = 0;
+		bool compiling = false;
+		// A reset that is not the game's first is a save state being loaded. What the game needs right after it are the blocks it
+		// made right after the same load when the list was learned: they start at `mark` (how long the list was at that reset, kept
+		// in the file), so that is where the pass starts then. And the first 400 ms of them are made at once, 40 ms a vsync at
+		// most, without waiting for spare time: the load is a pause already, and those blocks are the bursts of 1,000-3,000 that
+		// follow it (Need for Speed and Bully, 2026-11-13: four to six hitches in the 5 s after each load).
+		// herramientas/simulaciones/simular_codigo_listo.py.
+		size_t mark = 0, origin = 0;
+		double eager_ms = 0.0;
+		u64 next_pass = 0;
+	} s_fca;
+
+	u32 ForjaCodeHash(const u32* words, u32 count)
+	{
+		u32 hash = 2166136261u;
+		for (u32 i = 0; i < count; i++)
+		{
+			hash ^= words[i];
+			hash *= 16777619u;
+		}
+		return hash;
+	}
+
+	bool ForjaCodeFits(u32 pc, u32 words)
+	{
+		return pc >= FORJA_CODE_FIRST && pc < FORJA_CODE_END && (pc & 3) == 0 && words != 0 && (pc & 0xfff) + words * 4 <= 0x1000;
+	}
+
+	void ForjaCodePublish()
+	{
+		g_forja_code_ahead_known.store(static_cast<u32>(s_fca.entries.size()), std::memory_order_relaxed);
+		g_forja_code_ahead_done.store(s_fca.done, std::memory_order_relaxed);
+		g_forja_code_ahead_left.store(s_fca.left, std::memory_order_relaxed);
+	}
+} // namespace
+
+// A new game: the list of its earlier sessions (an empty path: none, and nothing is kept).
+void ForjaCodeAheadBegin(const char* path)
+{
+	s_fca.entries.clear();
+	s_fca.known.clear();
+	s_fca.limit = s_fca.cursor = s_fca.saved = 0;
+	s_fca.left = s_fca.done = 0;
+	s_fca.compiling = false;
+	s_fca.mark = s_fca.origin = 0;
+	s_fca.eager_ms = 0.0;
+	s_fca.next_pass = 0;
+	s_fca.generation++;
+	if (path && *path)
+	{
+		if (std::FILE* file = std::fopen(path, "rb"))
+		{
+			u32 head[4] = {};
+			if (std::fread(head, sizeof(u32), 4, file) == 4 && head[0] == FORJA_CODE_MAGIC && head[1] == 2 && head[2] <= FORJA_CODE_MAX)
+			{
+				s_fca.entries.resize(head[2]);
+				if (head[2] != 0 && std::fread(s_fca.entries.data(), sizeof(ForjaCodeEntry), head[2], file) != head[2])
+					s_fca.entries.clear();
+				else
+					s_fca.mark = head[3];
+			}
+			std::fclose(file);
+		}
+		size_t kept = 0;
+		for (size_t i = 0; i < s_fca.entries.size(); i++)
+		{
+			ForjaCodeEntry e = s_fca.entries[i];
+			if (!ForjaCodeFits(e.pc, e.words) || !s_fca.known.insert((static_cast<u64>(e.pc) << 32) | e.hash).second)
+				continue;
+			e.done = 0;
+			e.spare = 0;
+			s_fca.entries[kept++] = e;
+		}
+		if (kept != s_fca.entries.size() || s_fca.mark >= kept)
+			s_fca.mark = 0; // entries left out: the place no longer means anything
+		s_fca.entries.resize(kept);
+		s_fca.limit = s_fca.saved = kept;
+		s_fca.left = static_cast<u32>(kept);
+	}
+	ForjaCodePublish();
+}
+
+// The list with this session's blocks added. Not forced: only when it grew enough to be worth a write.
+bool ForjaCodeAheadSave(const char* path, bool force)
+{
+	if (!path || !*path || s_fca.entries.size() == s_fca.saved || (!force && s_fca.entries.size() < s_fca.saved + 200))
+		return false;
+	const std::string temp = std::string(path) + ".nuevo";
+	std::FILE* file = std::fopen(temp.c_str(), "wb");
+	if (!file)
+		return false;
+	const u32 head[4] = {FORJA_CODE_MAGIC, 2, static_cast<u32>(s_fca.entries.size()), static_cast<u32>(s_fca.mark)};
+	bool ok = std::fwrite(head, sizeof(u32), 4, file) == 4;
+	ok = ok && std::fwrite(s_fca.entries.data(), sizeof(ForjaCodeEntry), s_fca.entries.size(), file) == s_fca.entries.size();
+	ok = (std::fclose(file) == 0) && ok;
+	if (!ok || std::rename(temp.c_str(), path) != 0)
+	{
+		std::remove(temp.c_str());
+		return false;
+	}
+	s_fca.saved = s_fca.entries.size();
+	return true;
+}
+
+// recRecompile: a block was made (by the game, not ahead).
+static void ForjaCodeAheadRecord(u32 startpc, u32 words)
+{
+	if (s_fca.compiling || !g_forja_code_ahead.load(std::memory_order_relaxed) || !ForjaCodeFits(startpc, words) ||
+		s_fca.entries.size() >= FORJA_CODE_MAX)
+		return;
+	const u32* source = reinterpret_cast<const u32*>(PSM(startpc));
+	if (!source)
+		return;
+	const u32 hash = ForjaCodeHash(source, words);
+	if (!s_fca.known.insert((static_cast<u64>(startpc) << 32) | hash).second)
+		return;
+	s_fca.entries.push_back({startpc, hash, static_cast<u16>(words), 1, 0});
+	g_forja_code_ahead_known.store(static_cast<u32>(s_fca.entries.size()), std::memory_order_relaxed);
+}
+
+// recResetRaw: every block is gone, so everything known can be made ahead again (the reset's own hitch is this same work).
+static void ForjaCodeAheadOnReset()
+{
+	bool had_blocks = false;
+	for (ForjaCodeEntry& e : s_fca.entries)
+	{
+		had_blocks = had_blocks || e.done != 0;
+		e.done = 0;
+	}
+	// Only with the game itself running: the resets while the console's own program hands over to the game are not a load.
+	const u32 entry = VMManager::Internal::GetCurrentELFEntryPoint();
+	const bool game_running = entry >= FORJA_CODE_FIRST && entry < FORJA_CODE_END && PC_GETBLOCK(entry)->GetFnptr() != (uptr)JITCompile;
+	if (had_blocks && game_running)
+	{
+		if (s_fca.mark == 0)
+			s_fca.mark = s_fca.entries.size(); // learned now: what comes after this load goes after this place
+		s_fca.origin = s_fca.mark < s_fca.entries.size() ? s_fca.mark : 0;
+		s_fca.eager_ms = 400.0;
+	}
+	else
+		s_fca.origin = 0;
+	s_fca.limit = s_fca.entries.size();
+	s_fca.left = static_cast<u32>(s_fca.limit);
+	s_fca.cursor = 0;
+	s_fca.next_pass = 0;
+	s_fca.generation++;
+	ForjaCodePublish();
+}
+
+// The EE thread, between two blocks, with `budget_ms` it would otherwise sleep; 0: only what is owed right after a save state's load.
+// True when it used some time.
+bool ForjaCodeAheadTick(double budget_ms)
+{
+	const bool eager = budget_ms <= 0.0;
+	if (eager)
+	{
+		if (s_fca.eager_ms <= 0.0)
+			return false;
+		budget_ms = std::min(s_fca.eager_ms, 40.0);
+	}
+	if (!g_forja_code_ahead.load(std::memory_order_relaxed) || !eeCpuExecuting || s_fca.compiling || s_fca.left == 0 || eeRecNeedsReset ||
+		!recPtr || recPtrEnd - recPtr < static_cast<sptr>(8 * 1024 * 1024) ||
+		g_orbis_rec_nocount.load(std::memory_order_relaxed) != s_orbis_rec_nocount)
+		return false;
+	// Not before the game itself started: its entry point is the block that tells the rest of the emulator so.
+	const u32 entry = VMManager::Internal::GetCurrentELFEntryPoint();
+	if (entry < FORJA_CODE_FIRST || entry >= FORJA_CODE_END || PC_GETBLOCK(entry)->GetFnptr() == (uptr)JITCompile)
+		return false;
+	const u64 start = Common::Timer::GetCurrentValue();
+	if (s_fca.cursor >= s_fca.limit)
+	{
+		// A whole pass done: what is left waits for its code to be loaded; look again in a while.
+		if (start < s_fca.next_pass)
+			return false;
+		s_fca.cursor = 0;
+	}
+	const u32 generation = s_fca.generation;
+	unsigned looked = 0;
+	bool used = false;
+	while (s_fca.cursor < s_fca.limit && looked < 4000)
+	{
+		const size_t index = (s_fca.origin + s_fca.cursor) % s_fca.limit;
+		s_fca.cursor++;
+		ForjaCodeEntry& e = s_fca.entries[index];
+		looked++;
+		if (e.done)
+			continue;
+		if (PC_GETBLOCK(e.pc)->GetFnptr() != (uptr)JITCompile)
+		{
+			e.done = 1; // the game got there first
+			s_fca.left--;
+			continue;
+		}
+		const u32* source = reinterpret_cast<const u32*>(PSM(e.pc));
+		if (!source || ForjaCodeHash(source, e.words) != e.hash)
+			continue; // not loaded yet, or other code there now
+		const u32 pc = e.pc;
+		s_fca.compiling = true;
+		recRecompile(pc);
+		s_fca.compiling = false;
+		used = true;
+		if (generation != s_fca.generation)
+			break; // a reset after all: the list starts over
+		s_fca.entries[index].done = 1;
+		s_fca.left--;
+		s_fca.done++;
+		if (eeRecNeedsReset || recPtrEnd - recPtr < static_cast<sptr>(8 * 1024 * 1024) ||
+			Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - start) >= budget_ms)
+			break;
+	}
+	if (generation == s_fca.generation && s_fca.cursor >= s_fca.limit)
+		s_fca.next_pass = Common::Timer::GetCurrentValue() + Common::Timer::ConvertSecondsToValue(5.0);
+	if (eager)
+	{
+		// What was owed is paid with the time spent; a call that made nothing (all there already, or the code not loaded) ends it.
+		const double spent = Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - start);
+		s_fca.eager_ms = used ? s_fca.eager_ms - std::max(spent, 1.0) : 0.0;
+	}
+	ForjaCodePublish();
+	return used || looked >= 1000;
+}
+
 static void recResetRaw()
 {
 	g_orbis_rec_full_resets.fetch_add(1, std::memory_order_relaxed); // vk-285-27
@@ -866,6 +1126,7 @@ static void recResetRaw()
 	s_forja_repatch_pending = false;
 	s_forja_cycle_patchable = g_forja_cpu_seamless.load(std::memory_order_relaxed);
 	g_forja_cpu_seamless_active = s_forja_cycle_patchable;
+	ForjaCodeAheadOnReset(); // compilation 132
 
 	if (CHECK_EXTRAMEM != extraRam)
 	{
@@ -3585,6 +3846,7 @@ StartRecomp:
 
 	pxAssert((pc - startpc) >> 2 <= 0xffff);
 	s_pCurBlockEx->size = (pc - startpc) >> 2;
+	ForjaCodeAheadRecord(startpc, (pc - startpc) >> 2); // compilation 132
 
 	if (HWADDR(pc) <= Ps2MemSize::ExposedRam)
 	{

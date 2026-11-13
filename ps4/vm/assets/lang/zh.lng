@@ -1024,6 +1024,24 @@ tr: 不重复刷新：  < %s >
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: 测试：当游戏没有生成新画面时，模拟器不会再次显示同一画面，GS 的工作会减少。适用于被 GS 拖慢的游戏（Shadow of the Colossus）。如果画面跳动奇怪，请设为否。仅为此游戏保存
 
+es: Código listo al arrancar:  < %s >
+tr: 启动时准备程序：  < %s >
+
+es: Prueba: Forja recuerda qué partes del juego tradujo en partidas anteriores y las traduce de antemano en los ratos libres, para que no den tirones al llegar a ellas. La primera partida solo aprende; se nota desde la segunda. Si el juego falla, ponlo en No. Se guarda para este juego
+tr: 测试:Forja 会记录以前游戏中变换过的程序,并在有空时提前变换,这样游戏运行到那里时不会卡顿。头一次游戏只是记录,从下一次开始有效果。如果游戏出错,请设为否。为此游戏保存
+
+es: Saltos rápidos del VU1:  < %s >
+tr: VU1 快速分支：  < %s >
+
+es: Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego
+tr: 测试:VU1 程序里的分支在已变换的程序内部完成,不用出去。在大量使用 VU1 的游戏中减轻它的负担(God of War)。如果画面损坏或游戏出错,请设为否。为此游戏保存
+
+es: Empujón de cuadros:  < %s >
+tr: 帧数推动：  < %s >
+
+es: Prueba: cuando el juego queda dando menos cuadros que hace un momento aunque a la consola le sobre fuerza, sube la CPU de la PS2 dos segundos y la devuelve. Sirve con la CPU de la PS2 por debajo de 100 %. Se guarda para este juego
+tr: 测试:当主机有空余而游戏的帧数比刚才少时,把 PS2 的 CPU 提高两秒再恢复。PS2 的 CPU 低于 100 % 时有效。为此游戏保存
+
 es: Parcial
 tr: 部分
 

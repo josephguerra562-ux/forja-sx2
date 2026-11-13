@@ -1024,6 +1024,24 @@ tr: Без повторных кадров:  < %s >
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: Тест: когда игра не сделала новый кадр, эмулятор не показывает тот же кадр снова, и GS экономит эту работу. Помогает медленным играм, которые тормозит GS (Shadow of the Colossus). Если картинка странно скачет, поставьте «Нет». Сохраняется для этой игры
 
+es: Código listo al arrancar:  < %s >
+tr: Код готов при запуске:  < %s >
+
+es: Prueba: Forja recuerda qué partes del juego tradujo en partidas anteriores y las traduce de antemano en los ratos libres, para que no den tirones al llegar a ellas. La primera partida solo aprende; se nota desde la segunda. Si el juego falla, ponlo en No. Se guarda para este juego
+tr: Тест: Forja запоминает, какие части игры она перевела в прошлых запусках, и переводит их заранее в свободное время, чтобы не было рывков, когда игра до них доходит. Первый запуск только запоминает; эффект виден со второго. Если игра сбоит, поставьте «Нет». Сохраняется для этой игры
+
+es: Saltos rápidos del VU1:  < %s >
+tr: Быстрые переходы VU1:  < %s >
+
+es: Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego
+tr: Тест: переходы в программах VU1 выполняются без выхода из переведённого кода. Разгружает VU1 в играх, которые его заполняют (God of War). Если изображение ломается или игра сбоит, поставьте «Нет». Сохраняется для этой игры
+
+es: Empujón de cuadros:  < %s >
+tr: Толчок кадров:  < %s >
+
+es: Prueba: cuando el juego queda dando menos cuadros que hace un momento aunque a la consola le sobre fuerza, sube la CPU de la PS2 dos segundos y la devuelve. Sirve con la CPU de la PS2 por debajo de 100 %. Se guarda para este juego
+tr: Тест: когда игра остаётся с меньшим числом кадров, чем минуту назад, хотя у консоли есть запас мощности, CPU PS2 повышается на две секунды и возвращается. Работает при CPU PS2 ниже 100 %. Сохраняется для этой игры
+
 es: Parcial
 tr: Частично
 

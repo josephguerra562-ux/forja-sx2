@@ -365,6 +365,17 @@ static bool s_cpu_seamless_game = false;
 static bool s_disc_no_wait_game = false;
 static int s_safe_mode = 0; // compilation 131: [Forja] ModoSeguro, 0 no, 1 partial, 2 total
 static bool s_ps1_game = false; // compilation 131: the game chosen in the library is a PS1 one
+// Compilation 132: the three new rows, and "Empujón de cuadros" while it has the PS2 CPU raised (the rate to go back to).
+static bool s_code_ahead_game = false, s_vu_jumps_game = false, s_frame_push = false, s_push_active = false;
+static int s_push_saved_rate = 0;
+static std::string s_code_ahead_path;
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+extern std::atomic<bool> g_forja_code_ahead; // pcsx2/x86/ix86-32/iR5900.cpp
+extern std::atomic<u32> g_forja_code_ahead_known, g_forja_code_ahead_done, g_forja_code_ahead_left;
+extern void ForjaCodeAheadBegin(const char* path);
+extern bool ForjaCodeAheadSave(const char* path, bool force);
+extern std::atomic<bool> g_forja_vu_jump_inline; // pcsx2/x86/microVU.cpp
+#endif
 static bool s_skip_fast_running = false; // compilation 131: "Salto de ciclo: Al vuelo" has the game's skip (UpdateCycleSkipFast)
 extern std::atomic<bool> g_forja_disc_no_wait; // pcsx2/CDVD/CDVD.cpp
 extern std::atomic<u32> g_forja_disc_deferrals;
@@ -1209,6 +1220,76 @@ static void ToggleCheat()
 }
 
 
+// Forja SX2 (compilation 132): "Código listo al arrancar": the game's list of EE blocks (pcsx2/x86/ix86-32/iR5900.cpp) is read when it
+// starts (or when its row is turned on) and written when the menu opens and when the game ends.
+static void ForjaCodeAheadStart(const std::string& serial, u32 crc)
+{
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+	s_code_ahead_path.clear();
+	if (s_code_ahead_game && !serial.empty() && crc != 0)
+	{
+		mkdir("/data/ForjaSX2/cache", 0777);
+		mkdir("/data/ForjaSX2/cache/codigo", 0777);
+		char path[200];
+		std::snprintf(path, sizeof(path), "/data/ForjaSX2/cache/codigo/%s_%08X.bin", Path::SanitizeFileName(serial).c_str(), crc);
+		s_code_ahead_path = path;
+	}
+	ForjaCodeAheadBegin(s_code_ahead_path.c_str());
+	if (!s_code_ahead_path.empty())
+		ProbeLog("Code ahead (compilation 132): %u blocks known from earlier sessions (%s)\n",
+			g_forja_code_ahead_known.load(std::memory_order_relaxed), s_code_ahead_path.c_str());
+#else
+	(void)serial;
+	(void)crc;
+#endif
+}
+
+static void ForjaCodeAheadStore(bool force)
+{
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+	if (!s_code_ahead_path.empty() && ForjaCodeAheadSave(s_code_ahead_path.c_str(), force))
+		ProbeLog("Code ahead: list saved, %u blocks\n", g_forja_code_ahead_known.load(std::memory_order_relaxed));
+#else
+	(void)force;
+#endif
+}
+
+// Forja SX2 (compilation 132): a new build drops the settings center's downloaded profiles. They win over the package's, and a game's
+// profile is fetched when the game starts and used "from its next start": Need for Speed Most Wanted ran its first session with the
+// 131 (2026-11-13) on the copy fetched with the 130, without the two keys the 131's package had just turned off for it.
+static void ForjaCenterFreshForBuild()
+{
+#ifdef FORJA_BUILD_NUMBER
+	if (FORJA_BUILD_NUMBER == 0)
+		return; // a local build
+	static constexpr const char* stamp = "/data/ForjaSX2/centro/compilacion.txt";
+	int seen = 0;
+	if (std::FILE* file = std::fopen(stamp, "r"))
+	{
+		if (std::fscanf(file, "%d", &seen) != 1)
+			seen = 0;
+		std::fclose(file);
+	}
+	if (seen == FORJA_BUILD_NUMBER)
+		return;
+	unsigned removed = 0;
+	FileSystem::FindResultsArray files;
+	if (FileSystem::FindFiles("/data/ForjaSX2/centro/perfiles", "*.ini", FILESYSTEM_FIND_FILES, &files))
+	{
+		for (const FILESYSTEM_FIND_DATA& found : files)
+			removed += FileSystem::DeleteFilePath(found.FileName.c_str()) ? 1u : 0u;
+	}
+	mkdir("/data/ForjaSX2/centro", 0777);
+	if (std::FILE* file = std::fopen(stamp, "w"))
+	{
+		std::fprintf(file, "%d\n", FORJA_BUILD_NUMBER);
+		std::fclose(file);
+	}
+	ProbeLog("Settings center: build %d runs for the first time (the last one was %d): %u downloaded profiles removed; the package's are "
+			 "used until each game's is fetched again\n", FORJA_BUILD_NUMBER, seen, removed);
+#endif
+}
+
 // Forja SX2 (compilation 131): the guardian. The improvements that were rows of No tocar are on for every game and hidden, so a game
 // that cannot take one of them needs a way out that asks nothing of the player. A session that ends badly leaves a mark for its game
 // (forja_guard_mark, ps4/runtime/ps4_crashlog.cpp: a signal, an EE exception, a hang); the game's next start finds it and puts "Modo
@@ -1891,13 +1972,13 @@ static bool Vu1FastOn(); // compilation 126
 static void LogGameSettings(const char* why)
 {
 	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d "
-			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d fast_code=%d vu1_fast=%d effects_ahead=%d skip_repeats=%d cpu_seamless=%d disc_no_wait=%d safe_mode=%d skip_mode=%d\n", why,
+			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d fast_code=%d vu1_fast=%d effects_ahead=%d skip_repeats=%d cpu_seamless=%d disc_no_wait=%d safe_mode=%d skip_mode=%d code_ahead=%d vu_jumps=%d frame_push=%d\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
 		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str(),
 		s_draw_thread ? 1 : 0, s_sw_jit ? 1 : 0, EmuConfig.Cpu.Recompiler.fpuFullMode ? 1 : 0, s_iop_fast ? 1 : 0, s_iop_sleep_game ? 1 : 0,
 		s_skip_auto_fine ? 1 : 0, s_cpu_auto_up ? 1 : 0, g_ps4_skip_smc_checks ? 1 : 0, Vu1FastOn() ? 1 : 0, s_effects_ahead_game ? 1 : 0,
 		EmuConfig.GS.SkipDuplicateFrames ? 1 : 0, s_cpu_seamless_game ? 1 : 0, s_disc_no_wait_game ? 1 : 0, s_safe_mode,
-		static_cast<int>(EmuConfig.Speedhacks.EECycleSkipAuto));
+		static_cast<int>(EmuConfig.Speedhacks.EECycleSkipAuto), s_code_ahead_game ? 1 : 0, s_vu_jumps_game ? 1 : 0, s_frame_push ? 1 : 0);
 }
 
 // Compilation 76: two rows say so when their Auto can do nothing in this game, in place of their usual line (GameMenu.cpp's
@@ -2166,6 +2247,23 @@ static void PublishSkipRepeatsText()
 	std::snprintf(label, sizeof(label), TF("Refrescos sin repetir:  < %s >"), T(EmuConfig.GS.SkipDuplicateFrames ? N_("Sí") : N_("No")));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_SKIP_REPEATS, label,
 		T("Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego"));
+}
+
+// Compilation 132: the three new rows of No tocar.
+static void PublishTestRowsText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	char label[256];
+	std::snprintf(label, sizeof(label), TF("Código listo al arrancar:  < %s >"), T(s_code_ahead_game ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CODE_AHEAD, label,
+		T("Prueba: Forja recuerda qué partes del juego tradujo en partidas anteriores y las traduce de antemano en los ratos libres, para que no den tirones al llegar a ellas. La primera partida solo aprende; se nota desde la segunda. Si el juego falla, ponlo en No. Se guarda para este juego"));
+	std::snprintf(label, sizeof(label), TF("Saltos rápidos del VU1:  < %s >"), T(s_vu_jumps_game ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_VU_JUMPS, label,
+		T("Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego"));
+	std::snprintf(label, sizeof(label), TF("Empujón de cuadros:  < %s >"), T(s_frame_push ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_FRAME_PUSH, label,
+		T("Prueba: cuando el juego queda dando menos cuadros que hace un momento aunque a la consola le sobre fuerza, sube la CPU de la PS2 dos segundos y la devuelve. Sirve con la CPU de la PS2 por debajo de 100 %. Se guarda para este juego"));
 }
 
 // Compilation 131: "Modo seguro".
@@ -2485,6 +2583,7 @@ static void PublishGameMenu()
 	PublishCpuSeamlessText(); // compilation 128
 	PublishDiscNoWaitText(); // compilation 130
 	PublishSafeModeText(); // compilation 131
+	PublishTestRowsText(); // compilation 132
 	PublishCycleSkipText(); // compilation 100
 	PublishSpeedLimitText();
 	PublishImageOptionsText(); // compilation 104
@@ -2701,6 +2800,24 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	// (ForjaGameProfile::Load gives each as 0 or 1), and their rows show only when that file asks for them.
 	s_safe_mode = s_profile.safe_mode;
 	PS4GameMenu::g_lab_rows_shown.store(s_profile.lab_rows, std::memory_order_relaxed);
+	// Compilation 132: the three new rows, off unless the game's profile says 1 (and never for a PS1 game).
+	{
+		const bool code_ahead = s_profile.code_ahead == 1 && !s_ps1_game;
+		const bool turned_on = code_ahead && !s_code_ahead_game;
+		s_code_ahead_game = code_ahead;
+		s_vu_jumps_game = s_profile.vu_jumps == 1 && !s_ps1_game;
+		s_frame_push = s_profile.frame_push == 1 && !s_ps1_game;
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+		g_forja_code_ahead.store(code_ahead, std::memory_order_relaxed);
+		g_forja_vu_jump_inline.store(s_vu_jumps_game, std::memory_order_relaxed);
+		if (turned_on && !new_game && VMManager::GetDiscCRC() != 0)
+			ForjaCodeAheadStart(s_profile.serial, s_profile.crc); // from its row: the list is read now
+#endif
+		if (code_ahead || s_vu_jumps_game || s_frame_push)
+			ProbeLog("Compilation 132 rows: code ahead %s (%s), VU1 inline jumps %s (%s), frame push %s (%s)\n", code_ahead ? "on" : "off",
+				ProfileOriginName(s_profile.code_ahead_origin), s_vu_jumps_game ? "on" : "off", ProfileOriginName(s_profile.vu_jumps_origin),
+				s_frame_push ? "on" : "off", ProfileOriginName(s_profile.frame_push_origin));
+	}
 	if (s_safe_mode != 0 || s_profile.has_lab)
 		ProbeLog("Safe mode (compilation 131): %d (%s); lab file pruebas.ini: %s, hidden rows %s, guardian %s\n", s_safe_mode,
 			ProfileOriginName(s_profile.safe_mode_origin), s_profile.has_lab ? "read" : "none", s_profile.lab_rows ? "shown" : "hidden",
@@ -3311,7 +3428,7 @@ static void UpdateGsSkip(double elapsed)
 
 static void UpdateCpuAuto(double elapsed)
 {
-	if (s_video_active)
+	if (s_video_active || s_push_active) // compilation 132: "Empujón de cuadros" has the rate for two seconds
 	{
 		s_cpu_auto_slow_checks = s_cpu_auto_room_checks = 0;
 		return;
@@ -3402,7 +3519,10 @@ static void UpdateCpuAuto(double elapsed)
 		// would reach ~95 % is about this one times the speed.
 		const double wanted = EERatePercent(rate) * std::max(speed, 1.0) / 95.0;
 		int next = rate - 1;
-		while (next > s_cpu_auto_floor && rate - next < 4 && EERatePercent(next) > wanted)
+		// Compilation 132: with "Salto al vuelo" one step at a time. Shadow of the Colossus (2026-11-13, the 131): in the same second
+		// the skip went 5 -> 8 and the CPU 36 -> 27 %, both on one slow reading, and the CPU took a minute to come back (8-15 FPS with
+		// every thread under 65 %).
+		while (next > s_cpu_auto_floor && rate - next < (EmuConfig.Speedhacks.EECycleSkipAuto >= 2 ? 1 : 4) && EERatePercent(next) > wanted)
 			next--;
 		s_cpu_auto_steps += rate - next;
 		SetCpuAutoRate(next, fast ? (rate - next > 1 ? "slow, several steps at once (al vuelo)" : "slow (al vuelo)") :
@@ -3440,6 +3560,14 @@ static void UpdateCpuAuto(double elapsed)
 // - room (98 % or more twice in a row, and one quarter less would leave the busiest thread under 90 %): one quarter down; a step down
 //   that is slow again within 3 s holds the next ones for 5 s (doubled up to 40, back to 5 after 30 s without it);
 // - never under the game's factory value nor over 8 quarters (the Auto's own limits); nothing in a movie, a pause or the menu.
+// Compilation 132 (the 131 on Joseph's PS4 Pro, 2026-11-13, Shadow of the Colossus with the CPU automático down to 27 %): it reacted in
+// a second, and three things went wrong. A step up judged 3 s later was taken back three times while the view was still heavy, and
+// the block that follows left the game at 60-65 % speed for 10-20 s: now only a climb that reached the top is judged, against the
+// speed it started from. Coming down a quarter a second took 5-7 s after each heavy view (10-12 FPS where 20 fit): now up to three
+// quarters at once while the busiest thread would stay under 82 %. And the CPU automático went down in the same second as the skip
+// reached its top, on the same reading, and then waited for the skip at its floor to come back up, which the next heavy view kept
+// away for a minute: now the skip "can still help" for 3 s after each of its changes, the CPU goes down a step at a time, and it
+// may come back up with the skip at half a step or less.
 // The CPU automático, when it is on too, lets the skip go first (UpdateCpuAuto).
 // What it does not do: in Shadow's heaviest view the frames stay at 7.5-8.8 a second whatever the skip (the GS at 86-89 %: its draws),
 // and in the colossus fight 4 or 8 quarters gave the same ~10 FPS with every thread under 80 % (the game's own pace at a PS2 CPU of
@@ -3452,6 +3580,7 @@ static void UpdateCycleSkipFast(double elapsed)
 	static double s_last_check = 0.0, s_settle_until = 0.0, s_last_change = 0.0, s_last_down = -1000.0, s_no_down_until = 0.0;
 	static double s_down_wait = 5.0, s_judge_at = -1.0, s_judge_speed = 0.0, s_no_up_until = 0.0, s_up_wait = 20.0;
 	static unsigned s_slow = 0, s_room = 0;
+	static double s_last_up = -1000.0; // compilation 132: steps up within 4 s of each other are one climb
 	static int s_value = 0, s_judge_from = 0;
 	static u32 s_crc = 0;
 	const u32 crc = VMManager::GetDiscCRC();
@@ -3475,7 +3604,7 @@ static void UpdateCycleSkipFast(double elapsed)
 		s_no_down_until = s_no_up_until = 0.0;
 		s_down_wait = 5.0;
 		s_up_wait = 20.0;
-		s_last_down = -1000.0;
+		s_last_down = s_last_up = -1000.0;
 		s_last_change = elapsed;
 		ProbeLog("Cycle skip al vuelo: starts at %d quarters, the game's factory value\n", floor_q);
 	}
@@ -3483,9 +3612,9 @@ static void UpdateCycleSkipFast(double elapsed)
 	// A reload of the game's settings brought the profile's value back, or the game has just started.
 	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(s_value / 4);
 	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(s_value % 4);
-	s_skip_auto_at_factory = s_value <= floor_q;
-	s_skip_auto_can_help = s_value < top && elapsed >= s_no_up_until;
-	if (s_video_active)
+	s_skip_auto_at_factory = s_value <= floor_q + 2; // compilation 132: the CPU automático may come back up from here
+	s_skip_auto_can_help = (s_value < top && elapsed >= s_no_up_until) || elapsed - s_last_change < 3.0; // 132: or it has just moved
+	if (s_video_active || s_push_active) // compilation 132: nor during "Empujón de cuadros"
 	{
 		s_slow = s_room = 0;
 		s_judge_at = -1.0;
@@ -3520,11 +3649,11 @@ static void UpdateCycleSkipFast(double elapsed)
 		if (elapsed < s_judge_at)
 			return;
 		s_judge_at = -1.0;
-		if (speed < 92.0 && speed < s_judge_speed + 3.0)
+		if (speed < 92.0 && speed < s_judge_speed + 5.0)
 		{
 			s_no_up_until = elapsed + s_up_wait;
 			s_up_wait = std::min(s_up_wait * 2.0, 120.0);
-			set(s_judge_from, "the step up did not bring the speed back", speed, busiest);
+			set(s_judge_from, "the climb to the top did not bring the speed back", speed, busiest);
 			return;
 		}
 		s_up_wait = 20.0;
@@ -3543,9 +3672,13 @@ static void UpdateCycleSkipFast(double elapsed)
 		}
 		const double wanted = load * std::pow(97.0 / std::max(speed, 20.0), 1.0 / 0.6);
 		const int next = std::clamp(static_cast<int>(std::ceil((wanted - 1.0) / per_quarter)), s_value + 1, std::min(top, s_value + 4));
-		s_judge_at = elapsed + 3.0;
-		s_judge_speed = speed;
-		s_judge_from = s_value;
+		if (elapsed - s_last_up > 4.0) // a new climb: where it started and at what speed
+		{
+			s_judge_speed = speed;
+			s_judge_from = s_value;
+		}
+		s_last_up = elapsed;
+		s_judge_at = next >= top ? elapsed + 3.0 : -1.0;
 		set(next, "slow", speed, busiest);
 	}
 	else if (s_room >= 2)
@@ -3553,8 +3686,150 @@ static void UpdateCycleSkipFast(double elapsed)
 		if (elapsed - s_no_down_until > 30.0)
 			s_down_wait = 5.0;
 		s_last_down = elapsed;
-		set(s_value - 1, "room", speed, busiest);
+		int next = s_value - 1;
+		while (next > floor_q && s_value - next < 3 && busiest * load / (1.0 + per_quarter * (next - 1)) < 82.0)
+			next--;
+		set(next, s_value - next > 1 ? "room, several quarters at once" : "room", speed, busiest);
 	}
+}
+
+// Compilation 132: "Empujón de cuadros" ([Forja] EmpujonCuadros; a row of No tocar, off). Bully (2026-11-13, the 130): 15-18 FPS before
+// its pause menu and 8-12 after it, with the same PS2 CPU, the same speed and the EE as busy; the game decides how many refreshes each
+// frame takes and stayed at the slow pace. Joseph, by hand, in Shadow of the Colossus: the CPU up to 100 % and back, and the frames
+// came back. With "CPU sin tirones" a change of the CPU is free, so: at full speed (98 % or more), every thread under 80 %, the game
+// drawing in 3D, and the frames of the last 3 s at 80 % or less of the best 3 s of the last two minutes, for 3 s in a row, the PS2 CPU
+// goes up one or two steps (while the busiest thread would stay under ~110 %) for 2 s and comes back. Four seconds later it is judged:
+// 15 % more frames than before, it worked (another only after 15 s); if not, none for 30 s, doubled with each one that fails, up to
+// 300. The CPU automático and "Salto al vuelo" stand still meanwhile; a movie or the menu end it at once.
+static void ForjaFramePushEnd(const char* why)
+{
+	if (!s_push_active)
+		return;
+	s_push_active = false;
+	if (s_video_active)
+	{
+		// The movie began during the push and took the raised rate as the game's own.
+		ProbeLog("Frame push: ends (%s); the movie goes back to EE rate %d afterwards, not %d\n", why, s_push_saved_rate, s_video_saved_rate);
+		s_video_saved_rate = s_push_saved_rate;
+		return;
+	}
+	const int before = EmuConfig.Speedhacks.EECycleRate;
+	if (before != s_push_saved_rate)
+	{
+		EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(s_push_saved_rate);
+		ForjaEERateChanged(before);
+	}
+	ProbeLog("Frame push: EE rate %d -> %d (%s)\n", before, s_push_saved_rate, why);
+}
+
+static void UpdateFramePush(double elapsed)
+{
+	static double s_last_check = 0.0, s_settle_until = 0.0, s_until = 0.0, s_judge_at = -1.0, s_next = 0.0, s_wait = 30.0;
+	static double s_before_fps = 0.0, s_best = 0.0, s_best_at = -1000.0;
+	static double s_recent[6];
+	static unsigned s_recent_count = 0, s_stuck = 0;
+	static u32 s_crc = 0;
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+	const bool can = s_frame_push && g_forja_cpu_seamless_active && !s_video_active;
+#else
+	const bool can = false;
+#endif
+	const u32 crc = VMManager::GetDiscCRC();
+	if (!can || crc != s_crc)
+	{
+		ForjaFramePushEnd(s_video_active ? "a movie" : "off or another game");
+		s_crc = crc;
+		s_judge_at = -1.0;
+		s_recent_count = s_stuck = 0;
+		s_best = 0.0;
+		s_next = 0.0;
+		s_wait = 30.0;
+		return;
+	}
+	if (s_push_active)
+	{
+		if (elapsed >= s_until)
+		{
+			ForjaFramePushEnd("the two seconds are over");
+			s_judge_at = elapsed + 4.0;
+			s_recent_count = 0;
+			s_last_check = elapsed;
+		}
+		return;
+	}
+	if (elapsed - s_last_check < 0.5)
+		return;
+	// The menu paused the game: the first numbers after it count that pause, and what was being judged is forgotten.
+	if (elapsed - s_last_check > 1.0)
+	{
+		s_settle_until = elapsed + 2.0;
+		s_recent_count = s_stuck = 0;
+		s_judge_at = -1.0;
+	}
+	s_last_check = elapsed;
+	if (elapsed < s_settle_until)
+		return;
+	const double speed = PerformanceMetrics::GetSpeed();
+	const double fps = PerformanceMetrics::GetInternalFPS();
+	const double busiest = std::max({PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()),
+		static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
+	const bool in_game_3d = PerformanceMetrics::GetVUThreadUsage() >= 8.0f && fps >= 5.0;
+	for (unsigned i = 5; i > 0; i--)
+		s_recent[i] = s_recent[i - 1];
+	s_recent[0] = fps;
+	s_recent_count = std::min(s_recent_count + 1, 6u);
+	if (s_recent_count < 6)
+		return;
+	double mean = 0.0;
+	for (const double value : s_recent)
+		mean += value / 6.0;
+	if (s_judge_at >= 0.0)
+	{
+		if (elapsed < s_judge_at)
+			return;
+		s_judge_at = -1.0;
+		if (mean >= s_before_fps * 1.15)
+		{
+			ProbeLog("Frame push: it worked, %.1f -> %.1f FPS\n", s_before_fps, mean);
+			s_wait = 30.0;
+			s_next = elapsed + 15.0;
+		}
+		else
+		{
+			ProbeLog("Frame push: no change, %.1f -> %.1f FPS; no other for %.0f s\n", s_before_fps, mean, s_wait);
+			s_next = elapsed + s_wait;
+			s_wait = std::min(s_wait * 2.0, 300.0);
+		}
+		return;
+	}
+	// The best three seconds the game gave lately at full speed.
+	if (speed >= 97.0 && in_game_3d && (mean > s_best || elapsed - s_best_at > 120.0))
+	{
+		s_best = mean;
+		s_best_at = elapsed;
+	}
+	const int rate = EmuConfig.Speedhacks.EECycleRate;
+	const bool stuck = in_game_3d && speed >= 98.0 && busiest < 80.0 && rate < 0 && s_best > 0.0 && mean <= s_best * 0.8;
+	s_stuck = stuck ? s_stuck + 1 : 0;
+	if (s_stuck < 6 || elapsed < s_next)
+		return;
+	s_stuck = 0;
+	int target = rate;
+	while (target < 0 && target - rate < 2 && busiest * EERatePercent(target + 1) / EERatePercent(rate) <= 110.0)
+		target++;
+	if (target == rate)
+	{
+		s_next = elapsed + 10.0;
+		return;
+	}
+	s_push_saved_rate = rate;
+	s_push_active = true;
+	s_until = elapsed + 2.0;
+	s_before_fps = mean;
+	EmuConfig.Speedhacks.EECycleRate = static_cast<decltype(EmuConfig.Speedhacks.EECycleRate)>(target);
+	ForjaEERateChanged(rate);
+	ProbeLog("Frame push: %.1f FPS at %.0f %% speed with room (busiest thread %.0f %%), %.1f lately: EE rate %d -> %d for 2 s\n", mean, speed,
+		busiest, s_best, rate, target);
 }
 
 // Compilation 103: "Salto de ciclo: Auto". The least that holds the game's speed: each frame repeated is a frame less, and the best
@@ -4152,6 +4427,24 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			g_orbis_fg_restart.fetch_add(1, std::memory_order_relaxed); // Forja 1.06: a change by hand undoes "off for this game"
 			SavePlayerProfile("Frame generation", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "FrameGen", next); },
 				false);
+			break;
+		}
+		case PS4GameMenu::ROW_CODE_AHEAD: // compilation 132: No / Sí ([Forja] CodigoListo); ApplyGameProfile takes it
+		{
+			const int next = s_code_ahead_game ? 0 : 1;
+			SavePlayerProfile("Code ahead", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "CodigoListo", next); }, false);
+			break;
+		}
+		case PS4GameMenu::ROW_VU_JUMPS: // compilation 132: No / Sí ([Forja] SaltosVU1); the VU1's next blocks take it
+		{
+			const int next = s_vu_jumps_game ? 0 : 1;
+			SavePlayerProfile("VU1 inline jumps", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "SaltosVU1", next); }, false);
+			break;
+		}
+		case PS4GameMenu::ROW_FRAME_PUSH: // compilation 132: No / Sí ([Forja] EmpujonCuadros); UpdateFramePush takes it
+		{
+			const int next = s_frame_push ? 0 : 1;
+			SavePlayerProfile("Frame push", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "EmpujonCuadros", next); }, false);
 			break;
 		}
 		case PS4GameMenu::ROW_SAFE_MODE: // compilation 131: No / Parcial / Total ([Forja] ModoSeguro); ApplyGameProfile takes it
@@ -4851,6 +5144,7 @@ void VMHostPoll()
 		UpdateRuleShares(); // compilation 55
 		UpdateCpuAuto(elapsed);
 		UpdateCycleSkipAuto(elapsed);
+		UpdateFramePush(elapsed); // compilation 132
 		UpdateGsSkip(elapsed);
 		UpdateOutputRate(elapsed);
 		CheckLoadedState(elapsed); // compilation 61
@@ -4905,6 +5199,17 @@ void VMHostPoll()
 					s_disc_wait_seen = waited;
 					s_disc_defer_seen = deferred;
 				}
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+				if (s_code_ahead_game) // compilation 132
+				{
+					static u32 s_ahead_seen = 0;
+					const u32 ahead = g_forja_code_ahead_done.load(std::memory_order_relaxed);
+					if (ahead != s_ahead_seen)
+						ProbeLog("Code ahead: known=%u made_ahead=%u (%u in 5 s) left=%u\n", g_forja_code_ahead_known.load(std::memory_order_relaxed),
+							ahead, ahead - s_ahead_seen, g_forja_code_ahead_left.load(std::memory_order_relaxed));
+					s_ahead_seen = ahead;
+				}
+#endif
 				if (vm_state == VMState::Running && ++s_session_beats % 12 == 0)
 					ForjaSessionWrite(false);
 			}
@@ -5136,6 +5441,8 @@ void VMHostPoll()
 		s_recommended_applied = false; // compilation 61
 		PublishRecommendedText();
 		ReloadDiscList();
+		ForjaFramePushEnd("the menu"); // compilation 132: before the game's rate is read
+		ForjaCodeAheadStore(false); // compilation 132: the game is paused, a good moment for the disk
 		// The game's own rate, not the one a movie (video mode) or the automatic speed lowered it to.
 		s_game_ee_rate = s_cpu_auto_steps > 0 ? s_cpu_auto_base : s_video_active ? s_video_saved_rate : EmuConfig.Speedhacks.EECycleRate;
 		s_game_menu_direction = 0;
@@ -5294,6 +5601,7 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_TEXTURES || row == PS4GameMenu::ROW_DRAW_THREAD || row == PS4GameMenu::ROW_SW_JIT ||
 						   row == PS4GameMenu::ROW_FPU_EXACT || row == PS4GameMenu::ROW_IOP_FAST || row == PS4GameMenu::ROW_IOP_SLEEP ||
 						   row == PS4GameMenu::ROW_SKIP_AUTO_FINE || row == PS4GameMenu::ROW_CPU_AUTO_UP || row == PS4GameMenu::ROW_FAST_CODE_CHECK || row == PS4GameMenu::ROW_VU1_FAST || row == PS4GameMenu::ROW_EFFECTS_AHEAD || row == PS4GameMenu::ROW_SKIP_REPEATS || row == PS4GameMenu::ROW_CPU_SEAMLESS || row == PS4GameMenu::ROW_DISC_NO_WAIT ||
+						   row == PS4GameMenu::ROW_CODE_AHEAD || row == PS4GameMenu::ROW_VU_JUMPS || row == PS4GameMenu::ROW_FRAME_PUSH ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
 						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT || row == PS4GameMenu::ROW_REPORT_WHERE))
 		{
@@ -5440,6 +5748,7 @@ static void PrepareEmulatorFolders(SettingsInterface& settings)
 	// Settings must be absolute before LoadConfig derives its debugger paths.
 	EmuFolders::AppRoot = "/app0";
 	EmuFolders::DataRoot = "/data/ForjaSX2";
+	ForjaCenterFreshForBuild(); // compilation 132
 	EmuFolders::Resources = "/app0/resources";
 	EmuFolders::Settings = "/data/ForjaSX2/inis";
 	EmuFolders::LoadConfig(settings);
@@ -5793,7 +6102,9 @@ static void* RunVM(void*)
 			StartHangWatch();
 			s_ps1_game = platform == GamePlatform::PS1; // compilation 131
 			ForjaGuardStart(serial, crc); // compilation 131: before the profile is read
+			s_push_active = false; // compilation 132
 			ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
+			ForjaCodeAheadStart(serial, crc); // compilation 132: the game's list, or none
 			RepinWorkersForProfile();
 #if defined(PCSX2_PS4_VM_BOOT_JIT)
 			// Compilation 125: "Revisión rápida del código" from the game's start. In the 124 it was read only when the row changed: Bully
@@ -5994,6 +6305,7 @@ static void* RunVM(void*)
 			s_log_direct_boot = false;
 			PS4ProbeLogger::SetDirect(false);
 		}
+		ForjaCodeAheadStore(true); // compilation 132
 		g_forja_guard_mark[0] = '\0'; // compilation 131: the game is over; what happens from here on is not its fault
 		VMManager::Shutdown(false);
 		// Forja SX2 (compilation 37): a normal end: the 50 Hz output worked or was never asked for.

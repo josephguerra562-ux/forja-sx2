@@ -1024,6 +1024,24 @@ tr: 같은 화면 반복 안 함:  < %s >
 es: Prueba: cuando el juego no hizo un cuadro nuevo, el emulador no vuelve a mostrar el mismo y el GS se ahorra ese trabajo. Sirve en los juegos lentos que frena el GS (Shadow of the Colossus). Si la imagen da saltos raros, ponlo en No. Se guarda para este juego
 tr: 테스트: 게임이 새 화면을 만들지 않았을 때 같은 화면을 다시 보여 주지 않아 GS의 일이 줄어듭니다. GS가 느리게 하는 게임(Shadow of the Colossus)에 도움이 됩니다. 화면이 이상하면 아니요로 하세요. 이 게임에 저장됩니다
 
+es: Código listo al arrancar:  < %s >
+tr: 시작할 때 코드 준비:  < %s >
+
+es: Prueba: Forja recuerda qué partes del juego tradujo en partidas anteriores y las traduce de antemano en los ratos libres, para que no den tirones al llegar a ellas. La primera partida solo aprende; se nota desde la segunda. Si el juego falla, ponlo en No. Se guarda para este juego
+tr: 테스트: Forja가 이전 게임에서 변환한 부분을 저장해 두었다가 여유 시간에 미리 변환하여, 그 부분이 나올 때 끊김이 없게 합니다. 처음 게임은 저장만 하고, 다음 게임부터 효과가 있습니다. 게임에 문제가 생기면 아니요로 하세요. 이 게임에 저장됩니다
+
+es: Saltos rápidos del VU1:  < %s >
+tr: VU1 빠른 점프:  < %s >
+
+es: Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego
+tr: 테스트: VU1 프로그램의 점프를 변환된 코드 안에서 처리합니다. VU1을 많이 쓰는 게임(God of War)에서 부담을 줄입니다. 화면이 깨지거나 게임에 문제가 생기면 아니요로 하세요. 이 게임에 저장됩니다
+
+es: Empujón de cuadros:  < %s >
+tr: 프레임 밀어주기:  < %s >
+
+es: Prueba: cuando el juego queda dando menos cuadros que hace un momento aunque a la consola le sobre fuerza, sube la CPU de la PS2 dos segundos y la devuelve. Sirve con la CPU de la PS2 por debajo de 100 %. Se guarda para este juego
+tr: 테스트: 콘솔에 여유가 있는데도 게임 프레임이 조금 전보다 적게 유지되면 PS2 CPU를 2초 동안 올렸다가 되돌립니다. PS2 CPU가 100 % 미만일 때 사용할 수 있습니다. 이 게임에 저장됩니다
+
 es: Parcial
 tr: 일부
 
