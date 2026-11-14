@@ -964,6 +964,9 @@ void VU_Thread::WaitVU()
 	g_orbis_ee_waitvu_ticks += __builtin_ia32_rdtsc() - t0;
 }
 
+// Forja SX2 (compilation 135): the cycle skip in sixteenths of a VU1 program's cycles, -1 when the row's quarters rule (ExecuteVU).
+std::atomic<int> g_forja_skip16{-1};
+
 void VU_Thread::ExecuteVU(u32 vu_addr, u32 vif_top, u32 vif_itop, u32 fbrst)
 {
 	MTVU_LOG("MTVU - ExecuteVU!");
@@ -991,15 +994,19 @@ void VU_Thread::ExecuteVU(u32 vu_addr, u32 vif_top, u32 vif_itop, u32 fbrst)
 	// vk-285-84: the recent programs' cycles (four atomics the VU thread writes per program, so a
 	// cross-core miss) are only used by the EE cycle skip and by Instant VU1 off.
 	// Forja SX2 (compilation 102): in quarters. 1 took Guitar Hero III to 100 %, with 18 % of its frames shown twice; 0 was at 90 %.
-	const u32 cycle_skip = EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters;
+	// Compilation 135: in sixteenths while "Salto de ciclo: Al vuelo" has it (g_forja_skip16, ps4/vm/main.cpp, ForjaSkipInstantVsync, on this
+	// same EE thread); -1 = the row's quarters.
+	const int skip_fine = g_forja_skip16.load(std::memory_order_relaxed);
+	const u32 cycle_skip16 = skip_fine >= 0 ? static_cast<u32>(skip_fine) :
+	                                          (EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters) * 4u;
 	const bool instant = INSTANT_VU1;
 	u32 cycles = 4;
-	if (cycle_skip || !instant)
+	if (cycle_skip16 || !instant)
 	{
 		cycles = std::max(Get_vuCycles(), 4u);
 		const u32 skip_cycles = std::min(cycles, 3000u);
-		cpuRegs.cycle += skip_cycles * cycle_skip / 4;
-		VU0.cycle += skip_cycles * cycle_skip / 4;
+		cpuRegs.cycle += skip_cycles * cycle_skip16 / 16;
+		VU0.cycle += skip_cycles * cycle_skip16 / 16;
 	}
 	Get_MTVUChanges();
 

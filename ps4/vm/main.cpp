@@ -379,6 +379,7 @@ extern bool ForjaCodeAheadSave(const char* path, bool force);
 extern std::atomic<bool> g_forja_vu_jump_inline; // pcsx2/x86/microVU.cpp
 #endif
 static bool s_skip_fast_running = false; // compilation 131: "Salto de ciclo: Al vuelo" has the game's skip (UpdateCycleSkipFast)
+extern std::atomic<int> g_forja_skip16; // pcsx2/MTVU.cpp (compilation 135)
 extern std::atomic<bool> g_forja_disc_no_wait; // pcsx2/CDVD/CDVD.cpp
 extern std::atomic<u32> g_forja_disc_deferrals;
 extern std::atomic<u64> g_forja_disc_wait_us; // ps4/core/GSRendererPS4.cpp
@@ -2083,7 +2084,7 @@ static void PublishCycleSkipText()
 		std::snprintf(value, sizeof(value), "%s", ForjaLang::T(names[ForjaCycleSkipStep()]));
 	std::snprintf(label, sizeof(label), ForjaLang::TF("Salto de ciclo:  < %s >"), value);
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CYCLE_SKIP, label,
-		ForjaLang::T("Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo sube y lo baja cada segundo según la escena. Se guarda para este juego"));
+		ForjaLang::T("Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo ajusta en cada refresco, justo lo que pide la escena. Se guarda para este juego"));
 }
 
 // Compilation 100 (Joseph liked God of War II without the limiter, as a setting and not as "fast forward"): the normal speed of a game
@@ -3551,148 +3552,202 @@ static void UpdateCpuAuto(double elapsed)
 	s_cpu_auto_slow_checks = s_cpu_auto_room_checks = s_cpu_auto_good_checks = 0;
 }
 
-// Compilation 131: "Salto de ciclo: Al vuelo" (EECycleSkipAuto = 2), the row's value after Auto. A change of the skip costs nothing
-// (MTVU.cpp reads it at every VU1 program), so it can follow the scene second by second, in quarters, with the values between the row's
-// steps too. Shadow of the Colossus (2026-11-13, the 130, the stairs and the colossi, CPU 36 %): the Auto went to 8 quarters in the heavy
-// view 37 s after the view turned heavy (0 -> 2 -> 4 -> 8, each step judged over two windows; 50-88 % speed meanwhile), and kept them in
-// the lighter ones (a step that gained 25 points isn't taken back for 120 s). Rules, each half second:
-// - slow (under 92 % twice in a row, ~1 s): up as far as the speed says, 4 quarters at once at most. In that session the speed grew
-//   with the skip's load (1 + 0.177 quarters) to the power ~0.6 (0 -> 2: 67 -> 80 %; 2 -> 4: 64 -> 71 %; 4 -> 8: 70 -> 93 %), so the
-//   load wanted is the one now times (97 / speed) ^ (1 / 0.6). 3 s later the step is judged: without 3 points more and still under
-//   92 %, it goes back and no step up for 20 s (doubled up to 120);
-// - room (98 % or more twice in a row, and one quarter less would leave the busiest thread under 90 %): one quarter down; a step down
-//   that is slow again within 3 s holds the next ones for 5 s (doubled up to 40, back to 5 after 30 s without it);
-// - never under the game's factory value nor over 8 quarters (the Auto's own limits); nothing in a movie, a pause or the menu.
-// Compilation 132 (the 131 on Joseph's PS4 Pro, 2026-11-13, Shadow of the Colossus with the CPU automático down to 27 %): it reacted in
-// a second, and three things went wrong. A step up judged 3 s later was taken back three times while the view was still heavy, and
-// the block that follows left the game at 60-65 % speed for 10-20 s: now only a climb that reached the top is judged, against the
-// speed it started from. Coming down a quarter a second took 5-7 s after each heavy view (10-12 FPS where 20 fit): now up to three
-// quarters at once while the busiest thread would stay under 82 %. And the CPU automático went down in the same second as the skip
-// reached its top, on the same reading, and then waited for the skip at its floor to come back up, which the next heavy view kept
-// away for a minute: now the skip "can still help" for 3 s after each of its changes, the CPU goes down a step at a time, and it
-// may come back up with the skip at half a step or less.
-// The CPU automático, when it is on too, lets the skip go first (UpdateCpuAuto).
-// What it does not do: in Shadow's heaviest view the frames stay at 7.5-8.8 a second whatever the skip (the GS at 86-89 %: its draws),
-// and in the colossus fight 4 or 8 quarters gave the same ~10 FPS with every thread under 80 % (the game's own pace at a PS2 CPU of
-// 36 %: that one asks for a higher CPU, which the CPU automático gives when it is on).
-// herramientas/simulaciones/simular_salto_al_vuelo.py, with that session's three views.
+// Compilation 131: "Salto de ciclo: Al vuelo" (EECycleSkipAuto = 2), the row's value after Auto, chosen by hand. A change of the skip
+// costs nothing (MTVU.cpp reads it at every VU1 program). The 131 and the 132 decided every half second, on PerformanceMetrics' speed
+// (itself a mean of the last half second), after two slow readings and with a second between changes: 1 to 2.5 s to react, and as much
+// again to finish a climb (Joseph, 2026-11-14: "tarda bastante ... quiero que sea directo").
+// Compilation 135: it decides at every vsync (ForjaSkipInstantVsync, called by VMManager::Internal::Throttle on the EE thread, the same
+// thread as this file's loop). The idea, from herramientas/simulaciones/simular_salto_inmediato.py: when one part of the emulator is at its
+// limit (God of War II's VU1, Shadow's GS in its heavy view, Bully's EE), the frames that reach the screen are what that part can make. The
+// skip only decides whether the game wants more than that and runs in slow motion, or wants just that and runs at full speed with the same
+// frames, or less and loses frames. So the right skip, at once, gives full speed with the same frames. Each vsync:
+//   u = the EE's work since the last vsync (without the limiter's sleep) / the vsync's time (20 ms PAL). Over 1, that vsync ran late.
+//   With the median of the last 7 (a lone hitch doesn't count):
+//   - over 1.00: up at once to what the model asks for u = 0.97 (16 sixteenths at once at most), then 3 vsyncs to see it;
+//   - under 0.91 for 12 vsyncs (0.24 s): down to what the model allows for u = 0.94 (8 sixteenths at most); a step down that is over 1
+//     again within 10 vsyncs goes back, and no step down for 0.5 s (doubled up to 4 s, back to 0.5 after 10 s without one);
+//   - the model: u changes with the load (1 + 0.177 quarters) to the power -e, and e is learnt from each change (6 vsyncs after it).
+//   In sixteenths (g_forja_skip16), from the game's factory value to 12 quarters. Nothing in a movie or during "Empujón de cuadros"; a
+//   vsync of more than 10 times its time (a pause, a load) starts over.
+// Simulated (10 minutes of scenes that change at once, with dips of ~1 s and the hitches of the 133's sessions), against the 132's rules:
+// slow motion God of War II 15.5 -> 4.3 %, Shadow 17.4 -> 4.9 %, Bully 8.4 -> 3.6 %, back to full speed in 0.2-0.4 s, with the frames 1 to
+// 5 % under the best this console can give (the right skip known at once: slow motion 3.7, 4.7, 3.6 %). What is left are the hitches,
+// which no skip can fix. afinar_salto_inmediato.py chose the thresholds.
+static bool s_skip_instant_on = false;
+static int s_skip16_floor = 0;
+static struct
+{
+	int value = 0;
+	double us[7] = {};
+	unsigned count = 0, next = 0;
+	unsigned wait = 0, low = 0, measure_in = 0;
+	int down_from = -1, measure_from = 0;
+	double measure_u = 0.0, e = 0.5;
+	double clock = 0.0, no_down_until = 0.0, down_wait = 0.5, last_down = -100.0;
+	// for the 5 s line
+	unsigned ups = 0, downs = 0, backs = 0, vsyncs = 0, late = 0;
+	int low_seen = 1000, high_seen = -1;
+	double u_sum = 0.0;
+} s_si;
+
+static void ForjaSkipInstantSet(int value16)
+{
+	s_si.value = std::clamp(value16, s_skip16_floor, 48);
+	g_forja_skip16.store(s_si.value, std::memory_order_relaxed);
+	const int quarters = (s_si.value + 2) / 4; // what the row shows and the CPU automático reads
+	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(quarters / 4);
+	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(quarters % 4);
+	s_si.low_seen = std::min(s_si.low_seen, s_si.value);
+	s_si.high_seen = std::max(s_si.high_seen, s_si.value);
+}
+
+static void ForjaSkipInstantReset()
+{
+	s_si.count = s_si.next = s_si.wait = s_si.low = s_si.measure_in = 0;
+	s_si.down_from = -1;
+}
+
+void ForjaSkipInstantVsync(double work_ms, double budget_ms)
+{
+	if (!s_skip_instant_on || s_video_active || s_push_active || budget_ms < 1.0)
+		return;
+	static constexpr double K = 0.177;
+	s_si.clock += budget_ms / 1000.0;
+	const double u_now = work_ms / budget_ms;
+	if (u_now > 10.0)
+	{
+		ForjaSkipInstantReset(); // a pause, a load, the menu: not the game's pace
+		return;
+	}
+	s_si.vsyncs++;
+	s_si.late += u_now > 1.0 ? 1u : 0u;
+	s_si.u_sum += u_now;
+	s_si.us[s_si.next] = u_now;
+	s_si.next = (s_si.next + 1) % 7;
+	s_si.count = std::min(s_si.count + 1, 7u);
+	if (s_si.count < 5)
+		return;
+	double sorted[7];
+	std::copy(s_si.us, s_si.us + s_si.count, sorted);
+	std::nth_element(sorted, sorted + s_si.count / 2, sorted + s_si.count);
+	const double m = sorted[s_si.count / 2];
+	const double q = s_si.value / 4.0; // in quarters
+	const auto quarters_for = [&](double u, double target) {
+		const double load = (1.0 + K * q) * std::pow(u / target, 1.0 / s_si.e);
+		return (load - 1.0) / K;
+	};
+	// What the last change did: the exponent of the model.
+	if (s_si.measure_in > 0 && --s_si.measure_in == 0)
+	{
+		const double dl = std::log((1.0 + K * q) / (1.0 + K * s_si.measure_from / 4.0));
+		if (std::abs(dl) > 0.02 && s_si.measure_u > 0.5 && m > 0.5)
+		{
+			const double seen = -std::log(m / s_si.measure_u) / dl;
+			if (seen > 0.15 && seen < 1.5)
+				s_si.e = std::clamp(0.7 * s_si.e + 0.3 * seen, 0.25, 1.0);
+		}
+	}
+	if (s_si.wait > 0)
+	{
+		s_si.wait--;
+		return;
+	}
+	// A step down that did not hold.
+	if (s_si.down_from >= 0 && m > 1.0)
+	{
+		ForjaSkipInstantSet(s_si.down_from);
+		s_si.down_from = -1;
+		s_si.no_down_until = s_si.clock + s_si.down_wait;
+		s_si.down_wait = std::min(s_si.down_wait * 2.0, 4.0);
+		s_si.wait = 3;
+		s_si.backs++;
+		return;
+	}
+	if (s_si.down_from >= 0 && s_si.clock - s_si.last_down > 0.2)
+		s_si.down_from = -1; // it held
+	if (m > 1.0 && s_si.value < 48)
+	{
+		const int wanted = static_cast<int>(std::ceil(quarters_for(m, 0.97) * 4.0));
+		const int next = std::min({48, s_si.value + 16, std::max(s_si.value + 1, wanted)});
+		s_si.measure_from = s_si.value;
+		s_si.measure_u = m;
+		s_si.measure_in = 6;
+		ForjaSkipInstantSet(next);
+		s_si.wait = 3;
+		s_si.low = 0;
+		s_si.ups++;
+		return;
+	}
+	s_si.low = m < 0.91 ? s_si.low + 1 : 0;
+	if (s_si.low >= 12 && s_si.value > s_skip16_floor && s_si.clock >= s_si.no_down_until)
+	{
+		const int allowed = static_cast<int>(std::floor(quarters_for(m, 0.94) * 4.0));
+		const int next = std::max({s_skip16_floor, s_si.value - 8, allowed});
+		if (next < s_si.value)
+		{
+			if (s_si.clock - s_si.last_down > 10.0)
+				s_si.down_wait = 0.5;
+			s_si.down_from = s_si.value;
+			s_si.last_down = s_si.clock;
+			s_si.measure_from = s_si.value;
+			s_si.measure_u = m;
+			s_si.measure_in = 6;
+			ForjaSkipInstantSet(next);
+			s_si.wait = 3;
+			s_si.downs++;
+		}
+		s_si.low = 0;
+	}
+}
+
+// This file's loop, each vsync: Al vuelo on or off, the game's floor, the 5 s line, the row's text, and what UpdateCpuAuto reads.
 static void UpdateCycleSkipFast(double elapsed)
 {
-	static constexpr int top = 8;
-	static constexpr double per_quarter = 0.177;
-	static double s_last_check = 0.0, s_settle_until = 0.0, s_last_change = 0.0, s_last_down = -1000.0, s_no_down_until = 0.0;
-	static double s_down_wait = 5.0, s_judge_at = -1.0, s_judge_speed = 0.0, s_no_up_until = 0.0, s_up_wait = 20.0;
-	static unsigned s_slow = 0, s_room = 0;
-	static double s_last_up = -1000.0; // compilation 132: steps up within 4 s of each other are one climb
-	static int s_value = 0, s_judge_from = 0;
+	static double s_last_line = 0.0;
+	static int s_published = -1;
 	static u32 s_crc = 0;
 	const u32 crc = VMManager::GetDiscCRC();
-	const int floor_q = s_profile.crc == crc ? std::min(s_profile.cycle_skip_factory, top) : 0;
-	const auto set = [&](int next, const char* why, double speed, double busiest) {
-		ProbeLog("Cycle skip al vuelo: %d -> %d quarters (%s; speed %.0f %%, busiest %.0f %%)\n", s_value, next, why, speed, busiest);
-		s_value = next;
-		EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(next / 4);
-		EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(next % 4);
-		s_last_change = elapsed;
-		s_slow = s_room = 0;
-		PublishCycleSkipText();
-	};
+	const int floor16 = (s_profile.crc == crc ? std::min(s_profile.cycle_skip_factory, 12) : 0) * 4;
 	if (!s_skip_fast_running || crc != s_crc)
 	{
 		s_skip_fast_running = true;
 		s_crc = crc;
-		s_value = floor_q;
-		s_slow = s_room = 0;
-		s_judge_at = -1.0;
-		s_no_down_until = s_no_up_until = 0.0;
-		s_down_wait = 5.0;
-		s_up_wait = 20.0;
-		s_last_down = s_last_up = -1000.0;
-		s_last_change = elapsed;
-		ProbeLog("Cycle skip al vuelo: starts at %d quarters, the game's factory value\n", floor_q);
+		s_skip16_floor = floor16;
+		s_si.e = 0.5;
+		s_si.no_down_until = 0.0;
+		s_si.down_wait = 0.5;
+		ForjaSkipInstantReset();
+		ForjaSkipInstantSet(floor16);
+		s_last_line = elapsed;
+		ProbeLog("Cycle skip al vuelo (compilation 135, at every vsync): starts at %d sixteenths, the game's factory value\n", floor16);
 	}
-	s_value = std::clamp(s_value, floor_q, top);
-	// A reload of the game's settings brought the profile's value back, or the game has just started.
-	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(s_value / 4);
-	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(s_value % 4);
-	s_skip_auto_at_factory = s_value <= floor_q + 2; // compilation 132: the CPU automático may come back up from here
-	s_skip_auto_can_help = (s_value < top && elapsed >= s_no_up_until) || elapsed - s_last_change < 3.0; // 132: or it has just moved
-	if (s_video_active || s_push_active) // compilation 132: nor during "Empujón de cuadros"
+	s_skip16_floor = floor16;
+	s_skip_instant_on = true;
+	if (s_si.value < floor16)
+		ForjaSkipInstantSet(floor16);
+	// A reload of the game's settings brought the profile's quarters back: the controller's value rules.
+	g_forja_skip16.store(s_si.value, std::memory_order_relaxed);
+	const int quarters = (s_si.value + 2) / 4;
+	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(quarters / 4);
+	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(quarters % 4);
+	s_skip_auto_at_factory = s_si.value <= floor16 + 8;
+	s_skip_auto_can_help = s_si.value < 48;
+	if (quarters != s_published)
 	{
-		s_slow = s_room = 0;
-		s_judge_at = -1.0;
-		return;
+		s_published = quarters;
+		PublishCycleSkipText();
 	}
-	if (elapsed - s_last_check < 0.5)
-		return;
-	// The menu paused the game: the first numbers after it count that pause.
-	if (elapsed - s_last_check > 1.0)
+	if (elapsed - s_last_line >= 5.0)
 	{
-		s_settle_until = elapsed + 2.0;
-		s_slow = s_room = 0;
-		s_judge_at = -1.0;
-	}
-	s_last_check = elapsed;
-	if (elapsed < s_settle_until)
-		return;
-	const double speed = PerformanceMetrics::GetSpeed();
-	// The game stopping (a pause coming in, the PS4's own menu), not a slowdown a skip can fix.
-	if (speed < 20.0)
-	{
-		s_settle_until = elapsed + 2.0;
-		s_slow = s_room = 0;
-		s_judge_at = -1.0;
-		return;
-	}
-	const double busiest = std::max({PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()),
-		static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
-	const double load = 1.0 + per_quarter * s_value;
-	if (s_judge_at >= 0.0)
-	{
-		if (elapsed < s_judge_at)
-			return;
-		s_judge_at = -1.0;
-		if (speed < 92.0 && speed < s_judge_speed + 5.0)
-		{
-			s_no_up_until = elapsed + s_up_wait;
-			s_up_wait = std::min(s_up_wait * 2.0, 120.0);
-			set(s_judge_from, "the climb to the top did not bring the speed back", speed, busiest);
-			return;
-		}
-		s_up_wait = 20.0;
-	}
-	s_slow = speed < 92.0 ? s_slow + 1 : 0;
-	const double lighter = s_value > 0 ? busiest * load / (1.0 + per_quarter * (s_value - 1)) : 100.0;
-	s_room = (s_value > floor_q && speed >= 98.0 && lighter < 90.0 && elapsed >= s_no_down_until) ? s_room + 1 : 0;
-	if (elapsed - s_last_change < 1.0)
-		return;
-	if (s_slow >= 2 && s_value < top && elapsed >= s_no_up_until)
-	{
-		if (elapsed - s_last_down < 3.0) // the step down did not hold
-		{
-			s_no_down_until = elapsed + s_down_wait;
-			s_down_wait = std::min(s_down_wait * 2.0, 40.0);
-		}
-		const double wanted = load * std::pow(97.0 / std::max(speed, 20.0), 1.0 / 0.6);
-		const int next = std::clamp(static_cast<int>(std::ceil((wanted - 1.0) / per_quarter)), s_value + 1, std::min(top, s_value + 4));
-		if (elapsed - s_last_up > 4.0) // a new climb: where it started and at what speed
-		{
-			s_judge_speed = speed;
-			s_judge_from = s_value;
-		}
-		s_last_up = elapsed;
-		s_judge_at = next >= top ? elapsed + 3.0 : -1.0;
-		set(next, "slow", speed, busiest);
-	}
-	else if (s_room >= 2)
-	{
-		if (elapsed - s_no_down_until > 30.0)
-			s_down_wait = 5.0;
-		s_last_down = elapsed;
-		int next = s_value - 1;
-		while (next > floor_q && s_value - next < 3 && busiest * load / (1.0 + per_quarter * (next - 1)) < 82.0)
-			next--;
-		set(next, s_value - next > 1 ? "room, several quarters at once" : "room", speed, busiest);
+		if (s_si.vsyncs > 0)
+			ProbeLog("Cycle skip al vuelo: 5 s: now %d/16 (from %d to %d), up %u, down %u, back %u; EE late in %u of %u vsyncs, mean use %.2f; "
+					 "model exponent %.2f\n", s_si.value, s_si.low_seen, s_si.high_seen, s_si.ups, s_si.downs, s_si.backs, s_si.late, s_si.vsyncs,
+				s_si.u_sum / s_si.vsyncs, s_si.e);
+		s_last_line = elapsed;
+		s_si.ups = s_si.downs = s_si.backs = s_si.vsyncs = s_si.late = 0;
+		s_si.u_sum = 0.0;
+		s_si.low_seen = 1000;
+		s_si.high_seen = -1;
 	}
 }
 
@@ -3947,6 +4002,11 @@ static void UpdateCycleSkipAuto(double elapsed)
 		return;
 	}
 	s_skip_fast_running = false;
+	if (s_skip_instant_on) // compilation 135: "Al vuelo" left; the row's quarters rule again
+	{
+		s_skip_instant_on = false;
+		g_forja_skip16.store(-1, std::memory_order_relaxed);
+	}
 	if (!EmuConfig.Speedhacks.EECycleSkipAuto || s_video_active)
 	{
 		s_up = {};

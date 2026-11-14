@@ -925,8 +925,8 @@ tr: Wirkt nicht: Die PS2-CPU dieses Spiels (%d %%) ist schon so niedrig oder nie
 es: Salto de ciclo:  < %s >
 tr: Zyklussprung:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo sube y lo baja cada segundo según la escena. Se guarda para este juego
-tr: Entlastet die Konsole: Die Geschwindigkeit nähert sich 100 %, aber das Spiel kann Bilder wiederholen. Auto passt es selbst an; Bei Bedarf (Test) erhöht und senkt es jede Sekunde je nach Szene. Für dieses Spiel gespeichert
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo ajusta en cada refresco, justo lo que pide la escena. Se guarda para este juego
+tr: Entlastet die Konsole: Die Geschwindigkeit nähert sich 100 %, aber das Spiel kann Bilder wiederholen. Auto passt es selbst an; Bei Bedarf (Test) passt es bei jeder Bildwiederholung an, genau so viel wie die Szene braucht. Für dieses Spiel gespeichert
 
 es: Límite de velocidad:  < %s >
 tr: Geschwindigkeitslimit:  < %s >

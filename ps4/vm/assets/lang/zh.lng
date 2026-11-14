@@ -925,8 +925,8 @@ tr: 不起作用：此游戏的 PS2 CPU（%d %%）已经等于或低于此限制
 es: Salto de ciclo:  < %s >
 tr: 周期跳过:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo sube y lo baja cada segundo según la escena. Se guarda para este juego
-tr: 减轻主机负担:速度接近 100 %,但游戏可能重复画面。Auto 会自动调整;即时(测试)会根据场景每秒升高或降低。为此游戏保存
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo ajusta en cada refresco, justo lo que pide la escena. Se guarda para este juego
+tr: 减轻主机负担:速度接近 100 %,但游戏可能重复画面。Auto 会自动调整;即时(测试)会在每次刷新时调整,只用场景需要的。为此游戏保存
 
 es: Límite de velocidad:  < %s >
 tr: 速度限制:  < %s >

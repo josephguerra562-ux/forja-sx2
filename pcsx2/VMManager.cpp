@@ -2416,6 +2416,11 @@ void VMManager::ResetFrameLimiter()
 
 unsigned long long g_orbis_ee_throttle_ticks; // eerec-281
 extern bool ForjaCodeAheadTick(double budget_ms) __attribute__((weak)); // x86/ix86-32/iR5900.cpp (compilation 132)
+// Compilation 135: "Salto de ciclo: Al vuelo" (ps4/vm/main.cpp) gets, at every vsync, how long the EE worked since the last one (the time
+// from the end of the last Throttle to the start of this one: the limiter's sleep and "Código listo"'s work in it don't count) and the
+// vsync's time at the target speed.
+extern void ForjaSkipInstantVsync(double work_ms, double budget_ms) __attribute__((weak));
+static u64 s_forja_throttle_exit = 0;
 
 void VMManager::Internal::Throttle()
 {
@@ -2425,6 +2430,11 @@ void VMManager::Internal::Throttle()
 		~OrbisThrottleTimer() { g_orbis_ee_throttle_ticks += __builtin_ia32_rdtsc() - t0; }
 	} orbis_throttle_timer; // eerec-281
 	OrbisEEWaitScope orbis_wait; // vk-285-8
+	const u64 forja_entry = GetCPUTicks(); // compilation 135
+	struct ForjaThrottleExit
+	{
+		~ForjaThrottleExit() { s_forja_throttle_exit = GetCPUTicks(); }
+	} forja_throttle_exit;
 	// Forja SX2 (compilation 132): "Código listo al arrancar", what it owes right after a save state's load (iR5900.cpp): up to 40 ms
 	// here, before the frame's time is read, so the limiter sees it as part of a long frame (133: and before the
 	// return below, so it does not depend on how the frames are timed).
@@ -2433,6 +2443,13 @@ void VMManager::Internal::Throttle()
 
 	if (s_target_speed == 0.0f || s_use_vsync_for_timing)
 		return;
+
+	if (ForjaSkipInstantVsync && s_forja_throttle_exit != 0 && forja_entry > s_forja_throttle_exit && s_limiter_ticks_per_frame > 0)
+	{
+		const double tick_ms = 1000.0 / static_cast<double>(GetTickFrequency());
+		ForjaSkipInstantVsync(static_cast<double>(forja_entry - s_forja_throttle_exit) * tick_ms,
+			static_cast<double>(s_limiter_ticks_per_frame) * tick_ms);
+	}
 
 	const u64 uExpectedEnd =
 		s_limiter_frame_start +

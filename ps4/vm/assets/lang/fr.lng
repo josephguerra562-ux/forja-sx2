@@ -925,8 +925,8 @@ tr: N'agit pas : le CPU de la PS2 de ce jeu (%d %%) est déjà aussi bas ou plus
 es: Salto de ciclo:  < %s >
 tr: Saut de cycle :  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo sube y lo baja cada segundo según la escena. Se guarda para este juego
-tr: Allège la console : la vitesse s'approche de 100 %, mais le jeu peut répéter des images. Auto l'ajuste tout seul ; À la volée (test) le monte et le baisse chaque seconde selon la scène. Enregistré pour ce jeu
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo ajusta en cada refresco, justo lo que pide la escena. Se guarda para este juego
+tr: Allège la console : la vitesse s'approche de 100 %, mais le jeu peut répéter des images. Auto l'ajuste tout seul ; À la volée (test) l'ajuste à chaque rafraîchissement, juste ce que la scène demande. Enregistré pour ce jeu
 
 es: Límite de velocidad:  < %s >
 tr: Limite de vitesse :  < %s >
