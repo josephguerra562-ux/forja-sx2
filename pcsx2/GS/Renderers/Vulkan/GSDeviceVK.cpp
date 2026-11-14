@@ -4785,6 +4785,7 @@ std::atomic<unsigned> g_orbis_fg_restart{0}; // Forja 1.06: main.cpp, a new game
 // EE work against the vsync's time, in thousandths (main.cpp, ForjaSkipInstantVsync, from VMManager::Internal::Throttle).
 std::atomic<bool> g_forja_fg_margin{false};
 std::atomic<unsigned> g_forja_vsync_load{0};
+std::atomic<unsigned> g_forja_vsync_debt{0}; // compilation 137: the limiter's delay, in thousandths of a vsync (main.cpp)
 
 // The driver's measured refresh of the output its swapchain presents to (ps5vk's high-frame-rate output, 2026-10-08); a driver
 // without it presents at 59.94 Hz.
@@ -5084,6 +5085,97 @@ namespace
 	}
 }
 
+// Forja SX2 (compilation 137): frame generation's resources (the interpolator, its images and our interpolation pass), made when the
+// first generated frame needs them or, ahead, with the menu open (ForjaFrameGenPrepare, below). False: frame generation stays off.
+bool GSDeviceVK::OrbisFrameGenEnsure(u32 w, u32 h, VkFormat format)
+{
+	OrbisFrameGenState& s = s_orbis_fg;
+	if (!s.fg || s.fg->width() != w || s.fg->height() != h)
+	{
+		OrbisFrameGenRelease();
+		const auto t0 = std::chrono::steady_clock::now();
+		std::string error;
+		s.fg = std::make_unique<ps5::framegen::interpolator>();
+
+		// Forja SX2: our interpolation pass (FORJA_FG_INTERPOLATE_SHADER); /data/ForjaSX2/fg-fsr3-original keeps PS5SX2's.
+		if (access("/data/ForjaSX2/fg-fsr3-original", F_OK) != 0)
+		{
+			const VkShaderModule module = g_vulkan_shader_cache->GetComputeShader(FORJA_FG_INTERPOLATE_SHADER);
+			if (module == VK_NULL_HANDLE)
+			{
+				printf("[fg] the Forja interpolation shader did not compile; frame generation stays off in this game\n");
+				fflush(stdout);
+				s.fg.reset();
+				s.failed = true;
+				g_orbis_fg_engaged = false;
+				return false;
+			}
+			s.fg->set_interpolate_module(module);
+			printf("[fg] interpolation: Forja's pass (PS4)\n");
+		}
+		else
+			printf("[fg] interpolation: PS5SX2's pass (fg-fsr3-original)\n");
+
+		if (!s.fg->create(m_physical_device, m_device, w, h, error, format))
+		{
+			printf("[fg] frame generation could not start at %ux%u: %s; it stays off in this game\n", w, h, error.c_str());
+			fflush(stdout);
+			s.fg.reset();
+			s.failed = true;
+			g_orbis_fg_engaged = false;
+			return false;
+		}
+
+		// The interpolator's images, as textures PCSX2's present can draw into and read (they stay the interpolator's).
+		s.frame_images[0] = s.fg->frame_image();
+		s.frame_images[1] = s.fg->previous_image();
+
+		for (int i = 0; i < 2; i++)
+		{
+			s.frames[i] = GSTextureVK::Adopt(s.frame_images[i], GSTexture::RenderTarget, GSTexture::Format::Color, static_cast<int>(w),
+				static_cast<int>(h), 1, format);
+		}
+		s.output = GSTextureVK::Adopt(s.fg->output_image(), GSTexture::Texture, GSTexture::Format::Color, static_cast<int>(w),
+			static_cast<int>(h), 1, ps5::framegen::interpolator::k_format);
+
+		if (!s.frames[0] || !s.frames[1] || !s.output)
+		{
+			printf("[fg] the frame images could not be viewed; frame generation stays off in this game\n");
+			fflush(stdout);
+			OrbisFrameGenRelease();
+			s.failed = true;
+			g_orbis_fg_engaged = false;
+			return false;
+		}
+
+		s.prepared = false;
+		s.reset_next = true;
+		printf("[fg] ready for %ux%u in %.0f ms; the display at %.2f Hz\n", w, h,
+			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count(), s.hz);
+		fflush(stdout);
+	}
+
+	return true;
+}
+
+void GSDeviceVK::OrbisFrameGenPrepare()
+{
+	OrbisFrameGenState& s = s_orbis_fg;
+	if (!g_orbis_fg_wanted || s.failed || !m_swap_chain)
+		return;
+	s.hz = OrbisFrameGenDisplayHz();
+	OrbisFrameGenEnsure(static_cast<u32>(GetWindowWidth()), static_cast<u32>(GetWindowHeight()), m_swap_chain->GetTextureFormat());
+}
+
+// Compilation 137: called on the GS thread by ps4/vm/main.cpp before the menu lets the game go on, so the ~0.8 s the resources take is
+// spent with the menu open. God of War II (2026-11-14, the 136): frame generation turned on in the menu, then a hitch of 810 ms at the
+// game's first frame ("[fg] ready for 1920x1080 in 794 ms").
+void ForjaFrameGenPrepare()
+{
+	if (g_gs_device && g_gs_device->GetRenderAPI() == RenderAPI::Vulkan)
+		GSDeviceVK::GetInstance()->OrbisFrameGenPrepare();
+}
+
 u32 GSDeviceVK::OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv, const GSVector4& draw_rect, PresentShader shader,
 	float shader_time, Filter filter, u32 vsyncs, u32 already, double ps2_hz, float speed, bool nominal)
 {
@@ -5164,8 +5256,11 @@ u32 GSDeviceVK::OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv,
 	// as without generated frames, with 60-85 % of today's generated frames.
 	if (g_forja_fg_margin.load(std::memory_order_relaxed))
 	{
+		// Compilation 137: the mean of the last 12 vsyncs (the 136's median of 7 saw "no room" where there was: God of War II, 4.6 game
+		// frames a second without a generated one at a mean use of 0.79), and the limiter's delay over 0.6 of a vsync.
 		const unsigned load = g_forja_vsync_load.load(std::memory_order_relaxed);
-		s.tight = s.tight ? load > 900 : load > 950;
+		const unsigned debt = g_forja_vsync_debt.load(std::memory_order_relaxed);
+		s.tight = (s.tight ? load > 900 : load > 950) || debt > 600;
 		if (s.tight)
 		{
 			s.reset_next = true;
@@ -5181,70 +5276,8 @@ u32 GSDeviceVK::OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv,
 	const u32 h = static_cast<u32>(GetWindowHeight());
 	const VkFormat format = m_swap_chain->GetTextureFormat();
 
-	if (!s.fg || s.fg->width() != w || s.fg->height() != h)
-	{
-		OrbisFrameGenRelease();
-		const auto t0 = std::chrono::steady_clock::now();
-		std::string error;
-		s.fg = std::make_unique<ps5::framegen::interpolator>();
-
-		// Forja SX2: our interpolation pass (FORJA_FG_INTERPOLATE_SHADER); /data/ForjaSX2/fg-fsr3-original keeps PS5SX2's.
-		if (access("/data/ForjaSX2/fg-fsr3-original", F_OK) != 0)
-		{
-			const VkShaderModule module = g_vulkan_shader_cache->GetComputeShader(FORJA_FG_INTERPOLATE_SHADER);
-			if (module == VK_NULL_HANDLE)
-			{
-				printf("[fg] the Forja interpolation shader did not compile; frame generation stays off in this game\n");
-				fflush(stdout);
-				s.fg.reset();
-				s.failed = true;
-				g_orbis_fg_engaged = false;
-				return 0;
-			}
-			s.fg->set_interpolate_module(module);
-			printf("[fg] interpolation: Forja's pass (PS4)\n");
-		}
-		else
-			printf("[fg] interpolation: PS5SX2's pass (fg-fsr3-original)\n");
-
-		if (!s.fg->create(m_physical_device, m_device, w, h, error, format))
-		{
-			printf("[fg] frame generation could not start at %ux%u: %s; it stays off in this game\n", w, h, error.c_str());
-			fflush(stdout);
-			s.fg.reset();
-			s.failed = true;
-			g_orbis_fg_engaged = false;
-			return 0;
-		}
-
-		// The interpolator's images, as textures PCSX2's present can draw into and read (they stay the interpolator's).
-		s.frame_images[0] = s.fg->frame_image();
-		s.frame_images[1] = s.fg->previous_image();
-
-		for (int i = 0; i < 2; i++)
-		{
-			s.frames[i] = GSTextureVK::Adopt(s.frame_images[i], GSTexture::RenderTarget, GSTexture::Format::Color, static_cast<int>(w),
-				static_cast<int>(h), 1, format);
-		}
-		s.output = GSTextureVK::Adopt(s.fg->output_image(), GSTexture::Texture, GSTexture::Format::Color, static_cast<int>(w),
-			static_cast<int>(h), 1, ps5::framegen::interpolator::k_format);
-
-		if (!s.frames[0] || !s.frames[1] || !s.output)
-		{
-			printf("[fg] the frame images could not be viewed; frame generation stays off in this game\n");
-			fflush(stdout);
-			OrbisFrameGenRelease();
-			s.failed = true;
-			g_orbis_fg_engaged = false;
-			return 0;
-		}
-
-		s.prepared = false;
-		s.reset_next = true;
-		printf("[fg] ready for %ux%u in %.0f ms; the display at %.2f Hz\n", w, h,
-			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count(), s.hz);
-		fflush(stdout);
-	}
+	if (!OrbisFrameGenEnsure(w, h, format)) // compilation 137: made ahead with the menu open, as a rule
+		return 0;
 
 	ps5::framegen::interpolator& fg = *s.fg;
 	VkCommandBuffer cmd = GetCurrentCommandBuffer();

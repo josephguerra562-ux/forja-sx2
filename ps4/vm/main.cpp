@@ -3630,19 +3630,36 @@ static void UpdateCpuAuto(double elapsed)
 // slow motion God of War II 15.5 -> 4.3 %, Shadow 17.4 -> 4.9 %, Bully 8.4 -> 3.6 %, back to full speed in 0.2-0.4 s, with the frames 1 to
 // 5 % under the best this console can give (the right skip known at once: slow motion 3.7, 4.7, 3.6 %). What is left are the hitches,
 // which no skip can fix. afinar_salto_inmediato.py chose the thresholds.
+// Compilation 137: "Al vuelo por atraso". The 136 on the console (2026-11-14: God of War II, Shadow and Need for Speed, CPU 57-100 %) kept
+// the skip at ~2 whole skips on average (1.81-2.08) with the EE's mean use at 0.79-0.89 (room to spare), 15-22 % of the vsyncs late and
+// ~60 changes a minute; God of War II at CPU 100 % went from 98.7 % and 37.0 FPS (the 1.07) to 100 % and 32.2 FPS, nothing at its limit
+// (Joseph: "ya va más rápido, pero los FPS cayeron bastante, en casi todos los juegos"). The 136 went up when the MEDIAN of the last 7
+// vsyncs was over 1. But a late vsync is not slow motion: the limiter (VMManager::Internal::Throttle) carries the delay into the next
+// vsync and only loses time when the delay adds up to a whole vsync. With frames of 1-2 vsyncs, half the vsyncs of a stretch can be late
+// without losing anything. So this file keeps the limiter's own delay, vsync by vsync:
+//   delay = max(0, delay + u - 1); over 1, those whole vsyncs are lost (real slow motion) and the fraction stays.
+//   - up only when vsyncs were lost to the added-up delay (not to a lone hitch, u > 2.5) in the last half second, or the delay stayed over
+//     0.6 of a vsync for 6 vsyncs: to what the model asks for a mean use (of the last 25 vsyncs) of 0.95, 1 to 8 sixteenths; then 6 vsyncs;
+//   - down when nothing was lost for a second, the delay is under 0.3 and the mean use under 0.88: to what the model allows for
+//     0.94, 4 sixteenths at most; a step down that loses vsyncs within half a second goes back, and the next waits 0.5 s
+//     (doubled up to 4 s, 0.5 again after 10 s without one). The model's exponent is 0.35 (the 136's learnt one swung 0.37-1.00).
+// Simulated (herramientas/simulaciones/simular_al_vuelo_atraso.py, 10 minutes, the 136's per-vsync spread): God of War II 99.6 % and 32.6 FPS (136: 99.7 %, 30.8; no skip: 98.8 %, 33.1), Shadow 99.3 % and 17.8 (136: 99.6 %, 16.7), Need for Speed 99.4 % and 22.4 (136: 99.7 %, 20.8); 17-32 changes a minute (136: 76-87).
 static bool s_skip_instant_on = false;
 static int s_skip16_floor = 0;
+static constexpr double SI_UP_TARGET = 0.95, SI_DOWN_BELOW = 0.88, SI_DOWN_TARGET = 0.94, SI_DEBT_HIGH = 0.6, SI_E = 0.35;
+static constexpr int SI_MAX_UP = 8, SI_MAX_DOWN = 4;
 static struct
 {
 	int value = 0;
-	double us[7] = {};
-	unsigned count = 0, next = 0;
-	unsigned wait = 0, low = 0, measure_in = 0;
-	int down_from = -1, measure_from = 0;
-	double measure_u = 0.0, e = 0.5;
-	double clock = 0.0, no_down_until = 0.0, down_wait = 0.5, last_down = -100.0;
+	double us[25] = {};
+	unsigned count = 0, next = 0, wait = 0, highs = 0;
+	double debt = 0.0;
+	u64 n = 0, lost_at[8] = {}; // vsyncs (n) when vsyncs were lost to the added-up delay, the last 8
+	unsigned lost_next = 0;
+	int down_from = -1;
+	u64 last_down = 0, no_down_until = 0, down_wait = 25;
 	// for the 5 s line
-	unsigned ups = 0, downs = 0, backs = 0, vsyncs = 0, late = 0;
+	unsigned ups = 0, downs = 0, backs = 0, vsyncs = 0, late = 0, lost = 0, hitches = 0;
 	int low_seen = 1000, high_seen = -1;
 	double u_sum = 0.0;
 } s_si;
@@ -3660,8 +3677,19 @@ static void ForjaSkipInstantSet(int value16)
 
 static void ForjaSkipInstantReset()
 {
-	s_si.count = s_si.next = s_si.wait = s_si.low = s_si.measure_in = 0;
+	s_si.count = s_si.next = s_si.wait = s_si.highs = 0;
+	s_si.debt = 0.0;
 	s_si.down_from = -1;
+	std::fill(std::begin(s_si.lost_at), std::end(s_si.lost_at), 0);
+}
+
+// Vsyncs lost to the added-up delay within the last `window` vsyncs.
+static unsigned ForjaSkipInstantLostWithin(u64 window)
+{
+	unsigned count = 0;
+	for (const u64 at : s_si.lost_at)
+		count += (at != 0 && s_si.n - at < window) ? 1u : 0u;
+	return count;
 }
 
 // Compilation 137: "Público al vuelo" ([Forja] PublicoCada = 99), for every game whose crowd is drawn in software (the GameDB's
@@ -3681,7 +3709,7 @@ static struct
 	unsigned vsyncs = 0, passes[3] = {}, ups = 0, downs = 0, backs = 0; // for the 5 s line: vsyncs at 1, 2 and 4
 } s_ca;
 
-static void ForjaCrowdVsync(double m, double budget_ms, unsigned filled)
+static void ForjaCrowdVsync(double m, double budget_ms, unsigned filled) // compilation 137: m is the mean of the last 12 vsyncs
 {
 	if (!s_crowd_auto || s_video_active || budget_ms < 1.0)
 		return;
@@ -3743,110 +3771,124 @@ static void ForjaCrowdVsync(double m, double budget_ms, unsigned filled)
 	}
 }
 
+// Compilation 137: what the others read (GSDeviceVK.cpp's "Cuadros generados con margen", ForjaCrowdVsync's "Público al vuelo"): the MEAN
+// use of the last 12 vsyncs and the limiter's delay, for the same reason (the 136 gave them the median of 7).
+extern std::atomic<unsigned> g_forja_vsync_debt;
+
 void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 {
-	// Compilation 136: the last 7 vsyncs' load, for "Cuadros generados con margen" (GSDeviceVK.cpp), whatever "Al vuelo" does.
-	if (budget_ms >= 1.0 && work_ms / budget_ms <= 10.0)
+	if (budget_ms < 1.0)
+		return;
+	const double u_now = work_ms / budget_ms;
 	{
-		static double s_ring[7] = {};
+		static double s_ring[12] = {};
 		static unsigned s_filled = 0, s_at = 0;
-		s_ring[s_at] = work_ms / budget_ms;
-		s_at = (s_at + 1) % 7;
-		s_filled = std::min(s_filled + 1, 7u);
-		double sorted[7];
-		std::copy(s_ring, s_ring + s_filled, sorted);
-		std::nth_element(sorted, sorted + s_filled / 2, sorted + s_filled);
-		g_forja_vsync_load.store(static_cast<unsigned>(std::lround(sorted[s_filled / 2] * 1000.0)), std::memory_order_relaxed);
-		ForjaCrowdVsync(sorted[s_filled / 2], budget_ms, s_filled);
+		static double s_debt = 0.0;
+		if (u_now > 10.0)
+		{
+			s_filled = s_at = 0; // a pause, a load, the menu
+			s_debt = 0.0;
+		}
+		else
+		{
+			s_ring[s_at] = u_now;
+			s_at = (s_at + 1) % 12;
+			s_filled = std::min(s_filled + 1, 12u);
+			double sum = 0.0;
+			for (unsigned i = 0; i < s_filled; i++)
+				sum += s_ring[i];
+			const double mean = sum / s_filled;
+			s_debt = std::max(0.0, s_debt + u_now - 1.0);
+			if (s_debt >= 1.0)
+				s_debt -= std::floor(s_debt);
+			g_forja_vsync_load.store(static_cast<unsigned>(std::lround(mean * 1000.0)), std::memory_order_relaxed);
+			g_forja_vsync_debt.store(static_cast<unsigned>(std::lround(s_debt * 1000.0)), std::memory_order_relaxed);
+			ForjaCrowdVsync(mean, budget_ms, s_filled);
+		}
 	}
-	if (!s_skip_instant_on || s_video_active || s_push_active || budget_ms < 1.0)
+	if (!s_skip_instant_on || s_video_active || s_push_active)
 		return;
 	static constexpr double K = 0.177;
-	s_si.clock += budget_ms / 1000.0;
-	const double u_now = work_ms / budget_ms;
 	if (u_now > 10.0)
 	{
-		ForjaSkipInstantReset(); // a pause, a load, the menu: not the game's pace
+		ForjaSkipInstantReset();
 		return;
 	}
+	s_si.n++;
 	s_si.vsyncs++;
 	s_si.late += u_now > 1.0 ? 1u : 0u;
 	s_si.u_sum += u_now;
+	// The limiter's delay.
+	s_si.debt = std::max(0.0, s_si.debt + u_now - 1.0);
+	if (s_si.debt >= 1.0)
+	{
+		const double whole = std::floor(s_si.debt);
+		s_si.debt -= whole;
+		if (u_now < 2.5)
+		{
+			s_si.lost_at[s_si.lost_next] = s_si.n;
+			s_si.lost_next = (s_si.lost_next + 1) % 8;
+			s_si.lost += static_cast<unsigned>(whole);
+		}
+		else
+			s_si.hitches++; // a lone hitch: no skip fixes it
+	}
+	s_si.highs = s_si.debt > SI_DEBT_HIGH ? s_si.highs + 1 : 0;
 	s_si.us[s_si.next] = u_now;
-	s_si.next = (s_si.next + 1) % 7;
-	s_si.count = std::min(s_si.count + 1, 7u);
-	if (s_si.count < 5)
+	s_si.next = (s_si.next + 1) % 25;
+	s_si.count = std::min(s_si.count + 1, 25u);
+	if (s_si.count < 12)
 		return;
-	double sorted[7];
-	std::copy(s_si.us, s_si.us + s_si.count, sorted);
-	std::nth_element(sorted, sorted + s_si.count / 2, sorted + s_si.count);
-	const double m = sorted[s_si.count / 2];
-	const double q = s_si.value / 4.0; // in quarters
-	const auto quarters_for = [&](double u, double target) {
-		const double load = (1.0 + K * q) * std::pow(u / target, 1.0 / s_si.e);
+	double sum = 0.0;
+	for (unsigned i = 0; i < s_si.count; i++)
+		sum += s_si.us[i];
+	const double mean = sum / s_si.count;
+	const double q = s_si.value / 4.0;
+	const auto quarters_for = [&](double target) {
+		const double load = (1.0 + K * q) * std::pow(mean / target, 1.0 / SI_E);
 		return (load - 1.0) / K;
 	};
-	// What the last change did: the exponent of the model.
-	if (s_si.measure_in > 0 && --s_si.measure_in == 0)
-	{
-		const double dl = std::log((1.0 + K * q) / (1.0 + K * s_si.measure_from / 4.0));
-		if (std::abs(dl) > 0.02 && s_si.measure_u > 0.5 && m > 0.5)
-		{
-			const double seen = -std::log(m / s_si.measure_u) / dl;
-			if (seen > 0.15 && seen < 1.5)
-				s_si.e = std::clamp(0.7 * s_si.e + 0.3 * seen, 0.25, 1.0);
-		}
-	}
 	if (s_si.wait > 0)
 	{
 		s_si.wait--;
 		return;
 	}
-	// A step down that did not hold.
-	if (s_si.down_from >= 0 && m > 1.0)
+	const bool losing = ForjaSkipInstantLostWithin(25) > 0 || s_si.highs >= 6;
+	// A step down that lost vsyncs.
+	if (s_si.down_from >= 0 && losing)
 	{
 		ForjaSkipInstantSet(s_si.down_from);
 		s_si.down_from = -1;
-		s_si.no_down_until = s_si.clock + s_si.down_wait;
-		s_si.down_wait = std::min(s_si.down_wait * 2.0, 4.0);
-		s_si.wait = 3;
+		s_si.no_down_until = s_si.n + s_si.down_wait;
+		s_si.down_wait = std::min<u64>(s_si.down_wait * 2, 200);
+		s_si.wait = 6;
 		s_si.backs++;
 		return;
 	}
-	if (s_si.down_from >= 0 && s_si.clock - s_si.last_down > 0.2)
+	if (s_si.down_from >= 0 && s_si.n - s_si.last_down > 25)
 		s_si.down_from = -1; // it held
-	if (m > 1.0 && s_si.value < 48)
+	if (losing && s_si.value < 48)
 	{
-		const int wanted = static_cast<int>(std::ceil(quarters_for(m, 0.97) * 4.0));
-		const int next = std::min({48, s_si.value + 16, std::max(s_si.value + 1, wanted)});
-		s_si.measure_from = s_si.value;
-		s_si.measure_u = m;
-		s_si.measure_in = 6;
-		ForjaSkipInstantSet(next);
-		s_si.wait = 3;
-		s_si.low = 0;
+		const int wanted = static_cast<int>(std::ceil(quarters_for(SI_UP_TARGET) * 4.0));
+		ForjaSkipInstantSet(std::min({48, s_si.value + SI_MAX_UP, std::max(s_si.value + 1, wanted)}));
+		std::fill(std::begin(s_si.lost_at), std::end(s_si.lost_at), 0);
+		s_si.wait = 6;
+		s_si.highs = 0;
 		s_si.ups++;
 		return;
 	}
-	s_si.low = m < 0.91 ? s_si.low + 1 : 0;
-	if (s_si.low >= 12 && s_si.value > s_skip16_floor && s_si.clock >= s_si.no_down_until)
+	if (ForjaSkipInstantLostWithin(50) == 0 && s_si.debt < 0.3 && mean < SI_DOWN_BELOW && s_si.value > s_skip16_floor &&
+		s_si.n >= s_si.no_down_until)
 	{
-		const int allowed = static_cast<int>(std::floor(quarters_for(m, 0.94) * 4.0));
-		const int next = std::max({s_skip16_floor, s_si.value - 8, allowed});
-		if (next < s_si.value)
-		{
-			if (s_si.clock - s_si.last_down > 10.0)
-				s_si.down_wait = 0.5;
-			s_si.down_from = s_si.value;
-			s_si.last_down = s_si.clock;
-			s_si.measure_from = s_si.value;
-			s_si.measure_u = m;
-			s_si.measure_in = 6;
-			ForjaSkipInstantSet(next);
-			s_si.wait = 3;
-			s_si.downs++;
-		}
-		s_si.low = 0;
+		const int allowed = static_cast<int>(std::floor(quarters_for(SI_DOWN_TARGET) * 4.0));
+		const int next = std::max({s_skip16_floor, s_si.value - SI_MAX_DOWN, std::min(s_si.value - 1, allowed)});
+		if (s_si.n - s_si.last_down > 500)
+			s_si.down_wait = 25;
+		s_si.down_from = s_si.value;
+		s_si.last_down = s_si.n;
+		ForjaSkipInstantSet(next);
+		s_si.wait = 10;
+		s_si.downs++;
 	}
 }
 
@@ -3863,13 +3905,12 @@ static void UpdateCycleSkipFast(double elapsed)
 		s_skip_fast_running = true;
 		s_crc = crc;
 		s_skip16_floor = floor16;
-		s_si.e = 0.5;
-		s_si.no_down_until = 0.0;
-		s_si.down_wait = 0.5;
+		s_si.no_down_until = 0;
+		s_si.down_wait = 25;
 		ForjaSkipInstantReset();
 		ForjaSkipInstantSet(floor16);
 		s_last_line = elapsed;
-		ProbeLog("Cycle skip al vuelo (compilation 135, at every vsync): starts at %d sixteenths, the game's factory value\n", floor16);
+		ProbeLog("Cycle skip al vuelo (compilation 137, by the limiter's delay): starts at %d sixteenths, the game's factory value\n", floor16);
 	}
 	s_skip16_floor = floor16;
 	s_skip_instant_on = true;
@@ -3891,10 +3932,10 @@ static void UpdateCycleSkipFast(double elapsed)
 	{
 		if (s_si.vsyncs > 0)
 			ProbeLog("Cycle skip al vuelo: 5 s: now %d/16 (from %d to %d), up %u, down %u, back %u; EE late in %u of %u vsyncs, mean use %.2f; "
-					 "model exponent %.2f\n", s_si.value, s_si.low_seen, s_si.high_seen, s_si.ups, s_si.downs, s_si.backs, s_si.late, s_si.vsyncs,
-				s_si.u_sum / s_si.vsyncs, s_si.e);
+					 "vsyncs lost to the delay %u, to lone hitches %u times\n", s_si.value, s_si.low_seen, s_si.high_seen, s_si.ups, s_si.downs,
+				s_si.backs, s_si.late, s_si.vsyncs, s_si.u_sum / s_si.vsyncs, s_si.lost, s_si.hitches);
 		s_last_line = elapsed;
-		s_si.ups = s_si.downs = s_si.backs = s_si.vsyncs = s_si.late = 0;
+		s_si.ups = s_si.downs = s_si.backs = s_si.vsyncs = s_si.late = s_si.lost = s_si.hitches = 0;
 		s_si.u_sum = 0.0;
 		s_si.low_seen = 1000;
 		s_si.high_seen = -1;
@@ -5050,8 +5091,19 @@ static void RestartGame()
 	ProbeLog("Emulator menu: game restarted\n");
 }
 
+// Compilation 137: frame generation's resources, made on the GS thread before the game goes on (GSDeviceVK.cpp).
+extern void ForjaFrameGenPrepare();
+static void ForjaFrameGenReadyBeforeResume()
+{
+	if (!g_orbis_fg_wanted)
+		return;
+	MTGS::RunOnGSThread([]() { ForjaFrameGenPrepare(); });
+	MTGS::WaitGS(false, false, false);
+}
+
 static void ResumeFromGameMenu(u32 raw)
 {
+	ForjaFrameGenReadyBeforeResume(); // compilation 137
 	s_game_menu_open = false;
 	s_blocked_pad_buttons |= raw;
 	PS4GameMenu::SetInGameMenu({});
@@ -5815,6 +5867,7 @@ void VMHostPoll()
 		else
 		{
 			ProbeLog("Emulator menu: resume\n");
+			ForjaFrameGenReadyBeforeResume(); // compilation 137: frame generation's resources with the menu still open
 			// Forja SX2: the GS's hitch detector (GSRendererPS4.cpp) does not count the time the menu was open as a hitch.
 			g_forja_resumes.fetch_add(1, std::memory_order_relaxed);
 			VMManager::SetPaused(false);

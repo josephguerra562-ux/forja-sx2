@@ -912,6 +912,7 @@ namespace
 		// never runs its entry point again. Joseph loads a state at the start of every session (2026-11-14, the 132's four
 		// sessions): not one block was made ahead.
 		bool started = false;
+		u32 seen_known = 0; // compilation 137: blocks of the list the game itself made before `started`
 		// Compilation 134 (the 133 on the console, 2026-11-14): "Código listo" made 62,000-250,000 blocks ahead a session, and the code
 		// hitches stayed, nearly all of them in the first frame after a save state's load (1,300-5,500 blocks in that one frame, at
 		// ~50 us each) or after a reset for a CPU change without "CPU sin tirones" (Need for Speed Most Wanted: 9,588 and 13,090 blocks,
@@ -954,6 +955,7 @@ namespace
 void ForjaCodeAheadBegin(const char* path, bool running)
 {
 	s_fca.started = running;
+	s_fca.seen_known = 0;
 	s_fca.entries.clear();
 	s_fca.known.clear();
 	s_fca.limit = s_fca.cursor = s_fca.saved = 0;
@@ -1030,7 +1032,17 @@ static void ForjaCodeAheadRecord(u32 startpc, u32 words)
 		return;
 	const u32 hash = ForjaCodeHash(source, words);
 	if (!s_fca.known.insert((static_cast<u64>(startpc) << 32) | hash).second)
+	{
+		// Compilation 137: a block of the list (same place, same code) the game itself just made: its code is in memory, so the
+		// list can be made ahead. God of War II (2026-11-14, the 136, started without a save state): its ELF's entry point never
+		// showed as made (the game runs another executable loaded over it) and "Código listo" made 0 of 34,387 blocks in 5 minutes.
+		if (!s_fca.started && ++s_fca.seen_known >= 32)
+		{
+			s_fca.started = true;
+			g_forja_code_ahead_started.store(1, std::memory_order_relaxed);
+		}
 		return;
+	}
 	s_fca.entries.push_back({startpc, hash, static_cast<u16>(words), 1, 0});
 	g_forja_code_ahead_known.store(static_cast<u32>(s_fca.entries.size()), std::memory_order_relaxed);
 }
