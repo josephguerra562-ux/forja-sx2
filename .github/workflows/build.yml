@@ -34,6 +34,11 @@ jobs:
         with:
           persist-credentials: false
 
+      # Forja SX2 (2026-11-14, the engineering audit): texts in the 12 languages, the letters in their fonts, the factory profiles and
+      # the shared variables' types, in seconds and before the 20 minutes of the build. Failing here means the PS4 would have shown it.
+      - name: Revisiones rápidas
+        run: python3 tools/ci/forja_revisiones.py
+
       - name: Restore PS4 SDK
         run: python3 tools/ci/fetch-sdk.py --destination "$RUNNER_TEMP/ps4-sdk" --component linux
 

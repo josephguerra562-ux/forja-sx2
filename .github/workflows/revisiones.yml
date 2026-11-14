@@ -1,0 +1,20 @@
+name: Revisiones rápidas
+# Forja SX2 (2026-11-14): the same checks build.yml runs before compiling (tools/ci/forja_revisiones.py), on their own and in under a
+# minute, without making a build or a release. By hand from Actions, or by the API, for a commit that went up with [skip ci].
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  revisiones:
+    name: Textos, letras, perfiles y variables compartidas
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Revisiones rápidas
+        run: python3 tools/ci/forja_revisiones.py
