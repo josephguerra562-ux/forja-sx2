@@ -1036,6 +1036,12 @@ tr: قفزات VU1 السريعة:  < %s >
 es: Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego
 tr: تجربة: تُحل قفزات برامج VU1 دون الخروج من الكود المترجم. يخفف عن VU1 في الألعاب التي تملؤه (God of War). إذا تعطلت الصورة أو اللعبة، اجعلها لا. تُحفظ لهذه اللعبة
 
+es: Cuadros generados con margen:  < %s >
+tr: إطارات مولدة مع هامش:  < %s >
+
+es: Prueba: con la generación de cuadros prendida, solo arma un cuadro cuando a la consola le sobra tiempo. Así generar nunca le quita velocidad al juego y no se apaga sola. Se guarda para este juego
+tr: تجربة: عند تشغيل توليد الإطارات، لا يصنع إطارا إلا عندما يكون لدى الجهاز وقت زائد. بهذا لا يبطئ التوليد اللعبة أبدا ولا يتوقف من تلقاء نفسه. يُحفظ لهذه اللعبة
+
 es: Empujón de cuadros:  < %s >
 tr: دفعة الإطارات:  < %s >
 

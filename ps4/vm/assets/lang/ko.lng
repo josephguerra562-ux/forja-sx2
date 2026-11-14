@@ -1036,6 +1036,12 @@ tr: VU1 빠른 점프:  < %s >
 es: Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego
 tr: 테스트: VU1 프로그램의 점프를 변환된 코드 안에서 처리합니다. VU1을 많이 쓰는 게임(God of War)에서 부담을 줄입니다. 화면이 깨지거나 게임에 문제가 생기면 아니요로 하세요. 이 게임에 저장됩니다
 
+es: Cuadros generados con margen:  < %s >
+tr: 여유 있을 때만 프레임 생성:  < %s >
+
+es: Prueba: con la generación de cuadros prendida, solo arma un cuadro cuando a la consola le sobra tiempo. Así generar nunca le quita velocidad al juego y no se apaga sola. Se guarda para este juego
+tr: 테스트: 프레임 생성이 켜져 있을 때 콘솔에 시간이 남을 때만 프레임을 만듭니다. 그래서 생성 때문에 게임이 느려지지 않고 저절로 꺼지지도 않습니다. 이 게임에 저장됩니다
+
 es: Empujón de cuadros:  < %s >
 tr: 프레임 밀어주기:  < %s >
 

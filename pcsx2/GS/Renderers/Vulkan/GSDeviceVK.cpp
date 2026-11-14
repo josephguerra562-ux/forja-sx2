@@ -4781,6 +4781,10 @@ bool g_orbis_fg_movie = false; // Forja SX2 (compilation 66): main.cpp, a movie 
 bool g_orbis_fg_held = false; // Forja 1.06: main.cpp, a PAL game's movie on a 59.94 Hz TV (OrbisFrameGenPacing.h, SetHeld)
 bool g_orbis_fg_gave_up = false; // Forja 1.06: off for this game, it cost speed (OrbisFrameGenPacing.h, GaveUp; main.cpp reads it)
 std::atomic<unsigned> g_orbis_fg_restart{0}; // Forja 1.06: main.cpp, a new game or frame generation changed in the menu (NewGame)
+// Compilation 136: "Cuadros generados con margen" ([Forja] FGConMargen, main.cpp) and the load it reads: the median of the last 7 vsyncs'
+// EE work against the vsync's time, in thousandths (main.cpp, ForjaSkipInstantVsync, from VMManager::Internal::Throttle).
+std::atomic<bool> g_forja_fg_margin{false};
+std::atomic<unsigned> g_forja_vsync_load{0};
 
 // The driver's measured refresh of the output its swapchain presents to (ps5vk's high-frame-rate output, 2026-10-08); a driver
 // without it presents at 59.94 Hz.
@@ -4807,6 +4811,8 @@ namespace
 		int logged_state = -1;   // the pacing's state the log last described
 		u64 stat_frames = 0, stat_engaged = 0, stat_made = 0, stat_presents = 0, stat_counted = 0;
 		u64 stat_held = 0; // Forja SX2 (compilation 41): generated presents left out, no display image free
+		u64 stat_tight = 0; // compilation 136: game frames left without a generated one, the last vsyncs had no room
+		bool tight = false; // compilation 136: "Cuadros generados con margen" holds the generated frames now
 		double stat_vsyncs = 0.0;
 	};
 
@@ -4817,9 +4823,21 @@ namespace
 	// passes before it finished and it never did. This one keeps to a few registers: a thread makes a 2x2 quad of the frame at
 	// interpolation_t between the previous frame and this one. Its motion is one of FSR3's optical flow vectors (8x8 blocks, in
 	// pixels; which way they point is not assumed, each is tried both ways) from its block and the 8 around it, or none; the one
-	// whose two ends look most alike over the quad wins (none, slightly favoured, where nothing does better: the HUD, flat areas),
-	// and each pixel is the blend of the previous frame at one end and this one at the other. The bindings are
-	// k_fg_bind_fi_interpolate's, numbered 0..10 in the order of their numbers (ps5_framegen.cpp make_pipelines()).
+	// whose two ends look most alike wins (none, slightly favoured, where nothing does better: the HUD, flat areas), and each pixel is
+	// the blend of the previous frame at one end and this one at the other. The bindings are k_fg_bind_fi_interpolate's, numbered
+	// 0..10 in the order of their numbers (ps5_framegen.cpp make_pipelines()).
+	// Compilation 136 (Joseph, 2026-11-14, "Fluido": "en ciertos juegos ... los cuadros no se ven correctamente"), from
+	// herramientas/simulaciones/simular_cuadro_generado.py, which copies this pass and measures it against the true middle frame of
+	// test scenes (a pan, a character over the background, both, a HUD, a flash, sparks, a cut): pixels visibly wrong 16.7 -> 4.5 %,
+	// the blocky look (how much more the error jumps between quads than inside them) 1.22 -> 0.29, a cut 86 % wrong -> clean.
+	// - Each motion is judged on 9 points spread over the 4x4 pixels around the quad (at -1, 0.5 and 2 of it), not on its 4 pixels:
+	//   neighbouring quads stop taking different motions for the same surface (the blocks).
+	// - A pixel whose two ends don't look alike with the motion chosen (something appeared, a flash, smoke: nothing explains it)
+	//   takes this frame's pixel instead of a blend of two different things, gradually (alike under 0.3, unlike over 0.8, summed
+	//   over the three channels).
+	// - A work group (8x8 quads, 16x16 pixels) where more than half of the quads found no motion that explains the change (their
+	//   error over 0.12 a point and channel) shows this frame there: a cut, a menu opening, a camera jump.
+	// The shared counter needs every invocation at both barriers, so the ones past the picture's edge leave only after them.
 	static constexpr std::string_view FORJA_FG_INTERPOLATE_SHADER = R"(
 #version 460 core
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -4840,18 +4858,23 @@ layout(set = 0, binding = 8, std140) uniform cbFI
 };
 layout(set = 0, binding = 9) uniform sampler s_linear;
 
+shared uint s_unexplained;
+
 vec3 Previous(vec2 uv) { return textureLod(sampler2D(r_previous, s_linear), uv, 0.0).rgb; }
 vec3 Current(vec2 uv) { return textureLod(sampler2D(r_current, s_linear), uv, 0.0).rgb; }
 
-// How unlike the two ends of motion m (previous to current, in UV) are over the quad.
+// How unlike the two ends of motion m (previous to current, in UV) are, over 9 points around the quad.
 float QuadError(vec2 uv0, vec2 m, float t)
 {
 	float e = 0.0;
-	for (int i = 0; i < 4; i++)
+	for (int j = 0; j < 3; j++)
 	{
-		vec2 uv = uv0 + vec2(float(i & 1), float(i >> 1)) * display_size_rcp;
-		vec3 d = Previous(uv - m * t) - Current(uv + m * (1.0 - t));
-		e += abs(d.r) + abs(d.g) + abs(d.b);
+		for (int i = 0; i < 3; i++)
+		{
+			vec2 uv = uv0 + (vec2(float(i), float(j)) * 1.5 - 1.0) * display_size_rcp;
+			vec3 d = Previous(uv - m * t) - Current(uv + m * (1.0 - t));
+			e += abs(d.r) + abs(d.g) + abs(d.b);
+		}
 	}
 	return e;
 }
@@ -4859,35 +4882,49 @@ float QuadError(vec2 uv0, vec2 m, float t)
 void main()
 {
 	ivec2 base = ivec2(gl_GlobalInvocationID.xy) * 2;
-	if (base.x >= display_size.x || base.y >= display_size.y)
-		return;
+	bool inside = base.x < display_size.x && base.y < display_size.y;
+	if (gl_LocalInvocationIndex == 0u)
+		s_unexplained = 0u;
+	memoryBarrierShared();
+	barrier();
+
 	float t = clamp(interpolation_t > 0.0 ? interpolation_t : 0.5, 0.0, 1.0);
 	vec2 uv0 = (vec2(base) + 0.5) * display_size_rcp;
-	ivec2 flow_size = textureSize(isampler2D(r_optical_flow, s_linear), 0);
-	ivec2 block = clamp(base / max(optical_flow_block_size, 1), ivec2(0), flow_size - 1);
-
 	vec2 best = vec2(0.0);
-	float best_error = QuadError(uv0, best, t) * 0.92;
-	for (int dy = -1; dy <= 1; dy++)
+	float best_error = 0.0;
+	if (inside)
 	{
-		for (int dx = -1; dx <= 1; dx++)
+		ivec2 flow_size = textureSize(isampler2D(r_optical_flow, s_linear), 0);
+		ivec2 block = clamp(base / max(optical_flow_block_size, 1), ivec2(0), flow_size - 1);
+		best_error = QuadError(uv0, best, t) * 0.92;
+		for (int dy = -1; dy <= 1; dy++)
 		{
-			ivec2 at = clamp(block + ivec2(dx, dy), ivec2(0), flow_size - 1);
-			vec2 mv = vec2(texelFetch(isampler2D(r_optical_flow, s_linear), at, 0).xy) * optical_flow_scale;
-			if (mv.x == 0.0 && mv.y == 0.0)
-				continue;
-			for (int way = 0; way < 2; way++)
+			for (int dx = -1; dx <= 1; dx++)
 			{
-				vec2 m = way == 0 ? mv : -mv;
-				float e = QuadError(uv0, m, t);
-				if (e < best_error)
+				ivec2 at = clamp(block + ivec2(dx, dy), ivec2(0), flow_size - 1);
+				vec2 mv = vec2(texelFetch(isampler2D(r_optical_flow, s_linear), at, 0).xy) * optical_flow_scale;
+				if (mv.x == 0.0 && mv.y == 0.0)
+					continue;
+				for (int way = 0; way < 2; way++)
 				{
-					best_error = e;
-					best = m;
+					vec2 m = way == 0 ? mv : -mv;
+					float e = QuadError(uv0, m, t);
+					if (e < best_error)
+					{
+						best_error = e;
+						best = m;
+					}
 				}
 			}
 		}
+		if (best_error > 3.24) // 9 points x 3 channels x 0.12
+			atomicAdd(s_unexplained, 1u);
 	}
+	memoryBarrierShared();
+	barrier();
+	if (!inside)
+		return;
+	bool whole = s_unexplained > 32u;
 
 	for (int i = 0; i < 4; i++)
 	{
@@ -4895,7 +4932,16 @@ void main()
 		if (px.x >= display_size.x || px.y >= display_size.y)
 			continue;
 		vec2 uv = (vec2(px) + 0.5) * display_size_rcp;
-		vec3 color = mix(Previous(uv - best * t), Current(uv + best * (1.0 - t)), t);
+		vec3 here = Current(uv);
+		vec3 color = here;
+		if (!whole)
+		{
+			vec3 a = Previous(uv - best * t);
+			vec3 b = Current(uv + best * (1.0 - t));
+			vec3 d = abs(a - b);
+			float trust = clamp((0.8 - (d.r + d.g + d.b)) / 0.5, 0.0, 1.0);
+			color = mix(here, mix(a, b, t), trust);
+		}
 		imageStore(rw_output, px, vec4(color, 1.0));
 	}
 }
@@ -5097,7 +5143,10 @@ u32 GSDeviceVK::OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv,
 		if (s.stat_held > 0)
 			printf("[fg] %.1f generated presents a second left out: no display image was free (the game's frame would have waited)\n",
 				s.stat_held / secs);
-		s.stat_frames = s.stat_engaged = s.stat_made = s.stat_presents = s.stat_counted = s.stat_held = 0;
+		if (s.stat_tight > 0) // compilation 136
+			printf("[fg] %.1f game frames a second without a generated one: the last vsyncs had no room (Cuadros generados con margen)\n",
+				s.stat_tight / secs);
+		s.stat_frames = s.stat_engaged = s.stat_made = s.stat_presents = s.stat_counted = s.stat_held = s.stat_tight = 0;
 		s.stat_vsyncs = 0.0;
 	}
 
@@ -5106,6 +5155,27 @@ u32 GSDeviceVK::OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv,
 		g_orbis_fg_active.store(false, std::memory_order_relaxed);
 		return 0;
 	}
+
+	// Compilation 136: "Cuadros generados con margen" ([Forja] FGConMargen). The safety net above decides every 3 s, and in Shadow of the
+	// Colossus and Need for Speed Most Wanted (2026-11-14) it turned frame generation off for the game: 89 % speed with it against 96 %,
+	// and 84 % against 99 %. Here each game frame: when the last vsyncs had no room (the median of their EE work over 95 % of a vsync;
+	// it lets go under 90 %), no frame is generated for it, so a generated frame is only ever made with time to spare. The interpolator
+	// doesn't see the frame, so the next one starts over (no neighbour). herramientas/simulaciones/simular_fg_con_margen.py: slow motion
+	// as without generated frames, with 60-85 % of today's generated frames.
+	if (g_forja_fg_margin.load(std::memory_order_relaxed))
+	{
+		const unsigned load = g_forja_vsync_load.load(std::memory_order_relaxed);
+		s.tight = s.tight ? load > 900 : load > 950;
+		if (s.tight)
+		{
+			s.reset_next = true;
+			s.stat_tight++;
+			g_orbis_fg_active.store(false, std::memory_order_relaxed);
+			return 0;
+		}
+	}
+	else
+		s.tight = false;
 
 	const u32 w = static_cast<u32>(GetWindowWidth());
 	const u32 h = static_cast<u32>(GetWindowHeight());

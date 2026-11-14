@@ -1036,6 +1036,12 @@ tr: VU1 の高速ジャンプ:  < %s >
 es: Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego
 tr: テスト：VU1 プログラムのジャンプを、変換済みコードから出ずに処理します。VU1 の負荷が高いゲーム（God of War）で負担を減らします。表示が崩れたりゲームに問題が出たら「いいえ」に。このゲームに保存されます
 
+es: Cuadros generados con margen:  < %s >
+tr: 余裕があるときだけ生成:  < %s >
+
+es: Prueba: con la generación de cuadros prendida, solo arma un cuadro cuando a la consola le sobra tiempo. Así generar nunca le quita velocidad al juego y no se apaga sola. Se guarda para este juego
+tr: テスト：フレーム生成がオンのとき、本体に時間の余裕があるときだけフレームを作ります。これで生成がゲームの速度を下げず、自動でオフにもなりません。このゲームに保存されます
+
 es: Empujón de cuadros:  < %s >
 tr: フレームの後押し:  < %s >
 

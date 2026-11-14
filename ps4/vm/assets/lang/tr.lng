@@ -1036,6 +1036,12 @@ tr: Hızlı VU1 atlamaları:  < %s >
 es: Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego
 tr: Test: VU1 programlarındaki atlamalar çevrilmiş koddan çıkmadan çözülür. VU1'i dolduran oyunlarda (God of War) yükünü azaltır. Görüntü bozulursa veya oyun sorun çıkarırsa Hayır yapın. Bu oyun için kaydedilir
 
+es: Cuadros generados con margen:  < %s >
+tr: Paylı kare üretimi:  < %s >
+
+es: Prueba: con la generación de cuadros prendida, solo arma un cuadro cuando a la consola le sobra tiempo. Así generar nunca le quita velocidad al juego y no se apaga sola. Se guarda para este juego
+tr: Test: kare üretimi açıkken, yalnızca konsolun boş zamanı olduğunda bir kare oluşturur. Böylece üretim oyunu asla yavaşlatmaz ve kendiliğinden kapanmaz. Bu oyun için kaydedilir
+
 es: Empujón de cuadros:  < %s >
 tr: Kare itişi:  < %s >
 

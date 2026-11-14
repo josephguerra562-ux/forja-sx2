@@ -380,6 +380,9 @@ extern std::atomic<bool> g_forja_vu_jump_inline; // pcsx2/x86/microVU.cpp
 #endif
 static bool s_skip_fast_running = false; // compilation 131: "Salto de ciclo: Al vuelo" has the game's skip (UpdateCycleSkipFast)
 extern std::atomic<int> g_forja_skip16; // pcsx2/MTVU.cpp (compilation 135)
+extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
+extern std::atomic<unsigned> g_forja_vsync_load;
+static bool s_fg_margin = false; // compilation 136: [Forja] FGConMargen for this game
 extern std::atomic<bool> g_forja_disc_no_wait; // pcsx2/CDVD/CDVD.cpp
 extern std::atomic<u32> g_forja_disc_deferrals;
 extern std::atomic<u64> g_forja_disc_wait_us; // ps4/core/GSRendererPS4.cpp
@@ -1976,13 +1979,14 @@ static bool Vu1FastOn(); // compilation 126
 static void LogGameSettings(const char* why)
 {
 	ProbeLog("Game settings (%s): ee_rate=%d frame_gen=%d upscale=%u sharpness=%u hd_textures=%u vu1_left_out=[%s] gs_skip=%d "
-			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d fast_code=%d vu1_fast=%d effects_ahead=%d skip_repeats=%d cpu_seamless=%d disc_no_wait=%d safe_mode=%d skip_mode=%d code_ahead=%d vu_jumps=%d frame_push=%d\n", why,
+			 "gs_left_out=[%s] huellas=[%s] draw_thread=%d sw_jit=%d fpu_full=%d iop_fast=%d iop_sleep=%d skip_auto_fine=%d cpu_auto_up=%d fast_code=%d vu1_fast=%d effects_ahead=%d skip_repeats=%d cpu_seamless=%d disc_no_wait=%d safe_mode=%d skip_mode=%d code_ahead=%d vu_jumps=%d frame_push=%d fg_margin=%d\n", why,
 		static_cast<int>(EmuConfig.Speedhacks.EECycleRate), g_orbis_fg_wanted ? (g_orbis_fg_fluid ? 2 : 1) : 0, s_game_upscale,
 		s_game_sharpness, s_game_textures, Vu1SkipList().c_str(), s_gs_skip_mode, GsFilterList().c_str(), RulesOnList().c_str(),
 		s_draw_thread ? 1 : 0, s_sw_jit ? 1 : 0, EmuConfig.Cpu.Recompiler.fpuFullMode ? 1 : 0, s_iop_fast ? 1 : 0, s_iop_sleep_game ? 1 : 0,
 		s_skip_auto_fine ? 1 : 0, s_cpu_auto_up ? 1 : 0, g_ps4_skip_smc_checks ? 1 : 0, Vu1FastOn() ? 1 : 0, s_effects_ahead_game ? 1 : 0,
 		EmuConfig.GS.SkipDuplicateFrames ? 1 : 0, s_cpu_seamless_game ? 1 : 0, s_disc_no_wait_game ? 1 : 0, s_safe_mode,
-		static_cast<int>(EmuConfig.Speedhacks.EECycleSkipAuto), s_code_ahead_game ? 1 : 0, s_vu_jumps_game ? 1 : 0, s_frame_push ? 1 : 0);
+		static_cast<int>(EmuConfig.Speedhacks.EECycleSkipAuto), s_code_ahead_game ? 1 : 0, s_vu_jumps_game ? 1 : 0, s_frame_push ? 1 : 0,
+		s_fg_margin ? 1 : 0);
 }
 
 // Compilation 76: two rows say so when their Auto can do nothing in this game, in place of their usual line (GameMenu.cpp's
@@ -2265,6 +2269,9 @@ static void PublishTestRowsText()
 	std::snprintf(label, sizeof(label), TF("Saltos rápidos del VU1:  < %s >"), T(s_vu_jumps_game ? N_("Sí") : N_("No")));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_VU_JUMPS, label,
 		T("Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego"));
+	std::snprintf(label, sizeof(label), TF("Cuadros generados con margen:  < %s >"), T(s_fg_margin ? N_("Sí") : N_("No"))); // compilation 136
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_FG_MARGIN, label,
+		T("Prueba: con la generación de cuadros prendida, solo arma un cuadro cuando a la consola le sobra tiempo. Así generar nunca le quita velocidad al juego y no se apaga sola. Se guarda para este juego"));
 	std::snprintf(label, sizeof(label), TF("Empujón de cuadros:  < %s >"), T(s_frame_push ? N_("Sí") : N_("No")));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_FRAME_PUSH, label,
 		T("Prueba: cuando el juego queda dando menos cuadros que hace un momento aunque a la consola le sobre fuerza, sube la CPU de la PS2 dos segundos y la devuelve. Sirve con la CPU de la PS2 por debajo de 100 %. Se guarda para este juego"));
@@ -2811,6 +2818,8 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		s_code_ahead_game = code_ahead;
 		s_vu_jumps_game = s_profile.vu_jumps == 1 && !s_ps1_game;
 		s_frame_push = s_profile.frame_push == 1 && !s_ps1_game;
+		s_fg_margin = s_profile.fg_margin == 1; // compilation 136
+		g_forja_fg_margin.store(s_fg_margin, std::memory_order_relaxed);
 #if defined(PCSX2_PS4_VM_BOOT_JIT)
 		g_forja_code_ahead.store(code_ahead, std::memory_order_relaxed);
 		g_forja_vu_jump_inline.store(s_vu_jumps_game, std::memory_order_relaxed);
@@ -3609,6 +3618,19 @@ static void ForjaSkipInstantReset()
 
 void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 {
+	// Compilation 136: the last 7 vsyncs' load, for "Cuadros generados con margen" (GSDeviceVK.cpp), whatever "Al vuelo" does.
+	if (budget_ms >= 1.0 && work_ms / budget_ms <= 10.0)
+	{
+		static double s_ring[7] = {};
+		static unsigned s_filled = 0, s_at = 0;
+		s_ring[s_at] = work_ms / budget_ms;
+		s_at = (s_at + 1) % 7;
+		s_filled = std::min(s_filled + 1, 7u);
+		double sorted[7];
+		std::copy(s_ring, s_ring + s_filled, sorted);
+		std::nth_element(sorted, sorted + s_filled / 2, sorted + s_filled);
+		g_forja_vsync_load.store(static_cast<unsigned>(std::lround(sorted[s_filled / 2] * 1000.0)), std::memory_order_relaxed);
+	}
 	if (!s_skip_instant_on || s_video_active || s_push_active || budget_ms < 1.0)
 		return;
 	static constexpr double K = 0.177;
@@ -4502,6 +4524,12 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		{
 			const int next = s_vu_jumps_game ? 0 : 1;
 			SavePlayerProfile("VU1 inline jumps", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "SaltosVU1", next); }, false);
+			break;
+		}
+		case PS4GameMenu::ROW_FG_MARGIN: // compilation 136: No / Sí ([Forja] FGConMargen); ApplyGameProfile takes it
+		{
+			const int next = s_fg_margin ? 0 : 1;
+			SavePlayerProfile("Frame generation with room", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "FGConMargen", next); }, false);
 			break;
 		}
 		case PS4GameMenu::ROW_FRAME_PUSH: // compilation 132: No / Sí ([Forja] EmpujonCuadros); UpdateFramePush takes it
@@ -5669,6 +5697,7 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_FPU_EXACT || row == PS4GameMenu::ROW_IOP_FAST || row == PS4GameMenu::ROW_IOP_SLEEP ||
 						   row == PS4GameMenu::ROW_SKIP_AUTO_FINE || row == PS4GameMenu::ROW_CPU_AUTO_UP || row == PS4GameMenu::ROW_FAST_CODE_CHECK || row == PS4GameMenu::ROW_VU1_FAST || row == PS4GameMenu::ROW_EFFECTS_AHEAD || row == PS4GameMenu::ROW_SKIP_REPEATS || row == PS4GameMenu::ROW_CPU_SEAMLESS || row == PS4GameMenu::ROW_DISC_NO_WAIT ||
 						   row == PS4GameMenu::ROW_CODE_AHEAD || row == PS4GameMenu::ROW_VU_JUMPS || row == PS4GameMenu::ROW_FRAME_PUSH ||
+						   row == PS4GameMenu::ROW_FG_MARGIN ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
 						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT || row == PS4GameMenu::ROW_REPORT_WHERE))
 		{

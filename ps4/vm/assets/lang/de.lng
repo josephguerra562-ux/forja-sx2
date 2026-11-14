@@ -1036,6 +1036,12 @@ tr: Schnelle VU1-Sprünge:  < %s >
 es: Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego
 tr: Test: Sprünge in den VU1-Programmen werden aufgelöst, ohne den übersetzten Code zu verlassen. Entlastet die VU1 in Spielen, die sie auslasten (God of War). Wenn das Bild kaputtgeht oder das Spiel Fehler zeigt, auf Nein stellen. Für dieses Spiel gespeichert
 
+es: Cuadros generados con margen:  < %s >
+tr: Erzeugte Bilder mit Reserve:  < %s >
+
+es: Prueba: con la generación de cuadros prendida, solo arma un cuadro cuando a la consola le sobra tiempo. Así generar nunca le quita velocidad al juego y no se apaga sola. Se guarda para este juego
+tr: Test: Bei eingeschalteter Bilderzeugung wird ein Bild nur erzeugt, wenn die Konsole Zeit übrig hat. So kostet das Erzeugen das Spiel nie Geschwindigkeit und schaltet sich nicht selbst ab. Für dieses Spiel gespeichert
+
 es: Empujón de cuadros:  < %s >
 tr: Bildschub:  < %s >
 

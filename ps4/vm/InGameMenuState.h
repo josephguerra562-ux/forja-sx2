@@ -97,6 +97,8 @@ namespace PS4GameMenu
 		ROW_CODE_AHEAD,
 		ROW_VU_JUMPS,
 		ROW_FRAME_PUSH,
+		// Compilation 136: "Cuadros generados con margen" ([Forja] FGConMargen), in sight and off until it is tried on the console.
+		ROW_FG_MARGIN,
 		// Reportes (compilation 86, Joseph, 2026-10-24: "entre no tocar y sistema ... para que diga reportes"; until 85 in Sistema)
 		ROW_REPORT, // compilation 77: "Reportar este juego" (main.cpp, SendReport; ForjaReport.cpp)
 		// Compilation 80: what went wrong, for the report: the picture, the sound and the controls are what no meter sees.

@@ -1036,6 +1036,12 @@ tr: Saltos rápidos do VU1:  < %s >
 es: Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego
 tr: Teste: os saltos dos programas do VU1 são resolvidos sem sair do código traduzido. Alivia o VU1 nos jogos que o enchem (God of War). Se a imagem quebrar ou o jogo falhar, coloque em Não. Fica salvo para este jogo
 
+es: Cuadros generados con margen:  < %s >
+tr: Quadros gerados com folga:  < %s >
+
+es: Prueba: con la generación de cuadros prendida, solo arma un cuadro cuando a la consola le sobra tiempo. Así generar nunca le quita velocidad al juego y no se apaga sola. Se guarda para este juego
+tr: Teste: com a geração de quadros ligada, só cria um quadro quando o console tem tempo sobrando. Assim gerar nunca tira velocidade do jogo e não se desliga sozinha. Fica salvo para este jogo
+
 es: Empujón de cuadros:  < %s >
 tr: Empurrão de quadros:  < %s >
 

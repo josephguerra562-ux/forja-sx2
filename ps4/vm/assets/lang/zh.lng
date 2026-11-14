@@ -1036,6 +1036,12 @@ tr: VU1 快速分支：  < %s >
 es: Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego
 tr: 测试:VU1 程序里的分支在已变换的程序内部完成,不用出去。在大量使用 VU1 的游戏中减轻它的负担(God of War)。如果画面损坏或游戏出错,请设为否。为此游戏保存
 
+es: Cuadros generados con margen:  < %s >
+tr: 有空余时生成帧:  < %s >
+
+es: Prueba: con la generación de cuadros prendida, solo arma un cuadro cuando a la consola le sobra tiempo. Así generar nunca le quita velocidad al juego y no se apaga sola. Se guarda para este juego
+tr: 测试:开启帧生成时,只在主机有空余时间时才生成帧。这样生成帧不会让游戏变慢,也不会自动关闭。为此游戏保存
+
 es: Empujón de cuadros:  < %s >
 tr: 帧数推动：  < %s >
 

@@ -140,6 +140,10 @@ namespace ForjaGameProfile
 		Origin vu_jumps_origin = Origin::Global;
 		int frame_push = 0;
 		Origin frame_push_origin = Origin::Global;
+		// Compilation 136: [Forja] FGConMargen, "Cuadros generados con margen" (GSDeviceVK.cpp, OrbisFrameGenRecord): a row of No tocar,
+		// in sight and off until it is tried on the console.
+		int fg_margin = 0;
+		Origin fg_margin_origin = Origin::Global;
 	};
 
 	// Forja SX2 (compilation 44): the settings center's copy (/data/ForjaSX2/centro/perfiles, fetched from the project's GitHub by
@@ -303,6 +307,7 @@ namespace ForjaGameProfile
 			{"CodigoListo", &v.code_ahead, &v.code_ahead_origin, 1, 1, false},
 			{"SaltosVU1", &v.vu_jumps, &v.vu_jumps_origin, 1, 1, false},
 			{"EmpujonCuadros", &v.frame_push, &v.frame_push_origin, 1, 1, false},
+			{"FGConMargen", &v.fg_margin, &v.fg_margin_origin, 2, 0, true}, // compilation 136
 		};
 		for (const Hidden& h : hidden)
 		{

@@ -1036,6 +1036,12 @@ tr: Fast VU1 jumps:  < %s >
 es: Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego
 tr: Test: jumps in the VU1 programs are resolved without leaving the translated code. It lightens the VU1 in games that fill it (God of War). If the picture breaks or the game fails, set it to No. Saved for this game
 
+es: Cuadros generados con margen:  < %s >
+tr: Generated frames with room:  < %s >
+
+es: Prueba: con la generación de cuadros prendida, solo arma un cuadro cuando a la consola le sobra tiempo. Así generar nunca le quita velocidad al juego y no se apaga sola. Se guarda para este juego
+tr: Test: with frame generation on, it only makes a frame when the console has time to spare. That way generating never takes speed from the game and it doesn't turn itself off. Saved for this game
+
 es: Empujón de cuadros:  < %s >
 tr: Frame push:  < %s >
 

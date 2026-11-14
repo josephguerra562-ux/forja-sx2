@@ -1036,6 +1036,12 @@ tr: Szybkie skoki VU1:  < %s >
 es: Prueba: los saltos de los programas del VU1 se resuelven sin salir del código traducido. Alivia el VU1 en los juegos que lo llenan (God of War). Si la imagen se rompe o el juego falla, ponlo en No. Se guarda para este juego
 tr: Test: skoki w programach VU1 są rozwiązywane bez wychodzenia z przetłumaczonego kodu. Odciąża VU1 w grach, które go zapełniają (God of War). Jeśli obraz się psuje lub gra sprawia problemy, ustaw Nie. Zapisywane dla tej gry
 
+es: Cuadros generados con margen:  < %s >
+tr: Generowane klatki z zapasem:  < %s >
+
+es: Prueba: con la generación de cuadros prendida, solo arma un cuadro cuando a la consola le sobra tiempo. Así generar nunca le quita velocidad al juego y no se apaga sola. Se guarda para este juego
+tr: Test: przy włączonym generowaniu klatek tworzy klatkę tylko wtedy, gdy konsola ma wolny czas. Dzięki temu generowanie nigdy nie spowalnia gry i nie wyłącza się samo. Zapisywane dla tej gry
+
 es: Empujón de cuadros:  < %s >
 tr: Popchnięcie klatek:  < %s >
 
