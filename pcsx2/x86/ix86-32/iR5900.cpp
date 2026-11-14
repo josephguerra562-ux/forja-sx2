@@ -875,6 +875,7 @@ std::atomic<bool> g_forja_code_ahead{false}; // ps4/vm/main.cpp: the game's row
 std::atomic<u32> g_forja_code_ahead_known{0}, g_forja_code_ahead_done{0}, g_forja_code_ahead_left{0};
 // Compilation 133, for the log: whether the game was seen started, and how many calls got as far as looking at the list.
 std::atomic<u32> g_forja_code_ahead_started{0}, g_forja_code_ahead_passes{0};
+std::atomic<u32> g_forja_code_ahead_caught{0}; // compilation 134, for the log: blocks made by the catch-ups
 
 namespace
 {
@@ -922,7 +923,6 @@ namespace
 		size_t hot_next = 0;
 	} s_fca;
 
-std::atomic<u32> g_forja_code_ahead_caught{0}; // compilation 134, for the log: blocks made by the catch-ups
 
 	u32 ForjaCodeHash(const u32* words, u32 count)
 	{
