@@ -873,6 +873,8 @@ alignas(16) static u8 manual_counter[Ps2MemSize::TotalRam >> 12];
 
 std::atomic<bool> g_forja_code_ahead{false}; // ps4/vm/main.cpp: the game's row
 std::atomic<u32> g_forja_code_ahead_known{0}, g_forja_code_ahead_done{0}, g_forja_code_ahead_left{0};
+// Compilation 133, for the log: whether the game was seen started, and how many calls got as far as looking at the list.
+std::atomic<u32> g_forja_code_ahead_started{0}, g_forja_code_ahead_passes{0};
 
 namespace
 {
@@ -904,6 +906,11 @@ namespace
 		size_t mark = 0, origin = 0;
 		double eager_ms = 0.0;
 		u64 next_pass = 0;
+		// Compilation 133: the game itself started (its entry point's block was seen made). Kept from then on: in the 132 the entry
+		// point was looked up at every call, and a reset (every save state loaded) takes that block away for good, since the game
+		// never runs its entry point again. Joseph loads a state at the start of every session (2026-11-14, the 132's four
+		// sessions): not one block was made ahead.
+		bool started = false;
 	} s_fca;
 
 	u32 ForjaCodeHash(const u32* words, u32 count)
@@ -927,12 +934,15 @@ namespace
 		g_forja_code_ahead_known.store(static_cast<u32>(s_fca.entries.size()), std::memory_order_relaxed);
 		g_forja_code_ahead_done.store(s_fca.done, std::memory_order_relaxed);
 		g_forja_code_ahead_left.store(s_fca.left, std::memory_order_relaxed);
+		g_forja_code_ahead_started.store(s_fca.started ? 1u : 0u, std::memory_order_relaxed);
 	}
 } // namespace
 
-// A new game: the list of its earlier sessions (an empty path: none, and nothing is kept).
-void ForjaCodeAheadBegin(const char* path)
+// A new game: the list of its earlier sessions (an empty path: none, and nothing is kept). `running`: the row was turned on with the
+// game already going.
+void ForjaCodeAheadBegin(const char* path, bool running)
 {
+	s_fca.started = running;
 	s_fca.entries.clear();
 	s_fca.known.clear();
 	s_fca.limit = s_fca.cursor = s_fca.saved = 0;
@@ -1024,9 +1034,7 @@ static void ForjaCodeAheadOnReset()
 		e.done = 0;
 	}
 	// Only with the game itself running: the resets while the console's own program hands over to the game are not a load.
-	const u32 entry = VMManager::Internal::GetCurrentELFEntryPoint();
-	const bool game_running = entry >= FORJA_CODE_FIRST && entry < FORJA_CODE_END && PC_GETBLOCK(entry)->GetFnptr() != (uptr)JITCompile;
-	if (had_blocks && game_running)
+	if (had_blocks && s_fca.started)
 	{
 		if (s_fca.mark == 0)
 			s_fca.mark = s_fca.entries.size(); // learned now: what comes after this load goes after this place
@@ -1047,6 +1055,17 @@ static void ForjaCodeAheadOnReset()
 // True when it used some time.
 bool ForjaCodeAheadTick(double budget_ms)
 {
+	// Has the game itself started? Its entry point's block being made is what tells; looked at here, at every vsync, until it is.
+	if (!s_fca.started)
+	{
+		if (!g_forja_code_ahead.load(std::memory_order_relaxed) || !eeCpuExecuting)
+			return false;
+		const u32 entry = VMManager::Internal::GetCurrentELFEntryPoint();
+		if (entry < FORJA_CODE_FIRST || entry >= FORJA_CODE_END || PC_GETBLOCK(entry)->GetFnptr() == (uptr)JITCompile)
+			return false;
+		s_fca.started = true;
+		g_forja_code_ahead_started.store(1, std::memory_order_relaxed);
+	}
 	const bool eager = budget_ms <= 0.0;
 	if (eager)
 	{
@@ -1058,11 +1077,8 @@ bool ForjaCodeAheadTick(double budget_ms)
 		!recPtr || recPtrEnd - recPtr < static_cast<sptr>(8 * 1024 * 1024) ||
 		g_orbis_rec_nocount.load(std::memory_order_relaxed) != s_orbis_rec_nocount)
 		return false;
-	// Not before the game itself started: its entry point is the block that tells the rest of the emulator so.
-	const u32 entry = VMManager::Internal::GetCurrentELFEntryPoint();
-	if (entry < FORJA_CODE_FIRST || entry >= FORJA_CODE_END || PC_GETBLOCK(entry)->GetFnptr() == (uptr)JITCompile)
-		return false;
 	const u64 start = Common::Timer::GetCurrentValue();
+	g_forja_code_ahead_passes.fetch_add(1, std::memory_order_relaxed);
 	if (s_fca.cursor >= s_fca.limit)
 	{
 		// A whole pass done: what is left waits for its code to be loaded; look again in a while.

@@ -372,7 +372,8 @@ static std::string s_code_ahead_path;
 #if defined(PCSX2_PS4_VM_BOOT_JIT)
 extern std::atomic<bool> g_forja_code_ahead; // pcsx2/x86/ix86-32/iR5900.cpp
 extern std::atomic<u32> g_forja_code_ahead_known, g_forja_code_ahead_done, g_forja_code_ahead_left;
-extern void ForjaCodeAheadBegin(const char* path);
+extern std::atomic<u32> g_forja_code_ahead_started, g_forja_code_ahead_passes; // compilation 133
+extern void ForjaCodeAheadBegin(const char* path, bool running);
 extern bool ForjaCodeAheadSave(const char* path, bool force);
 extern std::atomic<bool> g_forja_vu_jump_inline; // pcsx2/x86/microVU.cpp
 #endif
@@ -1222,7 +1223,7 @@ static void ToggleCheat()
 
 // Forja SX2 (compilation 132): "Código listo al arrancar": the game's list of EE blocks (pcsx2/x86/ix86-32/iR5900.cpp) is read when it
 // starts (or when its row is turned on) and written when the menu opens and when the game ends.
-static void ForjaCodeAheadStart(const std::string& serial, u32 crc)
+static void ForjaCodeAheadStart(const std::string& serial, u32 crc, bool running)
 {
 #if defined(PCSX2_PS4_VM_BOOT_JIT)
 	s_code_ahead_path.clear();
@@ -1234,13 +1235,14 @@ static void ForjaCodeAheadStart(const std::string& serial, u32 crc)
 		std::snprintf(path, sizeof(path), "/data/ForjaSX2/cache/codigo/%s_%08X.bin", Path::SanitizeFileName(serial).c_str(), crc);
 		s_code_ahead_path = path;
 	}
-	ForjaCodeAheadBegin(s_code_ahead_path.c_str());
+	ForjaCodeAheadBegin(s_code_ahead_path.c_str(), running);
 	if (!s_code_ahead_path.empty())
 		ProbeLog("Code ahead (compilation 132): %u blocks known from earlier sessions (%s)\n",
 			g_forja_code_ahead_known.load(std::memory_order_relaxed), s_code_ahead_path.c_str());
 #else
 	(void)serial;
 	(void)crc;
+	(void)running;
 #endif
 }
 
@@ -2811,7 +2813,7 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		g_forja_code_ahead.store(code_ahead, std::memory_order_relaxed);
 		g_forja_vu_jump_inline.store(s_vu_jumps_game, std::memory_order_relaxed);
 		if (turned_on && !new_game && VMManager::GetDiscCRC() != 0)
-			ForjaCodeAheadStart(s_profile.serial, s_profile.crc); // from its row: the list is read now
+			ForjaCodeAheadStart(s_profile.serial, s_profile.crc, true); // from its row, the game already going: the list is read now
 #endif
 		if (code_ahead || s_vu_jumps_game || s_frame_push)
 			ProbeLog("Compilation 132 rows: code ahead %s (%s), VU1 inline jumps %s (%s), frame push %s (%s)\n", code_ahead ? "on" : "off",
@@ -5202,11 +5204,15 @@ void VMHostPoll()
 #if defined(PCSX2_PS4_VM_BOOT_JIT)
 				if (s_code_ahead_game) // compilation 132
 				{
-					static u32 s_ahead_seen = 0;
+					// Compilation 133: also every 30 s with nothing made, with whether the game was seen started and how many calls looked at
+					// the list: in the 132 this line never came out, and nothing said why (the entry point's block, gone after a load).
+					static u32 s_ahead_seen = 0, s_ahead_beats = 0;
 					const u32 ahead = g_forja_code_ahead_done.load(std::memory_order_relaxed);
-					if (ahead != s_ahead_seen)
-						ProbeLog("Code ahead: known=%u made_ahead=%u (%u in 5 s) left=%u\n", g_forja_code_ahead_known.load(std::memory_order_relaxed),
-							ahead, ahead - s_ahead_seen, g_forja_code_ahead_left.load(std::memory_order_relaxed));
+					if (ahead != s_ahead_seen || ++s_ahead_beats % 6 == 0)
+						ProbeLog("Code ahead: known=%u made_ahead=%u (%u in 5 s) left=%u started=%u passes=%u\n",
+							g_forja_code_ahead_known.load(std::memory_order_relaxed), ahead, ahead - s_ahead_seen,
+							g_forja_code_ahead_left.load(std::memory_order_relaxed), g_forja_code_ahead_started.load(std::memory_order_relaxed),
+							g_forja_code_ahead_passes.load(std::memory_order_relaxed));
 					s_ahead_seen = ahead;
 				}
 #endif
@@ -6104,7 +6110,7 @@ static void* RunVM(void*)
 			ForjaGuardStart(serial, crc); // compilation 131: before the profile is read
 			s_push_active = false; // compilation 132
 			ApplyGameProfile(ForjaGameProfile::Load(serial, crc));
-			ForjaCodeAheadStart(serial, crc); // compilation 132: the game's list, or none
+			ForjaCodeAheadStart(serial, crc, false); // compilation 132: the game's list, or none
 			RepinWorkersForProfile();
 #if defined(PCSX2_PS4_VM_BOOT_JIT)
 			// Compilation 125: "Revisión rápida del código" from the game's start. In the 124 it was read only when the row changed: Bully

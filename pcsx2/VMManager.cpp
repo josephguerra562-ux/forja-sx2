@@ -2425,13 +2425,14 @@ void VMManager::Internal::Throttle()
 		~OrbisThrottleTimer() { g_orbis_ee_throttle_ticks += __builtin_ia32_rdtsc() - t0; }
 	} orbis_throttle_timer; // eerec-281
 	OrbisEEWaitScope orbis_wait; // vk-285-8
-	if (s_target_speed == 0.0f || s_use_vsync_for_timing)
-		return;
-
 	// Forja SX2 (compilation 132): "Código listo al arrancar", what it owes right after a save state's load (iR5900.cpp): up to 40 ms
-	// here, before the frame's time is read, so the limiter sees it as part of a long frame.
+	// here, before the frame's time is read, so the limiter sees it as part of a long frame (133: and before the
+	// return below, so it does not depend on how the frames are timed).
 	if (ForjaCodeAheadTick)
 		ForjaCodeAheadTick(0.0);
+
+	if (s_target_speed == 0.0f || s_use_vsync_for_timing)
+		return;
 
 	const u64 uExpectedEnd =
 		s_limiter_frame_start +
