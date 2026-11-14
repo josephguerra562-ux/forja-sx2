@@ -91,7 +91,7 @@ namespace PS4GameMenu
 		// Compilation 130: "Disco sin esperas" ([Forja] DiscoSinEsperas): a sector not here yet from the console's disc makes the read come
 		// back later in the PS2's time instead of the emulator standing still (pcsx2/CDVD/CDVD.cpp). Off until measured.
 		ROW_DISC_NO_WAIT,
-		// Compilation 132, in sight and off until each is tried on the console (the rows above this one are hidden since the 131):
+		// Compilation 132, in sight and off until each was tried on the console; compilation 134, on and hidden like the rows above:
 		// "Código listo al arrancar" ([Forja] CodigoListo), "Saltos rápidos del VU1" ([Forja] SaltosVU1) and "Empujón de cuadros"
 		// ([Forja] EmpujonCuadros); ForjaGameProfile.h says what each is.
 		ROW_CODE_AHEAD,
@@ -134,7 +134,7 @@ namespace PS4GameMenu
 
 	constexpr bool RowIsHiddenLab(unsigned row)
 	{
-		return row >= ROW_DRAW_THREAD && row <= ROW_DISC_NO_WAIT && row != ROW_FPU_EXACT;
+		return row >= ROW_DRAW_THREAD && row <= ROW_FRAME_PUSH && row != ROW_FPU_EXACT; // compilation 134: and the 132's three
 	}
 
 	inline bool RowHidden(unsigned row)

@@ -373,6 +373,7 @@ static std::string s_code_ahead_path;
 extern std::atomic<bool> g_forja_code_ahead; // pcsx2/x86/ix86-32/iR5900.cpp
 extern std::atomic<u32> g_forja_code_ahead_known, g_forja_code_ahead_done, g_forja_code_ahead_left;
 extern std::atomic<u32> g_forja_code_ahead_started, g_forja_code_ahead_passes; // compilation 133
+extern std::atomic<u32> g_forja_code_ahead_caught; // compilation 134
 extern void ForjaCodeAheadBegin(const char* path, bool running);
 extern bool ForjaCodeAheadSave(const char* path, bool force);
 extern std::atomic<bool> g_forja_vu_jump_inline; // pcsx2/x86/microVU.cpp
@@ -2802,7 +2803,7 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	// (ForjaGameProfile::Load gives each as 0 or 1), and their rows show only when that file asks for them.
 	s_safe_mode = s_profile.safe_mode;
 	PS4GameMenu::g_lab_rows_shown.store(s_profile.lab_rows, std::memory_order_relaxed);
-	// Compilation 132: the three new rows, off unless the game's profile says 1 (and never for a PS1 game).
+	// Compilation 132: the three new rows; compilation 134, on unless the game's profile says 0 (and never for a PS1 game).
 	{
 		const bool code_ahead = s_profile.code_ahead == 1 && !s_ps1_game;
 		const bool turned_on = code_ahead && !s_code_ahead_game;
@@ -5209,10 +5210,10 @@ void VMHostPoll()
 					static u32 s_ahead_seen = 0, s_ahead_beats = 0;
 					const u32 ahead = g_forja_code_ahead_done.load(std::memory_order_relaxed);
 					if (ahead != s_ahead_seen || ++s_ahead_beats % 6 == 0)
-						ProbeLog("Code ahead: known=%u made_ahead=%u (%u in 5 s) left=%u started=%u passes=%u\n",
+						ProbeLog("Code ahead: known=%u made_ahead=%u (%u in 5 s) left=%u started=%u passes=%u caught_up=%u\n",
 							g_forja_code_ahead_known.load(std::memory_order_relaxed), ahead, ahead - s_ahead_seen,
 							g_forja_code_ahead_left.load(std::memory_order_relaxed), g_forja_code_ahead_started.load(std::memory_order_relaxed),
-							g_forja_code_ahead_passes.load(std::memory_order_relaxed));
+							g_forja_code_ahead_passes.load(std::memory_order_relaxed), g_forja_code_ahead_caught.load(std::memory_order_relaxed));
 					s_ahead_seen = ahead;
 				}
 #endif

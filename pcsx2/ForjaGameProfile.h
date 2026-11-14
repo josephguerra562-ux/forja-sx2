@@ -127,8 +127,10 @@ namespace ForjaGameProfile
 		bool has_lab = false;
 		bool lab_rows = false;
 		bool guard = true;
-		// Compilation 132, the three new rows of No tocar, in sight and off until each is tried on the console (0 or 1 from Load, like
-		// the hidden ones; "Modo seguro" turns them off too): [Forja] CodigoListo, the EE's blocks of earlier sessions made ahead
+		// Compilation 132, three rows of No tocar; compilation 134 (Joseph, 2026-11-14, with the official 1.07: "siempre en sí ... e
+		// invisibles al público"), on for every game and hidden like the ten above, after the 132 and the 133 on the console (God of War
+		// II's VU1 95.2 -> 97.8 % speed; Shadow 9.8 -> 17.5 FPS on a push; "Código listo" made 62,000-250,000 blocks ahead a session).
+		// 0 or 1 from Load; "Modo seguro" turns them off too: [Forja] CodigoListo, the EE's blocks of earlier sessions made ahead
 		// (x86/ix86-32/iR5900.cpp); [Forja] SaltosVU1, a VU1 jump's cached target taken in the block's own code
 		// (x86/microVU_Branch.inl); [Forja] EmpujonCuadros, a two-second raise of the PS2 CPU when the game stays at fewer frames with
 		// room to spare (ps4/vm/main.cpp, UpdateFramePush).
@@ -298,9 +300,9 @@ namespace ForjaGameProfile
 			{"EfectosListos", &v.effects_ahead, &v.effects_ahead_origin, 2, 1, false},
 			{"CpuSinTirones", &v.cpu_seamless, &v.cpu_seamless_origin, 1, 1, false},
 			{"DiscoSinEsperas", &v.disc_no_wait, &v.disc_no_wait_origin, 1, 1, false},
-			{"CodigoListo", &v.code_ahead, &v.code_ahead_origin, 1, 0, true},
-			{"SaltosVU1", &v.vu_jumps, &v.vu_jumps_origin, 1, 0, true},
-			{"EmpujonCuadros", &v.frame_push, &v.frame_push_origin, 1, 0, true},
+			{"CodigoListo", &v.code_ahead, &v.code_ahead_origin, 1, 1, false},
+			{"SaltosVU1", &v.vu_jumps, &v.vu_jumps_origin, 1, 1, false},
+			{"EmpujonCuadros", &v.frame_push, &v.frame_push_origin, 1, 1, false},
 		};
 		for (const Hidden& h : hidden)
 		{

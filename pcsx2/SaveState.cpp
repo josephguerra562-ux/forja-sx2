@@ -66,6 +66,10 @@ static void PreLoadPrep()
 	VMManager::Internal::ClearCPUExecutionCaches();
 }
 
+// Forja SX2 (compilation 134): "Código listo al arrancar" (x86/ix86-32/iR5900.cpp) makes the blocks the game was running before the
+// load, now that its memory is back and before it runs a frame: the load is a pause already, and they were a hitch in its first frame.
+extern bool ForjaCodeAheadCatchUp(double budget_ms) __attribute__((weak));
+
 static void PostLoadPrep()
 {
 	resetCache();
@@ -87,6 +91,9 @@ static void PostLoadPrep()
 
 	if (VMManager::Internal::HasBootedELF())
 		R5900SymbolImporter.OnElfLoadedInMemory();
+
+	if (ForjaCodeAheadCatchUp)
+		ForjaCodeAheadCatchUp(300.0); // compilation 134
 }
 
 // --------------------------------------------------------------------------------------

@@ -911,7 +911,18 @@ namespace
 		// never runs its entry point again. Joseph loads a state at the start of every session (2026-11-14, the 132's four
 		// sessions): not one block was made ahead.
 		bool started = false;
+		// Compilation 134 (the 133 on the console, 2026-11-14): "Código listo" made 62,000-250,000 blocks ahead a session, and the code
+		// hitches stayed, nearly all of them in the first frame after a save state's load (1,300-5,500 blocks in that one frame, at
+		// ~50 us each) or after a reset for a CPU change without "CPU sin tirones" (Need for Speed Most Wanted: 9,588 and 13,090 blocks,
+		// 489 and 670 ms). The ahead of the 132 runs at the vsyncs, and the game makes its first frame before the first one comes. So
+		// at a reset with the game running, the blocks that were made before it (the ones the game was running: `hot`, in the order
+		// they were learned) are made at once where nothing runs: at the end of the load (SaveState.cpp, PostLoadPrep) or before the
+		// EE starts again after a reset (recExecute), with a budget (ForjaCodeAheadCatchUp). The order: ForjaCodeAheadOnReset.
+		std::vector<u32> hot;
+		size_t hot_next = 0;
 	} s_fca;
+
+std::atomic<u32> g_forja_code_ahead_caught{0}; // compilation 134, for the log: blocks made by the catch-ups
 
 	u32 ForjaCodeHash(const u32* words, u32 count)
 	{
@@ -1028,9 +1039,17 @@ static void ForjaCodeAheadRecord(u32 startpc, u32 words)
 static void ForjaCodeAheadOnReset()
 {
 	bool had_blocks = false;
-	for (ForjaCodeEntry& e : s_fca.entries)
+	s_fca.hot.clear();
+	s_fca.hot_next = 0;
+	for (size_t i = 0; i < s_fca.entries.size(); i++)
 	{
-		had_blocks = had_blocks || e.done != 0;
+		ForjaCodeEntry& e = s_fca.entries[i];
+		e.spare = 0;
+		if (e.done != 0)
+		{
+			had_blocks = true;
+			e.spare = 1; // compilation 134: made before the reset
+		}
 		e.done = 0;
 	}
 	// Only with the game itself running: the resets while the console's own program hands over to the game are not a load.
@@ -1043,6 +1062,25 @@ static void ForjaCodeAheadOnReset()
 	}
 	else
 		s_fca.origin = 0;
+	// Compilation 134: the catch-up's order. First what was made before the reset from the place of the game's first load on (the
+	// game's own area: what it was running), then the rest of that area as the list learned it (after the same load in an earlier
+	// session), and last what was made before that place (the console's start and the game's menus).
+	if (had_blocks && s_fca.started)
+	{
+		const size_t from = s_fca.origin, count = s_fca.entries.size();
+		s_fca.hot.reserve(count);
+		for (size_t i = from; i < count; i++)
+			if (s_fca.entries[i].spare)
+				s_fca.hot.push_back(static_cast<u32>(i));
+		for (size_t i = from; i < count; i++)
+			if (!s_fca.entries[i].spare)
+				s_fca.hot.push_back(static_cast<u32>(i));
+		for (size_t i = 0; i < from && i < count; i++)
+			if (s_fca.entries[i].spare)
+				s_fca.hot.push_back(static_cast<u32>(i));
+	}
+	for (ForjaCodeEntry& e : s_fca.entries)
+		e.spare = 0;
 	s_fca.limit = s_fca.entries.size();
 	s_fca.left = static_cast<u32>(s_fca.limit);
 	s_fca.cursor = 0;
@@ -1106,6 +1144,8 @@ bool ForjaCodeAheadTick(double budget_ms)
 		const u32* source = reinterpret_cast<const u32*>(PSM(e.pc));
 		if (!source || ForjaCodeHash(source, e.words) != e.hash)
 			continue; // not loaded yet, or other code there now
+		if (HWADDR(e.pc) == VMManager::Internal::GetCurrentELFEntryPoint())
+			continue; // compilation 134: the game's entry point has a job of its own when it is made (EntryPointCompilingOnCPUThread)
 		const u32 pc = e.pc;
 		s_fca.compiling = true;
 		recRecompile(pc);
@@ -1130,6 +1170,55 @@ bool ForjaCodeAheadTick(double budget_ms)
 	}
 	ForjaCodePublish();
 	return used || looked >= 1000;
+}
+
+// Compilation 134: where nothing runs (the end of a save state's load, or before the EE starts again after a reset), the blocks the
+// game was running before the reset, up to `budget_ms`. True when it made some.
+bool ForjaCodeAheadCatchUp(double budget_ms)
+{
+	if (!g_forja_code_ahead.load(std::memory_order_relaxed) || !s_fca.started || eeCpuExecuting || s_fca.compiling || eeRecNeedsReset ||
+		s_fca.hot_next >= s_fca.hot.size() || !recPtr || recPtrEnd - recPtr < static_cast<sptr>(8 * 1024 * 1024) ||
+		g_orbis_rec_nocount.load(std::memory_order_relaxed) != s_orbis_rec_nocount)
+		return false;
+	const u32 entry = VMManager::Internal::GetCurrentELFEntryPoint();
+	const u64 start = Common::Timer::GetCurrentValue();
+	const u32 generation = s_fca.generation;
+	const u32 code_before = cpuRegs.code; // the recompiler uses it as its scratch; nothing runs, but it is part of the saved state
+	u32 made = 0;
+	while (s_fca.hot_next < s_fca.hot.size())
+	{
+		const u32 index = s_fca.hot[s_fca.hot_next++];
+		if (index >= s_fca.entries.size())
+			continue;
+		ForjaCodeEntry& e = s_fca.entries[index];
+		if (e.done)
+			continue;
+		if (PC_GETBLOCK(e.pc)->GetFnptr() != (uptr)JITCompile)
+		{
+			e.done = 1;
+			s_fca.left--;
+			continue;
+		}
+		const u32* source = reinterpret_cast<const u32*>(PSM(e.pc));
+		if (!source || ForjaCodeHash(source, e.words) != e.hash || HWADDR(e.pc) == entry)
+			continue;
+		s_fca.compiling = true;
+		recRecompile(e.pc);
+		s_fca.compiling = false;
+		if (generation != s_fca.generation)
+			break;
+		e.done = 1;
+		s_fca.left--;
+		s_fca.done++;
+		made++;
+		if (eeRecNeedsReset || recPtrEnd - recPtr < static_cast<sptr>(8 * 1024 * 1024) ||
+			Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - start) >= budget_ms)
+			break;
+	}
+	cpuRegs.code = code_before;
+	g_forja_code_ahead_caught.fetch_add(made, std::memory_order_relaxed);
+	ForjaCodePublish();
+	return made != 0;
 }
 
 static void recResetRaw()
@@ -1351,6 +1440,7 @@ static void recExecute()
 	{
 		eeRecNeedsReset = false;
 		recResetRaw();
+		ForjaCodeAheadCatchUp(150.0); // compilation 134: what the game was running, before it starts again
 	}
 	// Compilation 128: a CPU speed change waiting for the recompiled code to be left.
 	if (s_forja_repatch_pending)
