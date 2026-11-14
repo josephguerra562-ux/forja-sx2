@@ -946,8 +946,8 @@ tr: Sem mistura
 es: Desentrelazado:  < %s >
 tr: Desentrelaçamento:  < %s >
 
-es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
-tr: Se a imagem piscar: Mistura elimina isso, mas fica um pouco mais suave. Auto é o normal. Fica salvo para este jogo
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto usa lo que se midió para este juego, si lo hay. Se guarda para este juego
+tr: Se a imagem piscar: Mistura elimina isso, mas fica um pouco mais suave. Auto usa o que foi medido para este jogo, se houver. Fica salvo para este jogo
 
 es: Filtro de texturas:  < %s >
 tr: Filtro de texturas:  < %s >
@@ -960,6 +960,12 @@ tr: Público por software:  este jogo não usa
 
 es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
 tr: Só os Guitar Hero desenham o público por software. Neste jogo não muda nada
+
+es: Público por software:  < Al vuelo >
+tr: Público por software:  < Na hora >
+
+es: Dibuja el público en cada cuadro mientras a la consola le sobra tiempo, y menos veces (hasta 1 de 4) solo cuando le falta. Así se mueve fluido sin quitar velocidad. Se guarda para este juego
+tr: Desenha o público em cada quadro enquanto o console tem tempo sobrando, e menos vezes (até 1 a cada 4) só quando falta. Assim ele se move fluido sem tirar velocidade. Fica salvo para este jogo
 
 es: Público por software:  < todos los cuadros (lento) >
 tr: Público por software:  < todos os quadros (lento) >

@@ -946,8 +946,8 @@ tr: ブレンドなし
 es: Desentrelazado:  < %s >
 tr: インターレース解除:  < %s >
 
-es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
-tr: 画面がちらつく場合:ブレンドで消えますが、少し柔らかく見えます。Auto が通常です。このゲームに保存されます
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto usa lo que se midió para este juego, si lo hay. Se guarda para este juego
+tr: 画面がちらつく場合:ブレンドで消えますが、少し柔らかく見えます。Auto はこのゲーム用に測った設定があればそれを使います。このゲームに保存されます
 
 es: Filtro de texturas:  < %s >
 tr: テクスチャフィルター:  < %s >
@@ -960,6 +960,12 @@ tr: ソフトウェア描画の観客：  このゲームでは使いません
 
 es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
 tr: 観客をソフトウェアで描くのは Guitar Hero シリーズだけです。このゲームでは何も変わりません
+
+es: Público por software:  < Al vuelo >
+tr: ソフトウェア描画の観客：  < 必要なときだけ >
+
+es: Dibuja el público en cada cuadro mientras a la consola le sobra tiempo, y menos veces (hasta 1 de 4) solo cuando le falta. Así se mueve fluido sin quitar velocidad. Se guarda para este juego
+tr: 本体に時間の余裕があるときは毎フレーム観客を描き、足りないときだけ回数を減らします(最少で 4 フレームに 1 回)。これで観客はなめらかに動き、速度も落ちません。このゲームに保存されます
 
 es: Público por software:  < todos los cuadros (lento) >
 tr: ソフトウェア描画の観客：  < 毎フレーム（遅い） >

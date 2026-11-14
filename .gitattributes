@@ -20,3 +20,5 @@ CMakeLists.txt text eol=lf
 
 # Forja SX2 (compilation 129): the lists of effects ("Efectos listos al arrancar") are binary, byte for byte.
 ps4/vm/assets/efectos/*.bin binary
+# Compilation 137: and the lists of code ("Código listo de fábrica").
+ps4/vm/assets/codigo/*.bin binary

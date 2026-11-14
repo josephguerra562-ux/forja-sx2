@@ -946,8 +946,8 @@ tr: بدون مزج
 es: Desentrelazado:  < %s >
 tr: إزالة التشابك:  < %s >
 
-es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
-tr: إذا كانت الصورة تومض: المزج يزيل ذلك، لكنها تبدو أنعم قليلا. Auto هو المعتاد. يُحفظ لهذه اللعبة
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto usa lo que se midió para este juego, si lo hay. Se guarda para este juego
+tr: إذا كانت الصورة تومض: المزج يزيل ذلك، لكنها تبدو أنعم قليلا. Auto يستخدم ما تم قياسه لهذه اللعبة إن وجد. يُحفظ لهذه اللعبة
 
 es: Filtro de texturas:  < %s >
 tr: مرشح الخامات:  < %s >
@@ -960,6 +960,12 @@ tr: الجمهور بالبرمجيات:  لا تستخدمه هذه اللعب�
 
 es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
 tr: ألعاب Guitar Hero وحدها ترسم جمهورها بالبرمجيات. لا يتغير شيء في هذه اللعبة
+
+es: Público por software:  < Al vuelo >
+tr: الجمهور بالبرمجيات:  < عند الحاجة >
+
+es: Dibuja el público en cada cuadro mientras a la consola le sobra tiempo, y menos veces (hasta 1 de 4) solo cuando le falta. Así se mueve fluido sin quitar velocidad. Se guarda para este juego
+tr: يرسم الجمهور في كل إطار ما دام لدى الجهاز وقت زائد، ومرات أقل (حتى 1 من كل 4) فقط عندما ينقصه الوقت. بهذا يتحرك بسلاسة دون أن يبطئ اللعبة. يُحفظ لهذه اللعبة
 
 es: Público por software:  < todos los cuadros (lento) >
 tr: الجمهور بالبرمجيات:  < كل الإطارات (بطيء) >

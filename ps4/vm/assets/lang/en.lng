@@ -946,8 +946,8 @@ tr: No blend
 es: Desentrelazado:  < %s >
 tr: Deinterlacing:  < %s >
 
-es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
-tr: If the picture flickers: Blend removes it, but it looks a little softer. Auto is the usual one. Saved for this game
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto usa lo que se midió para este juego, si lo hay. Se guarda para este juego
+tr: If the picture flickers: Blend removes it, but it looks a little softer. Auto uses what was measured for this game, if there is something. Saved for this game
 
 es: Filtro de texturas:  < %s >
 tr: Texture filter:  < %s >
@@ -960,6 +960,12 @@ tr: Software crowd:  not used by this game
 
 es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
 tr: Only the Guitar Hero games draw their crowd in software. Nothing changes in this game
+
+es: Público por software:  < Al vuelo >
+tr: Software crowd:  < On the fly >
+
+es: Dibuja el público en cada cuadro mientras a la consola le sobra tiempo, y menos veces (hasta 1 de 4) solo cuando le falta. Así se mueve fluido sin quitar velocidad. Se guarda para este juego
+tr: Draws the crowd on every frame while the console has time to spare, and less often (down to 1 in 4) only when it runs short. That way it moves smoothly without costing speed. Saved for this game
 
 es: Público por software:  < todos los cuadros (lento) >
 tr: Software crowd:  < every frame (slow) >

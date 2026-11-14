@@ -946,8 +946,8 @@ tr: Без смешивания
 es: Desentrelazado:  < %s >
 tr: Деинтерлейс:  < %s >
 
-es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
-tr: Если изображение мерцает: Смешивание убирает это, но картинка немного мягче. Auto — обычный вариант. Сохраняется для этой игры
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto usa lo que se midió para este juego, si lo hay. Se guarda para este juego
+tr: Если изображение мерцает: Смешивание убирает это, но картинка немного мягче. Auto использует то, что было измерено для этой игры, если есть. Сохраняется для этой игры
 
 es: Filtro de texturas:  < %s >
 tr: Фильтр текстур:  < %s >
@@ -960,6 +960,12 @@ tr: Программная толпа:  в этой игре нет
 
 es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
 tr: Только игры Guitar Hero рисуют толпу программно. В этой игре ничего не меняется
+
+es: Público por software:  < Al vuelo >
+tr: Программная толпа:  < По ходу >
+
+es: Dibuja el público en cada cuadro mientras a la consola le sobra tiempo, y menos veces (hasta 1 de 4) solo cuando le falta. Así se mueve fluido sin quitar velocidad. Se guarda para este juego
+tr: Рисует толпу в каждом кадре, пока у консоли есть свободное время, и реже (до 1 из 4) только когда его не хватает. Так она движется плавно и не замедляет игру. Сохраняется для этой игры
 
 es: Público por software:  < todos los cuadros (lento) >
 tr: Программная толпа:  < каждый кадр (медленно) >

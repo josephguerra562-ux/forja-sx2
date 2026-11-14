@@ -109,6 +109,20 @@ if (Test-Path -LiteralPath $effectsRoot) {
     }
   }
 }
+# Forja SX2 (compilation 137): the factory lists of code (resources/codigo/<SERIAL>_<CRC>.bin, "Código listo de fábrica"), made on
+# the console; ps4/vm/main.cpp copies one to the player's cache when he has none for that game. None is fine.
+$codeRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'assets/codigo'))
+if (Test-Path -LiteralPath $codeRoot) {
+  $codeFiles = @(Get-ChildItem -LiteralPath $codeRoot -Filter '*.bin' -File)
+  if ($codeFiles.Count -gt 0) {
+    New-Item -ItemType Directory -Force -Path (Join-Path $packageDir 'resources/codigo') | Out-Null
+    foreach ($codeFile in $codeFiles) {
+      $relative = 'resources/codigo/' + $codeFile.Name
+      Copy-Item -LiteralPath $codeFile.FullName -Destination (Join-Path $packageDir $relative)
+      $packageFiles += $relative
+    }
+  }
+}
 # Forja SX2 (compilation 35): factory patches (resources/parches/<SERIAL>_<CRC>_forja.pnach), which pcsx2/Patch.cpp reads after
 # the player's own /data/ForjaSX2/patches. The Orbis build has no zip, so they go as loose files.
 $patchRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'assets/parches'))

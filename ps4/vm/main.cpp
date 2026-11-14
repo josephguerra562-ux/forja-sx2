@@ -382,6 +382,8 @@ static bool s_skip_fast_running = false; // compilation 131: "Salto de ciclo: Al
 extern std::atomic<int> g_forja_skip16; // pcsx2/MTVU.cpp (compilation 135)
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
 extern std::atomic<unsigned> g_forja_vsync_load;
+extern std::atomic<int> g_forja_deinterlace_factory; // compilation 137: pcsx2/VMManager.cpp, the game's factory deinterlace mode
+extern std::atomic<bool> g_forja_deinterlace_auto;   // and whether the player's Auto was turned into it
 static bool s_fg_margin = false; // compilation 136: [Forja] FGConMargen for this game
 extern std::atomic<bool> g_forja_disc_no_wait; // pcsx2/CDVD/CDVD.cpp
 extern std::atomic<u32> g_forja_disc_deferrals;
@@ -438,9 +440,12 @@ static bool s_sw_jit = false;
 extern std::atomic<bool> g_forja_iop_fast;
 static bool s_iop_fast = false;
 // Compilation 88: 16 and 32 too (Joseph, 2026-10-25, Guitar Hero III: "el público sigue siendo el problema").
-static constexpr unsigned CROWD_EVERY_STEPS[] = {1u, 2u, 4u, 8u, 16u, 32u};
+// Compilation 137: "Al vuelo" ([Forja] PublicoCada = 99) after them: ForjaCrowdVsync, below, picks 1, 2 or 4 at each vsync.
+static constexpr unsigned CROWD_AUTO = 99u;
+static constexpr unsigned CROWD_EVERY_STEPS[] = {1u, 2u, 4u, 8u, 16u, 32u, CROWD_AUTO};
 static constexpr unsigned CROWD_EVERY_DEFAULT = 2u;
 static unsigned s_crowd_every = CROWD_EVERY_DEFAULT;
+static bool s_crowd_auto = false; // compilation 137: Al vuelo chosen and the game draws its crowd in software
 static int s_gs_skip_mode = 0;
 // Compilation 63: Auto's steps, one frame in N left out (index 0: every frame drawn), and the one it is on.
 static constexpr unsigned GS_SKIP_STEPS[] = {0u, 8u, 6u, 5u, 4u, 3u, 2u};
@@ -1239,6 +1244,22 @@ static void ForjaCodeAheadStart(const std::string& serial, u32 crc, bool running
 		char path[200];
 		std::snprintf(path, sizeof(path), "/data/ForjaSX2/cache/codigo/%s_%08X.bin", Path::SanitizeFileName(serial).c_str(), crc);
 		s_code_ahead_path = path;
+		// Compilation 137: "Código listo de fábrica". A player without a list of his own for this game (its first session) starts
+		// from the package's (resources/codigo/<SERIAL>_<CRC>.bin, made on Joseph's console), copied to his: the first session of a
+		// game is then as ready as the tenth, and from there the list grows and is saved as always. Same serial and CRC (the same
+		// disc); each block is checked against the game's memory before it is compiled (ForjaCodeAheadTick), as with his own.
+		if (!FileSystem::FileExists(path))
+		{
+			char factory_name[96];
+			std::snprintf(factory_name, sizeof(factory_name), "codigo/%s_%08X.bin", Path::SanitizeFileName(serial).c_str(), crc);
+			const std::string factory = Path::Combine(EmuFolders::Resources, factory_name);
+			if (FileSystem::FileExists(factory.c_str()))
+			{
+				const bool copied = FileSystem::CopyFilePath(factory.c_str(), path, false);
+				ProbeLog("Code ahead (compilation 137): the package's list for this game %s (%s)\n", copied ? "copied" : "could not be copied",
+					factory.c_str());
+			}
+		}
 	}
 	ForjaCodeAheadBegin(s_code_ahead_path.c_str(), running);
 	if (!s_code_ahead_path.empty())
@@ -2122,13 +2143,25 @@ static unsigned ForjaImageStep(const std::pair<Value, const char*> (&steps)[N], 
 	return 0;
 }
 
+// Compilation 137: whether the row is on "Auto" turned into the game's factory mode (VMManager.cpp, UpdateGameSettingsLayer).
+static bool ForjaDeinterlaceAutoFactory()
+{
+	const int factory = g_forja_deinterlace_factory.load(std::memory_order_relaxed);
+	return g_forja_deinterlace_auto.load(std::memory_order_relaxed) && factory > 0 && static_cast<int>(EmuConfig.GS.InterlaceMode) == factory;
+}
+
 static void PublishImageOptionsText()
 {
 	char label[256];
-	std::snprintf(label, sizeof(label), ForjaLang::TF("Desentrelazado:  < %s >"),
-		ForjaLang::T(ForjaDeinterlaceSteps[ForjaImageStep(ForjaDeinterlaceSteps, EmuConfig.GS.InterlaceMode)].second));
+	char value[96];
+	const char* name = ForjaLang::T(ForjaDeinterlaceSteps[ForjaImageStep(ForjaDeinterlaceSteps, EmuConfig.GS.InterlaceMode)].second);
+	if (ForjaDeinterlaceAutoFactory())
+		std::snprintf(value, sizeof(value), "Auto (%s)", name); // compilation 137
+	else
+		std::snprintf(value, sizeof(value), "%s", name);
+	std::snprintf(label, sizeof(label), ForjaLang::TF("Desentrelazado:  < %s >"), value);
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_DEINTERLACE, label,
-		ForjaLang::T("Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego"));
+		ForjaLang::T("Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto usa lo que se midió para este juego, si lo hay. Se guarda para este juego"));
 	std::snprintf(label, sizeof(label), ForjaLang::TF("Filtro de texturas:  < %s >"),
 		ForjaLang::T(ForjaTextureFilterSteps[ForjaImageStep(ForjaTextureFilterSteps, EmuConfig.GS.TextureFiltering)].second));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_TEXTURE_FILTER, label,
@@ -2146,6 +2179,12 @@ static void PublishCrowdText()
 		return;
 	}
 	char label[256];
+	if (s_crowd_every == CROWD_AUTO) // compilation 137
+	{
+		PS4GameMenu::SetRowText(PS4GameMenu::ROW_CROWD, T("Público por software:  < Al vuelo >"),
+			T("Dibuja el público en cada cuadro mientras a la consola le sobra tiempo, y menos veces (hasta 1 de 4) solo cuando le falta. Así se mueve fluido sin quitar velocidad. Se guarda para este juego"));
+		return;
+	}
 	if (s_crowd_every <= 1)
 		std::snprintf(label, sizeof(label), "%s", T("Público por software:  < todos los cuadros (lento) >"));
 	else
@@ -2743,15 +2782,24 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		// Compilation 86: 3 is "1 de 2 rápido", the guard with its short pauses (until 85 it had none: flicker in menus).
 		g_forja_gs_skip_guard.store(true, std::memory_order_relaxed);
 		// Compilation 88: 4 is "2 de 3", two frames left out of every three, with the same short pauses.
-		g_forja_gs_skip_quick.store(gs_skip >= 3, std::memory_order_relaxed);
+		// Compilation 137: only 3 and 4. Al vuelo (5) used the short pauses too: Dragon Ball Z BT4 (2026-11-14, the 1.07) paused 16 times
+		// in 6 minutes, coming back after 0.6-3.6 s each time, and showed 15 frames left out. The normal pauses grow to 36 s.
+		g_forja_gs_skip_quick.store(gs_skip == 3 || gs_skip == 4, std::memory_order_relaxed);
 		g_forja_gs_skip_two.store(gs_skip == 4, std::memory_order_relaxed);
 		// Compilation 90: 5 is "Al vuelo", a frame left out only while the GS is behind (GSRendererPS4.cpp).
 		g_forja_gs_skip_lag.store(gs_skip == 5, std::memory_order_relaxed);
 	}
 	// Compilation 82: the Guitar Hero games' crowd (GSC_GuitarHero reads the atomic on the GS thread).
 	s_crowd_every = s_profile.crowd_every > 0 ? static_cast<unsigned>(s_profile.crowd_every) : CROWD_EVERY_DEFAULT;
-	g_forja_crowd_every.store(s_crowd_every, std::memory_order_relaxed);
-	if (GameDrawsCrowdInSoftware())
+	// Compilation 137: Al vuelo starts at one in two and ForjaCrowdVsync moves it.
+	const bool crowd_auto = s_crowd_every == CROWD_AUTO && GameDrawsCrowdInSoftware();
+	if (crowd_auto != s_crowd_auto || !crowd_auto)
+		g_forja_crowd_every.store(s_crowd_every == CROWD_AUTO ? 2u : s_crowd_every, std::memory_order_relaxed);
+	s_crowd_auto = crowd_auto;
+	if (GameDrawsCrowdInSoftware() && s_crowd_every == CROWD_AUTO)
+		ProbeLog("Crowd: drawn in software al vuelo (compilation 137), one pass in 1, 2 or 4 by the last vsyncs' load (%s)\n",
+			ProfileOriginName(s_profile.crowd_every_origin));
+	else if (GameDrawsCrowdInSoftware())
 		ProbeLog("Crowd: drawn in software one pass in %u (%s)\n", s_crowd_every, ProfileOriginName(s_profile.crowd_every_origin));
 	// Compilation 116: the GS recorder. Compilation 118 (Joseph, 2026-11-04, after the 116 in the six test games: Shadow -27 %,
 	// Most Wanted -22 %, God of War II -17 % a draw on the GS): on unless the profile says 0.
@@ -3616,6 +3664,85 @@ static void ForjaSkipInstantReset()
 	s_si.down_from = -1;
 }
 
+// Compilation 137: "Público al vuelo" ([Forja] PublicoCada = 99), for every game whose crowd is drawn in software (the GameDB's
+// GSC_GuitarHero: the Guitar Hero games). One in 8 fixed (Guitar Hero III's factory value) keeps the speed but the crowd moves 6 times
+// a second (Joseph, 2026-11-14: "se atoran los miembros del fondo"); every pass costs the GS 21.5 ms a frame against 19.8 (the 1.07's
+// session) and slows the song where the GS is at its limit. With the median of the last 7 vsyncs' load (u, the same g_forja_vsync_load):
+//   over 0.98: half as often (down to one in 4, never 8), before "Al vuelo" of the cycle skip has to step in at 1.00;
+//   under 0.93 for 8 vsyncs: twice as often (up to every pass); 3 vsyncs to see each change;
+//   a step to more passes that is over 0.98 again within 0.3 s goes back, and the next waits 0.5 s (doubled up to 4 s, 0.5 again
+//   after 10 s without one).
+// Simulated (simular_sin_parpadeo.py, 10-minute songs, with the 136's cycle skip al vuelo on the same measure): the crowd up to date
+// in 87-89 % of the passes (one in 8: 12.5 %), 48.5 game frames a second (one in 8: 48.6; every pass: 48.1), no slow motion.
+static struct
+{
+	unsigned wait = 0, low = 0, down_from = 0;
+	double clock = 0.0, no_down_until = 0.0, down_wait = 0.5, last_down = -100.0, last_line = 0.0;
+	unsigned vsyncs = 0, passes[3] = {}, ups = 0, downs = 0, backs = 0; // for the 5 s line: vsyncs at 1, 2 and 4
+} s_ca;
+
+static void ForjaCrowdVsync(double m, double budget_ms, unsigned filled)
+{
+	if (!s_crowd_auto || s_video_active || budget_ms < 1.0)
+		return;
+	unsigned every = std::clamp(g_forja_crowd_every.load(std::memory_order_relaxed), 1u, 4u);
+	const auto set = [&every](unsigned next) {
+		every = next;
+		g_forja_crowd_every.store(next, std::memory_order_relaxed);
+	};
+	s_ca.clock += budget_ms / 1000.0;
+	s_ca.vsyncs++;
+	s_ca.passes[every >= 4 ? 2 : every >= 2 ? 1 : 0]++;
+	if (s_ca.clock - s_ca.last_line >= 5.0)
+	{
+		s_ca.last_line = s_ca.clock;
+		const double n = std::max(s_ca.vsyncs, 1u);
+		ProbeLog("Crowd al vuelo: 5 s: now 1 in %u; vsyncs at 1 in 1 %.0f %%, 1 in 2 %.0f %%, 1 in 4 %.0f %%; fewer %u, more %u, back %u; "
+				 "load %.2f\n", every, 100.0 * s_ca.passes[0] / n, 100.0 * s_ca.passes[1] / n, 100.0 * s_ca.passes[2] / n, s_ca.ups,
+			s_ca.downs, s_ca.backs, m);
+		s_ca.vsyncs = s_ca.passes[0] = s_ca.passes[1] = s_ca.passes[2] = s_ca.ups = s_ca.downs = s_ca.backs = 0;
+	}
+	if (filled < 5)
+		return;
+	if (s_ca.wait > 0)
+	{
+		s_ca.wait--;
+		return;
+	}
+	if (s_ca.down_from != 0 && m > 0.98)
+	{
+		set(s_ca.down_from);
+		s_ca.down_from = 0;
+		s_ca.no_down_until = s_ca.clock + s_ca.down_wait;
+		s_ca.down_wait = std::min(s_ca.down_wait * 2.0, 4.0);
+		s_ca.wait = 3;
+		s_ca.backs++;
+		return;
+	}
+	if (s_ca.down_from != 0 && s_ca.clock - s_ca.last_down > 0.3)
+		s_ca.down_from = 0; // it held
+	if (m > 0.98 && every < 4)
+	{
+		set(every * 2);
+		s_ca.wait = 3;
+		s_ca.low = 0;
+		s_ca.ups++;
+		return;
+	}
+	s_ca.low = m < 0.93 ? s_ca.low + 1 : 0;
+	if (s_ca.low >= 8 && every > 1 && s_ca.clock >= s_ca.no_down_until)
+	{
+		if (s_ca.clock - s_ca.last_down > 10.0)
+			s_ca.down_wait = 0.5;
+		s_ca.down_from = every;
+		s_ca.last_down = s_ca.clock;
+		set(every / 2);
+		s_ca.wait = 3;
+		s_ca.low = 0;
+		s_ca.downs++;
+	}
+}
+
 void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 {
 	// Compilation 136: the last 7 vsyncs' load, for "Cuadros generados con margen" (GSDeviceVK.cpp), whatever "Al vuelo" does.
@@ -3630,6 +3757,7 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 		std::copy(s_ring, s_ring + s_filled, sorted);
 		std::nth_element(sorted, sorted + s_filled / 2, sorted + s_filled);
 		g_forja_vsync_load.store(static_cast<unsigned>(std::lround(sorted[s_filled / 2] * 1000.0)), std::memory_order_relaxed);
+		ForjaCrowdVsync(sorted[s_filled / 2], budget_ms, s_filled);
 	}
 	if (!s_skip_instant_on || s_video_active || s_push_active || budget_ms < 1.0)
 		return;
@@ -4445,15 +4573,22 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			break;
 		case PS4GameMenu::ROW_DEINTERLACE: // compilation 104
 		{
+			// Compilation 137: Auto, in a game with a factory mode, is that mode (the file keeps Auto: VMManager.cpp turns it again).
 			constexpr int steps = static_cast<int>(std::size(ForjaDeinterlaceSteps));
-			const int step = (static_cast<int>(ForjaImageStep(ForjaDeinterlaceSteps, EmuConfig.GS.InterlaceMode)) + delta + steps) % steps;
-			EmuConfig.GS.InterlaceMode = ForjaDeinterlaceSteps[step].first;
+			const int now = ForjaDeinterlaceAutoFactory() ? 0 : static_cast<int>(ForjaImageStep(ForjaDeinterlaceSteps, EmuConfig.GS.InterlaceMode));
+			const int step = (now + delta + steps) % steps;
+			const int factory = g_forja_deinterlace_factory.load(std::memory_order_relaxed);
+			const bool auto_factory = ForjaDeinterlaceSteps[step].first == GSInterlaceMode::Automatic && factory > 0;
+			EmuConfig.GS.InterlaceMode = auto_factory ? static_cast<GSInterlaceMode>(factory) : ForjaDeinterlaceSteps[step].first;
+			g_forja_deinterlace_auto.store(auto_factory, std::memory_order_relaxed);
 			MTGS::ApplySettings();
 			MTGS::WaitGS(false, false, false);
-			SavePlayerProfile("Deinterlace", [](INISettingsInterface& ini) {
-				ini.SetIntValue("EmuCore/GS", "deinterlace_mode", static_cast<int>(EmuConfig.GS.InterlaceMode));
+			const int saved = static_cast<int>(ForjaDeinterlaceSteps[step].first);
+			SavePlayerProfile("Deinterlace", [saved](INISettingsInterface& ini) {
+				ini.SetIntValue("EmuCore/GS", "deinterlace_mode", saved);
 			}, false);
-			ProbeLog("Deinterlace applied: %d\n", static_cast<int>(EmuConfig.GS.InterlaceMode));
+			ProbeLog("Deinterlace applied: %d%s\n", static_cast<int>(EmuConfig.GS.InterlaceMode),
+				auto_factory ? " (Auto: the game's factory mode)" : "");
 			break;
 		}
 		case PS4GameMenu::ROW_TEXTURE_FILTER: // compilation 104
@@ -4605,7 +4740,7 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			                                        (s_report_phrase + REPORT_PHRASE_COUNT + delta) % REPORT_PHRASE_COUNT;
 			s_report_comment = ForjaLang::T(REPORT_PHRASES[s_report_phrase]);
 			break;
-		case PS4GameMenu::ROW_CROWD: // compilation 82: the crowd in software every 1, 2, 4 or 8 passes ([Forja] PublicoCada)
+		case PS4GameMenu::ROW_CROWD: // compilation 82: the crowd in software every 1, 2, 4 or 8 passes ([Forja] PublicoCada); 137: Al vuelo
 		{
 			if (!GameDrawsCrowdInSoftware())
 				break;
@@ -4988,7 +5123,10 @@ static void ForjaSessionLines(std::string& header_text, std::string& settings_te
 	if (GameDrawsCrowdInSoftware())
 	{
 		char crowd[96];
-		std::snprintf(crowd, sizeof(crowd), "Público por software: 1 de cada %u cuadros\n", s_crowd_every);
+		if (s_crowd_every == CROWD_AUTO) // compilation 137
+			std::snprintf(crowd, sizeof(crowd), "Público por software: al vuelo (1 de cada 1, 2 o 4 cuadros)\n");
+		else
+			std::snprintf(crowd, sizeof(crowd), "Público por software: 1 de cada %u cuadros\n", s_crowd_every);
 		settings_text += crowd;
 	}
 }

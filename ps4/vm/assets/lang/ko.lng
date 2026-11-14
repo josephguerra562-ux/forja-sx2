@@ -946,8 +946,8 @@ tr: 혼합 안 함
 es: Desentrelazado:  < %s >
 tr: 디인터레이스:  < %s >
 
-es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
-tr: 화면이 깜빡이면: 혼합으로 없앨 수 있지만 조금 부드럽게 보입니다. Auto가 기본입니다. 이 게임에 저장됩니다
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto usa lo que se midió para este juego, si lo hay. Se guarda para este juego
+tr: 화면이 깜빡이면: 혼합으로 없앨 수 있지만 조금 부드럽게 보입니다. Auto는 이 게임에서 측정한 설정이 있으면 그것을 씁니다. 이 게임에 저장됩니다
 
 es: Filtro de texturas:  < %s >
 tr: 텍스처 필터:  < %s >
@@ -960,6 +960,12 @@ tr: 소프트웨어 관중:  이 게임은 사용하지 않음
 
 es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
 tr: 관중을 소프트웨어로 그리는 것은 Guitar Hero 게임뿐입니다. 이 게임에서는 바뀌는 것이 없습니다
+
+es: Público por software:  < Al vuelo >
+tr: 소프트웨어 관중:  < 필요할 때만 >
+
+es: Dibuja el público en cada cuadro mientras a la consola le sobra tiempo, y menos veces (hasta 1 de 4) solo cuando le falta. Así se mueve fluido sin quitar velocidad. Se guarda para este juego
+tr: 콘솔에 시간이 남을 때는 매 프레임 관중을 그리고, 부족할 때만 횟수를 줄입니다(최소 4프레임마다 1번). 그래서 관중이 부드럽게 움직이고 속도도 떨어지지 않습니다. 이 게임에 저장됩니다
 
 es: Público por software:  < todos los cuadros (lento) >
 tr: 소프트웨어 관중:  < 매 프레임 (느림) >

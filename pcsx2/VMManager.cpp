@@ -18,6 +18,7 @@
 #include "GameList.h"
 #include "Host.h"
 #include "INISettingsInterface.h"
+#include "common/MemorySettingsInterface.h" // Forja SX2 (compilation 137): the factory's deinterlace mode
 #include "ImGui/FullscreenUI.h"
 #include "ImGui/ImGuiOverlays.h"
 #if !defined(PCSX2_PS4)
@@ -1040,6 +1041,11 @@ std::string VMManager::GetSerialForGameSettings()
 	return s_elf_override.empty() ? std::string(s_disc_serial) : std::string();
 }
 
+// Forja SX2 (compilation 137): the running game's factory deinterlace mode (0: none) and whether the player's "Auto" was turned into it
+// (UpdateGameSettingsLayer, below; ps4/vm/main.cpp's Desentrelazado row reads and writes both). CPU thread.
+std::atomic<int> g_forja_deinterlace_factory{0};
+std::atomic<bool> g_forja_deinterlace_auto{false};
+
 bool VMManager::UpdateGameSettingsLayer()
 {
 	std::unique_ptr<INISettingsInterface> new_interface;
@@ -1086,6 +1092,29 @@ bool VMManager::UpdateGameSettingsLayer()
 				merged->SetBoolValue("EmuCore/CPU/Recompiler", "vu1Overflow", true);
 				merged->SetBoolValue("EmuCore/GS", "SkipDuplicateFrames", false);
 				Console.WriteLn("Forja SX2: Modo seguro total, the VU1's clamp and the repeated refreshes as PCSX2 has them");
+			}
+			// Compilation 137: "Desentrelazado: Auto" is the game's factory mode when its profile measured one (the row says "Auto
+			// (Mezcla)"). Guitar Hero III draws by fields (FIELD): there PCSX2's Auto is its motion-adaptive mode, under which the guitar
+			// and the backgrounds flicker, and the profile's blend doesn't (2026-10-31). On 2026-11-14 (the 1.07) the player's file said
+			// Auto for 7.8 of 11.7 minutes of songs, and the session ended on Auto ("sigue parpadeando"). A game without a factory mode
+			// keeps PCSX2's Auto, and so does a mode the lab's file sets.
+			{
+				MemorySettingsInterface factory, lab;
+				int factory_mode = 0, mode = 0;
+				ForjaGameProfile::MergeFactory(factory, serial);
+				factory.GetIntValue("EmuCore/GS", "deinterlace_mode", &factory_mode);
+				if (factory_mode <= 0 || factory_mode >= static_cast<int>(GSInterlaceMode::Count))
+					factory_mode = 0;
+				ForjaGameProfile::MergeLab(lab);
+				const bool turned = factory_mode != 0 && !lab.ContainsValue("EmuCore/GS", "deinterlace_mode") &&
+					merged->GetIntValue("EmuCore/GS", "deinterlace_mode", &mode) && mode == 0;
+				if (turned)
+				{
+					merged->SetIntValue("EmuCore/GS", "deinterlace_mode", factory_mode);
+					Console.WriteLn("Forja SX2: deinterlace Auto -> the game's factory mode %d", factory_mode);
+				}
+				g_forja_deinterlace_factory.store(factory_mode, std::memory_order_relaxed);
+				g_forja_deinterlace_auto.store(turned, std::memory_order_relaxed);
 			}
 			merged->ClearDirty();
 			if (!merged->IsEmpty())

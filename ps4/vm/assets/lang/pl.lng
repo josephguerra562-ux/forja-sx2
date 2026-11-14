@@ -946,8 +946,8 @@ tr: Bez mieszania
 es: Desentrelazado:  < %s >
 tr: Usuwanie przeplotu:  < %s >
 
-es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
-tr: Jeśli obraz migocze: Mieszanie to usuwa, ale wygląda nieco miękcej. Auto to zwykłe ustawienie. Zapisywane dla tej gry
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto usa lo que se midió para este juego, si lo hay. Se guarda para este juego
+tr: Jeśli obraz migocze: Mieszanie to usuwa, ale wygląda nieco miękcej. Auto używa tego, co zmierzono dla tej gry, jeśli jest. Zapisywane dla tej gry
 
 es: Filtro de texturas:  < %s >
 tr: Filtr tekstur:  < %s >
@@ -960,6 +960,12 @@ tr: Publiczność programowo:  ta gra jej nie używa
 
 es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
 tr: Tylko gry Guitar Hero rysują publiczność programowo. W tej grze nic się nie zmienia
+
+es: Público por software:  < Al vuelo >
+tr: Publiczność programowo:  < W locie >
+
+es: Dibuja el público en cada cuadro mientras a la consola le sobra tiempo, y menos veces (hasta 1 de 4) solo cuando le falta. Así se mueve fluido sin quitar velocidad. Se guarda para este juego
+tr: Rysuje publiczność w każdej klatce, dopóki konsola ma wolny czas, a rzadziej (do 1 na 4) tylko wtedy, gdy go brakuje. Dzięki temu porusza się płynnie bez utraty szybkości. Zapisywane dla tej gry
 
 es: Público por software:  < todos los cuadros (lento) >
 tr: Publiczność programowo:  < każda klatka (wolno) >

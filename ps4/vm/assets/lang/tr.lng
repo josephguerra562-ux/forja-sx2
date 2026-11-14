@@ -946,8 +946,8 @@ tr: Karışım yok
 es: Desentrelazado:  < %s >
 tr: Taramayı düzeltme:  < %s >
 
-es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto es lo normal. Se guarda para este juego
-tr: Görüntü titriyorsa: Karışım bunu giderir, ancak biraz daha yumuşak görünür. Auto olağan ayardır. Bu oyun için kaydedilir
+es: Si la imagen parpadea: Mezcla lo quita, pero se ve un poco más suave. Auto usa lo que se midió para este juego, si lo hay. Se guarda para este juego
+tr: Görüntü titriyorsa: Karışım bunu giderir, ancak biraz daha yumuşak görünür. Auto, bu oyun için ölçülen ayar varsa onu kullanır. Bu oyun için kaydedilir
 
 es: Filtro de texturas:  < %s >
 tr: Doku filtresi:  < %s >
@@ -960,6 +960,12 @@ tr: Yazılımla seyirci:  bu oyun kullanmıyor
 
 es: Solo los Guitar Hero dibujan su público por software. En este juego no cambia nada
 tr: Seyirciyi yazılımla yalnızca Guitar Hero oyunları çizer. Bu oyunda hiçbir şey değişmez
+
+es: Público por software:  < Al vuelo >
+tr: Yazılımla seyirci:  < Anında >
+
+es: Dibuja el público en cada cuadro mientras a la consola le sobra tiempo, y menos veces (hasta 1 de 4) solo cuando le falta. Así se mueve fluido sin quitar velocidad. Se guarda para este juego
+tr: Konsolun boş zamanı olduğu sürece seyirciyi her karede çizer, yalnızca zaman yetmediğinde daha az çizer (en az 4 karede 1). Böylece seyirci akıcı hareket eder ve hız düşmez. Bu oyun için kaydedilir
 
 es: Público por software:  < todos los cuadros (lento) >
 tr: Yazılımla seyirci:  < her kare (yavaş) >

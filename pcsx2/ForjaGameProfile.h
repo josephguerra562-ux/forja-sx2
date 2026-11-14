@@ -383,7 +383,7 @@ namespace ForjaGameProfile
 			v.cpu_auto = 0;
 		if (v.gs_skip >= 0)
 			v.gs_skip = std::min(v.gs_skip, 5); // compilation 82: 3; 88: 4, two in three left out; 90: 5, on the fly
-		if (v.crowd_every != 0)
+		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"
 			v.crowd_every = v.crowd_every >= 32 ? 32 : v.crowd_every >= 16 ? 16 : v.crowd_every >= 8 ? 8 : v.crowd_every >= 4 ? 4 :
 			                v.crowd_every >= 2 ? 2 : 1; // compilation 88: 16 and 32
 		return v;
