@@ -76,8 +76,8 @@ tr: Sim: a lista de idiomas aparece sempre que você abre o Forja SX2
 es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
 tr: Outra pasta com jogos, por exemplo em um pendrive. X para escolher
 
-es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
-tr: Mais % NÃO é mais rápido: exige mais do console e quase sempre fica pior. Aumente em L3+R3 só se o jogo ficar em câmera lenta ou falhar
+es: 100 % es la PS2 real y lo mejor para casi todos los juegos: el CPU automático lo baja solo en las escenas pesadas
+tr: 100 % é o PS2 real e o melhor para quase todos os jogos: a CPU automática baixa sozinha nas cenas pesadas
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: Se você aumentar a CPU de um jogo e ele ficar lento, ela baixa sozinha nas cenas pesadas, até este limite
@@ -214,6 +214,51 @@ tr: Touchpad (direita)
 es: Los dos
 tr: Os dois
 
+es: Al vuelo
+tr: Na hora
+
+es: 1 de 2 rápido
+tr: 1 de 2 rápido
+
+es: 2 de 3
+tr: 2 de 3
+
+es: Fluido
+tr: Fluido
+
+es: Saltar cuadros
+tr: Pular quadros
+
+es: Volver a lo de fábrica
+tr: Voltar ao de fábrica
+
+es: tienes cambios: X los borra
+tr: você tem mudanças: X apaga
+
+es: ya está de fábrica
+tr: já está de fábrica
+
+es: Hasta dónde puede bajar la CPU de la PS2 en las escenas pesadas de este juego
+tr: Até onde a CPU do PS2 pode baixar nas cenas pesadas deste jogo
+
+es: Al vuelo deja fuera cuadros solo cuando la parte gráfica no da abasto. Si algo parpadea, ponlo en No
+tr: Na hora deixa quadros de fora só quando a parte gráfica não dá conta. Se algo piscar, coloque em Não
+
+es: 1x da más FPS. En PS4 Pro, 2x suele costar poco: en God of War II dio los mismos FPS
+tr: 1x dá mais FPS. No PS4 Pro, 2x costuma custar pouco: em God of War II deu os mesmos FPS
+
+es: Muestra 60 cuadros por segundo en un juego que va a 30, inventando los del medio. Cuesta cuadros del juego
+tr: Mostra 60 quadros por segundo num jogo que roda a 30, inventando os do meio. Custa quadros do jogo
+
+es: Borra lo que cambiaste para este juego (aquí y en L3+R3) y vuelve a su perfil de fábrica
+tr: Apaga o que você mudou neste jogo (aqui e no L3+R3) e volta ao perfil de fábrica
+
+es: Solo para este juego. Se guarda al cambiar y vale desde la próxima vez que lo abras
+tr: Só para este jogo. Salva ao mudar e vale a partir da próxima vez que você abrir
+
+es: No se pudo leer la imagen de este juego: sus ajustes se cambian dentro, con L3+R3
+tr: Não foi possível ler a imagem deste jogo: mude os ajustes dentro dele, com L3+R3
+
 es: Elige el idioma
 tr: Escolha o idioma
 
@@ -325,6 +370,12 @@ tr: Adicionar favorito
 es: Actualizar biblioteca
 tr: Atualizar biblioteca
 
+es: Ajustes del juego
+tr: Ajustes do jogo
+
+es: Cerrar
+tr: Fechar
+
 es: No se pudieron guardar los ajustes.
 tr: Não foi possível salvar as configurações.
 
@@ -387,6 +438,9 @@ tr: DVD indisponível
 
 es:  Descargando portada...
 tr:  Baixando capa...
+
+es: Este juego volvió a sus ajustes de fábrica.
+tr: Este jogo voltou aos ajustes de fábrica.
 
 es: Cancelando la copia...
 tr: Cancelando a cópia...
@@ -543,15 +597,6 @@ tr: Mostra a 60 um jogo estável a 30 (experimental).
 
 es: 1 de 2
 tr: 1 de 2
-
-es: 1 de 2 rápido
-tr: 1 de 2 rápido
-
-es: 2 de 3
-tr: 2 de 3
-
-es: Al vuelo
-tr: Na hora
 
 es: Saltar cuadros (GS):  < %s >
 tr: Pular quadros (GS):  < %s >
@@ -1263,6 +1308,9 @@ tr: Nos vídeos
 
 es: %d/%m a las %H:%M
 tr: %d/%m às %H:%M
+
+es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
+tr: Este estado é de %s, de antes do seu último salvamento no cartão. Se o jogo disser que o save está danificado, o cartão está bem: reinicie o jogo sem carregar o estado
 
 es: Reportar este juego:  < %s >
 tr: Relatar este jogo:  < %s >

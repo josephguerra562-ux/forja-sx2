@@ -76,8 +76,8 @@ tr: Evet: Forja SX2'yi her açtığında dil listesi çıkar
 es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
 tr: Oyunların olduğu başka bir klasör, örneğin bir USB bellekte. Seçmek için X
 
-es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
-tr: Daha yüksek % daha hızlı DEĞİLDİR: konsolu daha çok zorlar ve neredeyse her zaman daha kötü çalışır. Yalnızca oyun ağır çekimde gidiyor veya hata veriyorsa L3+R3 ile artırın
+es: 100 % es la PS2 real y lo mejor para casi todos los juegos: el CPU automático lo baja solo en las escenas pesadas
+tr: %100 gerçek PS2'dir ve neredeyse tüm oyunlar için en iyisidir: otomatik CPU ağır sahnelerde kendisi düşürür
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: Bir oyunun CPU'sunu yükseltip oyun yavaşlarsa, ağır sahnelerde kendiliğinden bu sınıra kadar iner
@@ -214,6 +214,51 @@ tr: Dokunmatik yüzey (sağ)
 es: Los dos
 tr: İkisi de
 
+es: Al vuelo
+tr: Anında
+
+es: 1 de 2 rápido
+tr: 2'de 1, hızlı
+
+es: 2 de 3
+tr: 3'te 2
+
+es: Fluido
+tr: Akıcı
+
+es: Saltar cuadros
+tr: Kare atlama
+
+es: Volver a lo de fábrica
+tr: Fabrikaya dön
+
+es: tienes cambios: X los borra
+tr: değişiklikleriniz var: X siler
+
+es: ya está de fábrica
+tr: zaten fabrika ayarında
+
+es: Hasta dónde puede bajar la CPU de la PS2 en las escenas pesadas de este juego
+tr: Bu oyunun ağır sahnelerinde PS2 CPU'sunun ne kadar düşebileceği
+
+es: Al vuelo deja fuera cuadros solo cuando la parte gráfica no da abasto. Si algo parpadea, ponlo en No
+tr: Anında yalnızca grafik yetişemediğinde kare atlar. Bir şey titrerse Hayır yapın
+
+es: 1x da más FPS. En PS4 Pro, 2x suele costar poco: en God of War II dio los mismos FPS
+tr: 1x daha çok FPS verir. PS4 Pro'da 2x genelde az maliyetlidir: God of War II'de aynı FPS'yi verdi
+
+es: Muestra 60 cuadros por segundo en un juego que va a 30, inventando los del medio. Cuesta cuadros del juego
+tr: 30'da çalışan bir oyunda aradakileri üreterek saniyede 60 kare gösterir. Oyun karelerine mal olur
+
+es: Borra lo que cambiaste para este juego (aquí y en L3+R3) y vuelve a su perfil de fábrica
+tr: Bu oyun için değiştirdiklerinizi (burada ve L3+R3'te) siler ve fabrika profiline döner
+
+es: Solo para este juego. Se guarda al cambiar y vale desde la próxima vez que lo abras
+tr: Yalnızca bu oyun için. Değiştirince kaydedilir, bir sonraki açılıştan itibaren geçerlidir
+
+es: No se pudo leer la imagen de este juego: sus ajustes se cambian dentro, con L3+R3
+tr: Bu oyunun imajı okunamadı: ayarlarını oyunun içinde L3+R3 ile değiştirin
+
 es: Elige el idioma
 tr: Dili seç
 
@@ -325,6 +370,12 @@ tr: Favoriye ekle
 es: Actualizar biblioteca
 tr: Kitaplığı yenile
 
+es: Ajustes del juego
+tr: Oyun ayarları
+
+es: Cerrar
+tr: Kapat
+
 es: No se pudieron guardar los ajustes.
 tr: Ayarlar kaydedilemedi.
 
@@ -387,6 +438,9 @@ tr: DVD kullanılamıyor
 
 es:  Descargando portada...
 tr:  Kapak indiriliyor...
+
+es: Este juego volvió a sus ajustes de fábrica.
+tr: Bu oyun fabrika ayarlarına döndü.
 
 es: Cancelando la copia...
 tr: Kopyalama iptal ediliyor...
@@ -543,15 +597,6 @@ tr: 30'da sabit bir oyunu 60'ta gösterir (deneysel).
 
 es: 1 de 2
 tr: 2'de 1
-
-es: 1 de 2 rápido
-tr: 2'de 1, hızlı
-
-es: 2 de 3
-tr: 3'te 2
-
-es: Al vuelo
-tr: Anında
 
 es: Saltar cuadros (GS):  < %s >
 tr: Kare atlama (GS):  < %s >
@@ -1263,6 +1308,9 @@ tr: Videolarda
 
 es: %d/%m a las %H:%M
 tr: %d.%m, %H:%M
+
+es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
+tr: Bu durum %s tarihli, karttaki son kaydınızdan önce. Oyun kaydın bozuk olduğunu söylerse kart sağlamdır: oyunu durumu yüklemeden yeniden başlatın
 
 es: Reportar este juego:  < %s >
 tr: Bu oyunu bildir:  < %s >

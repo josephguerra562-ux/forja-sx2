@@ -76,8 +76,8 @@ tr: Sì: l'elenco delle lingue appare ogni volta che apri Forja SX2
 es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
 tr: Un'altra cartella di giochi, ad esempio su una chiavetta USB. X per sceglierla
 
-es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
-tr: Più % NON è più veloce: chiede di più alla console e quasi sempre va peggio. Alzalo in L3+R3 solo se il gioco va al rallentatore o dà problemi
+es: 100 % es la PS2 real y lo mejor para casi todos los juegos: el CPU automático lo baja solo en las escenas pesadas
+tr: 100 % è la vera PS2 e il meglio per quasi tutti i giochi: la CPU automatica lo abbassa da sola nelle scene pesanti
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: Se alzi la CPU di un gioco e rallenta, si abbassa da sola nelle scene pesanti, fino a questo minimo
@@ -214,6 +214,51 @@ tr: Touchpad (destra)
 es: Los dos
 tr: Entrambi
 
+es: Al vuelo
+tr: Al volo
+
+es: 1 de 2 rápido
+tr: 1 su 2 rapido
+
+es: 2 de 3
+tr: 2 su 3
+
+es: Fluido
+tr: Fluido
+
+es: Saltar cuadros
+tr: Salto fotogrammi
+
+es: Volver a lo de fábrica
+tr: Tornare alla fabbrica
+
+es: tienes cambios: X los borra
+tr: hai modifiche: X le cancella
+
+es: ya está de fábrica
+tr: già di fabbrica
+
+es: Hasta dónde puede bajar la CPU de la PS2 en las escenas pesadas de este juego
+tr: Fin dove può scendere la CPU della PS2 nelle scene pesanti di questo gioco
+
+es: Al vuelo deja fuera cuadros solo cuando la parte gráfica no da abasto. Si algo parpadea, ponlo en No
+tr: Al volo salta fotogrammi solo quando la grafica non ce la fa. Se qualcosa sfarfalla, mettilo su No
+
+es: 1x da más FPS. En PS4 Pro, 2x suele costar poco: en God of War II dio los mismos FPS
+tr: 1x dà più FPS. Su PS4 Pro, 2x costa di solito poco: in God of War II ha dato gli stessi FPS
+
+es: Muestra 60 cuadros por segundo en un juego que va a 30, inventando los del medio. Cuesta cuadros del juego
+tr: Mostra 60 fotogrammi al secondo in un gioco a 30, inventando quelli in mezzo. Costa fotogrammi del gioco
+
+es: Borra lo que cambiaste para este juego (aquí y en L3+R3) y vuelve a su perfil de fábrica
+tr: Cancella ciò che hai cambiato per questo gioco (qui e in L3+R3) e torna al profilo di fabbrica
+
+es: Solo para este juego. Se guarda al cambiar y vale desde la próxima vez que lo abras
+tr: Solo per questo gioco. Si salva quando cambi e vale dalla prossima volta che lo apri
+
+es: No se pudo leer la imagen de este juego: sus ajustes se cambian dentro, con L3+R3
+tr: Impossibile leggere l'immagine di questo gioco: cambia le impostazioni dentro, con L3+R3
+
 es: Elige el idioma
 tr: Scegli la lingua
 
@@ -325,6 +370,12 @@ tr: Aggiungi ai preferiti
 es: Actualizar biblioteca
 tr: Aggiorna libreria
 
+es: Ajustes del juego
+tr: Impostazioni del gioco
+
+es: Cerrar
+tr: Chiudi
+
 es: No se pudieron guardar los ajustes.
 tr: Impossibile salvare le impostazioni.
 
@@ -387,6 +438,9 @@ tr: DVD non disponibile
 
 es:  Descargando portada...
 tr:  Scaricamento copertina...
+
+es: Este juego volvió a sus ajustes de fábrica.
+tr: Questo gioco è tornato alle impostazioni di fabbrica.
 
 es: Cancelando la copia...
 tr: Annullamento della copia...
@@ -543,15 +597,6 @@ tr: Mostra a 60 un gioco stabile a 30 (sperimentale).
 
 es: 1 de 2
 tr: 1 su 2
-
-es: 1 de 2 rápido
-tr: 1 su 2 rapido
-
-es: 2 de 3
-tr: 2 su 3
-
-es: Al vuelo
-tr: Al volo
 
 es: Saltar cuadros (GS):  < %s >
 tr: Salta fotogrammi (GS):  < %s >
@@ -1263,6 +1308,9 @@ tr: Nei video
 
 es: %d/%m a las %H:%M
 tr: %d/%m alle %H:%M
+
+es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
+tr: Questo stato è del %s, prima del tuo ultimo salvataggio sulla scheda. Se il gioco dice che il salvataggio è danneggiato, la scheda va bene: riavvia il gioco senza caricare lo stato
 
 es: Reportar este juego:  < %s >
 tr: Segnala questo gioco:  < %s >

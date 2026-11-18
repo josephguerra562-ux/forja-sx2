@@ -144,10 +144,11 @@ namespace ForjaStyle
 	inline void Button(const Canvas& c, float cx, float cy, char button)
 	{
 		const ImU32 ring = IM_COL32(210, 214, 222, 255);
-		if (button == 'l')
+		if (button == 'l' || button == 'p') // L1/R1, or OPTIONS (compilation 146)
 		{
-			c.Fill(cx - 30, cy - 15, 60, 30, IM_COL32(58, 62, 70, 255), 15);
-			c.Centered(cx, cy + 6, 14, ring, "L1 R1");
+			const float half = button == 'p' ? 44.0f : 30.0f;
+			c.Fill(cx - half, cy - 15, half * 2, 30, IM_COL32(58, 62, 70, 255), 15);
+			c.Centered(cx, cy + 6, 14, ring, button == 'p' ? "OPTIONS" : "L1 R1");
 			return;
 		}
 		c.draw->AddCircleFilled(c.P(cx, cy), 16.0f * c.scale, IM_COL32(52, 56, 64, 255), 32);
@@ -281,6 +282,54 @@ namespace ForjaStyle
 			const ImU32 arrow = IM_COL32(236, 239, 244, 150);
 			c.draw->AddTriangleFilled(c.P(70, 430), c.P(96, 404), c.P(96, 456), arrow);
 			c.draw->AddTriangleFilled(c.P(1850, 430), c.P(1824, 456), c.P(1824, 404), arrow);
+		}
+	}
+
+	// Compilation 146: a game's own settings, over the library (Options on a game). One row a setting: its name and value, its help
+	// under them; the last row is an action.
+	struct DialogRow
+	{
+		const char* label = "";
+		const char* value = "";
+		const char* help = "";
+		bool action = false;
+	};
+
+	inline void DrawGameDialog(const Canvas& c, int color, const char* title, const char* subtitle, const DialogRow* rows, unsigned count,
+		unsigned focus, const Hint* hints, unsigned hint_count)
+	{
+		const ImU32 accent = AccentColor(color), accent_soft = AccentColor(color, 72);
+		const ImU32 white = IM_COL32(236, 239, 244, 255), muted = IM_COL32(152, 158, 168, 255);
+		c.draw->AddRectFilled(ImVec2(0.0f, 0.0f), c.size, IM_COL32(0, 0, 0, 170));
+		constexpr float x = 330, y = 130, w = 1260, h = 820;
+		c.Fill(x, y, w, h, IM_COL32(30, 33, 38, 252), 18);
+		c.Frame(x, y, w, h, AccentColor(color, 170), 18, 2);
+		c.Fill(x, y, w, 6, accent, 3);
+		c.Text(x + 44, y + 70, 32, white, title, w - 88);
+		c.Text(x + 44, y + 104, 18, muted, subtitle, w - 88);
+		constexpr float top = y + 136, pitch = 92, height = 82;
+		for (unsigned i = 0; i < count; i++)
+		{
+			const DialogRow& r = rows[i];
+			const float ry = top + static_cast<float>(i) * pitch;
+			const bool focused = i == focus;
+			c.Fill(x + 30, ry, w - 60, height, focused ? accent_soft : IM_COL32(40, 44, 50, 255), 10);
+			if (focused)
+				c.Frame(x + 30, ry, w - 60, height, accent, 10, 2);
+			char shown[200];
+			std::snprintf(shown, sizeof(shown), focused && !r.action ? "<  %s  >" : "%s", r.value);
+			const float value_w = std::min(c.Width(24, shown), 520.0f);
+			c.Text(x + w - 60 - value_w, ry + 36, 24, focused ? white : accent, shown, 520);
+			c.Text(x + 60, ry + 36, 24, white, r.label, w - 180 - value_w);
+			c.Text(x + 60, ry + 66, 16, muted, r.help, w - 120);
+		}
+		float hint_x = x + 70;
+		for (unsigned i = 0; i < hint_count && i < 6; i++)
+		{
+			Button(c, hint_x, y + h - 42, hints[i].button);
+			const float label_x = hint_x + (hints[i].button == 'p' ? 54.0f : hints[i].button == 'l' ? 40.0f : 26.0f);
+			c.Text(label_x, y + h - 35, 17, white, hints[i].label, 330);
+			hint_x = label_x + std::min(c.Width(17, hints[i].label), 330.0f) + 56;
 		}
 	}
 
@@ -424,7 +473,7 @@ namespace ForjaStyle
 		{
 			const Hint& h = p.hints[i];
 			Button(c, hint_x, 1033, h.button);
-			const float label_x = hint_x + (h.button == 'l' ? 40.0f : 26.0f);
+			const float label_x = hint_x + (h.button == 'p' ? 54.0f : h.button == 'l' ? 40.0f : 26.0f);
 			const float label_w = std::min(c.Width(17, h.label), 330.0f);
 			c.Text(label_x, 1040, 17, h.dim ? faint : white, h.label, 330);
 			hint_x = label_x + label_w + 56;

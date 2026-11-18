@@ -4,6 +4,7 @@
 #include "ForjaLang.h"
 #include "ForjaSettings.h"
 #include "ForjaLibraryStyle.h" // compilation 143
+#include "ForjaGameProfile.h" // compilation 146: a game's settings from the library
 #include "InGameMenuState.h"
 #include "PhysicalDisc.h"
 #include "DiscCopy.h"
@@ -227,8 +228,9 @@ namespace PS4GameMenu
 		// Compilation 97: which settings each of the three pages has, in their order on the page. The ones that apply to the games
 		// have a page of their own; a page's cursor (settings_row) is an index into these.
 		constexpr SettingRow StorageRows[] = {SET_GAMES_SOURCE, SET_GAMES_FOLDER, SET_INTERNAL_GAMES, SET_FOLDER_GAMES, SET_USB_DRIVES};
-		constexpr SettingRow GameSettingsRows[] = {SET_EE_RATE, SET_CPU_AUTO, SET_UPSCALE, SET_ASPECT, SET_FAST_CDVD, SET_READBACK,
-			SET_VIDEO_MODE, SET_FRAME_GEN};
+		// Compilation 146: fast disc loads, the GPU's readbacks without waiting and the video mode are fixed for every game, and frame
+		// generation is each game's (Options on the library, or L3+R3): off this page.
+		constexpr SettingRow GameSettingsRows[] = {SET_EE_RATE, SET_CPU_AUTO, SET_UPSCALE, SET_ASPECT};
 		constexpr SettingRow EmulatorSettingsRows[] = {SET_LANGUAGE, SET_ASK_LANGUAGE, SET_FAST_BOOT, SET_MENU_BUTTON, SET_OVERLAY, SET_STICK};
 		constexpr SettingRow StylesRows[] = {SET_STYLE, SET_COLOR}; // compilation 143
 
@@ -267,7 +269,7 @@ namespace PS4GameMenu
 				N_("El idioma de todo el emulador. X abre la lista de idiomas"),
 				N_("Sí: la lista de idiomas sale cada vez que abres Forja SX2"),
 				N_("Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla"),
-				N_("Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla"),
+				N_("100 % es la PS2 real y lo mejor para casi todos los juegos: el CPU automático lo baja solo en las escenas pesadas"),
 				N_("Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso"),
 				N_("1x es la de la PS2. En PS4 Pro aguanta 2x-4x en juegos ligeros"),
 				N_("Auto respeta lo que pide el juego"),
@@ -401,6 +403,136 @@ namespace PS4GameMenu
 				s_settings_gs = values;
 				s_settings_row_gs = row;
 			});
+		}
+
+		// Compilation 146 (Joseph, 2026-11-18: "si yo aplasto el botón de opciones, por juego puedo configurarlo antes de siquiera entrar
+		// al mismo"): Options on a game opens its own settings, read from and written to its player profile (gamesettings/
+		// <serial>_<crc>.ini, the same file L3+R3 writes), over its factory profile and the base. The GS thread draws this copy.
+		constexpr unsigned GameDialogRows = 6;
+		bool s_game_dialog_visible = false;
+		unsigned s_game_dialog_focus = 0;
+		std::string s_game_dialog_title, s_game_dialog_subtitle;
+		std::string s_game_dialog_labels[GameDialogRows], s_game_dialog_values[GameDialogRows], s_game_dialog_helps[GameDialogRows];
+
+		struct GameSetup
+		{
+			std::string name, serial;
+			u32 crc = 0;
+			bool own = false; // the player has a profile of their own for it
+			int ee_rate = 0, cpu_auto = -5, gs_skip = 5, upscale = 1, frame_gen = 0;
+		};
+		constexpr int GameSkipChoices[] = {0, 5, 3, 4}; // No, Al vuelo, 1 de 2 rápido, 2 de 3
+
+		GameSetup ReadGameSetup(const std::string& name, const std::string& path, const ForjaSettings::Values& base)
+		{
+			GameSetup g;
+			g.name = name;
+			g.ee_rate = base.ee_rate;
+			g.cpu_auto = base.cpu_auto;
+			g.upscale = base.upscale;
+			GameList::Entry entry;
+			if (path.empty() || !GameList::PopulateEntryFromPath(path, &entry) || entry.serial.empty())
+				return g;
+			g.serial = entry.serial;
+			std::transform(g.serial.begin(), g.serial.end(), g.serial.begin(), [](unsigned char ch) { return static_cast<char>(std::toupper(ch)); });
+			g.crc = entry.crc;
+			INISettingsInterface factory(ForjaGameProfile::FactoryPath(g.serial));
+			factory.Load();
+			INISettingsInterface player(ForjaGameProfile::PlayerPath(g.serial, g.crc));
+			g.own = player.Load();
+			const auto get_int = [&](const char* section, const char* key, int* out) {
+				return player.GetIntValue(section, key, out) || factory.GetIntValue(section, key, out);
+			};
+			get_int("EmuCore/Speedhacks", "EECycleRate", &g.ee_rate);
+			get_int("Forja", "CpuAuto", &g.cpu_auto);
+			int skip = 5;
+			if (get_int("Forja", "SaltarCuadros", &skip))
+				g.gs_skip = skip == 1 ? 5 : skip;
+			float upscale = 0.0f;
+			if (player.GetFloatValue("EmuCore/GS", "upscale_multiplier", &upscale) || factory.GetFloatValue("EmuCore/GS", "upscale_multiplier", &upscale))
+				g.upscale = static_cast<int>(upscale + 0.5f);
+			get_int("Forja", "FrameGen", &g.frame_gen);
+			g.ee_rate = std::clamp(g.ee_rate, -6, 0);
+			g.cpu_auto = std::clamp(g.cpu_auto, -6, 0);
+			g.upscale = std::clamp(g.upscale, 1, 4);
+			g.frame_gen = std::clamp(g.frame_gen, 0, 2);
+			if (std::find(std::begin(GameSkipChoices), std::end(GameSkipChoices), g.gs_skip) == std::end(GameSkipChoices))
+				g.gs_skip = 5;
+			return g;
+		}
+
+		void PublishGameDialog(bool visible, const GameSetup& g, unsigned focus)
+		{
+			static constexpr const char* ee_names[] = {"27 %", "31 %", "36 %", "50 %", "60 %", "75 %", N_("100 % (PS2 real)")};
+			static constexpr const char* cpu_auto_names[] = {N_("No"), N_("Hasta 75 %"), N_("Hasta 60 %"), N_("Hasta 50 %"), N_("Hasta 36 %"),
+				N_("Hasta 31 %"), N_("Hasta 27 %")};
+			static constexpr const char* skip_names[] = {N_("No"), N_("Al vuelo"), N_("1 de 2 rápido"), N_("2 de 3")};
+			static constexpr const char* frame_gen_names[] = {N_("No"), N_("Sí"), N_("Fluido")};
+			std::string labels[GameDialogRows] = {T("Velocidad del CPU de la PS2"), T("CPU automático"), T("Saltar cuadros"),
+				T("Resolución interna"), T("Generación de cuadros (30 a 60 FPS)"), T("Volver a lo de fábrica")};
+			char upscale[32];
+			std::snprintf(upscale, sizeof(upscale), g.upscale == 1 ? TF("%dx (nativa)") : "%dx", g.upscale);
+			const int skip_index = static_cast<int>(std::find(std::begin(GameSkipChoices), std::end(GameSkipChoices), g.gs_skip) - std::begin(GameSkipChoices));
+			std::string values[GameDialogRows] = {T(ee_names[g.ee_rate + 6]), T(cpu_auto_names[-g.cpu_auto]), T(skip_names[std::clamp(skip_index, 0, 3)]),
+				upscale, T(frame_gen_names[g.frame_gen]), g.own ? T("tienes cambios: X los borra") : T("ya está de fábrica")};
+			std::string helps[GameDialogRows] = {
+				T("100 % es la PS2 real y lo mejor para casi todos los juegos: el CPU automático lo baja solo en las escenas pesadas"),
+				T("Hasta dónde puede bajar la CPU de la PS2 en las escenas pesadas de este juego"),
+				T("Al vuelo deja fuera cuadros solo cuando la parte gráfica no da abasto. Si algo parpadea, ponlo en No"),
+				T("1x da más FPS. En PS4 Pro, 2x suele costar poco: en God of War II dio los mismos FPS"),
+				T("Muestra 60 cuadros por segundo en un juego que va a 30, inventando los del medio. Cuesta cuadros del juego"),
+				T("Borra lo que cambiaste para este juego (aquí y en L3+R3) y vuelve a su perfil de fábrica")};
+			std::string title = g.name;
+			std::string subtitle = g.crc ? T("Solo para este juego. Se guarda al cambiar y vale desde la próxima vez que lo abras") :
+			                               T("No se pudo leer la imagen de este juego: sus ajustes se cambian dentro, con L3+R3");
+			MTGS::RunOnGSThread([visible, focus, title, subtitle, labels, values, helps]() {
+				s_game_dialog_visible = visible;
+				s_game_dialog_focus = focus;
+				s_game_dialog_title = title;
+				s_game_dialog_subtitle = subtitle;
+				for (unsigned i = 0; i < GameDialogRows; i++)
+				{
+					s_game_dialog_labels[i] = labels[i];
+					s_game_dialog_values[i] = values[i];
+					s_game_dialog_helps[i] = helps[i];
+				}
+			});
+		}
+
+		// Left/Right on a row (delta -1/+1): the new value, written to the game's player profile at once.
+		void ChangeGameSetup(GameSetup& g, unsigned row, int delta)
+		{
+			if (!g.crc)
+				return;
+			switch (row)
+			{
+				case 0: g.ee_rate = std::clamp(g.ee_rate + delta, -6, 0); break;
+				case 1: g.cpu_auto = -std::clamp(-g.cpu_auto + delta, 0, 6); break; // right: a lower floor
+				case 2:
+				{
+					const int count = static_cast<int>(std::size(GameSkipChoices));
+					int index = static_cast<int>(std::find(std::begin(GameSkipChoices), std::end(GameSkipChoices), g.gs_skip) - std::begin(GameSkipChoices));
+					index = ((index + delta) % count + count) % count;
+					g.gs_skip = GameSkipChoices[index];
+					break;
+				}
+				case 3: g.upscale = std::clamp(g.upscale + delta, 1, 4); break;
+				case 4: g.frame_gen = ((g.frame_gen + delta) % 3 + 3) % 3; break;
+				default: return;
+			}
+			const GameSetup copy = g;
+			const bool saved = ForjaGameProfile::EditPlayer(g.serial, g.crc, [copy, row](INISettingsInterface& ini) {
+				switch (row)
+				{
+					case 0: ini.SetIntValue("EmuCore/Speedhacks", "EECycleRate", copy.ee_rate); break;
+					case 1: ini.SetIntValue("Forja", "CpuAuto", copy.cpu_auto); break;
+					case 2: ini.SetIntValue("Forja", "SaltarCuadros", copy.gs_skip); break;
+					case 3: ini.SetFloatValue("EmuCore/GS", "upscale_multiplier", static_cast<float>(copy.upscale)); break;
+					default: ini.SetIntValue("Forja", "FrameGen", copy.frame_gen); break;
+				}
+			});
+			g.own = g.own || saved;
+			ProbeLog("Game menu: %s %08X row %u changed from the library, saved=%d\n", g.serial.c_str(), g.crc, row, saved ? 1 : 0);
 		}
 
 		// Forja SX2 (2026-10-19): the language picker, over the library at every start (or from Settings > Idioma). Its texts are
@@ -1295,9 +1427,19 @@ namespace PS4GameMenu
 				page.hints[2] = {'t', T("Actualizar biblioteca")};
 				page.hints[3] = {'o', T("Salir"), true};
 				page.hints[4] = {'l', T("Secciones")};
-				page.hint_count = 5;
+				page.hints[5] = {'p', T("Ajustes del juego"), current.path.empty()}; // compilation 146
+				page.hint_count = 6;
 			}
 			ForjaStyle::Draw(canvas, page);
+			if (s_game_dialog_visible) // compilation 146: a game's settings, over the library
+			{
+				ForjaStyle::DialogRow rows[GameDialogRows];
+				for (unsigned i = 0; i < GameDialogRows; i++)
+					rows[i] = {s_game_dialog_labels[i].c_str(), s_game_dialog_values[i].c_str(), s_game_dialog_helps[i].c_str(), i + 1 == GameDialogRows};
+				const ForjaStyle::Hint hints[] = {{'x', T("Cambiar")}, {'o', T("Cerrar")}};
+				ForjaStyle::DrawGameDialog(canvas, s_settings_gs.color, s_game_dialog_title.c_str(), s_game_dialog_subtitle.c_str(), rows, GameDialogRows,
+					s_game_dialog_focus, hints, 2);
+			}
 		}
 	} // namespace
 
@@ -1347,6 +1489,9 @@ namespace PS4GameMenu
 		std::string status;
 		unsigned settings_row = 0;
 		PublishSettings(settings, settings_row);
+		bool game_dialog_visible = false; // compilation 146
+		unsigned game_dialog_row = 0;
+		GameSetup game_setup;
 		// The language is saved with the rest, so ajustes.ini always names the one in use.
 		const auto save_settings = [&](const char* saved) {
 			std::snprintf(settings.language, sizeof(settings.language), "%s", ForjaLang::CurrentCode());
@@ -1672,6 +1817,56 @@ namespace PS4GameMenu
 			previous = buttons;
 			// Forja SX2 (2026-10-19): the language picker, two columns: Up/Down in one, Left/Right to the other. X keeps the
 			// language under the cursor; Circle leaves the one there was.
+			// Compilation 146: a game's settings (Options on it). Up/Down choose, Left/Right (or X) change and save, X on the last row
+			// removes the player's profile; Circle, Options or Triangle close it.
+			if (game_dialog_visible)
+			{
+				static constexpr u32 directions[] = {ORBIS_PAD_BUTTON_UP, ORBIS_PAD_BUTTON_DOWN, ORBIS_PAD_BUTTON_LEFT, ORBIS_PAD_BUTTON_RIGHT};
+				u32 dialog_navigation = 0;
+				for (const u32 direction : directions)
+					if (!dialog_navigation && (buttons & direction))
+						dialog_navigation = direction;
+				if (connected && !dialog_navigation)
+					dialog_navigation = data.leftStick.y < 72 ? ORBIS_PAD_BUTTON_UP : data.leftStick.y > 184 ? ORBIS_PAD_BUTTON_DOWN :
+					                    data.leftStick.x < 72 ? ORBIS_PAD_BUTTON_LEFT : data.leftStick.x > 184 ? ORBIS_PAD_BUTTON_RIGHT : 0;
+				bool changed = false;
+				if (dialog_navigation && (dialog_navigation != held_direction || now >= next_repeat))
+				{
+					if (dialog_navigation == ORBIS_PAD_BUTTON_UP && game_dialog_row > 0)
+						game_dialog_row--;
+					else if (dialog_navigation == ORBIS_PAD_BUTTON_DOWN && game_dialog_row + 1 < GameDialogRows)
+						game_dialog_row++;
+					else if (dialog_navigation == ORBIS_PAD_BUTTON_LEFT || dialog_navigation == ORBIS_PAD_BUTTON_RIGHT)
+						ChangeGameSetup(game_setup, game_dialog_row, dialog_navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1);
+					next_repeat = now + (dialog_navigation == held_direction ? 0.12 : 0.35);
+					changed = true;
+				}
+				held_direction = dialog_navigation;
+				if ((pressed & ORBIS_PAD_BUTTON_CROSS) && game_dialog_row + 1 == GameDialogRows && game_setup.crc && game_setup.own)
+				{
+					const std::string profile = ForjaGameProfile::PlayerPath(game_setup.serial, game_setup.crc);
+					ProbeLog("Game menu: %s %08X back to the factory profile (removed %s: %d)\n", game_setup.serial.c_str(), game_setup.crc,
+						profile.c_str(), std::remove(profile.c_str()) == 0 ? 1 : 0);
+					game_setup = ReadGameSetup(game_setup.name, items[selected].path, settings);
+					status = T("Este juego volvió a sus ajustes de fábrica.");
+					changed = true;
+				}
+				else if (pressed & ORBIS_PAD_BUTTON_CROSS)
+				{
+					ChangeGameSetup(game_setup, game_dialog_row, 1);
+					changed = true;
+				}
+				if (pressed & (ORBIS_PAD_BUTTON_CIRCLE | ORBIS_PAD_BUTTON_OPTIONS | ORBIS_PAD_BUTTON_TRIANGLE))
+				{
+					game_dialog_visible = false;
+					PublishGameDialog(false, game_setup, game_dialog_row);
+				}
+				else if (changed)
+					PublishGameDialog(true, game_setup, game_dialog_row);
+				Present(selected, status, connected, sidebar_focused, false, false);
+				Threading::Sleep(16);
+				continue;
+			}
 			if (language_dialog_visible)
 			{
 				static constexpr u32 directions[] = {ORBIS_PAD_BUTTON_UP, ORBIS_PAD_BUTTON_DOWN, ORBIS_PAD_BUTTON_LEFT, ORBIS_PAD_BUTTON_RIGHT};
@@ -1795,6 +1990,19 @@ namespace PS4GameMenu
 					update_dialog_visible = false;
 				}
 				Present(selected, status, connected, sidebar_focused, false, false, update_dialog_visible, update_confirm);
+				Threading::Sleep(16);
+				continue;
+			}
+			if ((pressed & ORBIS_PAD_BUTTON_OPTIONS) && !sidebar_focused && !items.empty() && !items[selected].path.empty() &&
+				(view == LibraryView::Library || view == LibraryView::Recent || view == LibraryView::Favorites))
+			{
+				game_setup = ReadGameSetup(items[selected].name, items[selected].path, settings);
+				game_dialog_row = 0;
+				game_dialog_visible = true;
+				ProbeLog("Game menu: settings of %s (%s %08X, own profile %d)\n", items[selected].name.c_str(), game_setup.serial.c_str(),
+					game_setup.crc, game_setup.own ? 1 : 0);
+				PublishGameDialog(true, game_setup, 0);
+				Present(selected, status, connected, sidebar_focused, false, false);
 				Threading::Sleep(16);
 				continue;
 			}

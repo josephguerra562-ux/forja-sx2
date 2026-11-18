@@ -76,8 +76,8 @@ tr: はい：Forja SX2を開くたびに言語の一覧が出ます
 es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
 tr: USB メモリーなど、別のゲームフォルダー。X で選択
 
-es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
-tr: % を上げても速くなりません。本体の負担が増え、ほとんどの場合悪化します。ゲームがスローになる、または不具合が出るときだけ L3+R3 で上げてください
+es: 100 % es la PS2 real y lo mejor para casi todos los juegos: el CPU automático lo baja solo en las escenas pesadas
+tr: 100 % が本物の PS2 で、ほとんどのゲームに最適です。重い場面では CPU 自動が自動で下げます
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: ゲームのCPUを上げて重くなったとき、重い場面だけ自動でこの値まで下げます
@@ -214,6 +214,51 @@ tr: タッチパッド（右）
 es: Los dos
 tr: 両方
 
+es: Al vuelo
+tr: 必要なときだけ
+
+es: 1 de 2 rápido
+tr: 2回に1回（速い）
+
+es: 2 de 3
+tr: 3回に2回
+
+es: Fluido
+tr: なめらか
+
+es: Saltar cuadros
+tr: フレームスキップ
+
+es: Volver a lo de fábrica
+tr: 工場出荷時に戻す
+
+es: tienes cambios: X los borra
+tr: 変更あり:X で消去
+
+es: ya está de fábrica
+tr: すでに工場出荷時
+
+es: Hasta dónde puede bajar la CPU de la PS2 en las escenas pesadas de este juego
+tr: このゲームの重い場面で PS2 の CPU をどこまで下げてよいか
+
+es: Al vuelo deja fuera cuadros solo cuando la parte gráfica no da abasto. Si algo parpadea, ponlo en No
+tr: 「必要なときだけ」はグラフィックが追いつかないときだけフレームを飛ばします。ちらつく場合は「いいえ」に
+
+es: 1x da más FPS. En PS4 Pro, 2x suele costar poco: en God of War II dio los mismos FPS
+tr: 1x のほうが FPS は高いです。PS4 Pro では 2x の負担は小さいことが多く、God of War II では同じ FPS でした
+
+es: Muestra 60 cuadros por segundo en un juego que va a 30, inventando los del medio. Cuesta cuadros del juego
+tr: 30 FPS のゲームで間のフレームを作って 60 FPS を表示します。ゲームのフレームが少し減ります
+
+es: Borra lo que cambiaste para este juego (aquí y en L3+R3) y vuelve a su perfil de fábrica
+tr: このゲームで変更した内容(ここと L3+R3)を消して、工場出荷時のプロファイルに戻します
+
+es: Solo para este juego. Se guarda al cambiar y vale desde la próxima vez que lo abras
+tr: このゲームだけ。変更すると保存され、次に起動したときから有効です
+
+es: No se pudo leer la imagen de este juego: sus ajustes se cambian dentro, con L3+R3
+tr: このゲームのイメージを読み取れませんでした。設定はゲーム内の L3+R3 で変更してください
+
 es: Elige el idioma
 tr: 言語を選んでください
 
@@ -325,6 +370,12 @@ tr: お気に入りに追加
 es: Actualizar biblioteca
 tr: ライブラリを更新
 
+es: Ajustes del juego
+tr: ゲームの設定
+
+es: Cerrar
+tr: 閉じる
+
 es: No se pudieron guardar los ajustes.
 tr: 設定を保存できませんでした。
 
@@ -387,6 +438,9 @@ tr: DVDを使用できません
 
 es:  Descargando portada...
 tr:  ジャケット画像をダウンロード中...
+
+es: Este juego volvió a sus ajustes de fábrica.
+tr: このゲームは工場出荷時の設定に戻りました。
 
 es: Cancelando la copia...
 tr: コピーを中止しています...
@@ -543,15 +597,6 @@ tr: 30で安定したゲームを60で表示（実験的）。
 
 es: 1 de 2
 tr: 2回に1回
-
-es: 1 de 2 rápido
-tr: 2回に1回（速い）
-
-es: 2 de 3
-tr: 3回に2回
-
-es: Al vuelo
-tr: 必要なときだけ
 
 es: Saltar cuadros (GS):  < %s >
 tr: フレームスキップ（GS）：  < %s >
@@ -1263,6 +1308,9 @@ tr: 動画
 
 es: %d/%m a las %H:%M
 tr: %m月%d日 %H:%M
+
+es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
+tr: このステートは %s のもので、メモリーカードへの最後のセーブより前です。ゲームがセーブデータが壊れていると言っても、カードは正常です。ステートを読み込まずにゲームを再起動してください
 
 es: Reportar este juego:  < %s >
 tr: このゲームを報告：  < %s >

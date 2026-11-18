@@ -17,6 +17,11 @@ namespace ForjaSettings
 	constexpr int StickSteps[] = {100, 110, 120, 133, 140, 150, 160, 170, 180, 190, 200};
 	constexpr int StickStepCount = static_cast<int>(sizeof(StickSteps) / sizeof(StickSteps[0]));
 
+	// Compilation 146 (Joseph, 2026-11-18: "una configuración base ... que corra bien para casi todos los juegos ... cuando se actualice
+	// forja, forzarles a esa actualización general y luego ya, que configure"): the base of the files written before it is put back
+	// once (Load: `migrated`; main.cpp saves it and clears the players' old per-game CPU and skip keys, keeping a copy).
+	constexpr int BaseVersion = 146;
+
 	struct Values
 	{
 		// EECycleRate, -6..3. Compilation 45: -6 (27 %) was the default, as God of War II measured best (98 %, 2026-10-17)
@@ -25,10 +30,16 @@ namespace ForjaSettings
 		// go; at 36 % a game gets a third more PS2 CPU where the PS4 has room for it, and comes down to 27 % by itself in its
 		// heavy scenes: the recipe God of War II and Crash Nitro Kart's factory profiles have used since build 46 (~41 frames a
 		// second in GoW2's Colossus fight). A player's ajustes.ini keeps what it says.
-		int ee_rate = -4;
+		// Compilation 146: the base is 100 % (the PS2's own) with the CPU automático down to 31 %: with the cycle skip Al vuelo taking
+		// the EE's work first, a lower CPU took frames away from the games that don't need it (God of War II, the 143: 35.1 FPS at
+		// 100 %, 33.5 at 57 %, the same place) and the automático still brings it down for the ones that do (Dragon Ball 58 -> 89 %,
+		// Guitar Hero 93 -> 100 %).
+		int ee_rate = 0;
 		// [Forja] CpuAuto for every game without its own (compilation 45): 0 off, -1..-6 the lowest EE rate it may step down
 		// to (main.cpp, UpdateCpuAuto). -6: a game raised above 27 % in L3+R3 comes back down in its heavy scenes.
-		int cpu_auto = -6;
+		int cpu_auto = -5; // compilation 146 (was -6)
+		int version = 0; // compilation 146: the base the file was written with (BaseVersion)
+		bool migrated = false; // Load put the new base back: save it
 		int upscale = 1;      // internal resolution, 1..4
 		int aspect = 1;       // AspectRatioType: 0 Stretch, 1 Auto, 2 4:3, 3 16:9, 4 10:7
 		bool overlay = true;  // FPS counter when a game starts
@@ -73,15 +84,24 @@ namespace ForjaSettings
 		v.games_source = std::clamp(v.games_source, 0, 2);
 		v.style = std::clamp(v.style, 0, 1);
 		v.color = std::clamp(v.color, 0, 4);
+		// Compilation 146 (Joseph: "cargar rápido los discos ... lectura de la gráfica, que siempre es sin esperar, el más rápido, modo
+		// video automático ... una mejora permanente, no quiero que se muestre"): fixed for every game and off the Settings page;
+		// frame generation is a game's own choice (L3+R3, or Options on the library), never a default for all.
+		v.fast_cdvd = true;
+		v.readback = 1;
+		v.video_mode = true;
+		v.frame_gen = false;
 		return v;
 	}
 
 	inline Values Load()
 	{
 		Values v;
+		v.version = BaseVersion;
 		std::FILE* file = std::fopen(Path, "r");
 		if (!file)
-			return v;
+			return Clamp(v);
+		v.version = 0;
 		v.from_file = true;
 		char line[256];
 		while (std::fgets(line, sizeof(line), file))
@@ -134,8 +154,20 @@ namespace ForjaSettings
 				v.style = value;
 			else if (!std::strcmp(key, "color"))
 				v.color = value;
+			else if (!std::strcmp(key, "version"))
+				v.version = value;
 		}
 		std::fclose(file);
+		if (v.version < BaseVersion)
+		{
+			// Compilation 146: an older file gets the new base once; what is the player's own taste (language, folder, style, button,
+			// stick, overlay, aspect) stays.
+			v.ee_rate = 0;
+			v.cpu_auto = -5;
+			v.upscale = 1;
+			v.version = BaseVersion;
+			v.migrated = true;
+		}
 		return Clamp(v);
 	}
 
@@ -151,10 +183,10 @@ namespace ForjaSettings
 			"; Forja SX2: ajustes para todos los juegos (pestaña Ajustes de la biblioteca)\n"
 			"ee_rate=%d\nupscale=%d\naspect=%d\noverlay=%d\nstick=%d\nfast_cdvd=%d\nfast_boot=%d\nreadback=%d\nvideo_mode=%d\n"
 			"frame_gen=%d\ncpu_auto=%d\nmenu_boton=%d\nidioma=%s\npreguntar_idioma=%d\ncarpeta_juegos=%s\norigen_juegos=%d\n"
-			"estilo=%d\ncolor=%d\n",
+			"estilo=%d\ncolor=%d\nversion=%d\n",
 			v.ee_rate, v.upscale, v.aspect, v.overlay ? 1 : 0, v.stick, v.fast_cdvd ? 1 : 0, v.fast_boot ? 1 : 0,
 			v.readback, v.video_mode ? 1 : 0, v.frame_gen ? 1 : 0, v.cpu_auto, v.menu_button, v.language, v.ask_language ? 1 : 0,
-			v.games_folder, v.games_source, v.style, v.color);
+			v.games_folder, v.games_source, v.style, v.color, BaseVersion);
 		const bool written = std::fclose(file) == 0;
 		return written && std::rename(temporary, Path) == 0;
 	}

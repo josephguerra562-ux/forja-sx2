@@ -76,8 +76,8 @@ tr: Да: список языков появляется при каждом з�
 es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
 tr: Другая папка с играми, например на USB-накопителе. X — выбрать
 
-es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
-tr: Больше % НЕ значит быстрее: нагрузка растёт, и почти всегда становится хуже. Повышайте в L3+R3, только если игра замедлена или работает с ошибками
+es: 100 % es la PS2 real y lo mejor para casi todos los juegos: el CPU automático lo baja solo en las escenas pesadas
+tr: 100 % — настоящая PS2 и лучший вариант почти для всех игр: авто-CPU сам снижает его в тяжёлых сценах
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: Если вы подняли ЦП игры и она тормозит, он сам снижается в тяжёлых сценах, до этого предела
@@ -214,6 +214,51 @@ tr: Сенсорная панель (справа)
 es: Los dos
 tr: Оба
 
+es: Al vuelo
+tr: По ходу
+
+es: 1 de 2 rápido
+tr: 1 из 2, быстро
+
+es: 2 de 3
+tr: 2 из 3
+
+es: Fluido
+tr: Плавно
+
+es: Saltar cuadros
+tr: Пропуск кадров
+
+es: Volver a lo de fábrica
+tr: Вернуть заводские
+
+es: tienes cambios: X los borra
+tr: есть изменения: X удаляет их
+
+es: ya está de fábrica
+tr: уже заводские
+
+es: Hasta dónde puede bajar la CPU de la PS2 en las escenas pesadas de este juego
+tr: Насколько может снизиться CPU PS2 в тяжёлых сценах этой игры
+
+es: Al vuelo deja fuera cuadros solo cuando la parte gráfica no da abasto. Si algo parpadea, ponlo en No
+tr: «По ходу» пропускает кадры, только когда графика не успевает. Если что-то мерцает, поставьте «Нет»
+
+es: 1x da más FPS. En PS4 Pro, 2x suele costar poco: en God of War II dio los mismos FPS
+tr: 1x даёт больше FPS. На PS4 Pro 2x обычно стоит мало: в God of War II FPS тот же
+
+es: Muestra 60 cuadros por segundo en un juego que va a 30, inventando los del medio. Cuesta cuadros del juego
+tr: Показывает 60 кадров в секунду в игре на 30, придумывая промежуточные. Стоит игровых кадров
+
+es: Borra lo que cambiaste para este juego (aquí y en L3+R3) y vuelve a su perfil de fábrica
+tr: Удаляет ваши изменения для этой игры (здесь и в L3+R3) и возвращает заводской профиль
+
+es: Solo para este juego. Se guarda al cambiar y vale desde la próxima vez que lo abras
+tr: Только для этой игры. Сохраняется при изменении и действует со следующего запуска
+
+es: No se pudo leer la imagen de este juego: sus ajustes se cambian dentro, con L3+R3
+tr: Не удалось прочитать образ этой игры: меняйте её настройки внутри, через L3+R3
+
 es: Elige el idioma
 tr: Выберите язык
 
@@ -325,6 +370,12 @@ tr: В избранное
 es: Actualizar biblioteca
 tr: Обновить библиотеку
 
+es: Ajustes del juego
+tr: Настройки игры
+
+es: Cerrar
+tr: Закрыть
+
 es: No se pudieron guardar los ajustes.
 tr: Не удалось сохранить настройки.
 
@@ -387,6 +438,9 @@ tr: DVD недоступен
 
 es:  Descargando portada...
 tr:  Загрузка обложки...
+
+es: Este juego volvió a sus ajustes de fábrica.
+tr: Эта игра вернулась к заводским настройкам.
 
 es: Cancelando la copia...
 tr: Отмена копирования...
@@ -543,15 +597,6 @@ tr: Показывает игру со стабильными 30 в 60 (эксп
 
 es: 1 de 2
 tr: 1 из 2
-
-es: 1 de 2 rápido
-tr: 1 из 2, быстро
-
-es: 2 de 3
-tr: 2 из 3
-
-es: Al vuelo
-tr: По ходу
 
 es: Saltar cuadros (GS):  < %s >
 tr: Пропуск кадров (GS):  < %s >
@@ -1263,6 +1308,9 @@ tr: В видеороликах
 
 es: %d/%m a las %H:%M
 tr: %d.%m в %H:%M
+
+es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
+tr: Это состояние от %s, раньше вашего последнего сохранения на карте. Если игра говорит, что сохранение повреждено, с картой всё в порядке: перезапустите игру без загрузки состояния
 
 es: Reportar este juego:  < %s >
 tr: Сообщить об игре:  < %s >

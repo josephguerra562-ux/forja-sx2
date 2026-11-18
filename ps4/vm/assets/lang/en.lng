@@ -76,8 +76,8 @@ tr: Yes: the list of languages shows up every time you open Forja SX2
 es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
 tr: Another folder with games, for example on a USB drive. X to choose it
 
-es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
-tr: More % is NOT faster: it asks more of the console and almost always runs worse. Raise it in L3+R3 only if the game runs in slow motion or fails
+es: 100 % es la PS2 real y lo mejor para casi todos los juegos: el CPU automático lo baja solo en las escenas pesadas
+tr: 100 % is the real PS2 and the best for almost every game: CPU auto lowers it by itself in heavy scenes
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: If you raise a game's CPU and it slows down, it lowers itself in heavy scenes, down to this floor
@@ -214,6 +214,51 @@ tr: Touchpad (right)
 es: Los dos
 tr: Both
 
+es: Al vuelo
+tr: On the fly
+
+es: 1 de 2 rápido
+tr: 1 of 2, quick
+
+es: 2 de 3
+tr: 2 of 3
+
+es: Fluido
+tr: Smooth
+
+es: Saltar cuadros
+tr: Frame skip
+
+es: Volver a lo de fábrica
+tr: Back to factory
+
+es: tienes cambios: X los borra
+tr: you have changes: X clears them
+
+es: ya está de fábrica
+tr: already factory
+
+es: Hasta dónde puede bajar la CPU de la PS2 en las escenas pesadas de este juego
+tr: How low the PS2's CPU may go in this game's heavy scenes
+
+es: Al vuelo deja fuera cuadros solo cuando la parte gráfica no da abasto. Si algo parpadea, ponlo en No
+tr: On the fly leaves frames out only when the graphics can't keep up. If something flickers, set it to No
+
+es: 1x da más FPS. En PS4 Pro, 2x suele costar poco: en God of War II dio los mismos FPS
+tr: 1x gives more FPS. On a PS4 Pro, 2x usually costs little: in God of War II it gave the same FPS
+
+es: Muestra 60 cuadros por segundo en un juego que va a 30, inventando los del medio. Cuesta cuadros del juego
+tr: Shows 60 frames per second in a game running at 30 by making up the ones in between. It costs game frames
+
+es: Borra lo que cambiaste para este juego (aquí y en L3+R3) y vuelve a su perfil de fábrica
+tr: Clears what you changed for this game (here and in L3+R3) and goes back to its factory profile
+
+es: Solo para este juego. Se guarda al cambiar y vale desde la próxima vez que lo abras
+tr: For this game only. Saved when changed, it counts from the next time you open it
+
+es: No se pudo leer la imagen de este juego: sus ajustes se cambian dentro, con L3+R3
+tr: This game's image could not be read: change its settings inside, with L3+R3
+
 es: Elige el idioma
 tr: Choose your language
 
@@ -325,6 +370,12 @@ tr: Add favorite
 es: Actualizar biblioteca
 tr: Refresh library
 
+es: Ajustes del juego
+tr: Game settings
+
+es: Cerrar
+tr: Close
+
 es: No se pudieron guardar los ajustes.
 tr: The settings could not be saved.
 
@@ -387,6 +438,9 @@ tr: DVD not available
 
 es:  Descargando portada...
 tr:  Downloading cover...
+
+es: Este juego volvió a sus ajustes de fábrica.
+tr: This game went back to its factory settings.
 
 es: Cancelando la copia...
 tr: Cancelling the copy...
@@ -543,15 +597,6 @@ tr: Shows a game steady at 30 at 60 (experimental).
 
 es: 1 de 2
 tr: 1 of 2
-
-es: 1 de 2 rápido
-tr: 1 of 2, quick
-
-es: 2 de 3
-tr: 2 of 3
-
-es: Al vuelo
-tr: On the fly
 
 es: Saltar cuadros (GS):  < %s >
 tr: Frame skip (GS):  < %s >
@@ -1263,6 +1308,9 @@ tr: In the videos
 
 es: %d/%m a las %H:%M
 tr: %d/%m at %H:%M
+
+es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
+tr: This state is from %s, before your last save on the memory card. If the game says the save is damaged, the card is fine: restart the game without loading the state
 
 es: Reportar este juego:  < %s >
 tr: Report this game:  < %s >

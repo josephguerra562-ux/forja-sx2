@@ -76,8 +76,8 @@ tr: 是：每次打开 Forja SX2 都会显示语言列表
 es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
 tr: 另一个游戏文件夹,例如 USB 存储设备上的。按 X 选择
 
-es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
-tr: 百分比越高并不会越快:主机负担更重,几乎总是更差。只有游戏变成慢动作或出错时,才在 L3+R3 中调高
+es: 100 % es la PS2 real y lo mejor para casi todos los juegos: el CPU automático lo baja solo en las escenas pesadas
+tr: 100 % 就是真实的 PS2,几乎所有游戏都最好用它:自动 CPU 会在繁重场景中自动降低
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: 如果调高了某个游戏的 CPU 后变慢，它会在重场景中自动降低，最低到这个值
@@ -214,6 +214,51 @@ tr: 触摸板（右侧）
 es: Los dos
 tr: 两者
 
+es: Al vuelo
+tr: 即时
+
+es: 1 de 2 rápido
+tr: 2 取 1，快速
+
+es: 2 de 3
+tr: 3 取 2
+
+es: Fluido
+tr: 流畅
+
+es: Saltar cuadros
+tr: 跳帧
+
+es: Volver a lo de fábrica
+tr: 恢复出厂
+
+es: tienes cambios: X los borra
+tr: 你有更改:X 清除
+
+es: ya está de fábrica
+tr: 已是出厂设置
+
+es: Hasta dónde puede bajar la CPU de la PS2 en las escenas pesadas de este juego
+tr: 此游戏繁重场景中 PS2 CPU 最多可降到多少
+
+es: Al vuelo deja fuera cuadros solo cuando la parte gráfica no da abasto. Si algo parpadea, ponlo en No
+tr: 即时只在图形跟不上时跳过画面。如果有闪烁,请设为否
+
+es: 1x da más FPS. En PS4 Pro, 2x suele costar poco: en God of War II dio los mismos FPS
+tr: 1x 帧数更高。在 PS4 Pro 上 2x 通常影响不大:God of War II 帧数相同
+
+es: Muestra 60 cuadros por segundo en un juego que va a 30, inventando los del medio. Cuesta cuadros del juego
+tr: 在 30 帧的游戏中显示 60 帧,补出中间的画面。会损失游戏本身的帧数
+
+es: Borra lo que cambiaste para este juego (aquí y en L3+R3) y vuelve a su perfil de fábrica
+tr: 清除你对此游戏的更改(此处和 L3+R3 中),恢复出厂配置
+
+es: Solo para este juego. Se guarda al cambiar y vale desde la próxima vez que lo abras
+tr: 仅限此游戏。更改即保存,下次打开时生效
+
+es: No se pudo leer la imagen de este juego: sus ajustes se cambian dentro, con L3+R3
+tr: 无法读取此游戏镜像:请在游戏内用 L3+R3 修改设置
+
 es: Elige el idioma
 tr: 选择语言
 
@@ -325,6 +370,12 @@ tr: 加入收藏
 es: Actualizar biblioteca
 tr: 刷新游戏库
 
+es: Ajustes del juego
+tr: 游戏设置
+
+es: Cerrar
+tr: 关闭
+
 es: No se pudieron guardar los ajustes.
 tr: 无法保存设置。
 
@@ -387,6 +438,9 @@ tr: DVD 不可用
 
 es:  Descargando portada...
 tr:  正在下载封面...
+
+es: Este juego volvió a sus ajustes de fábrica.
+tr: 此游戏已恢复出厂设置。
 
 es: Cancelando la copia...
 tr: 正在取消复制...
@@ -543,15 +597,6 @@ tr: 将稳定 30 帧的游戏以 60 帧显示（实验）。
 
 es: 1 de 2
 tr: 2 取 1
-
-es: 1 de 2 rápido
-tr: 2 取 1，快速
-
-es: 2 de 3
-tr: 3 取 2
-
-es: Al vuelo
-tr: 即时
 
 es: Saltar cuadros (GS):  < %s >
 tr: 跳帧（GS）：  < %s >
@@ -1263,6 +1308,9 @@ tr: 在视频中
 
 es: %d/%m a las %H:%M
 tr: %m月%d日 %H:%M
+
+es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
+tr: 此即时存档来自 %s,早于你在记忆卡上的最后一次存档。如果游戏说存档损坏,记忆卡其实没问题:不加载即时存档重新启动游戏
 
 es: Reportar este juego:  < %s >
 tr: 报告此游戏：  < %s >

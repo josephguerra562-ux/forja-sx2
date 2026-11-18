@@ -76,8 +76,8 @@ tr: Ja: Die Sprachliste erscheint bei jedem Start von Forja SX2
 es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
 tr: Ein weiterer Ordner mit Spielen, z. B. auf einem USB-Stick. X zum Auswählen
 
-es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
-tr: Mehr % ist NICHT schneller: Es fordert die Konsole stärker und läuft fast immer schlechter. Nur in L3+R3 erhöhen, wenn das Spiel in Zeitlupe läuft oder Fehler zeigt
+es: 100 % es la PS2 real y lo mejor para casi todos los juegos: el CPU automático lo baja solo en las escenas pesadas
+tr: 100 % ist die echte PS2 und für fast alle Spiele das Beste: die Auto-CPU senkt sie in schweren Szenen selbst
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: Wenn du die CPU eines Spiels erhöhst und es langsam wird, senkt sie sich in schweren Szenen selbst, bis zu diesem Wert
@@ -214,6 +214,51 @@ tr: Touchpad (rechts)
 es: Los dos
 tr: Beide
 
+es: Al vuelo
+tr: Bei Bedarf
+
+es: 1 de 2 rápido
+tr: 1 von 2 schnell
+
+es: 2 de 3
+tr: 2 von 3
+
+es: Fluido
+tr: Flüssig
+
+es: Saltar cuadros
+tr: Bilder überspringen
+
+es: Volver a lo de fábrica
+tr: Zurück zu Werkseinstellungen
+
+es: tienes cambios: X los borra
+tr: du hast Änderungen: X löscht sie
+
+es: ya está de fábrica
+tr: schon Werkseinstellung
+
+es: Hasta dónde puede bajar la CPU de la PS2 en las escenas pesadas de este juego
+tr: Wie weit die PS2-CPU in den schweren Szenen dieses Spiels sinken darf
+
+es: Al vuelo deja fuera cuadros solo cuando la parte gráfica no da abasto. Si algo parpadea, ponlo en No
+tr: Bei Bedarf lässt Bilder nur aus, wenn die Grafik nicht hinterherkommt. Wenn etwas flackert, auf Nein stellen
+
+es: 1x da más FPS. En PS4 Pro, 2x suele costar poco: en God of War II dio los mismos FPS
+tr: 1x bringt mehr FPS. Auf der PS4 Pro kostet 2x meist wenig: in God of War II gleiche FPS
+
+es: Muestra 60 cuadros por segundo en un juego que va a 30, inventando los del medio. Cuesta cuadros del juego
+tr: Zeigt 60 Bilder pro Sekunde in einem Spiel mit 30, indem die dazwischen erfunden werden. Kostet Spielbilder
+
+es: Borra lo que cambiaste para este juego (aquí y en L3+R3) y vuelve a su perfil de fábrica
+tr: Löscht, was du für dieses Spiel geändert hast (hier und in L3+R3), und kehrt zum Werksprofil zurück
+
+es: Solo para este juego. Se guarda al cambiar y vale desde la próxima vez que lo abras
+tr: Nur für dieses Spiel. Wird beim Ändern gespeichert und gilt ab dem nächsten Öffnen
+
+es: No se pudo leer la imagen de este juego: sus ajustes se cambian dentro, con L3+R3
+tr: Das Abbild dieses Spiels konnte nicht gelesen werden: Einstellungen im Spiel mit L3+R3 ändern
+
 es: Elige el idioma
 tr: Wähle die Sprache
 
@@ -325,6 +370,12 @@ tr: Zu Favoriten
 es: Actualizar biblioteca
 tr: Bibliothek aktualisieren
 
+es: Ajustes del juego
+tr: Spieleinstellungen
+
+es: Cerrar
+tr: Schließen
+
 es: No se pudieron guardar los ajustes.
 tr: Die Einstellungen konnten nicht gespeichert werden.
 
@@ -387,6 +438,9 @@ tr: DVD nicht verfügbar
 
 es:  Descargando portada...
 tr:  Cover wird geladen...
+
+es: Este juego volvió a sus ajustes de fábrica.
+tr: Dieses Spiel ist zu den Werkseinstellungen zurückgekehrt.
 
 es: Cancelando la copia...
 tr: Kopie wird abgebrochen...
@@ -543,15 +597,6 @@ tr: Zeigt ein stabiles 30-FPS-Spiel mit 60 (experimentell).
 
 es: 1 de 2
 tr: 1 von 2
-
-es: 1 de 2 rápido
-tr: 1 von 2 schnell
-
-es: 2 de 3
-tr: 2 von 3
-
-es: Al vuelo
-tr: Bei Bedarf
 
 es: Saltar cuadros (GS):  < %s >
 tr: Bilder überspringen (GS):  < %s >
@@ -1263,6 +1308,9 @@ tr: In den Videos
 
 es: %d/%m a las %H:%M
 tr: %d.%m. um %H:%M
+
+es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
+tr: Dieser Zustand ist vom %s, vor deinem letzten Speichern auf der Karte. Sagt das Spiel, der Spielstand sei beschädigt, ist die Karte in Ordnung: Spiel ohne den Zustand neu starten
 
 es: Reportar este juego:  < %s >
 tr: Dieses Spiel melden:  < %s >

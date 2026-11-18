@@ -76,8 +76,8 @@ tr: نعم: تظهر قائمة اللغات في كل مرة تفتح فيها 
 es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
 tr: مجلد آخر للألعاب، مثل ذاكرة USB. X للاختيار
 
-es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
-tr: زيادة النسبة لا تعني سرعة أكبر: تزيد الحمل على الجهاز وغالبا تجعل الأداء أسوأ. ارفعها من L3+R3 فقط إذا كانت اللعبة بطيئة الحركة أو بها أخطاء
+es: 100 % es la PS2 real y lo mejor para casi todos los juegos: el CPU automático lo baja solo en las escenas pesadas
+tr: 100 % هو PS2 الحقيقي والأفضل لكل الألعاب تقريبا: المعالج التلقائي يخفضه وحده في المشاهد الثقيلة
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: إذا رفعت معالج لعبة وأصبحت بطيئة، ينخفض وحده في المشاهد الثقيلة حتى هذا الحد
@@ -214,6 +214,51 @@ tr: لوحة اللمس (اليمين)
 es: Los dos
 tr: كلاهما
 
+es: Al vuelo
+tr: عند الحاجة
+
+es: 1 de 2 rápido
+tr: 1 من 2 سريع
+
+es: 2 de 3
+tr: 2 من 3
+
+es: Fluido
+tr: سلس
+
+es: Saltar cuadros
+tr: تخطي الإطارات
+
+es: Volver a lo de fábrica
+tr: العودة إلى المصنع
+
+es: tienes cambios: X los borra
+tr: لديك تغييرات: X يمسحها
+
+es: ya está de fábrica
+tr: على إعدادات المصنع بالفعل
+
+es: Hasta dónde puede bajar la CPU de la PS2 en las escenas pesadas de este juego
+tr: إلى أي حد يمكن أن ينخفض معالج PS2 في المشاهد الثقيلة لهذه اللعبة
+
+es: Al vuelo deja fuera cuadros solo cuando la parte gráfica no da abasto. Si algo parpadea, ponlo en No
+tr: «عند الحاجة» يتخطى إطارات فقط عندما لا تلحق الرسومات. إذا ومض شيء، اجعله لا
+
+es: 1x da más FPS. En PS4 Pro, 2x suele costar poco: en God of War II dio los mismos FPS
+tr: 1x يعطي FPS أكثر. على PS4 Pro عادة ما يكلف 2x القليل: في God of War II أعطى نفس FPS
+
+es: Muestra 60 cuadros por segundo en un juego que va a 30, inventando los del medio. Cuesta cuadros del juego
+tr: يعرض 60 إطارا في الثانية في لعبة تعمل بـ 30 باختلاق الإطارات بينها. يكلف إطارات اللعبة
+
+es: Borra lo que cambiaste para este juego (aquí y en L3+R3) y vuelve a su perfil de fábrica
+tr: يمسح ما غيرته لهذه اللعبة (هنا وفي L3+R3) ويعود إلى ملف المصنع
+
+es: Solo para este juego. Se guarda al cambiar y vale desde la próxima vez que lo abras
+tr: لهذه اللعبة فقط. يُحفظ عند التغيير ويسري من المرة القادمة التي تفتحها فيها
+
+es: No se pudo leer la imagen de este juego: sus ajustes se cambian dentro, con L3+R3
+tr: تعذرت قراءة صورة هذه اللعبة: غيّر إعداداتها من داخلها بـ L3+R3
+
 es: Elige el idioma
 tr: اختر اللغة
 
@@ -325,6 +370,12 @@ tr: إضافة إلى المفضلة
 es: Actualizar biblioteca
 tr: تحديث المكتبة
 
+es: Ajustes del juego
+tr: إعدادات اللعبة
+
+es: Cerrar
+tr: إغلاق
+
 es: No se pudieron guardar los ajustes.
 tr: تعذّر حفظ الإعدادات.
 
@@ -387,6 +438,9 @@ tr: قرص DVD غير متاح
 
 es:  Descargando portada...
 tr:  جارٍ تنزيل الغلاف...
+
+es: Este juego volvió a sus ajustes de fábrica.
+tr: عادت هذه اللعبة إلى إعدادات المصنع.
 
 es: Cancelando la copia...
 tr: جارٍ إلغاء النسخ...
@@ -543,15 +597,6 @@ tr: يعرض بـ 60 لعبة ثابتة على 30 (تجريبي).
 
 es: 1 de 2
 tr: 1 من 2
-
-es: 1 de 2 rápido
-tr: 1 من 2 سريع
-
-es: 2 de 3
-tr: 2 من 3
-
-es: Al vuelo
-tr: عند الحاجة
 
 es: Saltar cuadros (GS):  < %s >
 tr: تخطي الإطارات (GS):  < %s >
@@ -1263,6 +1308,9 @@ tr: في الفيديوهات
 
 es: %d/%m a las %H:%M
 tr: %d/%m الساعة %H:%M
+
+es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
+tr: هذه الحالة من %s، قبل آخر حفظ لك على البطاقة. إذا قالت اللعبة إن الحفظ تالف، فالبطاقة سليمة: أعد تشغيل اللعبة دون تحميل الحالة
 
 es: Reportar este juego:  < %s >
 tr: الإبلاغ عن هذه اللعبة:  < %s >

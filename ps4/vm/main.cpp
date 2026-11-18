@@ -587,6 +587,109 @@ static bool s_verbose_diag = false;
 // /data/ForjaSX2/sensibilidad.txt with a percentage (100-200).
 static float s_stick_scale = 1.33f;
 
+// Compilation 146: the base, once. ajustes.ini written before it gets the new base (ForjaSettings::Load), and the players' per-game
+// profiles lose the CPU, cycle skip and Saltar cuadros keys of the old tests, so the base and the factory profiles count again (a copy
+// of each file goes to gamesettings/antes-146 first). Resolution, aspect, patches, the crowd, the guardian's list, the learnt skip and
+// the rest stay.
+static void ForjaApplyBase()
+{
+	ForjaSettings::Values settings = ForjaSettings::Load();
+	if (settings.migrated)
+		ProbeLog("Base 146: ajustes.ini given the new base (CPU 100 %%, CPU automático down to 31 %%, 1x), saved=%d\n",
+			ForjaSettings::Save(settings) ? 1 : 0);
+	constexpr const char* marker = "/data/ForjaSX2/ajustes-base-146";
+	if (access(marker, F_OK) == 0)
+		return;
+	static constexpr const char* drop[][2] = {{"EmuCore/Speedhacks", "EECycleRate"}, {"EmuCore/Speedhacks", "EECycleSkip"},
+		{"EmuCore/Speedhacks", "EECycleSkipQuarters"}, {"EmuCore/Speedhacks", "EECycleSkipAuto"}, {"EmuCore/Speedhacks", "fastCDVD"},
+		{"EmuCore/GS", "HWDownloadMode"}, {"Forja", "CpuAuto"}, {"Forja", "SaltarCuadros"}, {"Forja", "CpuAutoSube"},
+		{"Forja", "SaltoAutoAfinado"}, {"Forja", "IopRapido"}, {"Forja", "IopDormido"}, {"Forja", "GrabarEnOtroHilo"},
+		{"Forja", "TraductorSoftware"}}; // frame generation stays: each player's own choice for a game
+	const std::string dir = "/data/ForjaSX2/gamesettings";
+	const std::string backup = dir + "/antes-146";
+	mkdir(backup.c_str(), 0777);
+	unsigned files = 0, keys = 0;
+	if (DIR* d = opendir(dir.c_str()))
+	{
+		while (const dirent* e = readdir(d))
+		{
+			const std::string name = e->d_name;
+			if (name.size() < 5 || name.compare(name.size() - 4, 4, ".ini") != 0)
+				continue;
+			const std::string path = dir + "/" + name;
+			std::string text;
+			if (std::FILE* f = std::fopen(path.c_str(), "rb"))
+			{
+				char buffer[4096];
+				size_t n;
+				while ((n = std::fread(buffer, 1, sizeof(buffer), f)) > 0)
+					text.append(buffer, n);
+				std::fclose(f);
+			}
+			else
+				continue;
+			std::string section, kept;
+			unsigned dropped = 0;
+			size_t at = 0;
+			while (at < text.size())
+			{
+				size_t end = text.find('\n', at);
+				const std::string line = text.substr(at, end == std::string::npos ? std::string::npos : end - at + 1);
+				at = end == std::string::npos ? text.size() : end + 1;
+				std::string bare = line;
+				while (!bare.empty() && (bare.back() == '\n' || bare.back() == '\r' || bare.back() == ' '))
+					bare.pop_back();
+				const size_t lead = bare.find_first_not_of(" \t");
+				bare = lead == std::string::npos ? std::string() : bare.substr(lead);
+				if (!bare.empty() && bare.front() == '[' && bare.back() == ']')
+					section = bare.substr(1, bare.size() - 2);
+				else if (const size_t eq = bare.find('='); eq != std::string::npos && bare[0] != ';' && bare[0] != '#')
+				{
+					std::string key = bare.substr(0, eq);
+					while (!key.empty() && (key.back() == ' ' || key.back() == '\t'))
+						key.pop_back();
+					bool remove = false;
+					for (const auto& pair : drop)
+						remove |= section == pair[0] && key == pair[1];
+					if (remove)
+					{
+						dropped++;
+						continue;
+					}
+				}
+				kept += line;
+			}
+			if (dropped == 0)
+				continue;
+			if (std::FILE* f = std::fopen((backup + "/" + name).c_str(), "wb"))
+			{
+				std::fwrite(text.data(), 1, text.size(), f);
+				std::fclose(f);
+			}
+			else
+				continue; // no copy, no change
+			const std::string temporary = path + ".tmp";
+			if (std::FILE* f = std::fopen(temporary.c_str(), "wb"))
+			{
+				const bool written = std::fwrite(kept.data(), 1, kept.size(), f) == kept.size();
+				if (std::fclose(f) == 0 && written && std::rename(temporary.c_str(), path.c_str()) == 0)
+				{
+					files++;
+					keys += dropped;
+				}
+			}
+		}
+		closedir(d);
+	}
+	if (std::FILE* f = std::fopen(marker, "w"))
+	{
+		std::fprintf(f, "base 146: %u perfiles, %u claves viejas quitadas (copia en gamesettings/antes-146)\n", files, keys);
+		std::fclose(f);
+	}
+	ProbeLog("Base 146: %u player profiles had their old CPU and skip keys taken out (%u keys; copies in %s)\n", files, keys,
+		backup.c_str());
+}
+
 static void LoadStickSensitivity()
 {
 	s_stick_scale = static_cast<float>(ForjaSettings::Load().stick) / 100.0f;
@@ -2887,7 +2990,9 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	{
 		// Compilation 140: the old Auto (1) is gone: a profile's Auto runs as "Al vuelo" (5), which the director lets act only with the
 		// cycle skip at its top. The old one left out nothing in God of War II, Shadow and Need for Speed (2026-11-17/18).
-		const int gs_skip = s_profile.gs_skip == 1 ? 5 : s_profile.gs_skip >= 0 ? s_profile.gs_skip : 0;
+		// Compilation 146: with nothing said, Al vuelo, the base for every game (the director lets it act only with the cycle skip
+		// 3 s at its top; God of War II, Need for Speed and Guitar Hero never got there).
+		const int gs_skip = s_profile.gs_skip == 1 ? 5 : s_profile.gs_skip >= 0 ? s_profile.gs_skip : 5;
 		// Compilation 76: and for another game, which starts drawing every frame; "no use in this game" (UpdateGsSkip) lasts until
 		// then, or until the row is changed by hand.
 		if (gs_skip != s_gs_skip_mode || new_game)
@@ -4825,6 +4930,27 @@ static bool LoadGameState()
 	const double undo_ms = Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - t0);
 	Error error;
 	const bool loaded = VMManager::LoadStateFromSlot(slot, false, &error);
+	// Compilation 146: a state older than the memory card's last save brings back what the game knew of the card that day, and some
+	// games then call today's saves damaged (Dragon Ball, 2026-11-18: a state of 4 November, the card written on the 18th). The card
+	// is fine: the game must be started again without the state to see it.
+	if (loaded)
+	{
+		struct stat state_info = {}, card_info = {};
+		const std::string state_path = VMManager::GetSaveStateFileName(VMManager::GetDiscSerial().c_str(), VMManager::GetDiscCRC(), slot);
+		const std::string card_path = Path::Combine(EmuFolders::MemoryCards, EmuConfig.Mcd[0].Filename);
+		if (!state_path.empty() && stat(state_path.c_str(), &state_info) == 0 && stat(card_path.c_str(), &card_info) == 0 &&
+			card_info.st_mtime > state_info.st_mtime + 60)
+		{
+			char when[64];
+			std::strftime(when, sizeof(when), "%d/%m/%Y", std::localtime(&state_info.st_mtime));
+			char text[400];
+			std::snprintf(text, sizeof(text), ForjaLang::TF("Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado"), when);
+			extern void ForjaNotify(const std::string& message);
+			ForjaNotify(text);
+			ProbeLog("Save state: slot %d is older than the memory card (state %lld, card %lld): warned\n", slot,
+				static_cast<long long>(state_info.st_mtime), static_cast<long long>(card_info.st_mtime));
+		}
+	}
 	if (!loaded)
 		s_state_action = PS4GameMenu::STATE_LOAD_FAILED;
 	if (loaded)
@@ -5965,6 +6091,9 @@ static void* RunVM(void*)
 	if (access("/data/ForjaSX2/vm-ee-cycle-skip", F_OK) == 0)
 		ee_cycle_skip = 1;
 	settings->SetIntValue("EmuCore/Speedhacks", "EECycleSkip", ee_cycle_skip);
+	// Compilation 146: the base for every game, the cycle skip "Al vuelo" (God of War II 30 -> 36 FPS at full speed, the 139); a
+	// game's own profile still wins.
+	settings->SetIntValue("EmuCore/Speedhacks", "EECycleSkipAuto", 2);
 	ProbeLog("EE cycle profile requested: rate=%d skip=%d (underclock marker=%s, mild marker=%s, normal marker=%s, skip marker=%s)\n",
 		ee_cycle_rate, ee_cycle_skip,
 		access("/data/ForjaSX2/vm-ee-cycle-underclock", F_OK) == 0 ? "present" : "absent",
@@ -6192,6 +6321,7 @@ static void* RunVM(void*)
 		}
 		if (chosen.from_file)
 			settings->SetIntValue("EmuCore/Speedhacks", "EECycleRate", chosen.ee_rate);
+		settings->SetIntValue("EmuCore/Speedhacks", "EECycleSkipAuto", 2); // compilation 146: the base
 		// Compilation 45: every console starts at the native 1x (before, a PS4 Pro with Boost Mode started at 2x until the
 		// Settings page was saved); the player raises it per game in L3+R3, or for all games on the Settings page.
 		const int upscale = chosen.upscale;
@@ -6635,6 +6765,7 @@ int main()
 	ProbeLog("Forja SX2 %d.%02d (base PS4SX2 1.00) BUILD: FORJASX2-%d.%02d compilacion=%d lto=%d\n", FORJA_VERSION_MAJOR,
 		FORJA_VERSION_MINOR, FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER, FORJA_LTO_ON);
 	ProbeLog("Telemetry: start=%d\n", telemetry_started ? 1 : 0);
+	ForjaApplyBase(); // compilation 146: after the log is up
 	// Compilation 78: whether this build sends the players' reports (ForjaReport.cpp), so a log says it without trying one.
 	ProbeLog("Reports: %s\n", ForjaReport::HasChannel() ? "the reports channel is set (Reportar este juego sends to Forja's Discord)" :
 															  "no reports channel in this build (reports are kept in /data/ForjaSX2/reportes)");

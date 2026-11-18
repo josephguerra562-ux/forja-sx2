@@ -76,8 +76,8 @@ tr: Oui : la liste des langues s'affiche à chaque ouverture de Forja SX2
 es: Otra carpeta con juegos, por ejemplo en una memoria USB. X para elegirla
 tr: Un autre dossier de jeux, par exemple sur une clé USB. X pour le choisir
 
-es: Más % NO es más rápido: pide más a la consola y casi siempre va peor. Súbelo en L3+R3 solo si el juego va en cámara lenta o falla
-tr: Plus de % n'est PAS plus rapide : cela demande plus à la console et c'est presque toujours pire. Augmentez dans L3+R3 seulement si le jeu est au ralenti ou plante
+es: 100 % es la PS2 real y lo mejor para casi todos los juegos: el CPU automático lo baja solo en las escenas pesadas
+tr: 100 % est la vraie PS2 et le mieux pour presque tous les jeux : le CPU automatique le baisse tout seul dans les scènes lourdes
 
 es: Si subes el CPU de un juego y se pone lento, baja solo en las escenas pesadas, hasta este piso
 tr: Si vous augmentez le CPU d'un jeu et qu'il ralentit, il baisse seul dans les scènes lourdes, jusqu'à ce plancher
@@ -214,6 +214,51 @@ tr: Pavé tactile (droite)
 es: Los dos
 tr: Les deux
 
+es: Al vuelo
+tr: À la volée
+
+es: 1 de 2 rápido
+tr: 1 sur 2 rapide
+
+es: 2 de 3
+tr: 2 sur 3
+
+es: Fluido
+tr: Fluide
+
+es: Saltar cuadros
+tr: Saut d'images
+
+es: Volver a lo de fábrica
+tr: Revenir à l'usine
+
+es: tienes cambios: X los borra
+tr: vous avez des changements : X les efface
+
+es: ya está de fábrica
+tr: déjà d'usine
+
+es: Hasta dónde puede bajar la CPU de la PS2 en las escenas pesadas de este juego
+tr: Jusqu'où le CPU de la PS2 peut descendre dans les scènes lourdes de ce jeu
+
+es: Al vuelo deja fuera cuadros solo cuando la parte gráfica no da abasto. Si algo parpadea, ponlo en No
+tr: À la volée saute des images seulement quand le graphisme n'arrive pas à suivre. Si quelque chose clignote, mettez Non
+
+es: 1x da más FPS. En PS4 Pro, 2x suele costar poco: en God of War II dio los mismos FPS
+tr: 1x donne plus de FPS. Sur PS4 Pro, 2x coûte souvent peu : dans God of War II, mêmes FPS
+
+es: Muestra 60 cuadros por segundo en un juego que va a 30, inventando los del medio. Cuesta cuadros del juego
+tr: Affiche 60 images par seconde dans un jeu à 30 en inventant celles du milieu. Ça coûte des images du jeu
+
+es: Borra lo que cambiaste para este juego (aquí y en L3+R3) y vuelve a su perfil de fábrica
+tr: Efface ce que vous avez changé pour ce jeu (ici et dans L3+R3) et revient à son profil d'usine
+
+es: Solo para este juego. Se guarda al cambiar y vale desde la próxima vez que lo abras
+tr: Pour ce jeu seulement. Enregistré au changement, valable dès la prochaine ouverture
+
+es: No se pudo leer la imagen de este juego: sus ajustes se cambian dentro, con L3+R3
+tr: Impossible de lire l'image de ce jeu : changez ses réglages en jeu, avec L3+R3
+
 es: Elige el idioma
 tr: Choisissez la langue
 
@@ -325,6 +370,12 @@ tr: Ajouter aux favoris
 es: Actualizar biblioteca
 tr: Actualiser la bibliothèque
 
+es: Ajustes del juego
+tr: Réglages du jeu
+
+es: Cerrar
+tr: Fermer
+
 es: No se pudieron guardar los ajustes.
 tr: Impossible d'enregistrer les paramètres.
 
@@ -387,6 +438,9 @@ tr: DVD indisponible
 
 es:  Descargando portada...
 tr:  Téléchargement de la jaquette...
+
+es: Este juego volvió a sus ajustes de fábrica.
+tr: Ce jeu est revenu à ses réglages d'usine.
 
 es: Cancelando la copia...
 tr: Annulation de la copie...
@@ -543,15 +597,6 @@ tr: Affiche à 60 un jeu stable à 30 (expérimental).
 
 es: 1 de 2
 tr: 1 sur 2
-
-es: 1 de 2 rápido
-tr: 1 sur 2 rapide
-
-es: 2 de 3
-tr: 2 sur 3
-
-es: Al vuelo
-tr: À la volée
 
 es: Saltar cuadros (GS):  < %s >
 tr: Saut d'images (GS) :  < %s >
@@ -1263,6 +1308,9 @@ tr: Dans les vidéos
 
 es: %d/%m a las %H:%M
 tr: %d/%m à %H:%M
+
+es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
+tr: Cet état date du %s, d'avant votre dernière sauvegarde sur la carte. Si le jeu dit que la partie est endommagée, la carte va bien : relancez le jeu sans charger l'état
 
 es: Reportar este juego:  < %s >
 tr: Signaler ce jeu :  < %s >
