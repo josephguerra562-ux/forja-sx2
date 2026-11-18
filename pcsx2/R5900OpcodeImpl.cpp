@@ -247,6 +247,10 @@ static int __Deci2Call(int call, u32 *addr)
 	return 0;
 }
 
+// Compilation 141: "Código al día" (x86/ix86-32/iR5900.cpp). Outside the namespaces below: inside them it would name another function, and
+// the EBOOT would not be made ("missing module for symbol", the 141's first build).
+extern void ForjaICacheFlushed(u32 op) __attribute__((weak));
+
 namespace R5900 {
 namespace Interpreter {
 namespace OpcodeImpl {
@@ -907,8 +911,6 @@ void MOVN() {
 // This function is the only one that uses Sifcmd.h in Pcsx2.
 #include "Sifcmd.h"
 
-extern void ForjaICacheFlushed(u32 op) __attribute__((weak)); // compilation 141 (x86/ix86-32/iR5900.cpp)
-
 void SYSCALL()
 {
 #if !defined(PCSX2_PS4_CORE_PROBE)
@@ -935,8 +937,8 @@ void SYSCALL()
 	// no code). Like GetMemorySize below, execution goes on after the SYSCALL; v0 keeps its value (FlushCache
 	// is void). Needs proper testing.
 	// Compilation 141: "Código al día" (x86/ix86-32/iR5900.cpp): an instruction cache flush is when the game's new code is checked.
-	if ((call == 0x64 || call == 0x68) && ForjaICacheFlushed)
-		ForjaICacheFlushed(cpuRegs.GPR.n.a0.UL[0]);
+	if ((call == 0x64 || call == 0x68) && ::ForjaICacheFlushed)
+		::ForjaICacheFlushed(cpuRegs.GPR.n.a0.UL[0]);
 
 	if ((call == 0x64 || call == 0x68) && !CHECK_CACHE && g_orbis_hle_flush.load(std::memory_order_relaxed))
 	{

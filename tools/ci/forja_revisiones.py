@@ -15,8 +15,10 @@ la PS4 o en una compilación fallida, atrapados en segundos y sin dependencias (
            no coincide, la PS4 descarta todas las listas en silencio ("from other effects' code") y vuelven los tirones
   extern   cada variable compartida (g_forja_*, g_orbis_*) declarada con "extern" en un archivo tiene el mismo tipo que donde se define
            (si no coincide, compila y enlaza igual, y falla en la PS4; la 134 no enlazó por una de estas)
+  espacios lo compartido entre archivos (Forja*(), g_forja_*, g_orbis_*) se declara y se define en el mismo espacio de nombres: un
+           "extern" dentro de un namespace nombra otra cosa (la 134 y la 141 no armaron el EBOOT por eso; la revisión en la PC no enlaza)
 
-Uso: python3 tools/ci/forja_revisiones.py [textos|letras|perfiles|efectos|extern ...]   (sin nada: todas). Sale con 1 si alguna falla."""
+Uso: python3 tools/ci/forja_revisiones.py [textos|letras|perfiles|efectos|extern|espacios ...]   (sin nada: todas). Sale con 1 si alguna falla."""
 import re
 import struct
 import subprocess
@@ -235,9 +237,123 @@ def extern():
     return ok
 
 
+def _espacios_por_linea(texto):
+    """El número de namespaces abiertos al empezar cada línea (sin contar llaves en comentarios, textos ni líneas #)."""
+    pila, profundidades = [], []
+    i, n = 0, len(texto)
+    linea_ini = True
+    estado = None  # None, "//", "/*", '"', "'"
+    pendiente_ns = False
+    palabra = ""
+    while i < n:
+        c = texto[i]
+        if linea_ini:
+            profundidades.append(sum(1 for x in pila if x))
+            linea_ini = False
+            if estado is None and texto[i:i + 200].lstrip(" \t").startswith("#"):
+                j = texto.find("\n", i)
+                while j > 0 and texto[j - 1] == "\\":
+                    j = texto.find("\n", j + 1)
+                    profundidades.append(profundidades[-1])
+                i = n if j == -1 else j
+                continue
+        if c == "\n":
+            linea_ini = True
+            if estado == "//":
+                estado = None
+            i += 1
+            continue
+        if estado == "//":
+            i += 1
+            continue
+        if estado == "/*":
+            if texto.startswith("*/", i):
+                estado = None
+                i += 2
+            else:
+                i += 1
+            continue
+        if estado in ('"', "'"):
+            if c == "\\":
+                i += 2
+                continue
+            if c == estado:
+                estado = None
+            i += 1
+            continue
+        if texto.startswith("//", i):
+            estado = "//"
+            i += 2
+            continue
+        if texto.startswith("/*", i):
+            estado = "/*"
+            i += 2
+            continue
+        if c in ('"', "'"):
+            if c == "'" and i > 0 and texto[i - 1].isalnum() and i + 1 < n and texto[i + 1].isalnum():
+                i += 1  # separador de dígitos (1'000)
+                continue
+            estado = c
+            i += 1
+            continue
+        if c.isalnum() or c == "_":
+            palabra += c
+        else:
+            if palabra == "namespace":
+                pendiente_ns = True
+            palabra = ""
+            if c == "{":
+                pila.append(pendiente_ns)
+                pendiente_ns = False
+            elif c == "}":
+                if pila:
+                    pila.pop()
+            elif c in ";=(":
+                pendiente_ns = False  # "namespace x = y;" o "using namespace x;"
+        i += 1
+    return profundidades
+
+
+def espacios():
+    archivos = [p for d in ("pcsx2", "ps4") for p in (ROOT / d).rglob("*")
+                if p.suffix in (".cpp", ".inl") and "deps" not in p.parts and "prefix" not in p.parts and "3rdparty" not in p.parts]
+    nombre_re = r"(Forja\w+|g_(?:forja|orbis)_\w+)"
+    ext = re.compile(r"^\s*extern\s+(?!\"C\")[^;(]*?\b" + nombre_re + r"\s*[\[(;,=]")
+    defi_f = re.compile(r"^(?!(?:extern|static|return|else|if|while|for)\b)[\w:<>*&]+(?:\s+[\w:<>*&]+)*?\s+[*&]?" + nombre_re
+                        + r"\s*\([^;]*$")
+    defi_v = re.compile(r"^(?!(?:extern|static|return)\b)[\w:<>,]+(?:\s+[\w:<>,]+)*?\s+(g_(?:forja|orbis)_\w+)\s*(?:\[[^\]]*\])?\s*(?:\{|=|;)")
+    externs, defs = [], {}
+    for p in archivos:
+        rel = p.relative_to(ROOT).as_posix()
+        texto = p.read_text(encoding="utf-8", errors="replace").replace("\r\n", "\n")
+        prof = _espacios_por_linea(texto)
+        for k, linea in enumerate(texto.split("\n")):
+            d = prof[k] if k < len(prof) else 0
+            m = ext.match(linea)
+            if m:
+                externs.append((m.group(1), d, rel, k + 1))
+                continue
+            if linea[:1] in (" ", "\t") or linea.lstrip().startswith(("//", "#")):
+                continue
+            m = defi_f.match(linea) or defi_v.match(linea)
+            if m:
+                defs.setdefault(m.group(1), set()).add((d, rel))
+    ok = True
+    for nombre, d, rel, num in externs:
+        donde = defs.get(nombre)
+        if not donde:
+            continue  # definida de otra forma (una macro, una línea partida): no se juzga
+        if all(dd != d for dd, _ in donde):
+            ok = False
+            print(f"   {nombre}: el extern de {rel}:{num} está dentro de {d} namespace(s), y se define dentro de "
+                  f"{' / '.join(sorted({str(dd) for dd, _ in donde}))} en {' / '.join(sorted({r for _, r in donde}))}")
+    return ok
+
+
 REVISIONES = {"textos": (textos, "Textos en los 12 idiomas"), "letras": (letras, "Letras de las traducciones en sus fuentes"),
               "perfiles": (perfiles, "Perfiles de fábrica"), "efectos": (efectos, "Listas de efectos del mismo sombreador"),
-              "extern": (extern, "Variables compartidas con el mismo tipo")}
+              "extern": (extern, "Variables compartidas con el mismo tipo"),
+              "espacios": (espacios, "Lo compartido, en el mismo espacio de nombres")}
 
 
 def main():
