@@ -103,9 +103,6 @@ namespace PS4GameMenu
 		constexpr const char* RecentFile = "/data/ForjaSX2/recent.txt";
 		constexpr const char* UiAssetsDirectory = "/app0/resources/ui";
 		constexpr const char* IntroDirectory = "/app0/resources/intro";
-		constexpr size_t GridColumns = 4;
-		constexpr size_t VisibleRows = 2;
-		constexpr size_t VisibleItems = GridColumns * VisibleRows;
 		enum class LibraryView : unsigned
 		{
 			Library,
@@ -260,7 +257,7 @@ namespace PS4GameMenu
 				N_("Contador de FPS al jugar"), N_("Sensibilidad de la palanca"), N_("Cargas rápidas del disco"),
 				N_("Saltar el logo de la PS2"), N_("Lecturas de la gráfica (readbacks)"), N_("Modo video automático"),
 				N_("Generación de cuadros (30 a 60 FPS)"), N_("Botón del menú del emulador"), N_("Qué juegos mostrar"), N_("Juegos en la memoria interna"), N_("Juegos en la carpeta elegida"),
-				N_("Memorias USB conectadas"), N_("Estilo del menú"), N_("Color del estilo Nuevo")};
+				N_("Memorias USB conectadas"), N_("Diseño de la biblioteca"), N_("Color de la biblioteca")};
 			return T(labels[std::min(row, SettingsRows - 1)]);
 		}
 
@@ -286,8 +283,8 @@ namespace PS4GameMenu
 				N_("Los que están en /data/ForjaSX2/roms"),
 				N_("Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas"),
 				N_("Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT"),
-				N_("Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una"),
-				N_("El color de las secciones y de la portada elegida en el estilo Nuevo")};
+				N_("Original de Forja: cinco portadas por fila con su nombre debajo. Carrusel: el juego elegido grande en el centro y los demás girando a los lados"),
+				N_("El color de las secciones y del juego elegido, en los dos diseños")};
 			return T(help[std::min(row, SettingsRows - 1)]);
 		}
 
@@ -336,7 +333,7 @@ namespace PS4GameMenu
 				case SET_USB_DRIVES: std::snprintf(out, size, "%u", s_storage_usb_gs); break;
 				case SET_STYLE: // compilation 143
 				{
-					static constexpr const char* style_names[] = {N_("Clásico"), N_("Nuevo")};
+					static constexpr const char* style_names[] = {N_("Original de Forja"), N_("Carrusel")}; // compilation 145
 					std::snprintf(out, size, "%s", T(style_names[std::clamp(v.style, 0, 1)]));
 					break;
 				}
@@ -1156,8 +1153,8 @@ namespace PS4GameMenu
 			ProbeLog("Startup intro: finished frames=%u fps=%.3f\n", frame_count, fps);
 		}
 
-		// Compilation 143: the library in the "Nuevo" style (ForjaLibraryStyle.h), with the same data as the classic one. GS thread.
-		void DrawModernLibrary(ImDrawList* draw, ImFont* font, ImVec2 size, float scale, ImVec2 origin)
+		// Compilation 143: the library (ForjaLibraryStyle.h); 145: "Original de Forja" or "Carrusel", the old design gone. GS thread.
+		void DrawLibrary(ImDrawList* draw, ImFont* font, ImVec2 size, float scale, ImVec2 origin)
 		{
 			static constexpr const char* tab_labels[] = {N_("Biblioteca"), N_("Disco"), N_("Recientes"), N_("Favoritos"), N_("Memoria o USB"),
 				N_("Ajustes de juegos"), N_("Ajustes del emulador"), N_("Estilos")};
@@ -1256,16 +1253,39 @@ namespace PS4GameMenu
 			}
 			else
 			{
-				cards.resize(s_items.size());
-				const size_t first = ForjaStyle::FirstRow(selected, s_items.size(), ForjaStyle::ModernColumns, ForjaStyle::ModernVisibleRows) *
-					ForjaStyle::ModernColumns;
-				const size_t last = first + ForjaStyle::ModernColumns * ForjaStyle::ModernVisibleRows;
-				for (size_t i = 0; i < s_items.size(); i++)
+				const size_t count = s_items.size();
+				cards.resize(count);
+				// Compilation 145: the Carrusel turns towards the selected game, a quarter of the way at each frame (the short way round);
+				// a new list or section starts in place.
+				static float spin = 0.0f;
+				static size_t spin_count = 0;
+				static unsigned spin_view = ~0u;
+				const bool carousel = s_settings_gs.style == ForjaStyle::Carousel;
+				if (count != spin_count || page.active_tab != spin_view || !carousel)
+				{
+					spin = static_cast<float>(selected);
+					spin_count = count;
+					spin_view = page.active_tab;
+				}
+				else
+				{
+					const float left = ForjaStyle::CarouselOffset(selected, spin, count);
+					spin = std::fabs(left) < 0.002f ? static_cast<float>(selected) : spin + left * 0.25f;
+					spin = std::fmod(spin + static_cast<float>(count), static_cast<float>(count));
+				}
+				const size_t first = ForjaStyle::FirstRow(selected, count, ForjaStyle::GridColumns, ForjaStyle::GridVisibleRows) *
+					ForjaStyle::GridColumns;
+				const size_t last = first + ForjaStyle::GridColumns * ForjaStyle::GridVisibleRows;
+				for (size_t i = 0; i < count; i++)
 				{
 					cards[i].name = s_items[i].name.c_str();
 					cards[i].favorite = s_items[i].favorite;
-					cards[i].cover = i >= first && i < last ? GetCoverTexture(s_items[i].cover) : nullptr;
+					const bool shown = carousel ? std::fabs(ForjaStyle::CarouselOffset(i, spin, count)) <= ForjaStyle::CarouselReach + 0.5f :
+					                              i >= first && i < last;
+					cards[i].cover = shown ? GetCoverTexture(s_items[i].cover) : nullptr;
 				}
+				page.carousel = carousel;
+				page.spin = spin;
 				page.cards = cards.data();
 				page.card_count = cards.size();
 				page.selected = selected;
@@ -1878,11 +1898,12 @@ namespace PS4GameMenu
 				else if (data.leftStick.y > 184)
 					navigation = ORBIS_PAD_BUTTON_DOWN;
 			}
-			const bool modern = settings.style == ForjaStyle::Modern; // compilation 143
-			const size_t grid_columns = modern ? ForjaStyle::ModernColumns : GridColumns;
+			const bool carousel = settings.style == ForjaStyle::Carousel; // compilation 145
+			constexpr size_t grid_columns = ForjaStyle::GridColumns;
 			if (navigation && (navigation != held_direction || now >= next_repeat))
 			{
-				if (sidebar_focused && modern)
+				// Compilation 143: `sidebar_focused` is the bar of sections on top (Up from the first row; Left/Right change the section).
+				if (sidebar_focused)
 				{
 					unsigned next = static_cast<unsigned>(view);
 					if (navigation == ORBIS_PAD_BUTTON_LEFT && next > 0)
@@ -1892,20 +1913,10 @@ namespace PS4GameMenu
 					else if (navigation == ORBIS_PAD_BUTTON_DOWN)
 						sidebar_focused = false;
 				}
-				else if (sidebar_focused)
-				{
-					unsigned next = static_cast<unsigned>(view);
-					if (navigation == ORBIS_PAD_BUTTON_UP && next > 0)
-						set_view(static_cast<LibraryView>(next - 1));
-					else if (navigation == ORBIS_PAD_BUTTON_DOWN && next + 1 < LibraryViewCount)
-						set_view(static_cast<LibraryView>(next + 1));
-					else if (navigation == ORBIS_PAD_BUTTON_RIGHT)
-						sidebar_focused = false;
-				}
 				else if (IsSettingsView(view))
 				{
 					const SettingRow row = PageRow(view, settings_row);
-					if (navigation == ORBIS_PAD_BUTTON_UP && settings_row == 0 && modern)
+					if (navigation == ORBIS_PAD_BUTTON_UP && settings_row == 0)
 						sidebar_focused = true;
 					else if (navigation == ORBIS_PAD_BUTTON_UP && settings_row > 0)
 						--settings_row;
@@ -1919,8 +1930,6 @@ namespace PS4GameMenu
 						// Compilation 98: what to show is adjusted; the folder opens with X, and the rest are numbers.
 						if (row == SET_GAMES_SOURCE && (navigation == ORBIS_PAD_BUTTON_LEFT || navigation == ORBIS_PAD_BUTTON_RIGHT))
 							change_source(navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1, false);
-						else if (navigation == ORBIS_PAD_BUTTON_LEFT && !modern)
-							sidebar_focused = true;
 					}
 					else if (navigation == ORBIS_PAD_BUTTON_LEFT)
 						change_setting(-1, false);
@@ -1928,20 +1937,29 @@ namespace PS4GameMenu
 						change_setting(1, false);
 					PublishSettings(settings, settings_row);
 				}
+				else if (carousel && view != LibraryView::Disc) // compilation 145: the drum goes round
+				{
+					if (navigation == ORBIS_PAD_BUTTON_LEFT && !items.empty())
+						selected = (selected + items.size() - 1) % items.size();
+					else if (navigation == ORBIS_PAD_BUTTON_RIGHT && !items.empty())
+						selected = (selected + 1) % items.size();
+					else if (navigation == ORBIS_PAD_BUTTON_UP)
+						sidebar_focused = true;
+				}
 				else
 				{
 					const size_t column = selected % grid_columns;
 					const size_t row = selected / grid_columns;
 					const size_t row_count = (items.size() + grid_columns - 1) / grid_columns;
 					if (navigation == ORBIS_PAD_BUTTON_LEFT && column == 0)
-						sidebar_focused = !modern;
+						; // the first column: nothing to its left
 					else if (navigation == ORBIS_PAD_BUTTON_LEFT)
 						--selected;
 					else if (navigation == ORBIS_PAD_BUTTON_RIGHT && column + 1 < grid_columns && selected + 1 < items.size())
 						++selected;
 					else if (navigation == ORBIS_PAD_BUTTON_UP && selected >= grid_columns)
 						selected -= grid_columns;
-					else if (navigation == ORBIS_PAD_BUTTON_UP && modern)
+					else if (navigation == ORBIS_PAD_BUTTON_UP)
 						sidebar_focused = true;
 					else if (navigation == ORBIS_PAD_BUTTON_DOWN && row + 1 < row_count)
 						selected = std::min(selected + grid_columns, items.size() - 1);
@@ -2902,250 +2920,11 @@ namespace PS4GameMenu
 		};
 		const ImU32 white = IM_COL32(239, 246, 253, 255);
 		const ImU32 muted = IM_COL32(145, 171, 193, 255);
-		const ImU32 faint = IM_COL32(82, 117, 145, 255);
 		const ImU32 accent = IM_COL32(45, 153, 255, 255);
-		const ImU32 card_bg = IM_COL32(12, 33, 52, 255);
-		const ImU32 art_a[] = {IM_COL32(29, 76, 116, 255), IM_COL32(92, 49, 58, 255),
-			IM_COL32(104, 58, 35, 255), IM_COL32(38, 91, 87, 255), IM_COL32(72, 58, 120, 255)};
-		const ImU32 art_b[] = {IM_COL32(8, 25, 46, 255), IM_COL32(23, 37, 63, 255),
-			IM_COL32(33, 24, 47, 255), IM_COL32(14, 42, 46, 255), IM_COL32(25, 25, 67, 255)};
-		// Compilation 143: the library's style (Ajustes > Estilos). The classic one below is the same code as before, in this block.
-		if (s_settings_gs.style == ForjaStyle::Modern)
-			DrawModernLibrary(draw, font, size, scale, origin);
-		else
-		{
-		draw->AddRectFilled(ImVec2(0, 0), size, IM_COL32(3, 13, 25, 255));
-		// Layered navy background and restrained diagonal lighting give the menu
-		// depth without adding a texture or a frame-time allocation.
-		draw->AddRectFilledMultiColor(point(0, 0), point(1920, 1080), IM_COL32(9, 31, 55, 255),
-			IM_COL32(2, 14, 29, 255), IM_COL32(4, 18, 34, 255), IM_COL32(1, 10, 21, 255));
-		for (int i = -4; i < 9; ++i)
-			draw->AddLine(point(266 + i * 108, 0), point(940 + i * 108, 1080), IM_COL32(22, 71, 119, 38), 1.0f * scale);
-		draw->AddCircle(point(1680, 130), 390.0f * scale, IM_COL32(22, 92, 151, 28), 72, 2.0f * scale);
-		draw->AddCircle(point(1680, 130), 310.0f * scale, IM_COL32(17, 79, 142, 24), 72, 2.0f * scale);
-		fill(0, 0, 286, 1080, IM_COL32(3, 15, 28, 244), 0);
-		fill(286, 0, 1634, 92, IM_COL32(4, 19, 34, 220), 0);
-		draw->AddLine(point(286, 92), point(1920, 92), IM_COL32(38, 103, 157, 110), 1.0f * scale);
-		image("menu_logo", 32, 0, 220, 73);
-		centered_text(142, 82, 11, muted, T("EMULADOR DE PLAYSTATION 2"), 250);
-		const size_t selected = std::min(s_selected, s_items.size() - 1);
-		const Item& current = s_items[selected];
-		text(348, 59, 28, white, current.name.c_str(), 1430);
-		// Forja SX2: the updater's line (a newer build, its download's progress, or where the package was left).
-		if (const std::string update_text = PS4Release::StatusText(); !update_text.empty())
-		{
-			const float text_w = text_width(16, update_text.c_str());
-			const float box_w = std::min(text_w + 44.0f, 1000.0f), box_x = 1888.0f - box_w;
-			fill(box_x, 22, box_w, 50, IM_COL32(8, 54, 91, 235), 10);
-			draw->AddRect(point(box_x, 22), point(1888, 72), IM_COL32(42, 163, 255, 225), 10 * scale, 1.0f * scale, 0);
-			text(box_x + 22, 53, 16, white, update_text.c_str(), box_w - 44.0f);
-		}
-		// The sidebar changes the data source while retaining the same grid.
-		static constexpr const char* sidebar_icons[] = {
-			"menu_biblioteca", "menu_disc", "menu_recentes", "menu_favoritos", "menu_usb", "menu_juegos", "menu_configuracoes", ""};
-		static constexpr const char* sidebar_labels[] = {N_("Biblioteca"), N_("Disco"), N_("Recientes"), N_("Favoritos"), N_("Memoria o USB"),
-			N_("Ajustes de juegos"), N_("Ajustes del emulador"), N_("Estilos")};
-		static_assert(std::size(sidebar_labels) == LibraryViewCount && std::size(sidebar_icons) == LibraryViewCount);
-		const unsigned active_view = static_cast<unsigned>(s_library_view);
-		for (unsigned i = 0; i < LibraryViewCount; ++i)
-		{
-			const float y = 164.0f + static_cast<float>(i) * 72.0f;
-			const bool active = i == active_view;
-			if (active)
-			{
-				fill(24, y, 228, 58, s_sidebar_focused ? IM_COL32(19, 91, 158, 255) : IM_COL32(13, 62, 109, 225), 10);
-				draw->AddRect(point(24, y), point(252, y + 58), s_sidebar_focused ? IM_COL32(47, 164, 255, 255) : IM_COL32(35, 116, 181, 210),
-					10 * scale, s_sidebar_focused ? 2.0f * scale : 1.0f * scale, 0);
-			}
-			if (sidebar_icons[i][0])
-				image(sidebar_icons[i], 43, y + 12, 34, 34);
-			else
-			{
-				// Compilation 143: Estilos, a palette of the five colors.
-				for (int dot = 0; dot < ForjaStyle::ColorCount; dot++)
-					draw->AddCircleFilled(point(52.0f + 8.0f * static_cast<float>(dot % 3), y + 22.0f + 12.0f * static_cast<float>(dot / 3)),
-						5.0f * scale, ForjaStyle::AccentColor(dot), 16);
-			}
-			text(91, y + 37, active ? 19 : 18, active ? white : muted, T(sidebar_labels[i]), 160);
-		}
-		// Forja SX2: the public version (VERSION) and, in brackets, the build, so a tester sees at a glance whether the new
-		// package is the one installed.
-		{
-			char build_text[128];
-			if (FORJA_BUILD_NUMBER > 0)
-				std::snprintf(build_text, sizeof(build_text), TF("Versión %d.%02d (%d)"), FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR,
-					FORJA_BUILD_NUMBER);
-			else
-				std::snprintf(build_text, sizeof(build_text), TF("Versión %d.%02d (local)"), FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR);
-			text(43, 1023, 16, muted, build_text, 230);
-		}
-		const size_t total_rows = (s_items.size() + GridColumns - 1) / GridColumns;
-		const size_t selected_row = selected / GridColumns;
-		const size_t max_first_row = total_rows > VisibleRows ? total_rows - VisibleRows : 0;
-		const size_t first_row = std::min(selected_row >= VisibleRows ? selected_row - (VisibleRows - 1) : 0, max_first_row);
-		const size_t first = first_row * GridColumns;
-		constexpr float card_w = 270, card_h = 382;
-		constexpr float grid_x = 346, grid_y = 120, column_step = 372, row_step = 400;
-		const bool disc_view = s_library_view == LibraryView::Disc;
-		if (disc_view)
-		{
-			const bool detected = current.path == PS4Disc::DevicePath;
-			if (ImTextureData* cover = GetCoverTexture(current.cover); detected && cover)
-			{
-				constexpr float x = 620, y = 230, w = 340, h = 480;
-				fill(x - 10, y - 10, w + 20, h + 20, IM_COL32(10, 37, 67, 210), 14);
-				fill(x, y, w, h, card_bg, 9);
-				draw->AddRect(point(x - 3, y - 3), point(x + w + 3, y + h + 3), accent, 10 * scale, 3.0f * scale, 0);
-				const float fit_scale = std::min((w - 4) / cover->Width, (h - 4) / cover->Height);
-				const float image_w = cover->Width * fit_scale, image_h = cover->Height * fit_scale;
-				const float image_x = x + (w - image_w) * 0.5f, image_y = y + (h - image_h) * 0.5f;
-				draw->AddImage(cover->GetTexRef(), point(image_x, image_y), point(image_x + image_w, image_y + image_h));
-			}
-			else
-				image("menu_disc", 810, 280, 180, 180);
-			text(1030, 340, 30, white, T("DVD de PS2"), 790);
-			if (PS4DiscCopy::Busy())
-			{
-				// Forja SX2 (compilation 41): the progress is on the status line below.
-				text(1030, 390, 20, muted, T("Copiando el disco a la PS4. Puedes seguir en la biblioteca."), 790);
-				text(1030, 424, 18, muted, T("□ cancela la copia. No saques el disco hasta que termine."), 790);
-			}
-			else
-			{
-				text(1030, 390, 20, muted, detected ? T("Disco detectado. X para jugar · □ para copiarlo a la PS4.") :
-				                                      T("Mete un DVD y pulsa Triángulo para actualizar."), 790);
-				if (detected)
-					text(1030, 424, 18, muted, T("Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad."), 790);
-			}
-		}
-		// Forja SX2: the Settings page, one row per choice with its value on the right. 2026-10-19 (Joseph: "ya está muy chiquito
-		// las letras"): bigger letters, the value on the name's line and the help under both, eight rows on screen in a list that
-		// scrolls with the cursor; the bar on the right and "3 / 14" say where the page is.
-		const bool settings_view = IsSettingsView(s_library_view);
-		if (settings_view)
-		{
-			constexpr unsigned visible_rows = 8;
-			constexpr float rows_top = 110.0f, row_pitch = 100.0f, row_height = 92.0f;
-			const unsigned page_rows = PageRowCount(s_library_view);
-			const unsigned focused_row = std::min(s_settings_row_gs, page_rows - 1);
-			const unsigned max_first_row = page_rows > visible_rows ? page_rows - visible_rows : 0u;
-			const unsigned first_row = std::min(focused_row > 3 ? focused_row - 3 : 0u, max_first_row);
-			for (unsigned slot = 0; slot < visible_rows && first_row + slot < page_rows; ++slot)
-			{
-				const unsigned row = PageRow(s_library_view, first_row + slot);
-				const float y = rows_top + static_cast<float>(slot) * row_pitch;
-				const bool focused = !s_sidebar_focused && first_row + slot == focused_row;
-				fill(346, y, 1450, row_height, focused ? IM_COL32(20, 77, 125, 255) : IM_COL32(11, 33, 52, 235), 10);
-				if (focused)
-					draw->AddRect(point(346, y), point(1796, y + row_height), accent, 10 * scale, 2.0f * scale, 0);
-				char value[128];
-				SettingValue(s_settings_gs, row, value, sizeof(value));
-				char shown[160];
-				std::snprintf(shown, sizeof(shown), focused && (s_library_view != LibraryView::Storage || row == SET_GAMES_SOURCE) ? "<  %s  >" : "%s", value);
-				const float value_w = std::min(text_width(28, shown), 640.0f);
-				text(1766 - value_w, y + 42, 28, focused ? white : accent, shown, 640);
-				text(380, y + 42, 28, white, SettingLabel(row), 1766 - value_w - 40 - 380);
-				text(380, y + 76, 20, muted, SettingHelp(row), 1386);
-			}
-			constexpr float track_h = visible_rows * row_pitch - (row_pitch - row_height);
-			if (max_first_row > 0)
-			{
-				const float thumb_h = track_h * static_cast<float>(visible_rows) / static_cast<float>(page_rows);
-				const float thumb_y = rows_top + (track_h - thumb_h) * static_cast<float>(first_row) / static_cast<float>(max_first_row);
-				fill(1810, rows_top, 6, track_h, IM_COL32(30, 66, 94, 180), 3);
-				fill(1810, thumb_y, 6, thumb_h, accent, 3);
-			}
-			char where[24];
-			std::snprintf(where, sizeof(where), "%u / %u", focused_row + 1, page_rows);
-			text(1796 - text_width(18, where), 1023, 18, muted, where);
-		}
-		for (size_t slot = 0; !disc_view && !settings_view && slot < VisibleItems && first + slot < s_items.size(); ++slot)
-		{
-			const size_t index = first + slot;
-			const float x = grid_x + static_cast<float>(slot % GridColumns) * column_step;
-			const float y = grid_y + static_cast<float>(slot / GridColumns) * row_step;
-			const bool focused = index == selected;
-			fill(x - (focused ? 11 : 7), y - (focused ? 11 : 7), card_w + (focused ? 22 : 14),
-				card_h + (focused ? 24 : 14), focused ? IM_COL32(10, 37, 67, 210) : IM_COL32(5, 17, 30, 235), 14);
-			fill(x, y, card_w, card_h, focused ? IM_COL32(18, 53, 86, 255) : card_bg, 9);
-			if (focused)
-			{
-				draw->AddRect(point(x - 3, y - 3), point(x + card_w + 3, y + card_h + 3), accent, 10 * scale, 3.0f * scale, 0);
-				draw->AddRect(point(x - 7, y - 7), point(x + card_w + 7, y + card_h + 7), IM_COL32(28, 128, 228, 105), 13 * scale, 2.0f * scale, 0);
-			}
-			// Cover slot: use the user's image from /data/ForjaSX2/covers when it
-			// exists. The artwork fills the complete card and the selected title
-			// is shown once in the top bar.
-			fill(x + 2, y + 2, card_w - 4, card_h - 4, art_b[index % 5], 7);
-			if (ImTextureData* cover = GetCoverTexture(s_items[index].cover))
-			{
-				const float box_w = card_w - 4.0f;
-				const float box_h = card_h - 4.0f;
-				const float image_aspect = static_cast<float>(cover->Width) / static_cast<float>(cover->Height);
-				const float box_aspect = box_w / box_h;
-				float image_w = box_w;
-				float image_h = box_h;
-				if (image_aspect > box_aspect)
-					image_h = box_w / image_aspect;
-				else
-					image_w = box_h * image_aspect;
-				const float image_x = x + 2.0f + (box_w - image_w) * 0.5f;
-				const float image_y = y + 2.0f + (box_h - image_h) * 0.5f;
-				draw->AddImage(cover->GetTexRef(), point(image_x, image_y), point(image_x + image_w, image_y + image_h));
-			}
-			else
-			{
-				draw->AddRectFilledMultiColor(point(x + 2, y + 2), point(x + card_w - 2, y + card_h - 2), art_a[index % 5], art_b[index % 5],
-					IM_COL32(4, 15, 28, 255), art_a[index % 5]);
-				for (int stripe = 0; stripe < 4; ++stripe)
-					draw->AddLine(point(x + 2, y + 80 + stripe * 66), point(x + card_w - 2, y + 42 + stripe * 66), IM_COL32(139, 207, 255, 30), 2.0f * scale);
-				draw->AddCircleFilled(point(x + card_w * 0.5f, y + card_h * 0.5f), 46 * scale,
-					focused ? IM_COL32(56, 151, 224, 235) : IM_COL32(35, 98, 143, 225), 48);
-			}
-			if (s_items[index].favorite)
-			{
-				draw->AddCircleFilled(point(x + card_w - 25, y + 25), 20 * scale, IM_COL32(3, 15, 28, 225), 32);
-				image("menu_favoritos", x + card_w - 39, y + 11, 28, 28);
-			}
-		}
-		if (total_rows > VisibleRows)
-		{
-			constexpr float track_y = grid_y, track_h = card_h * 2.0f + (row_step - card_h);
-			fill(1815, track_y, 5, track_h, IM_COL32(30, 66, 94, 180), 3);
-			const float thumb_h = std::max(96.0f, track_h * static_cast<float>(VisibleRows) / static_cast<float>(total_rows));
-			const float thumb_y = track_y + (track_h - thumb_h) * static_cast<float>(first_row) / static_cast<float>(max_first_row);
-			fill(1815, thumb_y, 5, thumb_h, accent, 3);
-		}
-		if (!s_status.empty())
-			text(346, 936, 17, accent, s_status.c_str(), 1496);
-		if (settings_view)
-		{
-			// Forja SX2: the Settings page's own buttons.
-			image("controle_x", 346, 1001, 30, 30);
-			text(384, 1023, 16, white, T("Cambiar"), 126);
-			text(520, 1023, 16, white, T("Izq./Der.: ajustar   Arriba/Abajo: elegir"), 500);
-			image("controle_bola", 1035, 1001, 30, 30);
-			text(1073, 1023, 16, muted, T("Menú lateral"), 400);
-		}
-		else
-		{
-		image("controle_x", 346, 1001, 30, 30);
-		text(384, 1023, 16, white, T("Jugar"), 108);
-		if (!disc_view)
-		{
-			image("controle_quadrado", 500, 1001, 30, 30);
-			text(538, 1023, 16, current.path.empty() ? muted : white,
-				current.favorite ? T("Quitar favorito") : T("Agregar favorito"), 214);
-		}
-		// Disc has no favorite action: use the next Library slots without an empty gap.
-		const float refresh_x = disc_view ? 500.0f : 760.0f;
-		const float exit_x = disc_view ? 760.0f : 1035.0f;
-		image("controle_triangulo", refresh_x, 1001, 30, 30);
-		text(refresh_x + 38, 1023, 16, white, disc_view ? T("Revisar disco") : T("Actualizar biblioteca"), exit_x - refresh_x - 46);
-		image("controle_bola", exit_x, 1001, 30, 30);
-		text(exit_x + 38, 1023, 16, muted, T("Salir"), 300);
-		}
-		} // compilation 143: the classic style
+		// Compilation 143: the library (ForjaLibraryStyle.h). Compilation 145 (Joseph, 2026-11-18: "el anterior que tenemos ya
+		// desaparecerlo ... buscamos nuestra propia identidad"): the old design, taken from another program's, is gone; the two left are
+		// "Original de Forja" and "Carrusel" (Ajustes > Estilos).
+		DrawLibrary(draw, font, size, scale, origin);
 		if (s_exit_dialog_visible)
 		{
 			draw->AddRectFilled(ImVec2(0, 0), size, IM_COL32(0, 0, 0, 165));

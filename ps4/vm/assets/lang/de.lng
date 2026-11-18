@@ -61,11 +61,11 @@ tr: Spiele im gewählten Ordner
 es: Memorias USB conectadas
 tr: Angeschlossene USB-Sticks
 
-es: Estilo del menú
-tr: Menüstil
+es: Diseño de la biblioteca
+tr: Bibliotheksdesign
 
-es: Color del estilo Nuevo
-tr: Farbe des Stils Neu
+es: Color de la biblioteca
+tr: Bibliotheksfarbe
 
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: Die Sprache des ganzen Emulators. X öffnet die Sprachliste
@@ -124,11 +124,11 @@ tr: Sie werden direkt von dort gelesen, ohne Kopie auf die PS4. Stick beim Spiel
 es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
 tr: Wird deiner nicht angezeigt, steck ihn neu ein. Für Spiele über 4 GB muss er exFAT haben
 
-es: Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una
-tr: Klassisch: der gewohnte, mit den Bereichen links. Neu: die Bereiche oben, fünf Cover pro Reihe und der Name unter jedem
+es: Original de Forja: cinco portadas por fila con su nombre debajo. Carrusel: el juego elegido grande en el centro y los demás girando a los lados
+tr: Forja-Original: fünf Cover pro Reihe mit dem Namen darunter. Karussell: das gewählte Spiel groß in der Mitte, die anderen drehen sich an den Seiten
 
-es: El color de las secciones y de la portada elegida en el estilo Nuevo
-tr: Die Farbe der Bereiche und des gewählten Covers im Stil Neu
+es: El color de las secciones y del juego elegido, en los dos diseños
+tr: Die Farbe der Bereiche und des gewählten Spiels, in beiden Designs
 
 es: 100 % (PS2 real)
 tr: 100 % (echte PS2)
@@ -187,11 +187,11 @@ tr: Ohne Warten (schneller)
 es: Desactivadas
 tr: Aus
 
-es: Clásico
-tr: Klassisch
+es: Original de Forja
+tr: Forja-Original
 
-es: Nuevo
-tr: Neu
+es: Carrusel
+tr: Karussell
 
 es: Azul
 tr: Blau
@@ -753,15 +753,6 @@ tr: L1 / R1: andere Gruppe     Oben/Unten: wählen     Links/Rechts: Wert oder P
 
 es: Volver
 tr: Zurück
-
-es: EMULADOR DE PLAYSTATION 2
-tr: PLAYSTATION 2 EMULATOR
-
-es: Izq./Der.: ajustar   Arriba/Abajo: elegir
-tr: Links/Rechts: einstellen   Hoch/Runter: wählen
-
-es: Menú lateral
-tr: Seitenmenü
 
 es: ¿Cerrar Forja SX2?
 tr: Forja SX2 schließen?

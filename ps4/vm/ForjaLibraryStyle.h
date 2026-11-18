@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0+
-// Forja SX2 (compilation 143): the library's "Nuevo" style, after Dolphin's game list (Joseph, 2026-11-18: "un diseño tipo Dolphin ...
-// el menú cuando ya entras y puedes seleccionar los juegos ... y una etiqueta más donde diga estilos, el clásico y el nuevo, para
-// gustos, colores"). The sections are a bar on top instead of the column on the left, five covers a row with each game's name under
-// it, graphite instead of navy, and the color the player picks (Ajustes > Estilos). The classic style is GameMenu.cpp's own code, as
-// it was. Header-only and drawn only with ImGui, so the PC preview (herramientas/revision-local/vista-previa) draws this same code.
-// The caller passes every text already translated.
+// Forja SX2: the library's two designs (Ajustes > Estilos), drawn the same on the PS4 and in the PC preview
+// (herramientas/revision-local/vista-previa): header-only, ImGui alone, every text passed already translated.
+// - "Original de Forja" (compilation 143, then called "Nuevo"; Joseph, 2026-11-18: "ponle como diseño original ... buscamos nuestra
+//   propia identidad"): the sections on a bar on top, five covers a row with each game's name under it, graphite, the selected cover on
+//   a plate of the player's color. The library's old design, taken from another program's, is gone (compilation 145).
+// - "Carrusel" (compilation 145; Joseph: "un juego en el medio, uno a la derecha y a la izquierda ... como la ruleta de un revólver,
+//   que gira"): the selected game big in the middle and the others on a drum around it, smaller and darker the farther they are, each
+//   with its reflection; it turns (GameMenu.cpp eases `spin` towards the selected game) and goes round: left of the first is the last.
 #pragma once
 
 #include "imgui.h"
@@ -16,10 +18,23 @@
 
 namespace ForjaStyle
 {
-	constexpr int Classic = 0, Modern = 1;
+	constexpr int Original = 0, Carousel = 1;
 	constexpr int ColorCount = 5; // Azul, Morado, Rojo, Verde, Naranja
-	constexpr size_t ModernColumns = 5;
-	constexpr size_t ModernVisibleRows = 2;
+	constexpr size_t GridColumns = 5;
+	constexpr size_t GridVisibleRows = 2;
+	constexpr int CarouselReach = 3; // covers on each side of the selected one
+
+	// Where `index` sits on the drum when `spin` is in the middle: -count/2 .. count/2 (it goes round).
+	inline float CarouselOffset(size_t index, float spin, size_t count)
+	{
+		const float n = static_cast<float>(count);
+		float k = std::fmod(static_cast<float>(index) - spin, n);
+		if (k < -n * 0.5f)
+			k += n;
+		else if (k >= n * 0.5f)
+			k -= n;
+		return k;
+	}
 
 	inline ImU32 AccentColor(int color, int alpha = 255)
 	{
@@ -112,6 +127,8 @@ namespace ForjaStyle
 		// The covers (Biblioteca, Recientes, Favoritos).
 		const Card* cards = nullptr;
 		size_t card_count = 0, selected = 0;
+		bool carousel = false; // the Carrusel design
+		float spin = 0.0f;     // its turn: the index in the middle now (between two while it moves)
 		// A settings page: the rows on screen.
 		bool settings = false;
 		const Row* rows = nullptr;
@@ -164,6 +181,107 @@ namespace ForjaStyle
 			image_w = h * image_aspect;
 		const float ix = x + (w - image_w) * 0.5f, iy = y + (h - image_h) * 0.5f;
 		c.draw->AddImage(image->GetTexRef(), c.P(ix, iy), c.P(ix + image_w, iy + image_h));
+	}
+
+	// The placeholder of a game without a cover: a gradient of its own and its first letter.
+	inline void PlaceholderCover(const Canvas& c, size_t index, const char* name, float x, float y, float w, float h, int alpha = 255)
+	{
+		static constexpr unsigned char shades[5][3] = {{58, 74, 98}, {92, 62, 70}, {96, 74, 52}, {52, 86, 80}, {76, 66, 108}};
+		const auto& s = shades[index % 5];
+		c.draw->AddRectFilledMultiColor(c.P(x, y), c.P(x + w, y + h), IM_COL32(s[0], s[1], s[2], alpha), IM_COL32(s[0], s[1], s[2], alpha),
+			IM_COL32(24, 26, 31, alpha), IM_COL32(24, 26, 31, alpha));
+		char initial[2] = {name && (name[0] & 0x80) == 0 ? name[0] : '?', 0};
+		c.Centered(x + w * 0.5f, y + h * 0.5f + h * 0.1f, h * 0.29f, IM_COL32(255, 255, 255, alpha * 70 / 255), initial);
+	}
+
+	// A star on a dark round badge, for a favorite.
+	inline void FavoriteBadge(const Canvas& c, float cx, float cy, float size, ImU32 color)
+	{
+		const ImVec2 center = c.P(cx, cy);
+		c.draw->AddCircleFilled(center, size * c.scale, IM_COL32(20, 22, 26, 225), 32);
+		ImVec2 star[10];
+		for (int k = 0; k < 10; k++)
+		{
+			const float radius = (k % 2 == 0 ? size * 0.61f : size * 0.26f) * c.scale;
+			const float angle = -1.5708f + static_cast<float>(k) * 0.6283f;
+			star[k] = ImVec2(center.x + radius * std::cos(angle), center.y + radius * std::sin(angle));
+		}
+		c.draw->AddConcavePolyFilled(star, 10, color);
+	}
+
+	// The Carrusel: the covers on a drum, the farthest drawn first. k is a cover's place from the middle (fractional while it turns).
+	inline void DrawCarousel(const Canvas& c, const Page& p, ImU32 accent, ImU32 accent_soft, ImU32 white, ImU32 muted)
+	{
+		constexpr float center_x = 960.0f, center_y = 430.0f, cover_w = 340.0f, cover_h = 470.0f;
+		const size_t count = p.card_count;
+		const size_t selected = std::min(p.selected, count - 1);
+		struct Place
+		{
+			size_t index;
+			float k;
+		};
+		Place places[2 * CarouselReach + 3];
+		int used = 0;
+		for (size_t i = 0; i < count && used < static_cast<int>(sizeof(places) / sizeof(places[0])); i++)
+		{
+			const float k = CarouselOffset(i, p.spin, count);
+			if (std::fabs(k) <= static_cast<float>(CarouselReach) + 0.5f)
+				places[used++] = {i, k};
+		}
+		std::sort(places, places + used, [](const Place& a, const Place& b) { return std::fabs(a.k) > std::fabs(b.k); });
+		// A soft light of the player's color behind the middle.
+		c.draw->AddCircleFilled(c.P(center_x, center_y + 40), 330.0f * c.scale, AccentColor(p.color, 22), 64);
+		for (int n = 0; n < used; n++)
+		{
+			const Place& place = places[n];
+			const float a = std::fabs(place.k);
+			const float sign = place.k < 0 ? -1.0f : 1.0f;
+			// Each step out: 26 % smaller, a little lower, darker; the gaps shrink as on a drum seen from the front.
+			const float size = std::pow(0.74f, a);
+			const float x_mid = center_x + sign * (360.0f * a - 35.0f * a * a);
+			const float y_mid = center_y + 10.0f * a * a;
+			const float w = cover_w * size, h = cover_h * size;
+			const float x = x_mid - w * 0.5f, y = y_mid - h * 0.5f;
+			const int alpha = static_cast<int>(255.0f * std::max(0.25f, 1.0f - 0.2f * a));
+			const Card& card = p.cards[place.index];
+			const bool middle = a < 0.5f;
+			if (middle && !p.bar_focused)
+			{
+				c.Fill(x - 16, y - 16, w + 32, h + 32, accent_soft, 18);
+				c.Frame(x - 8, y - 8, w + 16, h + 16, accent, 12, 4);
+			}
+			c.Fill(x, y, w, h, IM_COL32(44, 48, 56, alpha), 8 * size);
+			if (card.cover)
+			{
+				FitImage(c, card.cover, x, y, w, h);
+				// Its reflection: the bottom of the cover upside down, fading into the floor.
+				const float rh = h * 0.22f;
+				c.draw->AddImage(card.cover->GetTexRef(), c.P(x, y + h + 6), c.P(x + w, y + h + 6 + rh), ImVec2(0, 1), ImVec2(1, 0.78f),
+					IM_COL32(255, 255, 255, alpha * 60 / 255));
+				c.draw->AddRectFilledMultiColor(c.P(x, y + h + 6), c.P(x + w, y + h + 6 + rh), IM_COL32(20, 21, 25, 40), IM_COL32(20, 21, 25, 40),
+					IM_COL32(20, 21, 25, 255), IM_COL32(20, 21, 25, 255));
+			}
+			else
+				PlaceholderCover(c, place.index, card.name, x, y, w, h, alpha);
+			// The farther ones in shadow.
+			if (!middle)
+				c.Fill(x, y, w, h, IM_COL32(14, 15, 18, static_cast<int>(std::min(1.0f, a / 3.5f) * 150.0f)), 8 * size);
+			if (card.favorite)
+				FavoriteBadge(c, x + w - 26 * size, y + 26 * size, 20.0f * size, accent);
+		}
+		// The selected game's name, and where it is in the list.
+		const Card& current = p.cards[selected];
+		c.Centered(center_x, 836, 34, white, current.name, 1500);
+		char where[32];
+		std::snprintf(where, sizeof(where), "%u / %u", static_cast<unsigned>(selected + 1), static_cast<unsigned>(count));
+		c.Centered(center_x, 880, 18, muted, where);
+		// An arrow each side: it turns with Left and Right.
+		if (count > 1)
+		{
+			const ImU32 arrow = IM_COL32(236, 239, 244, 150);
+			c.draw->AddTriangleFilled(c.P(70, 430), c.P(96, 404), c.P(96, 456), arrow);
+			c.draw->AddTriangleFilled(c.P(1850, 430), c.P(1824, 456), c.P(1824, 404), arrow);
+		}
 	}
 
 	inline void Draw(const Canvas& c, const Page& p)
@@ -252,15 +370,16 @@ namespace ForjaStyle
 			for (unsigned i = 0; i < 4; i++)
 				c.Text(900, 330 + 46.0f * static_cast<float>(i), i == 0 ? 30.0f : 20.0f, i == 0 ? white : muted, p.disc_lines[i], 900);
 		}
+		else if (p.card_count > 0 && p.carousel)
+			DrawCarousel(c, p, accent, accent_soft, white, muted);
 		else if (p.card_count > 0)
 		{
 			// Five covers a row, the name under each; the selected one on a plate of the style's color.
 			constexpr float cover_w = 240, cover_h = 330, column_step = 352, row_step = 392, grid_y = 196;
-			constexpr size_t columns = ModernColumns, visible_rows = ModernVisibleRows;
+			constexpr size_t columns = GridColumns, visible_rows = GridVisibleRows;
 			const float grid_x = (1920.0f - (static_cast<float>(columns - 1) * column_step + cover_w)) * 0.5f;
 			const size_t selected = std::min(p.selected, p.card_count - 1);
 			const size_t first_row = FirstRow(selected, p.card_count, columns, visible_rows);
-			static constexpr unsigned char shades[5][3] = {{58, 74, 98}, {92, 62, 70}, {96, 74, 52}, {52, 86, 80}, {76, 66, 108}};
 			for (size_t slot = 0; slot < columns * visible_rows; slot++)
 			{
 				const size_t index = first_row * columns + slot;
@@ -280,27 +399,9 @@ namespace ForjaStyle
 				if (card.cover)
 					FitImage(c, card.cover, x, y, cover_w, cover_h);
 				else
-				{
-					const auto& s = shades[index % 5];
-					c.draw->AddRectFilledMultiColor(c.P(x, y), c.P(x + cover_w, y + cover_h), IM_COL32(s[0], s[1], s[2], 255),
-						IM_COL32(s[0], s[1], s[2], 255), IM_COL32(24, 26, 31, 255), IM_COL32(24, 26, 31, 255));
-					char initial[2] = {card.name && (card.name[0] & 0x80) == 0 ? card.name[0] : '?', 0};
-					c.Centered(x + cover_w * 0.5f, y + cover_h * 0.5f + 34, 96, IM_COL32(255, 255, 255, 70), initial);
-				}
+					PlaceholderCover(c, index, card.name, x, y, cover_w, cover_h);
 				if (card.favorite)
-				{
-					// A star on a dark round badge.
-					const ImVec2 center = c.P(x + cover_w - 24, y + 24);
-					c.draw->AddCircleFilled(center, 18.0f * c.scale, IM_COL32(20, 22, 26, 225), 32);
-					ImVec2 star[10];
-					for (int k = 0; k < 10; k++)
-					{
-						const float radius = (k % 2 == 0 ? 11.0f : 4.6f) * c.scale;
-						const float angle = -1.5708f + static_cast<float>(k) * 0.6283f;
-						star[k] = ImVec2(center.x + radius * std::cos(angle), center.y + radius * std::sin(angle));
-					}
-					c.draw->AddConcavePolyFilled(star, 10, accent);
-				}
+					FavoriteBadge(c, x + cover_w - 24, y + 24, 18.0f, accent);
 				c.Centered(x + cover_w * 0.5f, y + cover_h + 34, 18, is_selected ? white : muted, card.name, cover_w + 20);
 			}
 			const size_t total_rows = (p.card_count + columns - 1) / columns;

@@ -61,11 +61,11 @@ tr: Игры в выбранной папке
 es: Memorias USB conectadas
 tr: Подключённые USB-накопители
 
-es: Estilo del menú
-tr: Стиль меню
+es: Diseño de la biblioteca
+tr: Оформление библиотеки
 
-es: Color del estilo Nuevo
-tr: Цвет стиля «Новый»
+es: Color de la biblioteca
+tr: Цвет библиотеки
 
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: Язык всего эмулятора. X открывает список языков
@@ -124,11 +124,11 @@ tr: Они читаются прямо оттуда, без копировани
 es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
 tr: Если вашего нет в списке, подключите его снова. Для игр больше 4 ГБ нужен формат exFAT
 
-es: Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una
-tr: Классический: привычный, с разделами слева. Новый: разделы сверху, пять обложек в ряд и название под каждой
+es: Original de Forja: cinco portadas por fila con su nombre debajo. Carrusel: el juego elegido grande en el centro y los demás girando a los lados
+tr: Оригинальный Forja: пять обложек в ряд с названием под ними. Карусель: выбранная игра крупно в центре, остальные вращаются по бокам
 
-es: El color de las secciones y de la portada elegida en el estilo Nuevo
-tr: Цвет разделов и выбранной обложки в стиле «Новый»
+es: El color de las secciones y del juego elegido, en los dos diseños
+tr: Цвет разделов и выбранной игры в обоих оформлениях
 
 es: 100 % (PS2 real)
 tr: 100 % (как PS2)
@@ -187,11 +187,11 @@ tr: Без ожидания (быстрее)
 es: Desactivadas
 tr: Выкл.
 
-es: Clásico
-tr: Классический
+es: Original de Forja
+tr: Оригинальный Forja
 
-es: Nuevo
-tr: Новый
+es: Carrusel
+tr: Карусель
 
 es: Azul
 tr: Синий
@@ -753,15 +753,6 @@ tr: L1 / R1: другой раздел     Вверх/Вниз: выбрать  
 
 es: Volver
 tr: Назад
-
-es: EMULADOR DE PLAYSTATION 2
-tr: ЭМУЛЯТОР PLAYSTATION 2
-
-es: Izq./Der.: ajustar   Arriba/Abajo: elegir
-tr: Влево/Вправо: настроить   Вверх/Вниз: выбрать
-
-es: Menú lateral
-tr: Боковое меню
 
 es: ¿Cerrar Forja SX2?
 tr: Закрыть Forja SX2?

@@ -61,11 +61,11 @@ tr: 選択したフォルダーのゲーム
 es: Memorias USB conectadas
 tr: 接続中の USB メモリー
 
-es: Estilo del menú
-tr: メニューのスタイル
+es: Diseño de la biblioteca
+tr: ライブラリのデザイン
 
-es: Color del estilo Nuevo
-tr: 「新しい」スタイルの色
+es: Color de la biblioteca
+tr: ライブラリの色
 
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: エミュレーター全体の言語。Xで言語の一覧を開きます
@@ -124,11 +124,11 @@ tr: PS4 にコピーせず、そこから直接読み込みます。プレイ中
 es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
 tr: 表示されない場合は接続し直してください。4 GB を超えるゲームには exFAT が必要です
 
-es: Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una
-tr: クラシック:いつもの、セクションが左。新しい:セクションが上、1行に5つのカバー、各カバーの下に名前
+es: Original de Forja: cinco portadas por fila con su nombre debajo. Carrusel: el juego elegido grande en el centro y los demás girando a los lados
+tr: Forja オリジナル:1行に5つのカバー、その下に名前。カルーセル:選んだゲームが中央に大きく、ほかは左右で回ります
 
-es: El color de las secciones y de la portada elegida en el estilo Nuevo
-tr: 「新しい」スタイルでのセクションと選んだカバーの色
+es: El color de las secciones y del juego elegido, en los dos diseños
+tr: 両方のデザインでのセクションと選んだゲームの色
 
 es: 100 % (PS2 real)
 tr: 100 %（実機PS2）
@@ -187,11 +187,11 @@ tr: 待たない（高速）
 es: Desactivadas
 tr: オフ
 
-es: Clásico
-tr: クラシック
+es: Original de Forja
+tr: Forja オリジナル
 
-es: Nuevo
-tr: 新しい
+es: Carrusel
+tr: カルーセル
 
 es: Azul
 tr: 青
@@ -753,15 +753,6 @@ tr: L1 / R1：別のセクション     上/下：選ぶ     左/右：値やス
 
 es: Volver
 tr: 戻る
-
-es: EMULADOR DE PLAYSTATION 2
-tr: プレイステーション2 エミュレーター
-
-es: Izq./Der.: ajustar   Arriba/Abajo: elegir
-tr: 左/右：調整   上/下：選択
-
-es: Menú lateral
-tr: サイドメニュー
 
 es: ¿Cerrar Forja SX2?
 tr: Forja SX2を閉じますか？

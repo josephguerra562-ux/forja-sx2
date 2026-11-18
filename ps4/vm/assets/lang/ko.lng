@@ -61,11 +61,11 @@ tr: 선택한 폴더의 게임
 es: Memorias USB conectadas
 tr: 연결된 USB 메모리
 
-es: Estilo del menú
-tr: 메뉴 스타일
+es: Diseño de la biblioteca
+tr: 라이브러리 디자인
 
-es: Color del estilo Nuevo
-tr: 새 스타일 색상
+es: Color de la biblioteca
+tr: 라이브러리 색상
 
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: 에뮬레이터 전체의 언어. X로 언어 목록을 엽니다
@@ -124,11 +124,11 @@ tr: PS4에 복사하지 않고 그 위치에서 바로 읽습니다. 플레이 �
 es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
 tr: 보이지 않으면 다시 연결하세요. 4GB가 넘는 게임은 exFAT 형식이어야 합니다
 
-es: Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una
-tr: 클래식: 기존 방식, 섹션이 왼쪽. 새 스타일: 섹션이 위, 한 줄에 표지 5개, 각 표지 아래에 이름
+es: Original de Forja: cinco portadas por fila con su nombre debajo. Carrusel: el juego elegido grande en el centro y los demás girando a los lados
+tr: Forja 오리지널: 한 줄에 표지 5개, 아래에 이름. 캐러셀: 선택한 게임이 가운데 크게, 나머지는 양옆에서 돌아갑니다
 
-es: El color de las secciones y de la portada elegida en el estilo Nuevo
-tr: 새 스타일에서 섹션과 선택한 표지의 색상
+es: El color de las secciones y del juego elegido, en los dos diseños
+tr: 두 디자인 모두에서 섹션과 선택한 게임의 색상
 
 es: 100 % (PS2 real)
 tr: 100 % (실제 PS2)
@@ -187,11 +187,11 @@ tr: 기다리지 않음 (더 빠름)
 es: Desactivadas
 tr: 끄기
 
-es: Clásico
-tr: 클래식
+es: Original de Forja
+tr: Forja 오리지널
 
-es: Nuevo
-tr: 새 스타일
+es: Carrusel
+tr: 캐러셀
 
 es: Azul
 tr: 파랑
@@ -753,15 +753,6 @@ tr: L1 / R1: 다른 섹션     위/아래: 선택     왼쪽/오른쪽: 값이�
 
 es: Volver
 tr: 돌아가기
-
-es: EMULADOR DE PLAYSTATION 2
-tr: 플레이스테이션 2 에뮬레이터
-
-es: Izq./Der.: ajustar   Arriba/Abajo: elegir
-tr: 왼쪽/오른쪽: 조절   위/아래: 선택
-
-es: Menú lateral
-tr: 사이드 메뉴
 
 es: ¿Cerrar Forja SX2?
 tr: Forja SX2를 닫을까요?

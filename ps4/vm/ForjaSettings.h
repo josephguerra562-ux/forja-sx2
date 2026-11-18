@@ -54,8 +54,8 @@ namespace ForjaSettings
 		// Compilation 98: which games the library lists: 0 all, 1 the internal folder's, 2 the chosen folder's (Joseph, 2026-10-30:
 		// "solo interno, solo son los juegos internos; los USB, solo los de USB, o jugar en todas").
 		int games_source = 0;
-		// Compilation 143 (Joseph, 2026-11-18): the library's style, 0 Clásico (as it was) or 1 Nuevo (ForjaLibraryStyle.h, after Dolphin's
-		// game list), and the Nuevo style's color (0 Azul, 1 Morado, 2 Rojo, 3 Verde, 4 Naranja).
+		// Compilation 143 (Joseph, 2026-11-18): the library's design (ForjaLibraryStyle.h); compilation 145: 0 "Original de Forja" (the grid)
+		// or 1 "Carrusel" (the drum), and its color (0 Azul, 1 Morado, 2 Rojo, 3 Verde, 4 Naranja).
 		int style = 0;
 		int color = 0;
 		bool from_file = false;

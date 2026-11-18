@@ -61,11 +61,11 @@ tr: 所选文件夹中的游戏
 es: Memorias USB conectadas
 tr: 已连接的 USB 存储设备
 
-es: Estilo del menú
-tr: 菜单样式
+es: Diseño de la biblioteca
+tr: 游戏库设计
 
-es: Color del estilo Nuevo
-tr: 新样式的颜色
+es: Color de la biblioteca
+tr: 游戏库颜色
 
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: 整个模拟器的语言。按 X 打开语言列表
@@ -124,11 +124,11 @@ tr: 直接从该位置读取,不会复制到 PS4。游戏时请勿拔出存储�
 es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
 tr: 如果没有显示,请重新连接。超过 4 GB 的游戏需要 exFAT 格式
 
-es: Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una
-tr: 经典:原来的样子,分区在左边。新:分区在上方,每行五个封面,每个封面下方显示名称
+es: Original de Forja: cinco portadas por fila con su nombre debajo. Carrusel: el juego elegido grande en el centro y los demás girando a los lados
+tr: Forja 原创:每行五个封面,名称在下方。转盘:所选游戏大图居中,其他游戏在两侧旋转
 
-es: El color de las secciones y de la portada elegida en el estilo Nuevo
-tr: 新样式中分区和所选封面的颜色
+es: El color de las secciones y del juego elegido, en los dos diseños
+tr: 两种设计中分区和所选游戏的颜色
 
 es: 100 % (PS2 real)
 tr: 100 %（真实 PS2）
@@ -187,11 +187,11 @@ tr: 不等待（更快）
 es: Desactivadas
 tr: 关闭
 
-es: Clásico
-tr: 经典
+es: Original de Forja
+tr: Forja 原创
 
-es: Nuevo
-tr: 新
+es: Carrusel
+tr: 转盘
 
 es: Azul
 tr: 蓝色
@@ -753,15 +753,6 @@ tr: L1 / R1：其他部分     上/下：选择     左/右：更改值或存档
 
 es: Volver
 tr: 返回
-
-es: EMULADOR DE PLAYSTATION 2
-tr: PLAYSTATION 2 模拟器
-
-es: Izq./Der.: ajustar   Arriba/Abajo: elegir
-tr: 左/右：调整   上/下：选择
-
-es: Menú lateral
-tr: 侧边菜单
 
 es: ¿Cerrar Forja SX2?
 tr: 关闭 Forja SX2？

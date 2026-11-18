@@ -61,11 +61,11 @@ tr: الألعاب في المجلد المختار
 es: Memorias USB conectadas
 tr: ذواكر USB المتصلة
 
-es: Estilo del menú
-tr: نمط القائمة
+es: Diseño de la biblioteca
+tr: تصميم المكتبة
 
-es: Color del estilo Nuevo
-tr: لون النمط الجديد
+es: Color de la biblioteca
+tr: لون المكتبة
 
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: لغة المحاكي كله. X يفتح قائمة اللغات
@@ -124,11 +124,11 @@ tr: تتم قراءتها من هناك دون نسخها إلى PS4. لا تن�
 es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
 tr: إذا لم تظهر ذاكرتك، أعد توصيلها. الألعاب الأكبر من 4 GB تحتاج إلى exFAT
 
-es: Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una
-tr: الكلاسيكي: المعتاد، والأقسام على اليسار. الجديد: الأقسام في الأعلى، وخمسة أغلفة في كل صف والاسم تحت كل غلاف
+es: Original de Forja: cinco portadas por fila con su nombre debajo. Carrusel: el juego elegido grande en el centro y los demás girando a los lados
+tr: Forja الأصلي: خمسة أغلفة في كل صف واسمها تحتها. الدوّار: اللعبة المختارة كبيرة في الوسط والبقية تدور على الجانبين
 
-es: El color de las secciones y de la portada elegida en el estilo Nuevo
-tr: لون الأقسام والغلاف المختار في النمط الجديد
+es: El color de las secciones y del juego elegido, en los dos diseños
+tr: لون الأقسام واللعبة المختارة في التصميمين
 
 es: 100 % (PS2 real)
 tr: 100 % (PS2 الحقيقي)
@@ -187,11 +187,11 @@ tr: دون انتظار (أسرع)
 es: Desactivadas
 tr: معطّلة
 
-es: Clásico
-tr: كلاسيكي
+es: Original de Forja
+tr: Forja الأصلي
 
-es: Nuevo
-tr: جديد
+es: Carrusel
+tr: دوّار
 
 es: Azul
 tr: أزرق
@@ -753,15 +753,6 @@ tr: L1 / R1: قسم آخر     أعلى/أسفل: اختيار     يسار/يم
 
 es: Volver
 tr: رجوع
-
-es: EMULADOR DE PLAYSTATION 2
-tr: محاكي PLAYSTATION 2
-
-es: Izq./Der.: ajustar   Arriba/Abajo: elegir
-tr: يسار/يمين: ضبط   أعلى/أسفل: اختيار
-
-es: Menú lateral
-tr: القائمة الجانبية
 
 es: ¿Cerrar Forja SX2?
 tr: إغلاق Forja SX2؟
