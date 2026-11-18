@@ -1385,7 +1385,13 @@ static inline void ForjaNoteDrawSplit(u32 dirty)
 // texture: TBP0, TBW, PSM, TW, TH, TCC, TFX), the texture is T8 or T4, CPSM and CSM do not change, no other register is waiting to cut the
 // draw, and no primitive is half sent. Each draw flushed then either goes on into the next (joinable) or ends a run; a run of N draws
 // would be one draw (or one a 16 palettes, the table's first size). GS thread only; printed with "GS draw splits" (GSRendererHW.cpp).
-u32 g_forja_pal_cuts = 0, g_forja_pal_join_cuts = 0, g_forja_pal_blocked[4] = {}, g_forja_pal_runs[5] = {};
+// Compilation 139: "another texture" split in three (the 138's sessions: 0 % joinable in God of War II, Shadow and Need for Speed, every
+// palette cut a texture change too) and an example of the first palette cuts of each game, to check the comparison: [0] another context,
+// [1] only TBP0 moves (the same size and format at another address), [2] size or format, [3] format the table would not cover, [4] other
+// registers, [5] half a primitive.
+u32 g_forja_pal_cuts = 0, g_forja_pal_join_cuts = 0, g_forja_pal_blocked[6] = {}, g_forja_pal_runs[5] = {};
+static u32 s_forja_pal_examples = 0;
+extern void ProbeLog(const char* format, ...); // ps4/core/ProbeLoggerPS4.cpp (compilation 139: the examples)
 u64 g_forja_pal_draws = 0, g_forja_pal_saved = 0, g_forja_pal_saved16 = 0;
 static bool s_forja_pal_join = false; // the draw this palette cut flushes could have gone on
 static u32 s_forja_pal_joins = 0, s_forja_pal_seen[16] = {}, s_forja_pal_seen_n = 0, s_forja_pal_over = 0;
@@ -1754,15 +1760,27 @@ void GSState::ApplyTEX0(GIFRegTEX0& TEX0)
 		if (m_index->tail > 0 && m_prev_env.PRIM.TME && (m_prev_env.CTXT[m_prev_env.PRIM.CTXT].TEX0.PSM & 0x7) >= 3)
 		{
 			const GIFRegTEX0& pending = m_prev_env.CTXT[m_prev_env.PRIM.CTXT].TEX0;
+			const u64 diff = (pending.U64 ^ TEX0.U64) & 0x1fffffffffull;
 			int why = -1;
-			if (m_prev_env.PRIM.CTXT != static_cast<u32>(i) || ((pending.U64 ^ TEX0.U64) & 0x1fffffffffull) != 0)
-				why = 0; // another texture
+			if (m_prev_env.PRIM.CTXT != static_cast<u32>(i))
+				why = 0; // another context
+			else if (diff != 0 && (diff & ~0x3fffull) == 0)
+				why = 1; // the same size and format at another address (TBP0)
+			else if (diff != 0)
+				why = 2; // another size or format
 			else if ((TEX0.PSM != PSMT8 && TEX0.PSM != PSMT4) || pending.CPSM != (TEX0.CPSM & 0xa) || pending.CSM != TEX0.CSM)
-				why = 1; // a format the table would not cover yet
+				why = 3; // a format the table would not cover yet
 			else if ((m_dirty_gs_regs & ~(1u << DIRTY_REG_TEX0)) != 0)
-				why = 2; // another register cuts the draw anyway
+				why = 4; // another register cuts the draw anyway
 			else if (m_vertex->tail != m_vertex->next)
-				why = 3; // half a primitive sent
+				why = 5; // half a primitive sent
+			if (s_forja_pal_examples < 6)
+			{
+				s_forja_pal_examples++;
+				ProbeLog("GS palette cut example (139): pending TEX0 %016llx (context %u), new %016llx (context %d), why %d\n",
+					static_cast<unsigned long long>(pending.U64), static_cast<unsigned>(m_prev_env.PRIM.CTXT),
+					static_cast<unsigned long long>(TEX0.U64), i, why);
+			}
 			g_forja_pal_cuts++;
 			if (why < 0)
 			{

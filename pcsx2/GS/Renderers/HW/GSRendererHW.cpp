@@ -28,7 +28,7 @@
 // Forja SX2 (compilation 128): why the draws were split (GSState.cpp, GS thread only); printed with the GS groups line.
 extern u32 g_forja_split_regs[32], g_forja_split_reasons[16], g_forja_split_count;
 // Compilation 138: "Tramos de paleta" (GSState.cpp, GS thread only).
-extern u32 g_forja_pal_cuts, g_forja_pal_join_cuts, g_forja_pal_blocked[4], g_forja_pal_runs[5];
+extern u32 g_forja_pal_cuts, g_forja_pal_join_cuts, g_forja_pal_blocked[6], g_forja_pal_runs[5];
 extern u64 g_forja_pal_draws, g_forja_pal_saved, g_forja_pal_saved16;
 #endif
 
@@ -3139,12 +3139,13 @@ namespace
 				if (g_forja_pal_draws > 0)
 				{
 					const double draws = static_cast<double>(g_forja_pal_draws);
-					ProbeLog("GS palette runs (138): palette cuts %.0f/s, joinable %.0f/s (%.0f %%); blocked: other texture %.0f, format %.0f, "
-							 "other registers %.0f, half a primitive %.0f; draws %.0f/s, fewer if joined %.1f %% (16 palettes a draw: %.1f %%); runs of "
-							 "2, 3-4, 5-8, 9-16, 17+ draws a second: %.0f %.0f %.0f %.0f %.0f\n",
+					ProbeLog("GS palette runs (139): palette cuts %.0f/s, joinable %.0f/s (%.0f %%); blocked: other context %.0f, other address "
+							 "%.0f, other size or format %.0f, format %.0f, other registers %.0f, half a primitive %.0f; draws %.0f/s, fewer if joined "
+							 "%.1f %% (16 palettes a draw: %.1f %%); runs of 2, 3-4, 5-8, 9-16, 17+ draws a second: %.0f %.0f %.0f %.0f %.0f\n",
 						g_forja_pal_cuts / seconds, g_forja_pal_join_cuts / seconds,
 						g_forja_pal_cuts ? 100.0 * g_forja_pal_join_cuts / g_forja_pal_cuts : 0.0, g_forja_pal_blocked[0] / seconds,
-						g_forja_pal_blocked[1] / seconds, g_forja_pal_blocked[2] / seconds, g_forja_pal_blocked[3] / seconds, draws / seconds,
+						g_forja_pal_blocked[1] / seconds, g_forja_pal_blocked[2] / seconds, g_forja_pal_blocked[3] / seconds,
+						g_forja_pal_blocked[4] / seconds, g_forja_pal_blocked[5] / seconds, draws / seconds,
 						100.0 * g_forja_pal_saved / draws, 100.0 * g_forja_pal_saved16 / draws, g_forja_pal_runs[0] / seconds,
 						g_forja_pal_runs[1] / seconds, g_forja_pal_runs[2] / seconds, g_forja_pal_runs[3] / seconds, g_forja_pal_runs[4] / seconds);
 				}

@@ -982,6 +982,9 @@ tr: 변환기로 소프트웨어 그리기:  < %s >
 es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
 tr: 테스트: 게임이 CPU로 그리는 것(Guitar Hero의 관중, Dragon Ball의 색상표)에 느린 코드 대신 변환된 코드를 사용합니다. 게임이 종료되거나 화면이 이상하면 아니요로 설정하세요. 이 게임에 저장됩니다
 
+es: Sí (más lento: este juego no lo pide)
+tr: 예 (더 느림: 이 게임에는 필요 없음)
+
 es: FPU exacto:  < %s >
 tr: 정확한 FPU:  < %s >
 

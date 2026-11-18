@@ -982,6 +982,9 @@ tr: Software-Zeichnen mit Übersetzer:  < %s >
 es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
 tr: Test: Was das Spiel mit der CPU zeichnet (das Publikum von Guitar Hero, die Paletten von Dragon Ball), nutzt übersetzten Code statt des langsamen. Wenn das Spiel schließt oder falsch aussieht, auf Nein stellen. Für dieses Spiel gespeichert
 
+es: Sí (más lento: este juego no lo pide)
+tr: Ja (langsamer: dieses Spiel braucht es nicht)
+
 es: FPU exacto:  < %s >
 tr: Exakte FPU:  < %s >
 

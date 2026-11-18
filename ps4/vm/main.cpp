@@ -23,6 +23,7 @@
 #include "PatchDownload.h"
 #include "ForjaReport.h"
 #include "GameList.h"
+#include "GameDatabase.h" // compilation 139: FPU exacto says when the game does not ask for it
 #include "PerformanceMetrics.h"
 #include "common/Timer.h"
 #include "ps2/BiosTools.h"
@@ -2212,7 +2213,12 @@ static void PublishFpuExactText()
 	using ForjaLang::T;
 	using ForjaLang::TF;
 	char label[256];
-	std::snprintf(label, sizeof(label), TF("FPU exacto:  < %s >"), T(EmuConfig.Cpu.Recompiler.fpuFullMode ? N_("Sí") : N_("No")));
+	// Compilation 139: on in a game whose GameDB entry does not ask for it (eeClampMode 3), the row says so. God of War II and Shadow
+	// of the Colossus (2026-11-14/17): it was left on from the 136 in the player's profile, costing work for nothing.
+	const GameDatabaseSchema::GameEntry* entry = GameDatabase::findGame(VMManager::GetDiscSerial());
+	const bool asked = entry && entry->eeClampMode == GameDatabaseSchema::ClampMode::Full;
+	const char* value = !EmuConfig.Cpu.Recompiler.fpuFullMode ? N_("No") : asked ? N_("Sí") : N_("Sí (más lento: este juego no lo pide)");
+	std::snprintf(label, sizeof(label), TF("FPU exacto:  < %s >"), T(value));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_FPU_EXACT, label,
 		T("Prueba: las cuentas con decimales del juego, exactas pero más lentas. La base de datos lo prende en algunos juegos (Bully) por un detalle puntual. En No puede ir más rápido; si algo sale mal, vuelve a Sí. Se guarda para este juego"));
 }
@@ -3535,7 +3541,10 @@ static void UpdateCpuAuto(double elapsed)
 	//   most. Down again within 30 s: no try for 60 s, doubled with each failed try up to 300; a try that held 120 s brings the wait back to 60.
 	// herramientas/simulaciones/simular_automaticos_escenas.py, 57 % chosen, with "Salto Auto afinado": Bully 11.4 -> 12.2 FPS (74 -> 73 % of
 	// the time at 95 % or more), Shadow 13.1 -> 13.5 FPS (79 -> 74 %); a hitch every ~2 minutes in Bully.
-	s_cpu_auto_slow_checks = speed < (s_cpu_auto_up && !fast ? 95.0 : 92.0) ? s_cpu_auto_slow_checks + 1 : 0;
+	// Compilation 139: slow counts only with the game drawing in 3D. Shadow of the Colossus (2026-11-17, the 138) went 100 -> 80 % in its
+	// loading screen at 73 % speed with every thread at 9 %: a load is not a reason to take the CPU down, and the game then ran with less.
+	const bool drawing_3d = PerformanceMetrics::GetVUThreadUsage() >= 8.0f && PerformanceMetrics::GetInternalFPS() >= 5.0f;
+	s_cpu_auto_slow_checks = (speed < (s_cpu_auto_up && !fast ? 95.0 : 92.0) && drawing_3d) ? s_cpu_auto_slow_checks + 1 : 0;
 	// Compilation 125 (Downhill Domination, 2026-11-08: 38 changes of the CPU in an hour, between 44 and 100 %, each one a reset of the EE
 	// recompiler and a hitch): a loading screen or a menu has every thread nearly idle (busiest 20-42 %), the room looked enormous, the CPU went
 	// up and the race brought it down again. Room counts only with the game drawing in 3D (the VU1 at work) and not within 60 s of a step down.
@@ -3646,7 +3655,9 @@ static void UpdateCpuAuto(double elapsed)
 // Simulated (herramientas/simulaciones/simular_al_vuelo_atraso.py, 10 minutes, the 136's per-vsync spread): God of War II 99.6 % and 32.6 FPS (136: 99.7 %, 30.8; no skip: 98.8 %, 33.1), Shadow 99.3 % and 17.8 (136: 99.6 %, 16.7), Need for Speed 99.4 % and 22.4 (136: 99.7 %, 20.8); 17-32 changes a minute (136: 76-87).
 static bool s_skip_instant_on = false;
 static int s_skip16_floor = 0;
-static constexpr double SI_UP_TARGET = 0.95, SI_DOWN_BELOW = 0.88, SI_DOWN_TARGET = 0.94, SI_DEBT_HIGH = 0.6, SI_E = 0.35;
+// Compilation 139 (the 138 on the console, 2026-11-17: ~20 ups and 35-49 downs a minute, 8-11 of them back, where the simulation said
+// 17-32 changes): down only under a mean use of 0.85 (was 0.88) and after 2 s without a vsync lost (was 1 s).
+static constexpr double SI_UP_TARGET = 0.95, SI_DOWN_BELOW = 0.85, SI_DOWN_TARGET = 0.94, SI_DEBT_HIGH = 0.6, SI_E = 0.35;
 static constexpr int SI_MAX_UP = 8, SI_MAX_DOWN = 4;
 static struct
 {
@@ -3657,7 +3668,9 @@ static struct
 	u64 n = 0, lost_at[8] = {}; // vsyncs (n) when vsyncs were lost to the added-up delay, the last 8
 	unsigned lost_next = 0;
 	int down_from = -1;
-	u64 last_down = 0, no_down_until = 0, down_wait = 25;
+	u64 last_down = 0, no_down_until = 0, down_wait = 50; // compilation 139: 0.5 -> 1 s after a step down that did not hold
+	u64 last_long = 0; // compilation 139: the last vsync over 2.5 (a hitch alone, or the scene's pace when they come close together)
+	u32 time_at[49] = {}; // compilation 139: vsyncs at each value, for "Al vuelo con memoria"
 	// for the 5 s line
 	unsigned ups = 0, downs = 0, backs = 0, vsyncs = 0, late = 0, lost = 0, hitches = 0;
 	int low_seen = 1000, high_seen = -1;
@@ -3681,6 +3694,51 @@ static void ForjaSkipInstantReset()
 	s_si.debt = 0.0;
 	s_si.down_from = -1;
 	std::fill(std::begin(s_si.lost_at), std::end(s_si.lost_at), 0);
+}
+
+// Compilation 139: the trace of the last minute's vsyncs (the use, the limiter's delay, the skip), written when the menu opens to
+// /data/ForjaSX2/logs/traza-al-vuelo-<SERIAL>.csv: herramientas/simulaciones/simular_al_vuelo_atraso.py takes the console's own spread from
+// it (the 138's churn was 55-70 changes a minute where the simulation said 17-32: its spread was made up).
+static struct
+{
+	u16 use[3000] = {}, debt[3000] = {};
+	u8 skip[3000] = {};
+	unsigned next = 0, count = 0;
+} s_trace;
+
+static void ForjaSkipTraceNote(double u, double debt, int skip16)
+{
+	s_trace.use[s_trace.next] = static_cast<u16>(std::clamp(u * 1000.0, 0.0, 65535.0));
+	s_trace.debt[s_trace.next] = static_cast<u16>(std::clamp(debt * 1000.0, 0.0, 65535.0));
+	s_trace.skip[s_trace.next] = static_cast<u8>(std::clamp(skip16, 0, 255));
+	s_trace.next = (s_trace.next + 1) % 3000;
+	s_trace.count = std::min(s_trace.count + 1, 3000u);
+}
+
+static void ForjaSkipTraceDump()
+{
+	const std::string serial = VMManager::GetDiscSerial();
+	if (s_trace.count < 500 || serial.empty())
+		return;
+	char path[200];
+	std::snprintf(path, sizeof(path), "/data/ForjaSX2/logs/traza-al-vuelo-%s.csv", Path::SanitizeFileName(serial).c_str());
+	const std::string tmp = std::string(path) + ".tmp";
+	std::FILE* f = std::fopen(tmp.c_str(), "w");
+	if (!f)
+		return;
+	std::fprintf(f, "uso,atraso,salto16\n");
+	const unsigned first = (s_trace.next + 3000 - s_trace.count) % 3000;
+	for (unsigned k = 0; k < s_trace.count; k++)
+	{
+		const unsigned i = (first + k) % 3000;
+		std::fprintf(f, "%.3f,%.3f,%u\n", s_trace.use[i] / 1000.0, s_trace.debt[i] / 1000.0, static_cast<unsigned>(s_trace.skip[i]));
+	}
+	const bool ok = std::fclose(f) == 0;
+	if (ok && std::rename(tmp.c_str(), path) == 0)
+		ProbeLog("Cycle skip al vuelo: the last %u vsyncs written to %s\n", s_trace.count, path);
+	else
+		std::remove(tmp.c_str());
+	s_trace.count = s_trace.next = 0;
 }
 
 // Vsyncs lost to the added-up delay within the last `window` vsyncs.
@@ -3824,7 +3882,11 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 	{
 		const double whole = std::floor(s_si.debt);
 		s_si.debt -= whole;
-		if (u_now < 2.5)
+		// Compilation 139: a vsync over 2.5 is a lone hitch (no skip fixes it) only when it is alone; another one within 2 s means the
+		// scene's own pace (a GS-bound view whose frames take 3 vsyncs), and that is real slow motion the skip can help. Shadow's loading
+		// and heavy view (2026-11-17): 10-13 "lone hitches" in some 5 s.
+		const bool alone = u_now >= 2.5 && s_si.n - s_si.last_long > 100;
+		if (!alone)
 		{
 			s_si.lost_at[s_si.lost_next] = s_si.n;
 			s_si.lost_next = (s_si.lost_next + 1) % 8;
@@ -3833,6 +3895,10 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 		else
 			s_si.hitches++; // a lone hitch: no skip fixes it
 	}
+	if (u_now >= 2.5)
+		s_si.last_long = s_si.n;
+	s_si.time_at[std::clamp(s_si.value, 0, 48)]++;
+	ForjaSkipTraceNote(u_now, s_si.debt, s_si.value);
 	s_si.highs = s_si.debt > SI_DEBT_HIGH ? s_si.highs + 1 : 0;
 	s_si.us[s_si.next] = u_now;
 	s_si.next = (s_si.next + 1) % 25;
@@ -3860,7 +3926,7 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 		ForjaSkipInstantSet(s_si.down_from);
 		s_si.down_from = -1;
 		s_si.no_down_until = s_si.n + s_si.down_wait;
-		s_si.down_wait = std::min<u64>(s_si.down_wait * 2, 200);
+		s_si.down_wait = std::min<u64>(s_si.down_wait * 2, 400); // compilation 139: up to 8 s (was 4)
 		s_si.wait = 6;
 		s_si.backs++;
 		return;
@@ -3877,13 +3943,13 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 		s_si.ups++;
 		return;
 	}
-	if (ForjaSkipInstantLostWithin(50) == 0 && s_si.debt < 0.3 && mean < SI_DOWN_BELOW && s_si.value > s_skip16_floor &&
+	if (ForjaSkipInstantLostWithin(100) == 0 && s_si.debt < 0.3 && mean < SI_DOWN_BELOW && s_si.value > s_skip16_floor && // 139: 2 s
 		s_si.n >= s_si.no_down_until)
 	{
 		const int allowed = static_cast<int>(std::floor(quarters_for(SI_DOWN_TARGET) * 4.0));
 		const int next = std::max({s_skip16_floor, s_si.value - SI_MAX_DOWN, std::min(s_si.value - 1, allowed)});
 		if (s_si.n - s_si.last_down > 500)
-			s_si.down_wait = 25;
+			s_si.down_wait = 50;
 		s_si.down_from = s_si.value;
 		s_si.last_down = s_si.n;
 		ForjaSkipInstantSet(next);
@@ -3906,11 +3972,18 @@ static void UpdateCycleSkipFast(double elapsed)
 		s_crc = crc;
 		s_skip16_floor = floor16;
 		s_si.no_down_until = 0;
-		s_si.down_wait = 25;
+		s_si.down_wait = 50;
 		ForjaSkipInstantReset();
-		ForjaSkipInstantSet(floor16);
+		// Compilation 139: "Al vuelo con memoria": where the game spent most of its last session (God of War II, 2026-11-17: it started
+		// at 0 and spent its first minutes climbing to ~1.4 skips, losing vsyncs on the way).
+		const int learned = s_profile.crc == crc ? s_profile.learned_skip16 : -1;
+		const int start = learned >= 0 ? std::max(floor16, learned) : floor16;
+		ForjaSkipInstantSet(start);
+		std::fill(std::begin(s_si.time_at), std::end(s_si.time_at), 0u);
+		s_skip_auto_can_help = true; // compilation 139: not "at the top" before it has measured anything
 		s_last_line = elapsed;
-		ProbeLog("Cycle skip al vuelo (compilation 137, by the limiter's delay): starts at %d sixteenths, the game's factory value\n", floor16);
+		ProbeLog("Cycle skip al vuelo (compilation 139, by the limiter's delay): starts at %d sixteenths (%s; factory %d)\n", start,
+			learned >= 0 ? "where the last session spent most of its time" : "the game's factory value", floor16);
 	}
 	s_skip16_floor = floor16;
 	s_skip_instant_on = true;
@@ -3922,7 +3995,18 @@ static void UpdateCycleSkipFast(double elapsed)
 	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(quarters / 4);
 	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(quarters % 4);
 	s_skip_auto_at_factory = s_si.value <= floor16 + 8;
-	s_skip_auto_can_help = s_si.value < 48;
+	// Compilation 139: the CPU automático comes down only after Al vuelo has been at its top for 3 s and the game is still slow (until
+	// the 138, one vsync at the top was enough). Need for Speed (2026-11-17): the CPU went 100 -> 80 % and the race lost frames (20.3 FPS
+	// at 80 % against 23.1 at 100 %), and every change of the CPU rewrites the translated code ("CPU sin tirones").
+	static double s_top_since = -1.0;
+	if (s_si.value >= 48)
+	{
+		if (s_top_since < 0.0)
+			s_top_since = elapsed;
+	}
+	else
+		s_top_since = -1.0;
+	s_skip_auto_can_help = s_si.value < 48 || elapsed - s_top_since < 3.0;
 	if (quarters != s_published)
 	{
 		s_published = quarters;
@@ -3940,6 +4024,34 @@ static void UpdateCycleSkipFast(double elapsed)
 		s_si.low_seen = 1000;
 		s_si.high_seen = -1;
 	}
+}
+
+// Compilation 139: "Al vuelo con memoria". The value Al vuelo spent most vsyncs at (30 s of game at least) goes to the player's profile
+// ([Forja] SaltoAprendido) when the menu opens and when the game ends; UpdateCycleSkipFast starts the next session there. Written
+// straight into the file (no settings reload), only when it moved 2 sixteenths or more.
+static void ForjaSkipRemember()
+{
+	if (!s_skip_fast_running)
+		return;
+	u64 total = 0;
+	int best = 0;
+	for (int v = 0; v <= 48; v++)
+	{
+		total += s_si.time_at[v];
+		if (s_si.time_at[v] > s_si.time_at[best])
+			best = v;
+	}
+	const std::string serial = VMManager::GetDiscSerial();
+	const u32 crc = VMManager::GetDiscCRC();
+	if (total < 1500 || serial.empty() || crc == 0 || (s_profile.learned_skip16 >= 0 && std::abs(best - s_profile.learned_skip16) < 2))
+		return;
+	const bool saved = ForjaGameProfile::EditPlayer(serial, crc, [best](INISettingsInterface& ini) {
+		ini.SetIntValue("Forja", "SaltoAprendido", best);
+	});
+	if (saved)
+		s_profile.learned_skip16 = best;
+	ProbeLog("Cycle skip al vuelo: learnt %d sixteenths for %s (%llu vsyncs measured), saved=%d\n", best, serial.c_str(),
+		static_cast<unsigned long long>(total), saved ? 1 : 0);
 }
 
 // Compilation 132: "Empujón de cuadros" ([Forja] EmpujonCuadros; a row of No tocar, off). Bully (2026-11-13, the 130): 15-18 FPS before
@@ -5728,6 +5840,8 @@ void VMHostPoll()
 		ReloadDiscList();
 		ForjaFramePushEnd("the menu"); // compilation 132: before the game's rate is read
 		ForjaCodeAheadStore(false); // compilation 132: the game is paused, a good moment for the disk
+		ForjaSkipRemember(); // compilation 139
+		ForjaSkipTraceDump(); // compilation 139
 		// The game's own rate, not the one a movie (video mode) or the automatic speed lowered it to.
 		s_game_ee_rate = s_cpu_auto_steps > 0 ? s_cpu_auto_base : s_video_active ? s_video_saved_rate : EmuConfig.Speedhacks.EECycleRate;
 		s_game_menu_direction = 0;
@@ -6593,6 +6707,7 @@ static void* RunVM(void*)
 			PS4ProbeLogger::SetDirect(false);
 		}
 		ForjaCodeAheadStore(true); // compilation 132
+		ForjaSkipRemember(); // compilation 139
 		g_forja_guard_mark[0] = '\0'; // compilation 131: the game is over; what happens from here on is not its fault
 		VMManager::Shutdown(false);
 		// Forja SX2 (compilation 37): a normal end: the 50 Hz output worked or was never asked for.

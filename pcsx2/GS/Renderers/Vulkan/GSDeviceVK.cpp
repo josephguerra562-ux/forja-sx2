@@ -4815,6 +4815,9 @@ namespace
 		u64 stat_held = 0; // Forja SX2 (compilation 41): generated presents left out, no display image free
 		u64 stat_tight = 0; // compilation 136: game frames left without a generated one, the last vsyncs had no room
 		bool tight = false; // compilation 136: "Cuadros generados con margen" holds the generated frames now
+		bool fluid_tight = false; // compilation 139: "Fluido" paced as "Sí" while the last vsyncs had no room
+		u64 fluid_frames = 0;     // game frames since fluid_tight last changed (it holds 120 at least)
+		u64 stat_fluid_held = 0;  // game frames paced as "Sí" for that reason
 		double stat_vsyncs = 0.0;
 	};
 
@@ -5194,7 +5197,31 @@ u32 GSDeviceVK::OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv,
 	const auto now = std::chrono::steady_clock::now();
 	const double now_s = std::chrono::duration<double>(now.time_since_epoch()).count();
 	s.hz = OrbisFrameGenDisplayHz(); // the driver's, each frame: the output goes back to 60 Hz before the process ends
-	s.pacing.SetFluid(g_orbis_fg_fluid);
+	// Compilation 139: "Fluido con margen". God of War II (2026-11-17, the 138) at 2x: 31.8 game frames a second with Fluido against
+	// 34.7 without generated frames (the 1.07: 31.2 against 36.2), while "Sí" cost nothing at 1x (42.6 at 99.8 %, the session's best).
+	// Fluido makes a costlier picture and takes time from the game's drawing. With it chosen, it is paced as "Sí" while the last 12 vsyncs'
+	// mean use is over 0.92 or the limiter's delay over 0.5 of a vsync (back to Fluido under 0.85 and no delay), each state held 120 game
+	// frames at least so it does not flap.
+	if (g_orbis_fg_fluid)
+	{
+		const unsigned load = g_forja_vsync_load.load(std::memory_order_relaxed);
+		const unsigned debt = g_forja_vsync_debt.load(std::memory_order_relaxed);
+		s.fluid_frames++;
+		const bool want = s.fluid_tight ? !(load < 850 && debt < 100) : (load > 920 || debt > 500);
+		if (want != s.fluid_tight && s.fluid_frames >= 120)
+		{
+			s.fluid_tight = want;
+			s.fluid_frames = 0;
+		}
+		if (s.fluid_tight)
+			s.stat_fluid_held++;
+	}
+	else
+	{
+		s.fluid_tight = false;
+		s.fluid_frames = 0;
+	}
+	s.pacing.SetFluid(g_orbis_fg_fluid && !s.fluid_tight);
 	s.pacing.SetMovie(g_orbis_fg_movie); // compilation 66
 	s.pacing.SetHeld(g_orbis_fg_held); // Forja 1.06
 	if (const unsigned restart = g_orbis_fg_restart.load(std::memory_order_relaxed); restart != s.restart) // Forja 1.06
@@ -5239,7 +5266,11 @@ u32 GSDeviceVK::OrbisFrameGenRecord(GSTexture* current, const GSVector4& src_uv,
 		if (s.stat_tight > 0) // compilation 136
 			printf("[fg] %.1f game frames a second without a generated one: the last vsyncs had no room (Cuadros generados con margen)\n",
 				s.stat_tight / secs);
+		if (s.stat_fluid_held > 0) // compilation 139
+			printf("[fg] %.1f game frames a second paced as \"Si\" instead of Fluido: the last vsyncs had no room (Fluido con margen)\n",
+				s.stat_fluid_held / secs);
 		s.stat_frames = s.stat_engaged = s.stat_made = s.stat_presents = s.stat_counted = s.stat_held = s.stat_tight = 0;
+		s.stat_fluid_held = 0;
 		s.stat_vsyncs = 0.0;
 	}
 

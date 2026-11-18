@@ -78,6 +78,10 @@ namespace ForjaGameProfile
 		// every 1, 2, 4 or 8 of its passes; 0 not set (main.cpp's default).
 		int crowd_every = 0;
 		Origin crowd_every_origin = Origin::Global;
+		// [Forja] SaltoAprendido (compilation 139, "Al vuelo con memoria"): the cycle skip, in sixteenths, the game spent most of its last
+		// session at with "Al vuelo" (main.cpp writes it); the next session starts there. -1: none yet.
+		int learned_skip16 = -1;
+		Origin learned_skip16_origin = Origin::Global;
 		// [Forja] GrabarEnOtroHilo (compilation 116): the draws' Vulkan calls on their own thread (GS/Renderers/Vulkan/
 		// ForjaVkRecorder.h): 0 off; 1 on; -1 not set, on since compilation 118 (tested in the six test games, 2026-11-04).
 		int draw_thread = -1;
@@ -259,6 +263,7 @@ namespace ForjaGameProfile
 		read_int("CpuAuto", &v.cpu_auto, &v.cpu_auto_origin);
 		read_int("SaltarCuadros", &v.gs_skip, &v.gs_skip_origin);
 		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);
+		read_int("SaltoAprendido", &v.learned_skip16, &v.learned_skip16_origin); // compilation 139
 		read_int("GrabarEnOtroHilo", &v.draw_thread, &v.draw_thread_origin);
 		read_int("TraductorSoftware", &v.sw_jit, &v.sw_jit_origin);
 		read_int("IopRapido", &v.iop_fast, &v.iop_fast_origin);
@@ -383,6 +388,7 @@ namespace ForjaGameProfile
 			v.cpu_auto = 0;
 		if (v.gs_skip >= 0)
 			v.gs_skip = std::min(v.gs_skip, 5); // compilation 82: 3; 88: 4, two in three left out; 90: 5, on the fly
+		v.learned_skip16 = std::clamp(v.learned_skip16, -1, 48); // compilation 139
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"
 			v.crowd_every = v.crowd_every >= 32 ? 32 : v.crowd_every >= 16 ? 16 : v.crowd_every >= 8 ? 8 : v.crowd_every >= 4 ? 4 :
 			                v.crowd_every >= 2 ? 2 : 1; // compilation 88: 16 and 32

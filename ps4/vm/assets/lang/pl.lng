@@ -982,6 +982,9 @@ tr: Rysowanie programowe z translatorem:  < %s >
 es: Prueba: los dibujos que el juego hace con la CPU (el público de Guitar Hero, las paletas de Dragon Ball) usan código traducido en vez del lento. Si el juego se cierra o se ve mal, ponlo en No. Se guarda para este juego
 tr: Test: to, co gra rysuje procesorem (publiczność w Guitar Hero, palety w Dragon Ball), używa przetłumaczonego kodu zamiast wolnego. Jeśli gra się zamyka lub źle wygląda, ustaw Nie. Zapisane dla tej gry
 
+es: Sí (más lento: este juego no lo pide)
+tr: Tak (wolniej: ta gra tego nie potrzebuje)
+
 es: FPU exacto:  < %s >
 tr: Dokładne FPU:  < %s >
 
