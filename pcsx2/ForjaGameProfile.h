@@ -131,6 +131,10 @@ namespace ForjaGameProfile
 		bool has_lab = false;
 		bool lab_rows = false;
 		bool guard = true;
+		// Compilation 140: [Forja] GuardianApagadas, the hidden improvements the guardian turned off for this game, one at a time
+		// (main.cpp, ForjaGuardStart), comma-separated; and hidden_on, the hidden ones on for it now (what the guardian picks from).
+		std::string guard_off;
+		std::string hidden_on;
 		// Compilation 132, three rows of No tocar; compilation 134 (Joseph, 2026-11-14, with the official 1.07: "siempre en sí ... e
 		// invisibles al público"), on for every game and hidden like the ten above, after the 132 and the 133 on the console (God of War
 		// II's VU1 95.2 -> 97.8 % speed; Shadow 9.8 -> 17.5 FPS on a push; "Código listo" made 62,000-250,000 blocks ahead a session).
@@ -164,6 +168,20 @@ namespace ForjaGameProfile
 	inline std::string PlayerPath(std::string_view serial, u32 crc)
 	{
 		return (serial.empty() || crc == 0) ? std::string() : VMManager::GetGameSettingsPath(serial, crc);
+	}
+
+	// Compilation 140: whether a comma-separated list (the guardian's) has this key.
+	inline bool GuardListHas(const std::string& list, std::string_view key)
+	{
+		size_t at = 0;
+		while (at <= list.size())
+		{
+			const size_t end = std::min(list.find(',', at), list.size());
+			if (list.compare(at, end - at, key) == 0 && end - at == key.size())
+				return true;
+			at = end + 1;
+		}
+		return false;
 	}
 
 	inline std::string_view Trim(std::string_view text)
@@ -289,6 +307,9 @@ namespace ForjaGameProfile
 				v.safe_mode_origin = Origin::Lab;
 		}
 		v.safe_mode = std::clamp(v.safe_mode, 0, 2);
+		if (v.has_player)
+			player.GetStringValue("Forja", "GuardianApagadas", &v.guard_off); // compilation 140
+		v.hidden_on.clear();
 		struct Hidden
 		{
 			const char* key;
@@ -323,7 +344,7 @@ namespace ForjaGameProfile
 				value = read != 0 ? 1 : 0;
 				origin = Origin::Lab;
 			}
-			else if (v.safe_mode >= h.safe_level)
+			else if (v.safe_mode >= h.safe_level || GuardListHas(v.guard_off, h.key)) // compilation 140: or the guardian's list
 			{
 				value = 0;
 				origin = Origin::Safe;
@@ -340,6 +361,8 @@ namespace ForjaGameProfile
 			}
 			*h.value = value;
 			*h.origin = origin;
+			if (value != 0)
+				v.hidden_on += std::string(v.hidden_on.empty() ? "" : ",") + h.key; // compilation 140
 		}
 		// Forja 1.06: [Forja] SaltarCuadrosConGuardian, a factory profile's frame skip for the versions with the guard (73 on),
 		// which wins over its SaltarCuadros (never over the player's). The versions before 1.06 fetch the factory profiles from

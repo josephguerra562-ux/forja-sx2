@@ -925,8 +925,8 @@ tr: 不起作用：此游戏的 PS2 CPU（%d %%）已经等于或低于此限制
 es: Salto de ciclo:  < %s >
 tr: 周期跳过:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo ajusta en cada refresco, justo lo que pide la escena. Se guarda para este juego
-tr: 减轻主机负担:速度接近 100 %,但游戏可能重复画面。Auto 会自动调整;即时(测试)会在每次刷新时调整,只用场景需要的。为此游戏保存
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Al vuelo lo ajusta solo en cada refresco y recuerda lo de la última partida. Se guarda para este juego
+tr: 减轻主机负担:速度接近 100 %,但游戏可能重复画面。即时会在每次刷新时自动调整,并记住上次的游戏。为此游戏保存
 
 es: Límite de velocidad:  < %s >
 tr: 速度限制:  < %s >
@@ -1066,8 +1066,11 @@ tr: 全部
 es: Modo seguro:  < %s >
 tr: 安全模式:  < %s >
 
-es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego
-tr: 如果此游戏关闭、卡住或画面不对,请先试"部分",再试"全部":它们会关闭内部的加速改进,游戏可能变慢。如果上次游戏没有正常结束,Forja 会自动设为"部分"。为此游戏保存
+es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Si una partida termina mal, Forja apaga por su cuenta una mejora sospechosa por vez. Se guarda para este juego
+tr: 如果此游戏关闭、卡住或画面不对,请先试"部分",再试"全部":它们会关闭内部的加速改进,游戏可能变慢。如果一次游戏没有正常结束,Forja 会自动每次关闭一项可疑的改进。为此游戏保存
+
+es: Forja ya apagó en este juego: %s
+tr: Forja 已在此游戏中关闭:%s
 
 es: Disco sin esperas:  < %s >
 tr: 光盘不等待：  < %s >

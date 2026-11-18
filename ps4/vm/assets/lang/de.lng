@@ -925,8 +925,8 @@ tr: Wirkt nicht: Die PS2-CPU dieses Spiels (%d %%) ist schon so niedrig oder nie
 es: Salto de ciclo:  < %s >
 tr: Zyklussprung:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo ajusta en cada refresco, justo lo que pide la escena. Se guarda para este juego
-tr: Entlastet die Konsole: Die Geschwindigkeit nähert sich 100 %, aber das Spiel kann Bilder wiederholen. Auto passt es selbst an; Bei Bedarf (Test) passt es bei jeder Bildwiederholung an, genau so viel wie die Szene braucht. Für dieses Spiel gespeichert
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Al vuelo lo ajusta solo en cada refresco y recuerda lo de la última partida. Se guarda para este juego
+tr: Entlastet die Konsole: Die Geschwindigkeit nähert sich 100 %, aber das Spiel kann Bilder wiederholen. Bei Bedarf passt es bei jeder Bildwiederholung selbst an und merkt sich die letzte Sitzung. Für dieses Spiel gespeichert
 
 es: Límite de velocidad:  < %s >
 tr: Geschwindigkeitslimit:  < %s >
@@ -1066,8 +1066,11 @@ tr: Vollständig
 es: Modo seguro:  < %s >
 tr: Sicherer Modus:  < %s >
 
-es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego
-tr: Wenn dieses Spiel sich schließt, hängt oder falsch aussieht, versuche Teilweise und dann Vollständig: Sie schalten interne Tempo-Verbesserungen aus, und das Spiel kann langsamer laufen. Forja stellt selbst Teilweise ein, wenn die letzte Sitzung schlecht endete. Für dieses Spiel gespeichert
+es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Si una partida termina mal, Forja apaga por su cuenta una mejora sospechosa por vez. Se guarda para este juego
+tr: Wenn dieses Spiel sich schließt, hängt oder falsch aussieht, versuche Teilweise und dann Vollständig: Sie schalten interne Tempo-Verbesserungen aus, und das Spiel kann langsamer laufen. Wenn eine Sitzung schlecht endet, schaltet Forja selbst jeweils eine verdächtige Verbesserung aus. Für dieses Spiel gespeichert
+
+es: Forja ya apagó en este juego: %s
+tr: Forja hat in diesem Spiel bereits ausgeschaltet: %s
 
 es: Disco sin esperas:  < %s >
 tr: Disc ohne Warten:  < %s >

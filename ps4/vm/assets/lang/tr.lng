@@ -925,8 +925,8 @@ tr: Etkisiz: bu oyunun PS2 CPU'su (%d %%) zaten bu kadar ya da daha düşük. Da
 es: Salto de ciclo:  < %s >
 tr: Döngü atlama:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo ajusta en cada refresco, justo lo que pide la escena. Se guarda para este juego
-tr: Konsolun yükünü azaltır: hız %100'e yaklaşır, ancak oyun kareleri tekrarlayabilir. Auto kendisi ayarlar; Anında (test) her ekran yenilemesinde sahnenin istediği kadar ayarlar. Bu oyun için kaydedilir
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Al vuelo lo ajusta solo en cada refresco y recuerda lo de la última partida. Se guarda para este juego
+tr: Konsolun yükünü azaltır: hız %100'e yaklaşır, ancak oyun kareleri tekrarlayabilir. Anında her ekran yenilemesinde kendisi ayarlar ve önceki oturumu hatırlar. Bu oyun için kaydedilir
 
 es: Límite de velocidad:  < %s >
 tr: Hız sınırı:  < %s >
@@ -1066,8 +1066,11 @@ tr: Tam
 es: Modo seguro:  < %s >
 tr: Güvenli mod:  < %s >
 
-es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego
-tr: Bu oyun kapanırsa, takılırsa veya görüntü bozuksa önce Kısmi, sonra Tam deneyin: dahili hız iyileştirmelerini kapatırlar ve oyun yavaşlayabilir. Önceki oturum kötü bittiyse Forja kendisi Kısmi yapar. Bu oyun için kaydedilir
+es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Si una partida termina mal, Forja apaga por su cuenta una mejora sospechosa por vez. Se guarda para este juego
+tr: Bu oyun kapanırsa, takılırsa veya görüntü bozuksa önce Kısmi, sonra Tam deneyin: dahili hız iyileştirmelerini kapatırlar ve oyun yavaşlayabilir. Bir oturum kötü biterse Forja şüpheli iyileştirmeleri kendisi birer birer kapatır. Bu oyun için kaydedilir
+
+es: Forja ya apagó en este juego: %s
+tr: Forja bu oyunda zaten kapattı: %s
 
 es: Disco sin esperas:  < %s >
 tr: Beklemesiz disk:  < %s >

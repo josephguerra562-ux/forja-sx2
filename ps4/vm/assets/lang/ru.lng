@@ -925,8 +925,8 @@ tr: Не действует: ЦП PS2 этой игры (%d %%) уже на эт
 es: Salto de ciclo:  < %s >
 tr: Пропуск циклов:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo ajusta en cada refresco, justo lo que pide la escena. Se guarda para este juego
-tr: Снижает нагрузку на консоль: скорость приближается к 100 %, но игра может повторять кадры. Auto настраивает сам; «По ходу» (тест) подстраивает его при каждом обновлении экрана, ровно сколько нужно сцене. Сохраняется для этой игры
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Al vuelo lo ajusta solo en cada refresco y recuerda lo de la última partida. Se guarda para este juego
+tr: Снижает нагрузку на консоль: скорость приближается к 100 %, но игра может повторять кадры. «По ходу» сам подстраивает его при каждом обновлении и запоминает прошлый запуск. Сохраняется для этой игры
 
 es: Límite de velocidad:  < %s >
 tr: Предел скорости:  < %s >
@@ -1066,8 +1066,11 @@ tr: Полностью
 es: Modo seguro:  < %s >
 tr: Безопасный режим:  < %s >
 
-es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego
-tr: Если игра закрывается, зависает или выглядит неправильно, попробуйте «Частично», затем «Полностью»: они отключают внутренние ускорения, и игра может идти медленнее. Forja сама ставит «Частично», если прошлый запуск закончился плохо. Сохраняется для этой игры
+es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Si una partida termina mal, Forja apaga por su cuenta una mejora sospechosa por vez. Se guarda para este juego
+tr: Если игра закрывается, зависает или выглядит неправильно, попробуйте «Частично», затем «Полностью»: они отключают внутренние ускорения, и игра может идти медленнее. Если запуск закончился плохо, Forja сама отключает по одному подозрительному улучшению. Сохраняется для этой игры
+
+es: Forja ya apagó en este juego: %s
+tr: Forja уже отключила в этой игре: %s
 
 es: Disco sin esperas:  < %s >
 tr: Диск без ожидания:  < %s >

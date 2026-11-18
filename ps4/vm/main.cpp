@@ -410,11 +410,11 @@ static double s_cpu_auto_probe_at = -1000.0, s_cpu_auto_no_probe_until = 0.0, s_
 // Compilation 130: "CPU al vuelo", the CPU automático's fast mode while "CPU sin tirones" is in the EE blocks (a change costs ~0.5 ms
 // instead of a recompile). Its guard against going up and down: when a step up has to come down within 3 s, no step up for a while
 // (5 s, doubled up to 20 s; back to 5 after 30 s without one).
-static double s_cpu_fast_last_up = -100.0, s_cpu_fast_no_up_until = 0.0, s_cpu_fast_wait = 5.0;
 // Compilation 125: when the CPU last came down (no step up for 60 s after it).
 static double s_cpu_auto_last_down = -1000.0;
 // Forja SX2 (compilation 47): "Saltar cuadros" (UpdateGsSkip). mode: 0 off, 1 auto, 2 always; the GS reads the atomic.
 extern std::atomic<bool> g_forja_gs_skip_active;     // ps4/core/GSRendererPS4.cpp
+extern std::atomic<bool> g_forja_gs_skip_director;   // compilation 140: the director's gate (GSRendererPS4.cpp)
 extern std::atomic<unsigned> g_forja_gs_skipped_frames;
 extern std::atomic<unsigned> g_forja_gs_skip_stats[6]; // compilation 62: GSRendererPS4.cpp, VSync and ForjaGsSkipNote
 extern std::atomic<bool> g_forja_gs_skip_paused;      // Forja 1.06: its guard has it paused (ForjaSkipGuard.h)
@@ -1351,9 +1351,40 @@ static void ForjaGuardStart(const std::string& serial, u32 crc)
 				before.safe_mode);
 		else
 		{
-			const bool saved = ForjaGameProfile::EditPlayer(serial, crc, [](INISettingsInterface& ini) { ini.SetIntValue("Forja", "ModoSeguro", 1); });
-			ProbeLog("Guardian: the last session of %s ended badly (%s): Modo seguro -> Parcial for this game (saved=%d)\n", serial.c_str(),
-				reason, saved ? 1 : 0);
+			// Compilation 140: one suspect at a time, the likeliest for that end first, and the others stay on. Need for Speed (2026-11-18):
+			// the Parcial of the 131-139 turned six off at once and its hitches went from 7.5 to 23 a minute (26 of the disc, 27 of code);
+			// with "CPU sin tirones" alone off it ran 5:45 with 3.7 a minute and no stop. Parcial only when no suspect is left.
+			static constexpr const char* ee_order[] = {"CpuSinTirones", "RevisionRapida", "CodigoListo", "DiscoSinEsperas", "SaltosVU1",
+				"EmpujonCuadros"};
+			static constexpr const char* hang_order[] = {"DiscoSinEsperas", "IopDormido", "CpuSinTirones", "RevisionRapida", "CodigoListo",
+				"SaltosVU1"};
+			static constexpr const char* other_order[] = {"CpuSinTirones", "RevisionRapida", "CodigoListo", "SaltosVU1", "DiscoSinEsperas",
+				"EmpujonCuadros", "TraductorSoftware", "GrabarEnOtroHilo"};
+			const bool ee = std::strstr(reason, "ee exception") != nullptr;
+			const bool hang = std::strstr(reason, "hang") != nullptr;
+			const char* const* order = ee ? ee_order : hang ? hang_order : other_order;
+			const size_t count = ee ? std::size(ee_order) : hang ? std::size(hang_order) : std::size(other_order);
+			const char* next = nullptr;
+			for (size_t i = 0; i < count && !next; i++)
+			{
+				if (!ForjaGameProfile::GuardListHas(before.guard_off, order[i]) && ForjaGameProfile::GuardListHas(before.hidden_on, order[i]))
+					next = order[i];
+			}
+			if (next)
+			{
+				const std::string list = before.guard_off.empty() ? std::string(next) : before.guard_off + "," + next;
+				const bool saved = ForjaGameProfile::EditPlayer(serial, crc, [&list](INISettingsInterface& ini) {
+					ini.SetStringValue("Forja", "GuardianApagadas", list.c_str());
+				});
+				ProbeLog("Guardian: the last session of %s ended badly (%s): %s off for this game, one at a time (off so far: %s; saved=%d)\n",
+					serial.c_str(), reason, next, list.c_str(), saved ? 1 : 0);
+			}
+			else
+			{
+				const bool saved = ForjaGameProfile::EditPlayer(serial, crc, [](INISettingsInterface& ini) { ini.SetIntValue("Forja", "ModoSeguro", 1); });
+				ProbeLog("Guardian: the last session of %s ended badly (%s), no suspect left: Modo seguro -> Parcial for this game (saved=%d)\n",
+					serial.c_str(), reason, saved ? 1 : 0);
+			}
 		}
 	}
 	std::snprintf(g_forja_guard_mark, sizeof(g_forja_guard_mark), "%s", path);
@@ -2064,13 +2095,13 @@ static bool GameDrawsCrowdInSoftware()
 // Compilation 102: in quarters too, up to 1 (ForjaCycleSkipSteps): between 90 % with every frame and 100 % with 18 % of them shown twice.
 static constexpr u8 ForjaCycleSkipSteps[] = {0, 1, 2, 3, 4, 8, 12};
 
-// Compilation 103: Auto, after them.
+// Compilation 103: Auto, after them. Compilation 140: only "Al vuelo" there (the old Auto is gone).
 static constexpr unsigned ForjaCycleSkipAutoStep = std::size(ForjaCycleSkipSteps);
 
 static unsigned ForjaCycleSkipStep()
 {
 	if (EmuConfig.Speedhacks.EECycleSkipAuto)
-		return ForjaCycleSkipAutoStep + (EmuConfig.Speedhacks.EECycleSkipAuto >= 2 ? 1u : 0u); // compilation 131: 2, "Al vuelo"
+		return ForjaCycleSkipAutoStep; // "Al vuelo"
 	const unsigned quarters = EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters;
 	unsigned step = 0;
 	while (step + 1 < std::size(ForjaCycleSkipSteps) && ForjaCycleSkipSteps[step] < quarters)
@@ -2083,7 +2114,7 @@ static void PublishCycleSkipText()
 	char label[256];
 	static constexpr const char* names[] = {N_("No"), "1/4", "1/2", "3/4", "1", "2", "3"};
 	char value[64];
-	if (EmuConfig.Speedhacks.EECycleSkipAuto >= 2) // compilation 131: "Al vuelo", in quarters (it uses the values between the row's steps too)
+	if (EmuConfig.Speedhacks.EECycleSkipAuto) // compilation 131: "Al vuelo", in quarters (140: the only automatic one)
 	{
 		const unsigned quarters = EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters;
 		static constexpr const char* parts[] = {"", "1/4", "1/2", "3/4"};
@@ -2098,19 +2129,11 @@ static void PublishCycleSkipText()
 			std::snprintf(amount, sizeof(amount), "%u %s", quarters / 4, parts[quarters % 4]);
 		std::snprintf(value, sizeof(value), "%s: %s", ForjaLang::T("Al vuelo"), amount);
 	}
-	else if (EmuConfig.Speedhacks.EECycleSkipAuto)
-	{
-		const unsigned quarters = EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters;
-		unsigned step = 0;
-		while (step + 1 < std::size(ForjaCycleSkipSteps) && ForjaCycleSkipSteps[step] < quarters)
-			step++;
-		std::snprintf(value, sizeof(value), "%s: %s", ForjaLang::T("Auto"), ForjaLang::T(names[step]));
-	}
 	else
 		std::snprintf(value, sizeof(value), "%s", ForjaLang::T(names[ForjaCycleSkipStep()]));
 	std::snprintf(label, sizeof(label), ForjaLang::TF("Salto de ciclo:  < %s >"), value);
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_CYCLE_SKIP, label,
-		ForjaLang::T("Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo ajusta en cada refresco, justo lo que pide la escena. Se guarda para este juego"));
+		ForjaLang::T("Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Al vuelo lo ajusta solo en cada refresco y recuerda lo de la última partida. Se guarda para este juego"));
 }
 
 // Compilation 100 (Joseph liked God of War II without the limiter, as a setting and not as "fast forward"): the normal speed of a game
@@ -2330,8 +2353,15 @@ static void PublishSafeModeText()
 	static constexpr const char* names[] = {N_("No"), N_("Parcial"), N_("Total")};
 	char label[256];
 	std::snprintf(label, sizeof(label), TF("Modo seguro:  < %s >"), T(names[std::clamp(s_safe_mode, 0, 2)]));
-	PS4GameMenu::SetRowText(PS4GameMenu::ROW_SAFE_MODE, label,
-		T("Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego"));
+	// Compilation 140: the guardian goes one suspect at a time; the row says which it turned off (changing the row clears them).
+	std::string description = T("Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Si una partida termina mal, Forja apaga por su cuenta una mejora sospechosa por vez. Se guarda para este juego");
+	if (!s_profile.guard_off.empty())
+	{
+		char off[256];
+		std::snprintf(off, sizeof(off), TF("Forja ya apagó en este juego: %s"), s_profile.guard_off.c_str());
+		description += std::string(". ") + off;
+	}
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_SAFE_MODE, label, description.c_str());
 }
 
 // Compilation 130: "Disco sin esperas".
@@ -2770,7 +2800,9 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	s_cpu_auto_floor = s_profile.cpu_auto_origin == ForjaGameProfile::Origin::Global ? s_global_cpu_auto : s_profile.cpu_auto;
 	// Compilation 47: "Saltar cuadros". Always on at 2; auto (1) starts off and UpdateGsSkip turns it on when the GS holds the game back.
 	{
-		const int gs_skip = s_profile.gs_skip >= 0 ? s_profile.gs_skip : 0;
+		// Compilation 140: the old Auto (1) is gone: a profile's Auto runs as "Al vuelo" (5), which the director lets act only with the
+		// cycle skip at its top. The old one left out nothing in God of War II, Shadow and Need for Speed (2026-11-17/18).
+		const int gs_skip = s_profile.gs_skip == 1 ? 5 : s_profile.gs_skip >= 0 ? s_profile.gs_skip : 0;
 		// Compilation 76: and for another game, which starts drawing every frame; "no use in this game" (UpdateGsSkip) lasts until
 		// then, or until the row is changed by hand.
 		if (gs_skip != s_gs_skip_mode || new_game)
@@ -2788,9 +2820,10 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		// Compilation 86: 3 is "1 de 2 rápido", the guard with its short pauses (until 85 it had none: flicker in menus).
 		g_forja_gs_skip_guard.store(true, std::memory_order_relaxed);
 		// Compilation 88: 4 is "2 de 3", two frames left out of every three, with the same short pauses.
-		// Compilation 137: only 3 and 4. Al vuelo (5) used the short pauses too: Dragon Ball Z BT4 (2026-11-14, the 1.07) paused 16 times
-		// in 6 minutes, coming back after 0.6-3.6 s each time, and showed 15 frames left out. The normal pauses grow to 36 s.
-		g_forja_gs_skip_quick.store(gs_skip == 3 || gs_skip == 4, std::memory_order_relaxed);
+		// Compilation 140: 3, 4 and Al vuelo (5) again, as until the 136. The 137 gave Al vuelo the normal pauses (to 30 s) for fewer
+		// flickers, and Dragon Ball Z BT4 with the 139 (2026-11-18) spent more than half its time paused (120, 480, 1800, 1800 vsyncs),
+		// left out 23 frames in 2 minutes against 1,548 in 6 with the 1.07, and ran at 67 % against 89 %.
+		g_forja_gs_skip_quick.store(gs_skip >= 3, std::memory_order_relaxed);
 		g_forja_gs_skip_two.store(gs_skip == 4, std::memory_order_relaxed);
 		// Compilation 90: 5 is "Al vuelo", a frame left out only while the GS is behind (GSRendererPS4.cpp).
 		g_forja_gs_skip_lag.store(gs_skip == 5, std::memory_order_relaxed);
@@ -3320,35 +3353,6 @@ static void SetCpuAutoRate(int rate, const char* why, double speed, double busie
 // the game out (GSRendererPS4.cpp, VSync): the game keeps its speed, its music and its moves, with less GS work. Dragon Ball Z
 // Budokai Tenkaichi 4 (2026-10-18): ~2,100 draws a frame in its fights, 25 us each for the PS4's CPU, 31 ms a vsync for the GS,
 // 48 % speed. Compilation 63: Auto goes through GS_SKIP_STEPS.
-// Forja 1.06: Auto's change of step (UpdateGsSkip), with why.
-static void SetGsSkipAutoStep(unsigned step, double elapsed, const char* why, double speed, double gs, double others)
-{
-	const unsigned of_before = s_gs_skip_step > 0 ? GS_SKIP_STEPS[s_gs_skip_step] : 1u;
-	// Compilation 76: from the step 0 on, whether it leaves anything out (UpdateGsSkip's reports).
-	if (s_gs_skip_step == 0 && step > 0)
-	{
-		s_gs_skip_on_since = elapsed;
-		s_gs_skip_reports_on = 0;
-		s_gs_skip_left_any = false;
-	}
-	else if (step == 0)
-		s_gs_skip_on_since = -1.0;
-	s_gs_skip_step = step;
-	g_forja_gs_skip_every.store(step > 0 ? GS_SKIP_STEPS[step] : 2u, std::memory_order_relaxed);
-	g_forja_gs_skip_active.store(step > 0, std::memory_order_relaxed);
-	if (step > 0)
-		ProbeLog("GS skip: auto one frame in %u (%s; speed %.0f %%, GS %.0f %%, EE/VU1 %.0f %%)\n", GS_SKIP_STEPS[step], why, speed, gs,
-			others);
-	else
-		ProbeLog("GS skip: auto off, every frame again (%s; speed %.0f %%, GS %.0f %% drawing all but one in %u)\n", why, speed, gs,
-			of_before);
-	s_gs_skip_last_change = elapsed;
-	s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
-	s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
-	s_gs_skip_samples = 0;
-	PublishGameMenu();
-}
-
 static void UpdateGsSkip(double elapsed)
 {
 	if (s_gs_skip_mode == 0)
@@ -3392,7 +3396,14 @@ static void UpdateGsSkip(double elapsed)
 			s_lag_last = elapsed;
 			const double speed = PerformanceMetrics::GetSpeed();
 			const unsigned before = g_forja_gs_skip_lag_percent.load(std::memory_order_relaxed);
-			const unsigned percent = speed < 97.0 ? std::min(before + 5u, 66u) : speed >= 99.5 ? (before >= 5u ? before - 5u : 0u) : before;
+			// Compilation 140: nothing while the director holds it (it would climb to 66 % meanwhile and leave many frames out at once)
+			// or while frame generation makes frames (frames left out make the game's frames uneven, which it waits out: the old Auto's
+			// rule, from Forja 1.06 and compilation 76).
+			if (g_orbis_fg_engaged)
+				s_fg_engaged_seen = elapsed;
+			const bool held = !g_forja_gs_skip_director.load(std::memory_order_relaxed) ||
+							  (g_orbis_fg_wanted && !g_orbis_fg_gave_up && elapsed - s_fg_engaged_seen < 2.0);
+			const unsigned percent = held ? 0u : speed < 97.0 ? std::min(before + 5u, 66u) : speed >= 99.5 ? (before >= 5u ? before - 5u : 0u) : before;
 			g_forja_gs_skip_lag_percent.store(percent, std::memory_order_relaxed);
 			if (percent != before && elapsed - s_lag_logged >= 5.0)
 			{
@@ -3401,96 +3412,7 @@ static void UpdateGsSkip(double elapsed)
 			}
 		}
 	}
-	if (s_gs_skip_mode != 1 || s_video_active || s_gs_skip_useless || elapsed - s_gs_skip_last_check < 0.5)
-		return;
-	s_gs_skip_last_check = elapsed;
-	if (s_gs_skip_step > 0 && s_gs_skip_reports_on >= 3 && !s_gs_skip_left_any)
-	{
-		s_gs_skip_useless = true;
-		SetGsSkipAutoStep(0, elapsed,
-			"nothing left out in 3 reports on: the game draws its picture somewhere else and copies it to la pantalla; off for this game",
-			PerformanceMetrics::GetSpeed(), PerformanceMetrics::GetGSThreadUsage(), 0.0);
-		return;
-	}
-	// Compilation 63: Auto leaves out as few frames as the game needs to run at full speed, one in 8 up to one in 2
-	// (GS_SKIP_STEPS), a step at a time while the GS holds the game back, and back a step after 4 s at full speed when the
-	// GS would still have room drawing more. With the huella, Dragon Ball's fights ran at 81-88 % with the GS at a steady
-	// ~86 % (the old Auto waited for 90 % and never came on) and at 98-103 % with one in two, but showing 15 pictures a
-	// second instead of 25; one in 6 or so keeps ~25 at full speed (2026-10-20).
-	// Compilation 64: on the averages of 2 s, measured from 1 s after a change. On single samples, a moment at 96 % right after
-	// reaching one in 3 (which ran Dragon Ball at 96-107 %) took it to one in 2 in ~10 s, and 15 pictures a second again.
-	// Forja 1.06: never with frame generation on. Frames left out make the game's frames of uneven lengths, which frame
-	// generation waits out ("the game's frames aren't of one length"), so each undid the other (God of War II, 2026-10-21);
-	// the generated frames are what the player turned on. Unless they went off for this game for costing it speed
-	// (OrbisFrameGenPacing.h, GaveUp): then Auto is free to help (Dragon Ball, 2026-10-21).
-	// Compilation 76: only while frame generation really generates (a frame in the last 2 s), and then Auto holds its step
-	// instead of going back to 0. Turned on but idle it held Auto off all the same: Need for Speed Most Wanted, a 50 fps game
-	// on a 59.94 Hz TV with no room for generated frames ("Sí"), ran its heavy part at 32 % with the GS the limit and Saltar
-	// cuadros waiting for 6.5 minutes (2026-10-23); in the safety net's pauses the game runs without them too. When they
-	// generate again on top of a step, their safety net judges them as before (and gives up where they cost speed).
-	if (g_orbis_fg_engaged)
-		s_fg_engaged_seen = elapsed;
-	if (g_orbis_fg_wanted && !g_orbis_fg_gave_up && elapsed - s_fg_engaged_seen < 2.0)
-	{
-		s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
-		s_gs_skip_samples = 0;
-		s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
-		return;
-	}
-	if (elapsed - s_gs_skip_last_change < 1.0)
-		return;
-	// Forja 1.06: while the guard has Saltar cuadros paused (a screen where frames left out show), every frame is drawn: those
-	// seconds say nothing about the step, and Auto would climb on them.
-	if (g_forja_gs_skip_paused.load(std::memory_order_relaxed))
-	{
-		s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
-		s_gs_skip_samples = 0;
-		s_gs_skip_slow_checks = s_gs_skip_room_checks = 0;
-		return;
-	}
-	s_gs_skip_speed_sum += PerformanceMetrics::GetSpeed();
-	s_gs_skip_gs_sum += PerformanceMetrics::GetGSThreadUsage();
-	s_gs_skip_others_sum += std::max(PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()));
-	if (++s_gs_skip_samples < 4)
-		return;
-	const double speed = s_gs_skip_speed_sum / s_gs_skip_samples;
-	const double gs = s_gs_skip_gs_sum / s_gs_skip_samples;
-	const double others = s_gs_skip_others_sum / s_gs_skip_samples;
-	s_gs_skip_speed_sum = s_gs_skip_gs_sum = s_gs_skip_others_sum = 0.0;
-	s_gs_skip_samples = 0;
-	// The GS is what holds the game back: busy, and clearly busier than the EE and the VU1 (God of War II's VU1 limit is not).
-	// Forja 1.06: stricter. To start, 6 s of it (three averages in a row under 95 % with the GS at 80 % or more and the EE and
-	// the VU1 at 75 % or less): God of War II's Auto had come on at one in 8 after a single average (speed 56 %, GS 86 %, EE/VU1
-	// 69 %) in a game whose VU1 is the limit (97-113 % in its fights), and its effects, drawn into buffers the next frame reads,
-	// showed the frames left out. Further steps as before while the EE and the VU1 stay under 80 %, and one back when they
-	// reach 90 % with the game still slow: leaving out GS work doesn't help it then. Dragon Ball's fights (GS ~86 %, EE/VU1
-	// ~60 %, 2026-10-20) still pass.
-	const bool slow = speed < 95.0;
-	const bool gs_bound = gs >= 70.0 && gs >= others + 10.0 && others < 80.0;
-	s_gs_skip_slow_checks = s_gs_skip_step == 0 && slow && gs >= 80.0 && others <= 75.0 ? s_gs_skip_slow_checks + 1 : 0;
-	const unsigned drawn_now = s_gs_skip_step > 0 ? GS_SKIP_STEPS[s_gs_skip_step] - 1u : 1u;
-	const unsigned of_now = s_gs_skip_step > 0 ? GS_SKIP_STEPS[s_gs_skip_step] : 1u;
-	// The GS's use one step lighter, from the share of frames each step draws.
-	double lighter_gs = gs;
-	if (s_gs_skip_step > 0)
-	{
-		const unsigned every = s_gs_skip_step > 1 ? GS_SKIP_STEPS[s_gs_skip_step - 1] : 0u;
-		const double share_lighter = every ? static_cast<double>(every - 1) / every : 1.0;
-		lighter_gs = gs * share_lighter / (static_cast<double>(drawn_now) / of_now);
-	}
-	// One more frame out after a 2 s average under 95 % with the GS the limit; one fewer after two in a row (4 s) at 99 % with
-	// room for the GS drawing more.
-	s_gs_skip_room_checks = (s_gs_skip_step > 0 && speed >= 99.0 && lighter_gs < 85.0) ? s_gs_skip_room_checks + 1 : 0;
-	const unsigned last_step = static_cast<unsigned>(std::size(GS_SKIP_STEPS)) - 1u;
-	const unsigned step = s_gs_skip_step;
-	if (step == 0 && s_gs_skip_slow_checks >= 3)
-		SetGsSkipAutoStep(1, elapsed, "the GS held the game back for 6 s", speed, gs, others);
-	else if (step > 0 && slow && gs_bound && step < last_step)
-		SetGsSkipAutoStep(step + 1, elapsed, "the GS holds the game back", speed, gs, others);
-	else if (step > 0 && slow && others >= 90.0)
-		SetGsSkipAutoStep(step - 1, elapsed, "the EE or the VU1 holds the game back, not the GS", speed, gs, others);
-	else if (s_gs_skip_room_checks >= 2 && step > 0)
-		SetGsSkipAutoStep(step - 1, elapsed, "room to draw more", speed, gs, others);
+	// Compilation 140: the old Auto (47-76, one in 8 up to one in 2 on 2 s averages) removed; Al vuelo above.
 }
 
 static void UpdateCpuAuto(double elapsed)
@@ -3524,11 +3446,9 @@ static void UpdateCpuAuto(double elapsed)
 	// The audit (2026-11-09) against Shadow's session: in its heaviest view the game makes its frames at a nearly fixed pace (3-4
 	// refreshes), so a lower CPU barely helps there (44 -> 36 % with the cycle skip at 4: 39-57 -> 49-71 % speed); it helps where the frames
 	// follow the CPU (Bully, whose frames barely grow with it: a lower CPU is speed for free). herramientas/simulaciones/simular_tres_juegos.py.
-#if defined(PCSX2_PS4_VM_BOOT_JIT)
-	const bool fast = g_forja_cpu_seamless_active;
-#else
-	const bool fast = false;
-#endif
+	// Compilation 140: the fast mode of the compilation 130 ("CPU al vuelo": a change a second with "CPU sin tirones") removed. "Salto de
+	// ciclo: Al vuelo" does that work without changing the CPU, and every change of the CPU rewrites the translated code (the suspect of
+	// Need for Speed's stops). The CPU automático is the last resort: 6 s between changes, and with Al vuelo only at its top (139).
 	const double speed = PerformanceMetrics::GetSpeed();
 	const double busiest = std::max({PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()),
 		static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
@@ -3544,12 +3464,12 @@ static void UpdateCpuAuto(double elapsed)
 	// Compilation 139: slow counts only with the game drawing in 3D. Shadow of the Colossus (2026-11-17, the 138) went 100 -> 80 % in its
 	// loading screen at 73 % speed with every thread at 9 %: a load is not a reason to take the CPU down, and the game then ran with less.
 	const bool drawing_3d = PerformanceMetrics::GetVUThreadUsage() >= 8.0f && PerformanceMetrics::GetInternalFPS() >= 5.0f;
-	s_cpu_auto_slow_checks = (speed < (s_cpu_auto_up && !fast ? 95.0 : 92.0) && drawing_3d) ? s_cpu_auto_slow_checks + 1 : 0;
+	s_cpu_auto_slow_checks = (speed < (s_cpu_auto_up ? 95.0 : 92.0) && drawing_3d) ? s_cpu_auto_slow_checks + 1 : 0;
 	// Compilation 125 (Downhill Domination, 2026-11-08: 38 changes of the CPU in an hour, between 44 and 100 %, each one a reset of the EE
 	// recompiler and a hitch): a loading screen or a menu has every thread nearly idle (busiest 20-42 %), the room looked enormous, the CPU went
 	// up and the race brought it down again. Room counts only with the game drawing in 3D (the VU1 at work) and not within 60 s of a step down.
 	const bool in_game_3d = PerformanceMetrics::GetVUThreadUsage() >= 8.0f && PerformanceMetrics::GetInternalFPS() >= 5.0f;
-	const bool calm = fast ? elapsed >= s_cpu_fast_no_up_until : elapsed - s_cpu_auto_last_down >= 60.0; // compilation 130
+	const bool calm = elapsed - s_cpu_auto_last_down >= 60.0;
 	const bool room = s_cpu_auto_steps > 0 && speed >= 98.0 && in_game_3d && calm &&
 					  (EmuConfig.Speedhacks.EECycleSkipAuto < 2 || s_skip_auto_at_factory) && // compilation 131: "Salto al vuelo" comes down first
 					  busiest * EERatePercent(rate + 1) / EERatePercent(rate) < 90.0;
@@ -3563,17 +3483,12 @@ static void UpdateCpuAuto(double elapsed)
 	}
 	// Compilation 125: one try at a time (Downhill went 57 -> 80 -> 100 % in 56 s, three tries before the first was judged): the next try waits
 	// until the last one held 120 s, and none in a loading screen or a menu, nor within 60 s of a step down.
-	const bool probe = !fast && s_cpu_auto_up && s_cpu_auto_steps > 0 && s_cpu_auto_good_checks >= 40 && elapsed >= s_cpu_auto_no_probe_until &&
+	const bool probe = s_cpu_auto_up && s_cpu_auto_steps > 0 && s_cpu_auto_good_checks >= 40 && elapsed >= s_cpu_auto_no_probe_until &&
 					   (!skip_auto || s_skip_auto_at_factory) && s_cpu_auto_probe_at < 0.0 && in_game_3d && calm;
-	if (elapsed - s_cpu_auto_last_change < (fast ? 1.0 : 6.0))
+	if (elapsed - s_cpu_auto_last_change < 6.0)
 		return;
-	if (s_cpu_auto_slow_checks >= (fast ? 2u : 6u) && rate > s_cpu_auto_floor && ((fast && EmuConfig.Speedhacks.EECycleSkipAuto < 2) || !s_cpu_auto_up || !skip_auto || !s_skip_auto_can_help))
+	if (s_cpu_auto_slow_checks >= 6u && rate > s_cpu_auto_floor && (!s_cpu_auto_up || !skip_auto || !s_skip_auto_can_help))
 	{
-		if (fast && elapsed - s_cpu_fast_last_up < 3.0) // compilation 130: a step up that did not hold
-		{
-			s_cpu_fast_no_up_until = elapsed + s_cpu_fast_wait;
-			s_cpu_fast_wait = std::min(s_cpu_fast_wait * 2.0, 20.0);
-		}
 		if (s_cpu_auto_up && elapsed - s_cpu_auto_probe_at < 30.0)
 		{
 			s_cpu_auto_no_probe_until = elapsed + s_cpu_auto_probe_wait;
@@ -3595,21 +3510,14 @@ static void UpdateCpuAuto(double elapsed)
 		while (next > s_cpu_auto_floor && rate - next < (EmuConfig.Speedhacks.EECycleSkipAuto >= 2 ? 1 : 4) && EERatePercent(next) > wanted)
 			next--;
 		s_cpu_auto_steps += rate - next;
-		SetCpuAutoRate(next, fast ? (rate - next > 1 ? "slow, several steps at once (al vuelo)" : "slow (al vuelo)") :
-		                            rate - next > 1 ? "slow, several steps at once" : "slow", speed, busiest);
+		SetCpuAutoRate(next, rate - next > 1 ? "slow, several steps at once" : "slow", speed, busiest);
 	}
-	else if (s_cpu_auto_room_checks >= (fast ? 2u : 16u) || probe)
+	else if (s_cpu_auto_room_checks >= 16u || probe)
 	{
 		s_cpu_auto_steps--;
 		if (probe && s_cpu_auto_room_checks < 16)
 			s_cpu_auto_probe_at = elapsed;
-		if (fast)
-		{
-			if (elapsed - s_cpu_fast_no_up_until > 30.0)
-				s_cpu_fast_wait = 5.0;
-			s_cpu_fast_last_up = elapsed;
-		}
-		SetCpuAutoRate(rate + 1, fast ? "room (al vuelo)" : s_cpu_auto_room_checks >= 16 ? "room" : "a try up (20 s at full speed)", speed,
+		SetCpuAutoRate(rate + 1, s_cpu_auto_room_checks >= 16 ? "room" : "a try up (20 s at full speed)", speed,
 			busiest);
 	}
 	else
@@ -3657,7 +3565,10 @@ static bool s_skip_instant_on = false;
 static int s_skip16_floor = 0;
 // Compilation 139 (the 138 on the console, 2026-11-17: ~20 ups and 35-49 downs a minute, 8-11 of them back, where the simulation said
 // 17-32 changes): down only under a mean use of 0.85 (was 0.88) and after 2 s without a vsync lost (was 1 s).
-static constexpr double SI_UP_TARGET = 0.95, SI_DOWN_BELOW = 0.85, SI_DOWN_TARGET = 0.94, SI_DEBT_HIGH = 0.6, SI_E = 0.35;
+// Compilation 140 (herramientas/simulaciones/simular_con_traza.py, the console's own traces of the 139: Guitar Hero III and Need for
+// Speed replayed to the console's own skip and changes): down under 0.82 after 3 s without a vsync lost. Guitar Hero 41 -> 31 changes a
+// minute, Need for Speed 44 -> 39, the same speed and fewer vsyncs lost, -0.1 to -0.3 % frames.
+static constexpr double SI_UP_TARGET = 0.95, SI_DOWN_BELOW = 0.82, SI_DOWN_TARGET = 0.94, SI_DEBT_HIGH = 0.6, SI_E = 0.35;
 static constexpr int SI_MAX_UP = 8, SI_MAX_DOWN = 4;
 static struct
 {
@@ -3665,7 +3576,7 @@ static struct
 	double us[25] = {};
 	unsigned count = 0, next = 0, wait = 0, highs = 0;
 	double debt = 0.0;
-	u64 n = 0, lost_at[8] = {}; // vsyncs (n) when vsyncs were lost to the added-up delay, the last 8
+	u64 n = 0, lost_at[16] = {}; // vsyncs (n) when vsyncs were lost to the added-up delay, the last 16 (140: 3 s of them)
 	unsigned lost_next = 0;
 	int down_from = -1;
 	u64 last_down = 0, no_down_until = 0, down_wait = 50; // compilation 139: 0.5 -> 1 s after a step down that did not hold
@@ -3889,7 +3800,7 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 		if (!alone)
 		{
 			s_si.lost_at[s_si.lost_next] = s_si.n;
-			s_si.lost_next = (s_si.lost_next + 1) % 8;
+			s_si.lost_next = (s_si.lost_next + 1) % 16;
 			s_si.lost += static_cast<unsigned>(whole);
 		}
 		else
@@ -3943,7 +3854,7 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 		s_si.ups++;
 		return;
 	}
-	if (ForjaSkipInstantLostWithin(100) == 0 && s_si.debt < 0.3 && mean < SI_DOWN_BELOW && s_si.value > s_skip16_floor && // 139: 2 s
+	if (ForjaSkipInstantLostWithin(150) == 0 && s_si.debt < 0.3 && mean < SI_DOWN_BELOW && s_si.value > s_skip16_floor && // 140: 3 s
 		s_si.n >= s_si.no_down_until)
 	{
 		const int allowed = static_cast<int>(std::floor(quarters_for(SI_DOWN_TARGET) * 4.0));
@@ -4007,6 +3918,11 @@ static void UpdateCycleSkipFast(double elapsed)
 	else
 		s_top_since = -1.0;
 	s_skip_auto_can_help = s_si.value < 48 || elapsed - s_top_since < 3.0;
+	// Compilation 140: the director. Each knob that takes frames away to get the speed back has its turn: the extras give way first (the
+	// crowd, generated frames: they read the same load), then this skip (no hitch, no flicker), and only after 3 s at its top Saltar
+	// cuadros (the GS) and the CPU automático (the EE). Dragon Ball's fights keep the skip at its top: Saltar cuadros works there as before.
+	const bool at_top = s_si.value >= 48 && s_top_since >= 0.0 && elapsed - s_top_since >= 3.0;
+	g_forja_gs_skip_director.store(at_top, std::memory_order_relaxed);
 	if (quarters != s_published)
 	{
 		s_published = quarters;
@@ -4018,6 +3934,12 @@ static void UpdateCycleSkipFast(double elapsed)
 			ProbeLog("Cycle skip al vuelo: 5 s: now %d/16 (from %d to %d), up %u, down %u, back %u; EE late in %u of %u vsyncs, mean use %.2f; "
 					 "vsyncs lost to the delay %u, to lone hitches %u times\n", s_si.value, s_si.low_seen, s_si.high_seen, s_si.ups, s_si.downs,
 				s_si.backs, s_si.late, s_si.vsyncs, s_si.u_sum / s_si.vsyncs, s_si.lost, s_si.hitches);
+		// Compilation 140: who had which knob in these 5 s.
+		ProbeLog("Director (140): speed %.0f %%; cycle skip %d/16 (%s); CPU %d %% (automático %d steps down); Saltar cuadros %s (mode %d, "
+				 "at most %u %%); crowd 1 in %u; frame generation %s\n",
+			PerformanceMetrics::GetSpeed(), s_si.value, at_top ? "at its top 3 s" : "working", EERatePercent(EmuConfig.Speedhacks.EECycleRate),
+			s_cpu_auto_steps, at_top ? "allowed" : "held", s_gs_skip_mode, g_forja_gs_skip_lag_percent.load(std::memory_order_relaxed),
+			g_forja_crowd_every.load(std::memory_order_relaxed), !g_orbis_fg_wanted ? "off" : g_orbis_fg_engaged ? "making frames" : "on, idle");
 		s_last_line = elapsed;
 		s_si.ups = s_si.downs = s_si.backs = s_si.vsyncs = s_si.late = s_si.lost = s_si.hitches = 0;
 		s_si.u_sum = 0.0;
@@ -4031,7 +3953,9 @@ static void UpdateCycleSkipFast(double elapsed)
 // straight into the file (no settings reload), only when it moved 2 sixteenths or more.
 static void ForjaSkipRemember()
 {
-	if (!s_skip_fast_running)
+	// Compilation 140: not in Modo seguro or with the guardian's list: Need for Speed learnt 48 (the top) in a Parcial session where the
+	// skip could not help, and its next session started there.
+	if (!s_skip_fast_running || s_safe_mode != 0 || !s_profile.guard_off.empty())
 		return;
 	u64 total = 0;
 	int best = 0;
@@ -4242,367 +4166,25 @@ static void UpdateFramePush(double elapsed)
 // kept steps that cost FPS (GTA at 88 %: 0 -> 1, 24 % fewer FPS, and a game at 88 % never steps down); after a bad window, a step down is judged on the mean
 // of the two; and a step up that gains too little without costing FPS, with the game under 90 %, goes one step more instead of back (Guitar Hero III at 2x:
 // 2 at 85 %, 3 at 85 %, 4 at 87 %, 8 at 98 %).
+// Compilation 140: the old "Salto de ciclo Auto" (102-122: every half second, on 2 s averages and windows of "normal" speed) removed.
+// "Al vuelo" does its work at every vsync and better (God of War II with the 139, 2026-11-18: 36.7 FPS at 99.7 % against the 136's 30.4),
+// so a profile's Auto (EECycleSkipAuto 1) runs as Al vuelo (2), and the row has Al vuelo only. "Salto Auto afinado" (122), its tuning,
+// has nothing left to tune. In the lab: contexto/MEJORAS_CATALOGO.md.
 static void UpdateCycleSkipAuto(double elapsed)
 {
-	struct Window
+	if (EmuConfig.Speedhacks.EECycleSkipAuto)
 	{
-		double speed = 0.0, busiest = 0.0, frames = 0.0, fps = 0.0, slowest = 1000.0, fastest = 0.0;
-		unsigned checks = 0;
-		void Add(double s, double b, double f, double g) { speed += s; busiest += b; frames += f; fps += g; slowest = std::min(slowest, s); fastest = std::max(fastest, s); checks++; }
-	};
-	static constexpr int top_step = 5; // the row's "2"; each step up has to prove itself
-	static double s_last_check = 0.0, s_settle_until = 0.0, s_last_down = -1000.0, s_no_down_until = 0.0, s_no_up_until = 0.0;
-	static double s_tried_speed = -1.0, s_tried_frames = 0.0, s_tried_fps = 0.0, s_no_up_frames = 0.0, s_no_up_since = 0.0;
-	static int s_tried_from = 0, s_value = 0, s_failed_tries = 0;
-	static double s_down_wait = 120.0, s_seen_frames = 0.0;
-	static bool s_running = false, s_after_break = false;
-	static u32 s_crc = 0;
-	static Window s_up, s_down;
-	// Compilation 111: the last windows at the current value (its normal speed, FPS and share of frames), how many slow windows in a row, and
-	// the normal FPS and speed a step being tried is judged against.
-	struct Normal
-	{
-		double speed, fps, frames;
-	};
-	static constexpr int normal_windows = 7; // ~20 s
-	static Normal s_normal[normal_windows];
-	static int s_normal_count = 0, s_normal_next = 0, s_slow_windows = 0, s_good_windows = 0;
-	static double s_base_fps = 0.0, s_base_speed = 0.0;
-	const auto forget_normal = [] { s_normal_count = s_normal_next = s_slow_windows = s_good_windows = 0; };
-	// Compilation 112: a step down waiting for its judgment (the value it came from, -1 for none) and the normal it is judged by; whether the
-	// step being judged already had one window (a step up, any since the 115; a step down, a bad one), and that window's speed and FPS (115).
-	static int s_down_from = -1;
-	static double s_down_base_fps = 0.0, s_down_base_speed = 0.0;
-	static bool s_one_bad = false;
-	static double s_first_speed = 0.0, s_first_fps = 0.0;
-	// The value's normal in this scene: the median speed and FPS of its last windows whose share of frames is within 0.25 of `frames` (the
-	// margin of "another scene"; 0.15 in the 111). False with fewer than 3.
-	const auto normal_of = [](double frames, double* speed, double* fps) {
-		double fps_list[normal_windows], speed_list[normal_windows];
-		int similar = 0;
-		for (int i = 0; i < s_normal_count; i++)
-		{
-			if (std::abs(s_normal[i].frames - frames) < 0.25)
-			{
-				fps_list[similar] = s_normal[i].fps;
-				speed_list[similar++] = s_normal[i].speed;
-			}
-		}
-		if (similar < 3)
-			return false;
-		std::nth_element(fps_list, fps_list + similar / 2, fps_list + similar);
-		std::nth_element(speed_list, speed_list + similar / 2, speed_list + similar);
-		*fps = fps_list[similar / 2];
-		*speed = speed_list[similar / 2];
-		return true;
-	};
-	if (EmuConfig.Speedhacks.EECycleSkipAuto >= 2) // compilation 131: "Al vuelo", with its own rules; the Auto starts over when it comes back
-	{
-		s_running = false;
-		s_up = {};
-		s_down = {};
+		EmuConfig.Speedhacks.EECycleSkipAuto = 2;
 		UpdateCycleSkipFast(elapsed);
 		return;
 	}
 	s_skip_fast_running = false;
-	if (s_skip_instant_on) // compilation 135: "Al vuelo" left; the row's quarters rule again
+	g_forja_gs_skip_director.store(true, std::memory_order_relaxed); // no Al vuelo: Saltar cuadros is the player's choice alone
+	if (s_skip_instant_on) // "Al vuelo" left; the row's quarters rule again
 	{
 		s_skip_instant_on = false;
 		g_forja_skip16.store(-1, std::memory_order_relaxed);
 	}
-	if (!EmuConfig.Speedhacks.EECycleSkipAuto || s_video_active)
-	{
-		s_up = {};
-		s_down = {};
-		s_running = s_running && EmuConfig.Speedhacks.EECycleSkipAuto;
-		if (s_video_active)
-		{
-			s_no_up_until = s_no_down_until = 0.0;
-			s_down_wait = 120.0;
-			s_after_break = true;
-			forget_normal();
-		}
-		return;
-	}
-	const u32 crc = VMManager::GetDiscCRC();
-	// The game's factory value as a step of the row the Auto reaches (Guitar Hero III: 2 quarters; no factory profile: 0).
-	int factory_q = 0;
-	for (int i = 0; i <= top_step; i++)
-		if (s_profile.crc == crc && ForjaCycleSkipSteps[i] <= s_profile.cycle_skip_factory)
-			factory_q = ForjaCycleSkipSteps[i];
-	if (!s_running || crc != s_crc)
-	{
-		s_running = true;
-		s_crc = crc;
-		s_value = factory_q;
-		s_after_break = false;
-		// Compilation 110: the start was silent, and auditar_automaticos.py read Guitar Hero III's 2 as 0.
-		ProbeLog("Cycle skip auto: starts at %d quarters, the game's factory value\n", factory_q);
-		s_no_up_until = s_no_down_until = 0.0;
-		s_failed_tries = 0;
-		s_down_wait = 120.0;
-		s_seen_frames = 0.0;
-		s_tried_speed = -1.0;
-		s_down_from = -1;
-		s_one_bad = false;
-		s_up = {};
-		s_down = {};
-		forget_normal();
-	}
-	// The profile read again for the game that is really running (UpdateGameProfile) can bring a higher factory value.
-	s_value = std::max(s_value, factory_q);
-	// A reload of the game's settings brought the profile's value back, or the game has just started.
-	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(s_value / 4);
-	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(s_value % 4);
-	if (elapsed - s_last_check < 0.5)
-		return;
-	// The menu paused the game: the first numbers after it count that pause (God of War II, EE 590 ms in a window of 5 s).
-	if (elapsed - s_last_check > 1.0)
-	{
-		s_settle_until = elapsed + 2.0;
-		s_up = {};
-		s_down = {};
-		// Compilation 115: and its settings may have changed (Guitar Hero III went from 1x to 2x, and the step after it was judged against the 1x
-		// normal): the step being judged goes back, and the normal and the blocks are forgotten.
-		const int back = s_tried_speed >= 0.0 ? s_tried_from : s_down_from >= 0 ? s_down_from : s_value;
-		s_tried_speed = -1.0;
-		s_down_from = -1;
-		s_one_bad = false;
-		s_no_up_until = s_no_down_until = 0.0;
-		s_failed_tries = 0;
-		forget_normal();
-		if (back != s_value)
-		{
-			ProbeLog("Cycle skip auto: %d -> %d quarters (after a pause or the menu, the step being judged goes back)\n", s_value, back);
-			s_value = back;
-			EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(back / 4);
-			EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(back % 4);
-			PublishCycleSkipText();
-		}
-	}
-	s_last_check = elapsed;
-	if (elapsed < s_settle_until)
-		return;
-	const int quarters = s_value;
-	int next = quarters;
-	const double busiest_now = std::max({PerformanceMetrics::GetCPUThreadUsage(), static_cast<double>(PerformanceMetrics::GetVUThreadUsage()),
-		static_cast<double>(PerformanceMetrics::GetGSThreadUsage())});
-	const double refresh = PerformanceMetrics::GetFPS();
-	const double frames_now = (refresh > 1.0 && PerformanceMetrics::GetInternalFPS() > 0.0f) ? PerformanceMetrics::GetInternalFPS() / refresh : 0.0;
-	const double fps_now = PerformanceMetrics::GetInternalFPS();
-	s_up.Add(PerformanceMetrics::GetSpeed(), busiest_now, frames_now, fps_now);
-	s_down.Add(PerformanceMetrics::GetSpeed(), busiest_now, frames_now, fps_now);
-	int step = 0;
-	while (step < top_step && ForjaCycleSkipSteps[step] < quarters)
-		step++;
-	// Compilation 122: what UpdateCpuAuto reads with "CPU automático vuelve a subir": the skip can still help (a step up left, and not blocked
-	// or a step being judged), and whether it is at the game's factory value.
-	s_skip_auto_at_factory = quarters <= factory_q;
-	s_skip_auto_can_help = step < top_step && (elapsed >= s_no_up_until || s_tried_speed >= 0.0 || s_down_from >= 0);
-	// Compilation 120: a window that touched 20 % is the game stopping (a pause coming in, the PS4's own menu), not a slowdown a skip
-	// can fix: Bully (2026-11-04) went 1 -> 2 -> 8 quarters at 3-4 % while its pause came in, and a step down was "judged" at 18 %.
-	// Nothing is judged and nothing tried; the next windows start again after the settling time.
-	if (s_up.checks >= 6 && s_up.slowest < 20.0)
-	{
-		s_up = {};
-		s_down = {};
-		s_settle_until = elapsed + 2.0;
-		return;
-	}
-	if (s_up.checks >= 6)
-	{
-		const double speed = s_up.speed / s_up.checks;
-		const double frames = s_up.frames / s_up.checks;
-		const double fps = s_up.fps / s_up.checks;
-		// A load: this game showed frames before, and now none. What comes next is another scene.
-		if (frames > 0.05)
-			s_seen_frames = frames;
-		else if (s_seen_frames > 0.05)
-		{
-			s_no_up_until = s_no_down_until = 0.0;
-			s_down_wait = 120.0;
-			s_after_break = true;
-			forget_normal();
-		}
-		// Compilation 109: the scene after a video or a load is another one; a try from before is judged against neither.
-		if (s_after_break && frames > 0.05)
-		{
-			s_after_break = false;
-			s_tried_speed = -1.0;
-			s_down_from = -1;
-			s_one_bad = false;
-			if (quarters > factory_q)
-			{
-				next = factory_q;
-				ProbeLog("Cycle skip auto: a new scene after a video or a load, back to the game's factory value\n");
-			}
-		}
-		// Compilation 112: a step down is judged too, against the value's normal from before. Back up if it cost 3 points of speed without 5 % more
-		// FPS, or 15 % of the FPS: going from 8 to 4 in Dragon Ball (the 108) cost 5 points and gave 21 % more FPS, and that one stays.
-		if (s_down_from >= 0)
-		{
-			// Compilation 113: and under 95 % it comes back even with more FPS (Guitar Hero at 2x, the music at 86-92 %).
-			const auto down_bad = [](double s, double f) {
-				// Compilation 122 ("Salto Auto afinado"): 15 % more FPS with the game at 93 % or more stays (the 115's first open point: a step
-				// down that gained FPS was judged by the speed alone; 93, not 90, for Guitar Hero III at 2x, whose music went to 86-92 %).
-				if (s_skip_auto_fine && s >= 93.0 && f >= s_down_base_fps * 1.15)
-					return false;
-				return (s < s_down_base_speed - 3.0 && f < s_down_base_fps * 1.05) || (s_down_base_speed >= 90.0 && f < s_down_base_fps * 0.85) ||
-					   (s < 95.0 && s_down_base_speed >= 95.0);
-			};
-			if (down_bad(speed, fps) && !s_one_bad)
-			{
-				s_one_bad = true;
-				s_first_speed = speed;
-				s_first_fps = fps;
-			}
-			else
-			{
-				// Compilation 115: after a bad window, the second one judges the mean of the two (the 112-114 judged the second alone).
-				const double judged_speed = s_one_bad ? (s_first_speed + speed) / 2.0 : speed;
-				const double judged_fps = s_one_bad ? (s_first_fps + fps) / 2.0 : fps;
-				const bool bad = down_bad(judged_speed, judged_fps);
-				if (bad)
-				{
-					next = s_down_from;
-					s_no_down_until = elapsed + (s_skip_auto_fine ? std::min(s_down_wait, 60.0) : s_down_wait);
-					s_down_wait = std::min(s_down_wait * 2.0, s_skip_auto_fine ? 60.0 : 240.0);
-				}
-				else if (s_skip_auto_fine)
-					s_down_wait = 60.0;
-				ProbeLog("Cycle skip auto: the step down %s: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f\n", bad ? "cost, back up" : "holds", s_down_base_speed,
-					judged_speed, s_down_base_fps, judged_fps);
-				s_down_from = -1;
-				s_one_bad = false;
-			}
-		}
-		// Compilation 112: a step is undone after two bad windows in a row; one good window kept it. Compilation 115: a step up is always judged on
-		// the mean of two windows (~6 s): the first is kept and the second judges.
-		if (s_tried_speed >= 0.0 && !s_one_bad)
-		{
-			s_one_bad = true;
-			s_first_speed = speed;
-			s_first_fps = fps;
-		}
-		else if (s_tried_speed >= 0.0)
-		{
-			s_one_bad = false;
-			const double judged_speed = (s_first_speed + speed) / 2.0, judged_fps = (s_first_fps + fps) / 2.0;
-			const bool tried_bad = (judged_speed < s_tried_speed + 3.0 && judged_speed < 98.0) || judged_fps < s_base_fps * 0.7 ||
-								   (s_base_speed >= 90.0 && judged_fps < s_base_fps * 0.85);
-			// Compilation 115: too little speed but no FPS lost, and the game still under 90 %: one step more, judged against the same normal.
-			if (tried_bad && step < top_step && judged_speed < 90.0 && judged_fps >= s_base_fps * 0.95)
-			{
-				next = ForjaCycleSkipSteps[step + 1];
-				ProbeLog("Cycle skip auto: not enough yet, one step more: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f (normal before: %.1f FPS at %.0f %%)\n",
-					s_tried_speed, judged_speed, s_tried_fps, judged_fps, s_base_fps, s_base_speed);
-			}
-			else
-			{
-				if (tried_bad)
-				{
-					next = s_tried_from;
-					// Compilation 115: 60 s, doubled with each failed step in a row up to 300 (always 300 since the 105).
-					s_no_up_until = elapsed + std::min(60.0 * (1 << std::min(s_failed_tries, 3)), 300.0);
-					s_no_up_frames = s_tried_frames;
-					s_no_up_since = elapsed;
-					s_failed_tries++;
-					ProbeLog("Cycle skip auto: no use in this scene: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f (normal before: %.1f FPS at %.0f %%)\n", s_tried_speed,
-						judged_speed, s_tried_fps, judged_fps, s_base_fps, s_base_speed);
-				}
-				else
-				{
-					s_failed_tries = 0;
-					// Compilation 113: 20 s (60 until the 112); 114: 120 s after a step that gained 25 points or more.
-					s_no_down_until = std::max(s_no_down_until, elapsed + (judged_speed - s_tried_speed >= 25.0 ? 120.0 : 20.0));
-					// Compilation 110: only the steps given back were logged; in God of War II (the 109) a step from 2 to 3 couldn't be told from its scene.
-					ProbeLog("Cycle skip auto: holds: speed %.0f -> %.0f %%, game FPS %.1f -> %.1f (normal before: %.1f FPS at %.0f %%)\n", s_tried_speed, judged_speed,
-						s_tried_fps, judged_fps, s_base_fps, s_base_speed);
-				}
-				s_tried_speed = -1.0;
-			}
-		}
-		if (next == quarters && elapsed < s_no_up_until && elapsed - s_no_up_since >= 10.0 * (1 << std::clamp(s_failed_tries - 1, 0, 4)) && frames > 0.05 && std::abs(frames - s_no_up_frames) >= 0.25)
-		{
-			s_no_up_until = 0.0;
-			ProbeLog("Cycle skip auto: another scene (frames %.0f -> %.0f %% of the refreshes), it can try again\n", s_no_up_frames * 100.0, frames * 100.0);
-		}
-		// Compilation 112: a dip of 70-85 % takes two windows (God of War II dipped 3 s to 77 % and went from 0 to 2), under 70 % at once.
-		else if (next == quarters && s_tried_speed < 0.0 && s_down_from < 0 && speed < 96.0 &&
-				 (speed < 70.0 || (speed < 85.0 && s_slow_windows >= 1) || s_slow_windows >= 2) && (s_up.busiest / s_up.checks >= 85.0 || speed < 90.0) && step < top_step &&
-				 elapsed >= s_no_up_until && s_up.fastest - s_up.slowest < 30.0)
-		{
-			next = ForjaCycleSkipSteps[std::min(step + (speed < 50.0 ? 3 : speed < 85.0 ? 2 : 1), top_step)];
-			s_tried_speed = speed;
-			s_tried_frames = frames;
-			s_tried_fps = fps;
-			s_tried_from = quarters;
-			// Compilation 111: the value's normal FPS and speed in this scene (without the scene's filter, the menu of Most Wanted was judged against
-			// the race's FPS). With fewer than 3 windows, this window's, as the 110. Compilation 115: and under 70 %, a strong dip, the dip's (Shadow of
-			// the Colossus: 2 -> 4 in a dip to 49 % was judged against the normal 11.5 FPS, not the dip's 5.9).
-			if (speed < 70.0 || !normal_of(frames, &s_base_speed, &s_base_fps))
-			{
-				s_base_fps = fps;
-				s_base_speed = speed;
-			}
-			// Compilation 122 ("Salto Auto afinado"): a normal more than 15 points of speed away is another scene's. Shadow of the Colossus
-			// (2026-11-07): 4 -> 8 quarters in a cave at 71 %, judged against the open air's 18.7 FPS at 96 %, "no use", back to 4 and 60 s
-			// without steps up (its share of frames, 0.2 against 0.33, was within the 0.25 of "the same scene").
-			else if (s_skip_auto_fine && std::abs(s_base_speed - speed) > 15.0)
-			{
-				s_base_fps = fps;
-				s_base_speed = speed;
-			}
-			// Compilation 122 ("Salto Auto afinado"): these waits are 60 s and don't grow. They came back to 120 only after a video or a load,
-			// and in an open world with no loads (Shadow of the Colossus, 2026-11-07) they stayed at 240: the skip kept a cave's 8 quarters
-			// in the open air for minutes. In simular_automaticos_escenas.py this is what gives the most (Shadow 12.2 -> 13.5 FPS).
-			if (s_skip_auto_fine)
-				s_down_wait = std::min(s_down_wait, 60.0);
-			if (elapsed - s_last_down < 30.0)
-				{
-					s_no_down_until = elapsed + s_down_wait;
-					s_down_wait = std::min(s_down_wait * 2.0, s_skip_auto_fine ? 60.0 : 240.0);
-				}
-		}
-		// A window with no step being tried is part of the value's normal; a slow one counts towards the three in a row.
-		if (next == quarters && s_tried_speed < 0.0)
-		{
-			s_normal[s_normal_next] = {speed, fps, frames};
-			s_normal_next = (s_normal_next + 1) % normal_windows;
-			s_normal_count = std::min(s_normal_count + 1, normal_windows);
-		}
-		s_slow_windows = speed < 96.0 ? s_slow_windows + 1 : 0;
-		s_good_windows = speed >= 97.0 ? s_good_windows + 1 : 0;
-		s_up = {};
-	}
-	if (next == quarters && s_tried_speed < 0.0 && s_down_from < 0 && s_down.checks >= 10)
-	{
-		if (quarters > factory_q && elapsed >= s_no_down_until && s_down.frames / s_down.checks < 0.92 &&
-			((s_down.speed / s_down.checks >= 98.5 && s_down.busiest / s_down.checks < 91.0) || s_good_windows >= 5))
-		{
-			next = ForjaCycleSkipSteps[step - 1];
-			s_last_down = elapsed;
-			// Compilation 112: what the step down is judged against, taken before the value's windows are forgotten.
-			s_down_from = quarters;
-			s_one_bad = false;
-			if (!normal_of(s_down.frames / s_down.checks, &s_down_base_speed, &s_down_base_fps))
-			{
-				s_down_base_speed = s_down.speed / s_down.checks;
-				s_down_base_fps = s_down.fps / s_down.checks;
-			}
-		}
-		s_down = {};
-	}
-	if (next == quarters)
-		return;
-	s_value = next;
-	forget_normal(); // the windows were of the value before
-	EmuConfig.Speedhacks.EECycleSkip = static_cast<u8>(next / 4);
-	EmuConfig.Speedhacks.EECycleSkipQuarters = static_cast<u8>(next % 4);
-	ProbeLog("Cycle skip auto: %d -> %d quarters (speed %.0f %%, game FPS %.1f)\n", quarters, next, PerformanceMetrics::GetSpeed(), PerformanceMetrics::GetInternalFPS());
-	PublishCycleSkipText();
-	s_up = {};
-	s_down = {};
 }
 
 // Forja SX2: the profile was read before boot from the library's scan of the image. If PCSX2 ends up with another serial or
@@ -4830,17 +4412,19 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		{
 			const int next = (s_safe_mode + delta + 3) % 3;
 			// Total also changes two PCSX2 keys (VMManager.cpp), so the game's layer is read again going into it or out of it.
-			SavePlayerProfile("Safe mode", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "ModoSeguro", next); },
-				next == 2 || s_safe_mode == 2);
+			SavePlayerProfile("Safe mode", [next](INISettingsInterface& ini) {
+				ini.SetIntValue("Forja", "ModoSeguro", next);
+				ini.DeleteValue("Forja", "GuardianApagadas"); // compilation 140: the player decides again
+			}, next == 2 || s_safe_mode == 2);
 			break;
 		}
 		case PS4GameMenu::ROW_CYCLE_SKIP: // compilation 100
 		{
 			// Compilation 103: no reload: only MTVU.cpp reads these, at every program. Reloading the game's settings reset the recompilers
 			// for nothing: 5-15 s at ~10 % speed with each press (God of War II, 2026-10-31).
-			constexpr int steps = static_cast<int>(std::size(ForjaCycleSkipSteps)) + 2; // compilation 131: and "Al vuelo" after Auto
+			constexpr int steps = static_cast<int>(std::size(ForjaCycleSkipSteps)) + 1; // compilation 140: and "Al vuelo" (no Auto)
 			const int step = (static_cast<int>(ForjaCycleSkipStep()) + delta + steps) % steps;
-			const int automatic = step < static_cast<int>(ForjaCycleSkipAutoStep) ? 0 : step - static_cast<int>(ForjaCycleSkipAutoStep) + 1;
+			const int automatic = step < static_cast<int>(ForjaCycleSkipAutoStep) ? 0 : 2;
 			// Compilation 105: Auto starts at no skip, what's best where the game can do without it. Compilation 109: UpdateCycleSkipAuto starts
 			// it at the game's factory value instead (Guitar Hero III: 2).
 			const int next = automatic ? 0 : ForjaCycleSkipSteps[step];
@@ -5031,7 +4615,9 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 		{
 			// No, auto, one frame in two ([Forja] SaltarCuadros 0, 1, 2; compilation 47), and without the guard (3, compilation 82).
 			// ApplyGameProfile takes it from the file.
-			const int next = (s_gs_skip_mode + delta + 6) % 6; // compilation 88: "2 de 3" too; 90: "Al vuelo"
+			int next = (s_gs_skip_mode + delta + 6) % 6; // compilation 88: "2 de 3" too; 90: "Al vuelo"
+			if (next == 1) // compilation 140: no old Auto any more
+				next = delta > 0 ? 2 : 0;
 			SavePlayerProfile("GS skip", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "SaltarCuadros", next); }, false);
 			break;
 		}

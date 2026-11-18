@@ -925,8 +925,8 @@ tr: Non agisce: la CPU della PS2 di questo gioco (%d %%) è già uguale o più b
 es: Salto de ciclo:  < %s >
 tr: Salto di ciclo:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo ajusta en cada refresco, justo lo que pide la escena. Se guarda para este juego
-tr: Alleggerisce la console: la velocità si avvicina al 100 %, ma il gioco può ripetere fotogrammi. Auto lo regola da solo; Al volo (prova) lo regola a ogni aggiornamento, quanto basta alla scena. Salvato per questo gioco
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Al vuelo lo ajusta solo en cada refresco y recuerda lo de la última partida. Se guarda para este juego
+tr: Alleggerisce la console: la velocità si avvicina al 100 %, ma il gioco può ripetere fotogrammi. Al volo lo regola da solo a ogni aggiornamento e ricorda l'ultima partita. Salvato per questo gioco
 
 es: Límite de velocidad:  < %s >
 tr: Limite di velocità:  < %s >
@@ -1066,8 +1066,11 @@ tr: Totale
 es: Modo seguro:  < %s >
 tr: Modo sicuro:  < %s >
 
-es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego
-tr: Se questo gioco si chiude, si blocca o si vede male, prova Parziale e poi Totale: spengono miglioramenti interni di velocità, e il gioco può andare più lento. Forja mette Parziale da solo se la partita precedente è finita male. Salvato per questo gioco
+es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Si una partida termina mal, Forja apaga por su cuenta una mejora sospechosa por vez. Se guarda para este juego
+tr: Se questo gioco si chiude, si blocca o si vede male, prova Parziale e poi Totale: spengono miglioramenti interni di velocità, e il gioco può andare più lento. Se una partita finisce male, Forja spegne da solo un miglioramento sospetto alla volta. Salvato per questo gioco
+
+es: Forja ya apagó en este juego: %s
+tr: Forja ha già spento in questo gioco: %s
 
 es: Disco sin esperas:  < %s >
 tr: Disco senza attese:  < %s >

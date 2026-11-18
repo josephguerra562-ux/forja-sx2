@@ -43,6 +43,9 @@ static void DumpGSPrivRegs(const GSPrivRegSet& r, const std::string& filename);
 // draws every other frame of the game: GSRendererHW::Draw returns at once while g_forja_gs_skip_drawing is set, and the TV
 // keeps the last frame drawn (the skipped one is never presented). The game, its music and its speed stay whole.
 std::atomic<bool> g_forja_gs_skip_active{false};
+// Compilation 140: the director (ps4/vm/main.cpp): with "Salto de ciclo: Al vuelo" on, Saltar cuadros leaves frames out only after the
+// cycle skip has been at its top for 3 s (the skip first: it neither flickers nor costs a hitch).
+std::atomic<bool> g_forja_gs_skip_director{true};
 std::atomic<unsigned> g_forja_gs_skipped_frames{0};
 bool g_forja_gs_skip_drawing = false; // GS thread only
 static unsigned s_forja_vsyncs_since_frame = 0;
@@ -1103,6 +1106,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 	// all hidden, the next frame is drawn whole, so the TV can never stay on one picture.
 	{
 		const bool forja_want = g_forja_gs_skip_active.load(std::memory_order_relaxed) &&
+			g_forja_gs_skip_director.load(std::memory_order_relaxed) && // compilation 140
 			PerformanceMetrics::GetInternalFPSMethod() == PerformanceMetrics::InternalFPSMethod::GSPrivilegedRegister;
 		const u32 shown = static_cast<u32>(m_regs->PMODE.EN2 ? m_regs->DISP[1].DISPFB.FBP : m_regs->DISP[0].DISPFB.FBP);
 		// Compilation 67: with both circuits on, the TV shows the first one's framebuffer too, merged with the second's (Dragon

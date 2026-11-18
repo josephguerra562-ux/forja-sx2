@@ -925,8 +925,8 @@ tr: لا يعمل: معالج PS2 لهذه اللعبة (%d %%) بالفعل ع�
 es: Salto de ciclo:  < %s >
 tr: تخطي الدورات:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo ajusta en cada refresco, justo lo que pide la escena. Se guarda para este juego
-tr: يخفف العمل عن الجهاز: تقترب السرعة من 100 %، لكن قد تتكرر بعض الإطارات. Auto يضبطه تلقائيا؛ «عند الحاجة» (تجربة) يضبطه مع كل تحديث للشاشة، بقدر ما يحتاجه المشهد فقط. يُحفظ لهذه اللعبة
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Al vuelo lo ajusta solo en cada refresco y recuerda lo de la última partida. Se guarda para este juego
+tr: يخفف العمل عن الجهاز: تقترب السرعة من 100 %، لكن قد تتكرر بعض الإطارات. «عند الحاجة» يضبطه تلقائيا مع كل تحديث للشاشة ويتذكر الجلسة السابقة. يُحفظ لهذه اللعبة
 
 es: Límite de velocidad:  < %s >
 tr: حد السرعة:  < %s >
@@ -1066,8 +1066,11 @@ tr: كامل
 es: Modo seguro:  < %s >
 tr: الوضع الآمن:  < %s >
 
-es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego
-tr: إذا أُغلقت هذه اللعبة أو علقت أو ظهرت بشكل خاطئ، جرّب «جزئي» ثم «كامل»: يوقفان تحسينات السرعة الداخلية، وقد تصبح اللعبة أبطأ. يضع Forja «جزئي» تلقائيا إذا انتهت الجلسة السابقة بشكل سيئ. يُحفظ لهذه اللعبة
+es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Si una partida termina mal, Forja apaga por su cuenta una mejora sospechosa por vez. Se guarda para este juego
+tr: إذا أُغلقت هذه اللعبة أو علقت أو ظهرت بشكل خاطئ، جرّب «جزئي» ثم «كامل»: يوقفان تحسينات السرعة الداخلية، وقد تصبح اللعبة أبطأ. إذا انتهت جلسة بشكل سيئ، يوقف Forja تلقائيا تحسينا مشبوها واحدا في كل مرة. يُحفظ لهذه اللعبة
+
+es: Forja ya apagó en este juego: %s
+tr: سبق أن أوقف Forja في هذه اللعبة: %s
 
 es: Disco sin esperas:  < %s >
 tr: القرص بدون انتظار:  < %s >

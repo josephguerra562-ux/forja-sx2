@@ -925,8 +925,8 @@ tr: Not acting: this game's PS2 CPU (%d %%) is already this low or lower. Pick a
 es: Salto de ciclo:  < %s >
 tr: Cycle skip:  < %s >
 
-es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Auto lo ajusta solo; Al vuelo (prueba) lo ajusta en cada refresco, justo lo que pide la escena. Se guarda para este juego
-tr: Takes work off the console: speed gets closer to 100 %, but the game may repeat frames. Auto adjusts it by itself; On the fly (test) adjusts it at every refresh, just what the scene needs. Saved for this game
+es: Quita trabajo a la consola: la velocidad se acerca al 100 %, pero el juego puede repetir cuadros. Al vuelo lo ajusta solo en cada refresco y recuerda lo de la última partida. Se guarda para este juego
+tr: Takes work off the console: speed gets closer to 100 %, but the game may repeat frames. On the fly adjusts it by itself at every refresh and remembers the last session. Saved for this game
 
 es: Límite de velocidad:  < %s >
 tr: Speed limit:  < %s >
@@ -1066,8 +1066,11 @@ tr: Full
 es: Modo seguro:  < %s >
 tr: Safe mode:  < %s >
 
-es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Forja pone Parcial por su cuenta si la partida anterior terminó mal. Se guarda para este juego
-tr: If this game closes, freezes or looks wrong, try Partial and then Full: they turn off internal speed improvements, and the game may run slower. Forja sets Partial by itself if the last session ended badly. Saved for this game
+es: Si este juego se cierra, se traba o se ve mal, prueba Parcial y después Total: apagan mejoras internas de velocidad, y el juego puede ir más lento. Si una partida termina mal, Forja apaga por su cuenta una mejora sospechosa por vez. Se guarda para este juego
+tr: If this game closes, freezes or looks wrong, try Partial and then Full: they turn off internal speed improvements, and the game may run slower. If a session ends badly, Forja turns off one suspect improvement at a time by itself. Saved for this game
+
+es: Forja ya apagó en este juego: %s
+tr: Forja already turned off in this game: %s
 
 es: Disco sin esperas:  < %s >
 tr: Disc without waits:  < %s >
