@@ -61,6 +61,12 @@ tr: 選択したフォルダーのゲーム
 es: Memorias USB conectadas
 tr: 接続中の USB メモリー
 
+es: Estilo del menú
+tr: メニューのスタイル
+
+es: Color del estilo Nuevo
+tr: 「新しい」スタイルの色
+
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: エミュレーター全体の言語。Xで言語の一覧を開きます
 
@@ -117,6 +123,12 @@ tr: PS4 にコピーせず、そこから直接読み込みます。プレイ中
 
 es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
 tr: 表示されない場合は接続し直してください。4 GB を超えるゲームには exFAT が必要です
+
+es: Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una
+tr: クラシック:いつもの、セクションが左。新しい:セクションが上、1行に5つのカバー、各カバーの下に名前
+
+es: El color de las secciones y de la portada elegida en el estilo Nuevo
+tr: 「新しい」スタイルでのセクションと選んだカバーの色
 
 es: 100 % (PS2 real)
 tr: 100 %（実機PS2）
@@ -175,6 +187,27 @@ tr: 待たない（高速）
 es: Desactivadas
 tr: オフ
 
+es: Clásico
+tr: クラシック
+
+es: Nuevo
+tr: 新しい
+
+es: Azul
+tr: 青
+
+es: Morado
+tr: 紫
+
+es: Rojo
+tr: 赤
+
+es: Verde
+tr: 緑
+
+es: Naranja
+tr: オレンジ
+
 es: Panel táctil (derecha)
 tr: タッチパッド（右）
 
@@ -211,14 +244,92 @@ tr: ゲーム設定(すべてに適用)
 es: Ajustes del emulador
 tr: エミュレーター設定
 
+es: Estilos del menú
+tr: メニューのスタイル
+
 es: No se encontraron juegos
 tr: ゲームが見つかりません
 
 es: Cargando...
 tr: 読み込み中...
 
+es: Biblioteca
+tr: ライブラリ
+
+es: Disco
+tr: ディスク
+
+es: Recientes
+tr: 最近
+
+es: Favoritos
+tr: お気に入り
+
+es: Memoria o USB
+tr: メモリー / USB
+
+es: Ajustes de juegos
+tr: ゲーム設定
+
+es: Estilos
+tr: スタイル
+
+es: Versión %d.%02d (%d)
+tr: バージョン %d.%02d（%d）
+
+es: Versión %d.%02d (local)
+tr: バージョン %d.%02d（ローカル）
+
+es: %u juegos
+tr: %u 本のゲーム
+
+es: Cambiar
+tr: 変更
+
+es: Secciones
+tr: セクション
+
+es: DVD de PS2
+tr: PS2のDVD
+
+es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
+tr: ディスクをPS4にコピー中。ライブラリはそのまま使えます。
+
+es: □ cancela la copia. No saques el disco hasta que termine.
+tr: □でコピーを中止。終わるまでディスクを取り出さないでください。
+
+es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
+tr: ディスクを検出しました。Xでプレイ · □でPS4にコピー。
+
+es: Mete un DVD y pulsa Triángulo para actualizar.
+tr: DVDを入れて△ボタンで更新してください。
+
+es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
+tr: 一度コピーすれば、ディスクを入れるとコピーが開きます：速くてドライブの音もしません。
+
+es: Jugar
+tr: プレイ
+
+es: Revisar disco
+tr: ディスクを確認
+
+es: Salir
+tr: 終了
+
+es: Quitar favorito
+tr: お気に入りから外す
+
+es: Agregar favorito
+tr: お気に入りに追加
+
+es: Actualizar biblioteca
+tr: ライブラリを更新
+
 es: No se pudieron guardar los ajustes.
 tr: 設定を保存できませんでした。
+
+es: Estilo guardado.
+tr: スタイルを保存しました。
 
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: 保存しました。次にゲームを起動したときに反映されます。
@@ -643,74 +754,11 @@ tr: 戻る
 es: EMULADOR DE PLAYSTATION 2
 tr: プレイステーション2 エミュレーター
 
-es: Biblioteca
-tr: ライブラリ
-
-es: Disco
-tr: ディスク
-
-es: Recientes
-tr: 最近
-
-es: Favoritos
-tr: お気に入り
-
-es: Memoria o USB
-tr: メモリー / USB
-
-es: Ajustes de juegos
-tr: ゲーム設定
-
-es: Versión %d.%02d (%d)
-tr: バージョン %d.%02d（%d）
-
-es: Versión %d.%02d (local)
-tr: バージョン %d.%02d（ローカル）
-
-es: DVD de PS2
-tr: PS2のDVD
-
-es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
-tr: ディスクをPS4にコピー中。ライブラリはそのまま使えます。
-
-es: □ cancela la copia. No saques el disco hasta que termine.
-tr: □でコピーを中止。終わるまでディスクを取り出さないでください。
-
-es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
-tr: ディスクを検出しました。Xでプレイ · □でPS4にコピー。
-
-es: Mete un DVD y pulsa Triángulo para actualizar.
-tr: DVDを入れて△ボタンで更新してください。
-
-es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
-tr: 一度コピーすれば、ディスクを入れるとコピーが開きます：速くてドライブの音もしません。
-
-es: Cambiar
-tr: 変更
-
 es: Izq./Der.: ajustar   Arriba/Abajo: elegir
 tr: 左/右：調整   上/下：選択
 
 es: Menú lateral
 tr: サイドメニュー
-
-es: Jugar
-tr: プレイ
-
-es: Quitar favorito
-tr: お気に入りから外す
-
-es: Agregar favorito
-tr: お気に入りに追加
-
-es: Revisar disco
-tr: ディスクを確認
-
-es: Actualizar biblioteca
-tr: ライブラリを更新
-
-es: Salir
-tr: 終了
 
 es: ¿Cerrar Forja SX2?
 tr: Forja SX2を閉じますか？

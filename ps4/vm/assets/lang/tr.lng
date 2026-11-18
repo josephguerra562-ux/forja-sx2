@@ -61,6 +61,12 @@ tr: Seçilen klasördeki oyunlar
 es: Memorias USB conectadas
 tr: Bağlı USB bellekler
 
+es: Estilo del menú
+tr: Menü stili
+
+es: Color del estilo Nuevo
+tr: Yeni stilin rengi
+
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: Tüm emülatörün dili. X dil listesini açar
 
@@ -117,6 +123,12 @@ tr: PS4'e kopyalanmadan oradan okunur. Oynarken belleği çıkarmayın
 
 es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
 tr: Sizinki görünmüyorsa yeniden takın. 4 GB üzeri oyunlar için bellek exFAT olmalıdır
+
+es: Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una
+tr: Klasik: her zamanki, bölümler solda. Yeni: bölümler üstte, her satırda beş kapak ve her birinin altında adı
+
+es: El color de las secciones y de la portada elegida en el estilo Nuevo
+tr: Yeni stilde bölümlerin ve seçili kapağın rengi
 
 es: 100 % (PS2 real)
 tr: %100 (gerçek PS2)
@@ -175,6 +187,27 @@ tr: Beklemeden (daha hızlı)
 es: Desactivadas
 tr: Kapalı
 
+es: Clásico
+tr: Klasik
+
+es: Nuevo
+tr: Yeni
+
+es: Azul
+tr: Mavi
+
+es: Morado
+tr: Mor
+
+es: Rojo
+tr: Kırmızı
+
+es: Verde
+tr: Yeşil
+
+es: Naranja
+tr: Turuncu
+
 es: Panel táctil (derecha)
 tr: Dokunmatik yüzey (sağ)
 
@@ -211,14 +244,92 @@ tr: Oyun ayarları (tümü için)
 es: Ajustes del emulador
 tr: Emülatör ayarları
 
+es: Estilos del menú
+tr: Menü stilleri
+
 es: No se encontraron juegos
 tr: Oyun bulunamadı
 
 es: Cargando...
 tr: Yükleniyor...
 
+es: Biblioteca
+tr: Kitaplık
+
+es: Disco
+tr: Disk
+
+es: Recientes
+tr: Son oynanan
+
+es: Favoritos
+tr: Favoriler
+
+es: Memoria o USB
+tr: Bellek / USB
+
+es: Ajustes de juegos
+tr: Oyun ayarları
+
+es: Estilos
+tr: Stiller
+
+es: Versión %d.%02d (%d)
+tr: Sürüm %d.%02d (%d)
+
+es: Versión %d.%02d (local)
+tr: Sürüm %d.%02d (yerel)
+
+es: %u juegos
+tr: %u oyun
+
+es: Cambiar
+tr: Değiştir
+
+es: Secciones
+tr: Bölümler
+
+es: DVD de PS2
+tr: PS2 DVD'si
+
+es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
+tr: Disk PS4'e kopyalanıyor. Kitaplıkta devam edebilirsin.
+
+es: □ cancela la copia. No saques el disco hasta que termine.
+tr: □ kopyalamayı iptal eder. Bitene kadar diski çıkarma.
+
+es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
+tr: Disk algılandı. Oynamak için X · PS4'e kopyalamak için □.
+
+es: Mete un DVD y pulsa Triángulo para actualizar.
+tr: Bir DVD tak ve yenilemek için Üçgen'e bas.
+
+es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
+tr: Bir kez kopyalanınca disk kopyasını açar: daha hızlı ve sürücü gürültüsü olmadan.
+
+es: Jugar
+tr: Oyna
+
+es: Revisar disco
+tr: Diski kontrol et
+
+es: Salir
+tr: Çık
+
+es: Quitar favorito
+tr: Favoriden çıkar
+
+es: Agregar favorito
+tr: Favoriye ekle
+
+es: Actualizar biblioteca
+tr: Kitaplığı yenile
+
 es: No se pudieron guardar los ajustes.
 tr: Ayarlar kaydedilemedi.
+
+es: Estilo guardado.
+tr: Stil kaydedildi.
 
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: Kaydedildi. Bir sonraki oyun açılışında uygulanır.
@@ -643,74 +754,11 @@ tr: Geri
 es: EMULADOR DE PLAYSTATION 2
 tr: PLAYSTATION 2 EMÜLATÖRÜ
 
-es: Biblioteca
-tr: Kitaplık
-
-es: Disco
-tr: Disk
-
-es: Recientes
-tr: Son oynanan
-
-es: Favoritos
-tr: Favoriler
-
-es: Memoria o USB
-tr: Bellek / USB
-
-es: Ajustes de juegos
-tr: Oyun ayarları
-
-es: Versión %d.%02d (%d)
-tr: Sürüm %d.%02d (%d)
-
-es: Versión %d.%02d (local)
-tr: Sürüm %d.%02d (yerel)
-
-es: DVD de PS2
-tr: PS2 DVD'si
-
-es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
-tr: Disk PS4'e kopyalanıyor. Kitaplıkta devam edebilirsin.
-
-es: □ cancela la copia. No saques el disco hasta que termine.
-tr: □ kopyalamayı iptal eder. Bitene kadar diski çıkarma.
-
-es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
-tr: Disk algılandı. Oynamak için X · PS4'e kopyalamak için □.
-
-es: Mete un DVD y pulsa Triángulo para actualizar.
-tr: Bir DVD tak ve yenilemek için Üçgen'e bas.
-
-es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
-tr: Bir kez kopyalanınca disk kopyasını açar: daha hızlı ve sürücü gürültüsü olmadan.
-
-es: Cambiar
-tr: Değiştir
-
 es: Izq./Der.: ajustar   Arriba/Abajo: elegir
 tr: Sol/Sağ: ayarla   Yukarı/Aşağı: seç
 
 es: Menú lateral
 tr: Yan menü
-
-es: Jugar
-tr: Oyna
-
-es: Quitar favorito
-tr: Favoriden çıkar
-
-es: Agregar favorito
-tr: Favoriye ekle
-
-es: Revisar disco
-tr: Diski kontrol et
-
-es: Actualizar biblioteca
-tr: Kitaplığı yenile
-
-es: Salir
-tr: Çık
 
 es: ¿Cerrar Forja SX2?
 tr: Forja SX2 kapatılsın mı?

@@ -1639,10 +1639,24 @@ static bool ForjaBlockChanged(const BASEBLOCKEX& b)
 	return now && std::memcmp(&recRAMCopy[b.startpc], now, b.size * 4) != 0;
 }
 
+// Compilation 143: by ranges. recClear checks every block left after each call, and Need for Speed's 378 changed blocks one by one took
+// 82 ms (the 142, 2026-11-18); blocks less than 256 bytes apart are made again together (the few unchanged ones between them too).
 static u32 ForjaRedoChanged(std::vector<std::pair<u32, u32>>& changed)
 {
-	for (const auto& [start, words] : changed)
-		recClear(start, words);
+	std::sort(changed.begin(), changed.end());
+	for (size_t i = 0; i < changed.size();)
+	{
+		const u32 start = changed[i].first;
+		u32 end = start + changed[i].second * 4;
+		size_t j = i + 1;
+		while (j < changed.size() && changed[j].first <= end + 256)
+		{
+			end = std::max(end, changed[j].first + changed[j].second * 4);
+			j++;
+		}
+		recClear(start, (end - start) / 4);
+		i = j;
+	}
 	return static_cast<u32>(changed.size());
 }
 

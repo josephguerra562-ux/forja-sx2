@@ -61,6 +61,12 @@ tr: 所选文件夹中的游戏
 es: Memorias USB conectadas
 tr: 已连接的 USB 存储设备
 
+es: Estilo del menú
+tr: 菜单样式
+
+es: Color del estilo Nuevo
+tr: 新样式的颜色
+
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: 整个模拟器的语言。按 X 打开语言列表
 
@@ -117,6 +123,12 @@ tr: 直接从该位置读取,不会复制到 PS4。游戏时请勿拔出存储�
 
 es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
 tr: 如果没有显示,请重新连接。超过 4 GB 的游戏需要 exFAT 格式
+
+es: Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una
+tr: 经典:原来的样子,分区在左边。新:分区在上方,每行五个封面,每个封面下方显示名称
+
+es: El color de las secciones y de la portada elegida en el estilo Nuevo
+tr: 新样式中分区和所选封面的颜色
 
 es: 100 % (PS2 real)
 tr: 100 %（真实 PS2）
@@ -175,6 +187,27 @@ tr: 不等待（更快）
 es: Desactivadas
 tr: 关闭
 
+es: Clásico
+tr: 经典
+
+es: Nuevo
+tr: 新
+
+es: Azul
+tr: 蓝色
+
+es: Morado
+tr: 紫色
+
+es: Rojo
+tr: 红色
+
+es: Verde
+tr: 绿色
+
+es: Naranja
+tr: 橙色
+
 es: Panel táctil (derecha)
 tr: 触摸板（右侧）
 
@@ -211,14 +244,92 @@ tr: 游戏设置(适用于全部)
 es: Ajustes del emulador
 tr: 模拟器设置
 
+es: Estilos del menú
+tr: 菜单样式
+
 es: No se encontraron juegos
 tr: 未找到游戏
 
 es: Cargando...
 tr: 正在加载...
 
+es: Biblioteca
+tr: 游戏库
+
+es: Disco
+tr: 光盘
+
+es: Recientes
+tr: 最近
+
+es: Favoritos
+tr: 收藏
+
+es: Memoria o USB
+tr: 内存或 USB
+
+es: Ajustes de juegos
+tr: 游戏设置
+
+es: Estilos
+tr: 样式
+
+es: Versión %d.%02d (%d)
+tr: 版本 %d.%02d（%d）
+
+es: Versión %d.%02d (local)
+tr: 版本 %d.%02d（本地）
+
+es: %u juegos
+tr: %u 个游戏
+
+es: Cambiar
+tr: 更改
+
+es: Secciones
+tr: 分区
+
+es: DVD de PS2
+tr: PS2 DVD
+
+es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
+tr: 正在把光盘复制到 PS4。你可以继续使用游戏库。
+
+es: □ cancela la copia. No saques el disco hasta que termine.
+tr: □ 取消复制。完成前请勿取出光盘。
+
+es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
+tr: 已检测到光盘。按 X 游玩 · 按 □ 复制到 PS4。
+
+es: Mete un DVD y pulsa Triángulo para actualizar.
+tr: 放入 DVD 并按三角键刷新。
+
+es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
+tr: 复制一次后，插入光盘就会打开副本：更快，也没有光驱噪音。
+
+es: Jugar
+tr: 开始游戏
+
+es: Revisar disco
+tr: 检查光盘
+
+es: Salir
+tr: 退出
+
+es: Quitar favorito
+tr: 取消收藏
+
+es: Agregar favorito
+tr: 加入收藏
+
+es: Actualizar biblioteca
+tr: 刷新游戏库
+
 es: No se pudieron guardar los ajustes.
 tr: 无法保存设置。
+
+es: Estilo guardado.
+tr: 样式已保存。
 
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: 已保存。下次启动游戏时生效。
@@ -643,74 +754,11 @@ tr: 返回
 es: EMULADOR DE PLAYSTATION 2
 tr: PLAYSTATION 2 模拟器
 
-es: Biblioteca
-tr: 游戏库
-
-es: Disco
-tr: 光盘
-
-es: Recientes
-tr: 最近
-
-es: Favoritos
-tr: 收藏
-
-es: Memoria o USB
-tr: 内存或 USB
-
-es: Ajustes de juegos
-tr: 游戏设置
-
-es: Versión %d.%02d (%d)
-tr: 版本 %d.%02d（%d）
-
-es: Versión %d.%02d (local)
-tr: 版本 %d.%02d（本地）
-
-es: DVD de PS2
-tr: PS2 DVD
-
-es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
-tr: 正在把光盘复制到 PS4。你可以继续使用游戏库。
-
-es: □ cancela la copia. No saques el disco hasta que termine.
-tr: □ 取消复制。完成前请勿取出光盘。
-
-es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
-tr: 已检测到光盘。按 X 游玩 · 按 □ 复制到 PS4。
-
-es: Mete un DVD y pulsa Triángulo para actualizar.
-tr: 放入 DVD 并按三角键刷新。
-
-es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
-tr: 复制一次后，插入光盘就会打开副本：更快，也没有光驱噪音。
-
-es: Cambiar
-tr: 更改
-
 es: Izq./Der.: ajustar   Arriba/Abajo: elegir
 tr: 左/右：调整   上/下：选择
 
 es: Menú lateral
 tr: 侧边菜单
-
-es: Jugar
-tr: 开始游戏
-
-es: Quitar favorito
-tr: 取消收藏
-
-es: Agregar favorito
-tr: 加入收藏
-
-es: Revisar disco
-tr: 检查光盘
-
-es: Actualizar biblioteca
-tr: 刷新游戏库
-
-es: Salir
-tr: 退出
 
 es: ¿Cerrar Forja SX2?
 tr: 关闭 Forja SX2？

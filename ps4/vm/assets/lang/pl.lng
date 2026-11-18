@@ -61,6 +61,12 @@ tr: Gry w wybranym folderze
 es: Memorias USB conectadas
 tr: Podłączone pamięci USB
 
+es: Estilo del menú
+tr: Styl menu
+
+es: Color del estilo Nuevo
+tr: Kolor stylu Nowy
+
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: Język całego emulatora. X otwiera listę języków
 
@@ -117,6 +123,12 @@ tr: Są czytane stamtąd, bez kopiowania na PS4. Nie wyjmuj pamięci podczas gry
 
 es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
 tr: Jeśli jej nie widać, podłącz ją ponownie. Dla gier powyżej 4 GB pamięć musi być w exFAT
+
+es: Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una
+tr: Klasyczny: ten co zawsze, z sekcjami po lewej. Nowy: sekcje na górze, pięć okładek w rzędzie i nazwa pod każdą
+
+es: El color de las secciones y de la portada elegida en el estilo Nuevo
+tr: Kolor sekcji i wybranej okładki w stylu Nowy
 
 es: 100 % (PS2 real)
 tr: 100 % (prawdziwe PS2)
@@ -175,6 +187,27 @@ tr: Bez czekania (szybciej)
 es: Desactivadas
 tr: Wyłączone
 
+es: Clásico
+tr: Klasyczny
+
+es: Nuevo
+tr: Nowy
+
+es: Azul
+tr: Niebieski
+
+es: Morado
+tr: Fioletowy
+
+es: Rojo
+tr: Czerwony
+
+es: Verde
+tr: Zielony
+
+es: Naranja
+tr: Pomarańczowy
+
 es: Panel táctil (derecha)
 tr: Panel dotykowy (prawo)
 
@@ -211,14 +244,92 @@ tr: Ustawienia gier (dla wszystkich)
 es: Ajustes del emulador
 tr: Emulator
 
+es: Estilos del menú
+tr: Style menu
+
 es: No se encontraron juegos
 tr: Nie znaleziono gier
 
 es: Cargando...
 tr: Wczytywanie...
 
+es: Biblioteca
+tr: Biblioteka
+
+es: Disco
+tr: Płyta
+
+es: Recientes
+tr: Ostatnie
+
+es: Favoritos
+tr: Ulubione
+
+es: Memoria o USB
+tr: Pamięć / USB
+
+es: Ajustes de juegos
+tr: Ustawienia gier
+
+es: Estilos
+tr: Style
+
+es: Versión %d.%02d (%d)
+tr: Wersja %d.%02d (%d)
+
+es: Versión %d.%02d (local)
+tr: Wersja %d.%02d (lokalna)
+
+es: %u juegos
+tr: Gier: %u
+
+es: Cambiar
+tr: Zmień
+
+es: Secciones
+tr: Sekcje
+
+es: DVD de PS2
+tr: DVD z PS2
+
+es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
+tr: Kopiowanie płyty na PS4. Możesz zostać w bibliotece.
+
+es: □ cancela la copia. No saques el disco hasta que termine.
+tr: □ anuluje kopiowanie. Nie wyjmuj płyty, dopóki się nie skończy.
+
+es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
+tr: Wykryto płytę. X, aby grać · □, aby skopiować na PS4.
+
+es: Mete un DVD y pulsa Triángulo para actualizar.
+tr: Włóż DVD i naciśnij Trójkąt, by odświeżyć.
+
+es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
+tr: Po skopiowaniu płyta otwiera swoją kopię: szybciej i bez hałasu napędu.
+
+es: Jugar
+tr: Graj
+
+es: Revisar disco
+tr: Sprawdź płytę
+
+es: Salir
+tr: Wyjdź
+
+es: Quitar favorito
+tr: Usuń z ulubionych
+
+es: Agregar favorito
+tr: Dodaj do ulubionych
+
+es: Actualizar biblioteca
+tr: Odśwież bibliotekę
+
 es: No se pudieron guardar los ajustes.
 tr: Nie udało się zapisać ustawień.
+
+es: Estilo guardado.
+tr: Styl zapisany.
 
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: Zapisano. Zadziała przy uruchomieniu następnej gry.
@@ -643,74 +754,11 @@ tr: Wróć
 es: EMULADOR DE PLAYSTATION 2
 tr: EMULATOR PLAYSTATION 2
 
-es: Biblioteca
-tr: Biblioteka
-
-es: Disco
-tr: Płyta
-
-es: Recientes
-tr: Ostatnie
-
-es: Favoritos
-tr: Ulubione
-
-es: Memoria o USB
-tr: Pamięć / USB
-
-es: Ajustes de juegos
-tr: Ustawienia gier
-
-es: Versión %d.%02d (%d)
-tr: Wersja %d.%02d (%d)
-
-es: Versión %d.%02d (local)
-tr: Wersja %d.%02d (lokalna)
-
-es: DVD de PS2
-tr: DVD z PS2
-
-es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
-tr: Kopiowanie płyty na PS4. Możesz zostać w bibliotece.
-
-es: □ cancela la copia. No saques el disco hasta que termine.
-tr: □ anuluje kopiowanie. Nie wyjmuj płyty, dopóki się nie skończy.
-
-es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
-tr: Wykryto płytę. X, aby grać · □, aby skopiować na PS4.
-
-es: Mete un DVD y pulsa Triángulo para actualizar.
-tr: Włóż DVD i naciśnij Trójkąt, by odświeżyć.
-
-es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
-tr: Po skopiowaniu płyta otwiera swoją kopię: szybciej i bez hałasu napędu.
-
-es: Cambiar
-tr: Zmień
-
 es: Izq./Der.: ajustar   Arriba/Abajo: elegir
 tr: Lewo/Prawo: dostosuj   Góra/Dół: wybierz
 
 es: Menú lateral
 tr: Menu boczne
-
-es: Jugar
-tr: Graj
-
-es: Quitar favorito
-tr: Usuń z ulubionych
-
-es: Agregar favorito
-tr: Dodaj do ulubionych
-
-es: Revisar disco
-tr: Sprawdź płytę
-
-es: Actualizar biblioteca
-tr: Odśwież bibliotekę
-
-es: Salir
-tr: Wyjdź
 
 es: ¿Cerrar Forja SX2?
 tr: Zamknąć Forja SX2?

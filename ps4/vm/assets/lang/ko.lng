@@ -61,6 +61,12 @@ tr: 선택한 폴더의 게임
 es: Memorias USB conectadas
 tr: 연결된 USB 메모리
 
+es: Estilo del menú
+tr: 메뉴 스타일
+
+es: Color del estilo Nuevo
+tr: 새 스타일 색상
+
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: 에뮬레이터 전체의 언어. X로 언어 목록을 엽니다
 
@@ -117,6 +123,12 @@ tr: PS4에 복사하지 않고 그 위치에서 바로 읽습니다. 플레이 �
 
 es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
 tr: 보이지 않으면 다시 연결하세요. 4GB가 넘는 게임은 exFAT 형식이어야 합니다
+
+es: Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una
+tr: 클래식: 기존 방식, 섹션이 왼쪽. 새 스타일: 섹션이 위, 한 줄에 표지 5개, 각 표지 아래에 이름
+
+es: El color de las secciones y de la portada elegida en el estilo Nuevo
+tr: 새 스타일에서 섹션과 선택한 표지의 색상
 
 es: 100 % (PS2 real)
 tr: 100 % (실제 PS2)
@@ -175,6 +187,27 @@ tr: 기다리지 않음 (더 빠름)
 es: Desactivadas
 tr: 끄기
 
+es: Clásico
+tr: 클래식
+
+es: Nuevo
+tr: 새 스타일
+
+es: Azul
+tr: 파랑
+
+es: Morado
+tr: 보라
+
+es: Rojo
+tr: 빨강
+
+es: Verde
+tr: 초록
+
+es: Naranja
+tr: 주황
+
 es: Panel táctil (derecha)
 tr: 터치패드 (오른쪽)
 
@@ -211,14 +244,92 @@ tr: 게임 설정(모든 게임에 적용)
 es: Ajustes del emulador
 tr: 에뮬레이터 설정
 
+es: Estilos del menú
+tr: 메뉴 스타일
+
 es: No se encontraron juegos
 tr: 게임을 찾지 못했습니다
 
 es: Cargando...
 tr: 불러오는 중...
 
+es: Biblioteca
+tr: 라이브러리
+
+es: Disco
+tr: 디스크
+
+es: Recientes
+tr: 최근
+
+es: Favoritos
+tr: 즐겨찾기
+
+es: Memoria o USB
+tr: 메모리 / USB
+
+es: Ajustes de juegos
+tr: 게임 설정
+
+es: Estilos
+tr: 스타일
+
+es: Versión %d.%02d (%d)
+tr: 버전 %d.%02d (%d)
+
+es: Versión %d.%02d (local)
+tr: 버전 %d.%02d (로컬)
+
+es: %u juegos
+tr: 게임 %u개
+
+es: Cambiar
+tr: 변경
+
+es: Secciones
+tr: 섹션
+
+es: DVD de PS2
+tr: PS2 DVD
+
+es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
+tr: 디스크를 PS4에 복사하는 중입니다. 라이브러리를 계속 써도 됩니다.
+
+es: □ cancela la copia. No saques el disco hasta que termine.
+tr: □로 복사를 취소합니다. 끝날 때까지 디스크를 빼지 마세요.
+
+es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
+tr: 디스크를 감지했습니다. X로 플레이 · □로 PS4에 복사.
+
+es: Mete un DVD y pulsa Triángulo para actualizar.
+tr: DVD를 넣고 세모 버튼을 눌러 새로 고치세요.
+
+es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
+tr: 한 번 복사하면 디스크가 사본을 엽니다: 더 빠르고 드라이브 소음도 없습니다.
+
+es: Jugar
+tr: 플레이
+
+es: Revisar disco
+tr: 디스크 확인
+
+es: Salir
+tr: 종료
+
+es: Quitar favorito
+tr: 즐겨찾기 해제
+
+es: Agregar favorito
+tr: 즐겨찾기 추가
+
+es: Actualizar biblioteca
+tr: 라이브러리 새로 고침
+
 es: No se pudieron guardar los ajustes.
 tr: 설정을 저장할 수 없습니다.
+
+es: Estilo guardado.
+tr: 스타일을 저장했습니다.
 
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: 저장했습니다. 다음 게임을 시작할 때 적용됩니다.
@@ -643,74 +754,11 @@ tr: 돌아가기
 es: EMULADOR DE PLAYSTATION 2
 tr: 플레이스테이션 2 에뮬레이터
 
-es: Biblioteca
-tr: 라이브러리
-
-es: Disco
-tr: 디스크
-
-es: Recientes
-tr: 최근
-
-es: Favoritos
-tr: 즐겨찾기
-
-es: Memoria o USB
-tr: 메모리 / USB
-
-es: Ajustes de juegos
-tr: 게임 설정
-
-es: Versión %d.%02d (%d)
-tr: 버전 %d.%02d (%d)
-
-es: Versión %d.%02d (local)
-tr: 버전 %d.%02d (로컬)
-
-es: DVD de PS2
-tr: PS2 DVD
-
-es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
-tr: 디스크를 PS4에 복사하는 중입니다. 라이브러리를 계속 써도 됩니다.
-
-es: □ cancela la copia. No saques el disco hasta que termine.
-tr: □로 복사를 취소합니다. 끝날 때까지 디스크를 빼지 마세요.
-
-es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
-tr: 디스크를 감지했습니다. X로 플레이 · □로 PS4에 복사.
-
-es: Mete un DVD y pulsa Triángulo para actualizar.
-tr: DVD를 넣고 세모 버튼을 눌러 새로 고치세요.
-
-es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
-tr: 한 번 복사하면 디스크가 사본을 엽니다: 더 빠르고 드라이브 소음도 없습니다.
-
-es: Cambiar
-tr: 변경
-
 es: Izq./Der.: ajustar   Arriba/Abajo: elegir
 tr: 왼쪽/오른쪽: 조절   위/아래: 선택
 
 es: Menú lateral
 tr: 사이드 메뉴
-
-es: Jugar
-tr: 플레이
-
-es: Quitar favorito
-tr: 즐겨찾기 해제
-
-es: Agregar favorito
-tr: 즐겨찾기 추가
-
-es: Revisar disco
-tr: 디스크 확인
-
-es: Actualizar biblioteca
-tr: 라이브러리 새로 고침
-
-es: Salir
-tr: 종료
 
 es: ¿Cerrar Forja SX2?
 tr: Forja SX2를 닫을까요?

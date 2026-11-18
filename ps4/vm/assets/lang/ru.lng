@@ -61,6 +61,12 @@ tr: Игры в выбранной папке
 es: Memorias USB conectadas
 tr: Подключённые USB-накопители
 
+es: Estilo del menú
+tr: Стиль меню
+
+es: Color del estilo Nuevo
+tr: Цвет стиля «Новый»
+
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: Язык всего эмулятора. X открывает список языков
 
@@ -117,6 +123,12 @@ tr: Они читаются прямо оттуда, без копировани
 
 es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
 tr: Если вашего нет в списке, подключите его снова. Для игр больше 4 ГБ нужен формат exFAT
+
+es: Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una
+tr: Классический: привычный, с разделами слева. Новый: разделы сверху, пять обложек в ряд и название под каждой
+
+es: El color de las secciones y de la portada elegida en el estilo Nuevo
+tr: Цвет разделов и выбранной обложки в стиле «Новый»
 
 es: 100 % (PS2 real)
 tr: 100 % (как PS2)
@@ -175,6 +187,27 @@ tr: Без ожидания (быстрее)
 es: Desactivadas
 tr: Выкл.
 
+es: Clásico
+tr: Классический
+
+es: Nuevo
+tr: Новый
+
+es: Azul
+tr: Синий
+
+es: Morado
+tr: Фиолетовый
+
+es: Rojo
+tr: Красный
+
+es: Verde
+tr: Зелёный
+
+es: Naranja
+tr: Оранжевый
+
 es: Panel táctil (derecha)
 tr: Сенсорная панель (справа)
 
@@ -211,14 +244,92 @@ tr: Настройки игр (для всех)
 es: Ajustes del emulador
 tr: Эмулятор
 
+es: Estilos del menú
+tr: Стили меню
+
 es: No se encontraron juegos
 tr: Игры не найдены
 
 es: Cargando...
 tr: Загрузка...
 
+es: Biblioteca
+tr: Библиотека
+
+es: Disco
+tr: Диск
+
+es: Recientes
+tr: Недавние
+
+es: Favoritos
+tr: Избранное
+
+es: Memoria o USB
+tr: Память / USB
+
+es: Ajustes de juegos
+tr: Настройки игр
+
+es: Estilos
+tr: Стили
+
+es: Versión %d.%02d (%d)
+tr: Версия %d.%02d (%d)
+
+es: Versión %d.%02d (local)
+tr: Версия %d.%02d (локальная)
+
+es: %u juegos
+tr: Игр: %u
+
+es: Cambiar
+tr: Изменить
+
+es: Secciones
+tr: Разделы
+
+es: DVD de PS2
+tr: DVD PS2
+
+es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
+tr: Диск копируется на PS4. Можно оставаться в библиотеке.
+
+es: □ cancela la copia. No saques el disco hasta que termine.
+tr: □ отменяет копирование. Не вынимайте диск до конца.
+
+es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
+tr: Диск обнаружен. X — играть · □ — скопировать на PS4.
+
+es: Mete un DVD y pulsa Triángulo para actualizar.
+tr: Вставьте DVD и нажмите Треугольник, чтобы обновить.
+
+es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
+tr: После копирования диск открывает свою копию: быстрее и без шума привода.
+
+es: Jugar
+tr: Играть
+
+es: Revisar disco
+tr: Проверить диск
+
+es: Salir
+tr: Выход
+
+es: Quitar favorito
+tr: Убрать из избранного
+
+es: Agregar favorito
+tr: В избранное
+
+es: Actualizar biblioteca
+tr: Обновить библиотеку
+
 es: No se pudieron guardar los ajustes.
 tr: Не удалось сохранить настройки.
+
+es: Estilo guardado.
+tr: Стиль сохранён.
 
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: Сохранено. Применится при запуске следующей игры.
@@ -643,74 +754,11 @@ tr: Назад
 es: EMULADOR DE PLAYSTATION 2
 tr: ЭМУЛЯТОР PLAYSTATION 2
 
-es: Biblioteca
-tr: Библиотека
-
-es: Disco
-tr: Диск
-
-es: Recientes
-tr: Недавние
-
-es: Favoritos
-tr: Избранное
-
-es: Memoria o USB
-tr: Память / USB
-
-es: Ajustes de juegos
-tr: Настройки игр
-
-es: Versión %d.%02d (%d)
-tr: Версия %d.%02d (%d)
-
-es: Versión %d.%02d (local)
-tr: Версия %d.%02d (локальная)
-
-es: DVD de PS2
-tr: DVD PS2
-
-es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
-tr: Диск копируется на PS4. Можно оставаться в библиотеке.
-
-es: □ cancela la copia. No saques el disco hasta que termine.
-tr: □ отменяет копирование. Не вынимайте диск до конца.
-
-es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
-tr: Диск обнаружен. X — играть · □ — скопировать на PS4.
-
-es: Mete un DVD y pulsa Triángulo para actualizar.
-tr: Вставьте DVD и нажмите Треугольник, чтобы обновить.
-
-es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
-tr: После копирования диск открывает свою копию: быстрее и без шума привода.
-
-es: Cambiar
-tr: Изменить
-
 es: Izq./Der.: ajustar   Arriba/Abajo: elegir
 tr: Влево/Вправо: настроить   Вверх/Вниз: выбрать
 
 es: Menú lateral
 tr: Боковое меню
-
-es: Jugar
-tr: Играть
-
-es: Quitar favorito
-tr: Убрать из избранного
-
-es: Agregar favorito
-tr: В избранное
-
-es: Revisar disco
-tr: Проверить диск
-
-es: Actualizar biblioteca
-tr: Обновить библиотеку
-
-es: Salir
-tr: Выход
 
 es: ¿Cerrar Forja SX2?
 tr: Закрыть Forja SX2?

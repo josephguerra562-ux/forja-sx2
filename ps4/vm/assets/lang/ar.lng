@@ -61,6 +61,12 @@ tr: الألعاب في المجلد المختار
 es: Memorias USB conectadas
 tr: ذواكر USB المتصلة
 
+es: Estilo del menú
+tr: نمط القائمة
+
+es: Color del estilo Nuevo
+tr: لون النمط الجديد
+
 es: El idioma de todo el emulador. X abre la lista de idiomas
 tr: لغة المحاكي كله. X يفتح قائمة اللغات
 
@@ -117,6 +123,12 @@ tr: تتم قراءتها من هناك دون نسخها إلى PS4. لا تن�
 
 es: Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT
 tr: إذا لم تظهر ذاكرتك، أعد توصيلها. الألعاب الأكبر من 4 GB تحتاج إلى exFAT
+
+es: Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una
+tr: الكلاسيكي: المعتاد، والأقسام على اليسار. الجديد: الأقسام في الأعلى، وخمسة أغلفة في كل صف والاسم تحت كل غلاف
+
+es: El color de las secciones y de la portada elegida en el estilo Nuevo
+tr: لون الأقسام والغلاف المختار في النمط الجديد
 
 es: 100 % (PS2 real)
 tr: 100 % (PS2 الحقيقي)
@@ -175,6 +187,27 @@ tr: دون انتظار (أسرع)
 es: Desactivadas
 tr: معطّلة
 
+es: Clásico
+tr: كلاسيكي
+
+es: Nuevo
+tr: جديد
+
+es: Azul
+tr: أزرق
+
+es: Morado
+tr: بنفسجي
+
+es: Rojo
+tr: أحمر
+
+es: Verde
+tr: أخضر
+
+es: Naranja
+tr: برتقالي
+
 es: Panel táctil (derecha)
 tr: لوحة اللمس (اليمين)
 
@@ -211,14 +244,92 @@ tr: إعدادات الألعاب (لكل الألعاب)
 es: Ajustes del emulador
 tr: إعدادات المحاكي
 
+es: Estilos del menú
+tr: أنماط القائمة
+
 es: No se encontraron juegos
 tr: لم يُعثر على ألعاب
 
 es: Cargando...
 tr: جارٍ التحميل...
 
+es: Biblioteca
+tr: المكتبة
+
+es: Disco
+tr: القرص
+
+es: Recientes
+tr: الحديثة
+
+es: Favoritos
+tr: المفضلة
+
+es: Memoria o USB
+tr: الذاكرة أو USB
+
+es: Ajustes de juegos
+tr: إعدادات الألعاب
+
+es: Estilos
+tr: الأنماط
+
+es: Versión %d.%02d (%d)
+tr: الإصدار %d.%02d (%d)
+
+es: Versión %d.%02d (local)
+tr: الإصدار %d.%02d (محلي)
+
+es: %u juegos
+tr: %u لعبة
+
+es: Cambiar
+tr: تغيير
+
+es: Secciones
+tr: الأقسام
+
+es: DVD de PS2
+tr: قرص DVD لـ PS2
+
+es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
+tr: جارٍ نسخ القرص إلى PS4. يمكنك البقاء في المكتبة.
+
+es: □ cancela la copia. No saques el disco hasta que termine.
+tr: □ يلغي النسخ. لا تُخرج القرص حتى ينتهي.
+
+es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
+tr: اكتُشف القرص. X للعب · □ لنسخه إلى PS4.
+
+es: Mete un DVD y pulsa Triángulo para actualizar.
+tr: أدخل قرص DVD واضغط المثلث للتحديث.
+
+es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
+tr: بعد نسخه مرة، يفتح القرص نسخته: أسرع ودون ضجيج المشغّل.
+
+es: Jugar
+tr: العب
+
+es: Revisar disco
+tr: فحص القرص
+
+es: Salir
+tr: خروج
+
+es: Quitar favorito
+tr: إزالة من المفضلة
+
+es: Agregar favorito
+tr: إضافة إلى المفضلة
+
+es: Actualizar biblioteca
+tr: تحديث المكتبة
+
 es: No se pudieron guardar los ajustes.
 tr: تعذّر حفظ الإعدادات.
+
+es: Estilo guardado.
+tr: تم حفظ النمط.
 
 es: Guardado. Se aplica al iniciar el próximo juego.
 tr: تم الحفظ. يُطبَّق عند تشغيل اللعبة التالية.
@@ -643,74 +754,11 @@ tr: رجوع
 es: EMULADOR DE PLAYSTATION 2
 tr: محاكي PLAYSTATION 2
 
-es: Biblioteca
-tr: المكتبة
-
-es: Disco
-tr: القرص
-
-es: Recientes
-tr: الحديثة
-
-es: Favoritos
-tr: المفضلة
-
-es: Memoria o USB
-tr: الذاكرة أو USB
-
-es: Ajustes de juegos
-tr: إعدادات الألعاب
-
-es: Versión %d.%02d (%d)
-tr: الإصدار %d.%02d (%d)
-
-es: Versión %d.%02d (local)
-tr: الإصدار %d.%02d (محلي)
-
-es: DVD de PS2
-tr: قرص DVD لـ PS2
-
-es: Copiando el disco a la PS4. Puedes seguir en la biblioteca.
-tr: جارٍ نسخ القرص إلى PS4. يمكنك البقاء في المكتبة.
-
-es: □ cancela la copia. No saques el disco hasta que termine.
-tr: □ يلغي النسخ. لا تُخرج القرص حتى ينتهي.
-
-es: Disco detectado. X para jugar · □ para copiarlo a la PS4.
-tr: اكتُشف القرص. X للعب · □ لنسخه إلى PS4.
-
-es: Mete un DVD y pulsa Triángulo para actualizar.
-tr: أدخل قرص DVD واضغط المثلث للتحديث.
-
-es: Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.
-tr: بعد نسخه مرة، يفتح القرص نسخته: أسرع ودون ضجيج المشغّل.
-
-es: Cambiar
-tr: تغيير
-
 es: Izq./Der.: ajustar   Arriba/Abajo: elegir
 tr: يسار/يمين: ضبط   أعلى/أسفل: اختيار
 
 es: Menú lateral
 tr: القائمة الجانبية
-
-es: Jugar
-tr: العب
-
-es: Quitar favorito
-tr: إزالة من المفضلة
-
-es: Agregar favorito
-tr: إضافة إلى المفضلة
-
-es: Revisar disco
-tr: فحص القرص
-
-es: Actualizar biblioteca
-tr: تحديث المكتبة
-
-es: Salir
-tr: خروج
 
 es: ¿Cerrar Forja SX2?
 tr: إغلاق Forja SX2؟

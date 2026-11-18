@@ -268,6 +268,46 @@ static u32 s_forja_previous_frame_draws = 0;
 // Compilation 67: the framebuffers the TV showed at the last vsync (VSync), one a circuit; the second only with both circuits on.
 static u32 s_forja_shown_now[2] = {0xffffffffu, 0xffffffffu};
 
+// Compilation 143: the last 12 vsyncs as Saltar cuadros saw them, written out when its guard pauses (the first 6 times a session).
+// Dragon Ball's fights (the 142, 2026-11-18): every time Saltar cuadros started, its first 3 frames left out hid no picture (6,700-9,000
+// draws left out, 0 pictures hidden) and the guard paused it 11 times in 4 minutes; in the 124 the same fights hid two pictures a frame.
+// The line says which buffer the TV showed, whether it held a frame left out, and what each of the four buffers held.
+namespace
+{
+	struct ForjaVsyncNote
+	{
+		u32 frame = 0, shown = 0xffffffffu, other = 0xffffffffu;
+		u8 stale = 0, drawing = 0, regs = 0;
+	};
+	ForjaVsyncNote s_forja_vsync_notes[12];
+	unsigned s_forja_vsync_note_next = 0;
+	unsigned s_forja_guard_dumps = 0;
+
+	void ForjaGuardDump()
+	{
+		if (s_forja_guard_dumps >= 6)
+			return;
+		s_forja_guard_dumps++;
+		char text[900];
+		int at = std::snprintf(text, sizeof(text), "frame %u; last vsyncs (frame:shown[*held a frame left out]/other, L chosen, R new frame):",
+			s_forja_frame);
+		for (unsigned i = 0; i < std::size(s_forja_vsync_notes) && at > 0 && at < static_cast<int>(sizeof(text)); i++)
+		{
+			const ForjaVsyncNote& n = s_forja_vsync_notes[(s_forja_vsync_note_next + i) % std::size(s_forja_vsync_notes)];
+			at += std::snprintf(text + at, sizeof(text) - at, " %u:%x%s/%x%s%s", n.frame, n.shown, n.stale ? "*" : "",
+				n.other == 0xffffffffu ? 0u : n.other, n.drawing ? "L" : "", n.regs ? "R" : "");
+		}
+		for (const ForjaSkipTarget& t : s_forja_targets)
+		{
+			if (at <= 0 || at >= static_cast<int>(sizeof(text)))
+				break;
+			at += std::snprintf(text + at, sizeof(text) - at, "; buffer %x stale %d cut %d left out in frame %u", t.fbp, t.stale ? 1 : 0,
+				t.cut ? 1 : 0, t.left_out_frame);
+		}
+		ProbeLog("GS skip guard (143): %s\n", text);
+	}
+} // namespace
+
 bool ForjaGsSkipDraw(u32 fbp)
 {
 	// Compilation 68: a chosen frame's draws into a framebuffer the TV shows now (on either circuit) are all left out, so it keeps
@@ -1151,6 +1191,7 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 					ProbeLog("GS skip: paused for %u vsyncs: the TV hid %u pictures for the last %u frames left out, so they showed "
 						"(the game builds this picture another way: a menu, a result, a scene that changes); %u so far\n",
 						s_forja_guard.LastPause(), s_forja_guard.LastHidden(), forja_skip::Guard::kGroup, s_forja_guard.Unmasked());
+					ForjaGuardDump(); // compilation 143
 				}
 				// Compilation 88: "2 de 3" leaves out the frames at counts 1 and 2 of every three, two in a row (the drawn frame,
 				// count 0, comes after them; the force above draws one after two hidden frames all the same).
@@ -1186,7 +1227,8 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 			// Compilation 68: the main circuit only, as until compilation 66. The first circuit's buffer, the one Dragon Ball draws
 			// into, is stale every other frame at one in 2: hiding for it (compilation 67) would hide nearly every picture. Its
 			// frames left out are left out whole (ForjaGsSkipDraw), so it only ever holds a whole picture.
-			if (ForjaIsStale(shown))
+			const bool stale_now = ForjaIsStale(shown);
+			if (stale_now)
 			{
 				skip_frame = true;
 				g_forja_gs_skip_stats[1].fetch_add(1, std::memory_order_relaxed);
@@ -1197,6 +1239,15 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				s_forja_shown_this_frame = true;
 				g_forja_gs_skip_stats[2].fetch_add(1, std::memory_order_relaxed);
 			}
+			// Compilation 143: this vsync, for the guard's line (ForjaGuardDump).
+			ForjaVsyncNote& note = s_forja_vsync_notes[s_forja_vsync_note_next];
+			s_forja_vsync_note_next = (s_forja_vsync_note_next + 1) % std::size(s_forja_vsync_notes);
+			note.frame = s_forja_frame;
+			note.shown = shown;
+			note.other = other;
+			note.stale = stale_now ? 1 : 0;
+			note.drawing = g_forja_gs_skip_drawing ? 1 : 0;
+			note.regs = registers_written ? 1 : 0;
 		}
 		else
 		{

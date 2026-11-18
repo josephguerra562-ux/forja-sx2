@@ -3,6 +3,7 @@
 #include "GameMenu.h"
 #include "ForjaLang.h"
 #include "ForjaSettings.h"
+#include "ForjaLibraryStyle.h" // compilation 143
 #include "InGameMenuState.h"
 #include "PhysicalDisc.h"
 #include "DiscCopy.h"
@@ -115,11 +116,13 @@ namespace PS4GameMenu
 			Storage,
 			GameSettings,
 			EmulatorSettings,
+			Styles, // compilation 143: Clásico / Nuevo and the color
 		};
-		constexpr unsigned LibraryViewCount = 7;
+		constexpr unsigned LibraryViewCount = 8;
 		constexpr bool IsSettingsView(LibraryView view)
 		{
-			return view == LibraryView::Storage || view == LibraryView::GameSettings || view == LibraryView::EmulatorSettings;
+			return view == LibraryView::Storage || view == LibraryView::GameSettings || view == LibraryView::EmulatorSettings ||
+			       view == LibraryView::Styles;
 		}
 		struct CoverImage
 		{
@@ -219,6 +222,8 @@ namespace PS4GameMenu
 			SET_INTERNAL_GAMES, // compilation 97: these three only show a number
 			SET_FOLDER_GAMES,
 			SET_USB_DRIVES,
+			SET_STYLE, // compilation 143
+			SET_COLOR,
 			SettingsRows
 		};
 
@@ -228,17 +233,20 @@ namespace PS4GameMenu
 		constexpr SettingRow GameSettingsRows[] = {SET_EE_RATE, SET_CPU_AUTO, SET_UPSCALE, SET_ASPECT, SET_FAST_CDVD, SET_READBACK,
 			SET_VIDEO_MODE, SET_FRAME_GEN};
 		constexpr SettingRow EmulatorSettingsRows[] = {SET_LANGUAGE, SET_ASK_LANGUAGE, SET_FAST_BOOT, SET_MENU_BUTTON, SET_OVERLAY, SET_STICK};
+		constexpr SettingRow StylesRows[] = {SET_STYLE, SET_COLOR}; // compilation 143
 
 		unsigned PageRowCount(LibraryView view)
 		{
 			return view == LibraryView::Storage ? static_cast<unsigned>(std::size(StorageRows)) :
 			       view == LibraryView::GameSettings ? static_cast<unsigned>(std::size(GameSettingsRows)) :
-			                                           static_cast<unsigned>(std::size(EmulatorSettingsRows));
+			       view == LibraryView::Styles ? static_cast<unsigned>(std::size(StylesRows)) :
+			                                     static_cast<unsigned>(std::size(EmulatorSettingsRows));
 		}
 
 		SettingRow PageRow(LibraryView view, unsigned index)
 		{
-			const SettingRow* const rows = view == LibraryView::Storage ? StorageRows : view == LibraryView::GameSettings ? GameSettingsRows : EmulatorSettingsRows;
+			const SettingRow* const rows = view == LibraryView::Storage ? StorageRows : view == LibraryView::GameSettings ? GameSettingsRows :
+			                               view == LibraryView::Styles ? StylesRows : EmulatorSettingsRows;
 			return rows[std::min(index, PageRowCount(view) - 1)];
 		}
 
@@ -252,7 +260,7 @@ namespace PS4GameMenu
 				N_("Contador de FPS al jugar"), N_("Sensibilidad de la palanca"), N_("Cargas rápidas del disco"),
 				N_("Saltar el logo de la PS2"), N_("Lecturas de la gráfica (readbacks)"), N_("Modo video automático"),
 				N_("Generación de cuadros (30 a 60 FPS)"), N_("Botón del menú del emulador"), N_("Qué juegos mostrar"), N_("Juegos en la memoria interna"), N_("Juegos en la carpeta elegida"),
-				N_("Memorias USB conectadas")};
+				N_("Memorias USB conectadas"), N_("Estilo del menú"), N_("Color del estilo Nuevo")};
 			return T(labels[std::min(row, SettingsRows - 1)]);
 		}
 
@@ -277,7 +285,9 @@ namespace PS4GameMenu
 				N_("Todas: la memoria interna y la carpeta elegida. También puedes ver solo una de las dos"),
 				N_("Los que están en /data/ForjaSX2/roms"),
 				N_("Se leen desde ahí mismo, sin copiarlos a la PS4. No saques la memoria mientras juegas"),
-				N_("Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT")};
+				N_("Si no sale la tuya, conéctala de nuevo. Para juegos de más de 4 GB la memoria debe estar en exFAT"),
+				N_("Clásico: el de siempre, con las secciones a la izquierda. Nuevo: las secciones arriba, cinco portadas por fila y el nombre bajo cada una"),
+				N_("El color de las secciones y de la portada elegida en el estilo Nuevo")};
 			return T(help[std::min(row, SettingsRows - 1)]);
 		}
 
@@ -324,6 +334,18 @@ namespace PS4GameMenu
 						std::snprintf(out, size, "%s", T("Ninguna"));
 					break;
 				case SET_USB_DRIVES: std::snprintf(out, size, "%u", s_storage_usb_gs); break;
+				case SET_STYLE: // compilation 143
+				{
+					static constexpr const char* style_names[] = {N_("Clásico"), N_("Nuevo")};
+					std::snprintf(out, size, "%s", T(style_names[std::clamp(v.style, 0, 1)]));
+					break;
+				}
+				case SET_COLOR:
+				{
+					static constexpr const char* color_names[] = {N_("Azul"), N_("Morado"), N_("Rojo"), N_("Verde"), N_("Naranja")};
+					std::snprintf(out, size, "%s", T(color_names[std::clamp(v.color, 0, 4)]));
+					break;
+				}
 				default:
 				{
 					static constexpr const char* menu_names[] = {"L3+R3", N_("Panel táctil (derecha)"), N_("Los dos")};
@@ -370,6 +392,8 @@ namespace PS4GameMenu
 				case SET_READBACK: v.readback = step(v.readback, 0, 2); break;
 				case SET_VIDEO_MODE: v.video_mode = !v.video_mode; break;
 				case SET_FRAME_GEN: v.frame_gen = !v.frame_gen; break;
+				case SET_STYLE: v.style = step(v.style, 0, 1); break; // compilation 143
+				case SET_COLOR: v.color = step(v.color, 0, 4); break;
 				default: v.menu_button = step(v.menu_button, 0, 2); break;
 			}
 		}
@@ -868,6 +892,7 @@ namespace PS4GameMenu
 				                      view == LibraryView::Storage   ? T("Memoria interna o USB") :
 				                      view == LibraryView::GameSettings ? T("Ajustes de juegos (valen para todos)") :
 				                      view == LibraryView::EmulatorSettings ? T("Ajustes del emulador") :
+				                      view == LibraryView::Styles ? T("Estilos del menú") :
 				                                                       T("No se encontraron juegos");
 				items.push_back({message, {}, {}, false});
 			}
@@ -1130,6 +1155,130 @@ namespace PS4GameMenu
 			HideIntro();
 			ProbeLog("Startup intro: finished frames=%u fps=%.3f\n", frame_count, fps);
 		}
+
+		// Compilation 143: the library in the "Nuevo" style (ForjaLibraryStyle.h), with the same data as the classic one. GS thread.
+		void DrawModernLibrary(ImDrawList* draw, ImFont* font, ImVec2 size, float scale, ImVec2 origin)
+		{
+			static constexpr const char* tab_labels[] = {N_("Biblioteca"), N_("Disco"), N_("Recientes"), N_("Favoritos"), N_("Memoria o USB"),
+				N_("Ajustes de juegos"), N_("Ajustes del emulador"), N_("Estilos")};
+			static_assert(std::size(tab_labels) == LibraryViewCount);
+			const char* tabs[LibraryViewCount];
+			for (unsigned i = 0; i < LibraryViewCount; i++)
+				tabs[i] = T(tab_labels[i]);
+			ForjaStyle::Canvas canvas;
+			canvas.draw = draw;
+			canvas.font = font;
+			canvas.scale = scale;
+			canvas.origin = origin;
+			canvas.size = size;
+			canvas.draw_text = [](ImDrawList* d, ImFont* f, float px, ImVec2 at, ImU32 color, const char* text, float max_width) {
+				DrawText(d, f, px, at, color, text, max_width);
+			};
+			canvas.text_width = [](ImFont* f, float px, const char* text) { return TextWidth(f, px, text); };
+			ForjaStyle::Page page;
+			page.color = s_settings_gs.color;
+			page.tabs = tabs;
+			page.tab_count = LibraryViewCount;
+			page.active_tab = static_cast<unsigned>(s_library_view);
+			page.bar_focused = s_sidebar_focused;
+			page.logo = GetCoverTexture(FindUiAsset("menu_logo"));
+			page.title = tabs[page.active_tab];
+			page.status = s_status.c_str();
+			char version[96];
+			if (FORJA_BUILD_NUMBER > 0)
+				std::snprintf(version, sizeof(version), TF("Versión %d.%02d (%d)"), FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER);
+			else
+				std::snprintf(version, sizeof(version), TF("Versión %d.%02d (local)"), FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR);
+			page.version = version;
+			const std::string update_text = PS4Release::StatusText();
+			char count_text[64] = {};
+			const size_t selected = std::min(s_selected, s_items.size() - 1);
+			const bool settings_view = IsSettingsView(s_library_view), disc_view = s_library_view == LibraryView::Disc;
+			const bool no_games = s_items.size() == 1 && s_items[0].path.empty();
+			if (!settings_view && !disc_view && !no_games)
+				std::snprintf(count_text, sizeof(count_text), TF("%u juegos"), static_cast<unsigned>(s_items.size()));
+			page.subtitle = !update_text.empty() ? update_text.c_str() : count_text;
+			ForjaStyle::Row rows[8];
+			char values[8][128];
+			static std::vector<ForjaStyle::Card> cards;
+			if (settings_view)
+			{
+				constexpr unsigned visible_rows = 8;
+				const unsigned page_rows = PageRowCount(s_library_view);
+				const unsigned focused_row = std::min(s_settings_row_gs, page_rows - 1);
+				const unsigned max_first_row = page_rows > visible_rows ? page_rows - visible_rows : 0u;
+				const unsigned first_row = std::min(focused_row > 3 ? focused_row - 3 : 0u, max_first_row);
+				page.settings = true;
+				page.row_first = first_row;
+				page.row_total = page_rows;
+				page.row_focused = focused_row;
+				for (unsigned slot = 0; slot < visible_rows && first_row + slot < page_rows; ++slot)
+				{
+					const unsigned row = PageRow(s_library_view, first_row + slot);
+					SettingValue(s_settings_gs, row, values[slot], sizeof(values[slot]));
+					rows[slot].label = SettingLabel(row);
+					rows[slot].value = values[slot];
+					rows[slot].help = SettingHelp(row);
+					rows[slot].focused = first_row + slot == focused_row;
+					rows[slot].arrows = s_library_view != LibraryView::Storage || row == SET_GAMES_SOURCE;
+					page.row_count = slot + 1;
+				}
+				page.rows = rows;
+				page.hints[0] = {'x', T("Cambiar")};
+				page.hints[1] = {'o', T("Secciones")};
+				page.hints[2] = {'l', T("Secciones")};
+				page.hint_count = 3;
+			}
+			else if (disc_view)
+			{
+				const Item& current = s_items[selected];
+				const bool detected = current.path == PS4Disc::DevicePath;
+				page.disc = true;
+				page.disc_cover = detected ? GetCoverTexture(current.cover) : nullptr;
+				page.disc_lines[0] = T("DVD de PS2");
+				if (PS4DiscCopy::Busy())
+				{
+					page.disc_lines[1] = T("Copiando el disco a la PS4. Puedes seguir en la biblioteca.");
+					page.disc_lines[2] = T("□ cancela la copia. No saques el disco hasta que termine.");
+				}
+				else
+				{
+					page.disc_lines[1] = detected ? T("Disco detectado. X para jugar · □ para copiarlo a la PS4.") :
+					                                T("Mete un DVD y pulsa Triángulo para actualizar.");
+					if (detected)
+						page.disc_lines[2] = T("Copiado una vez, el disco abre su copia: más rápida y sin ruido de la unidad.");
+				}
+				page.hints[0] = {'x', T("Jugar")};
+				page.hints[1] = {'t', T("Revisar disco")};
+				page.hints[2] = {'o', T("Salir"), true};
+				page.hints[3] = {'l', T("Secciones")};
+				page.hint_count = 4;
+			}
+			else
+			{
+				cards.resize(s_items.size());
+				const size_t first = ForjaStyle::FirstRow(selected, s_items.size(), ForjaStyle::ModernColumns, ForjaStyle::ModernVisibleRows) *
+					ForjaStyle::ModernColumns;
+				const size_t last = first + ForjaStyle::ModernColumns * ForjaStyle::ModernVisibleRows;
+				for (size_t i = 0; i < s_items.size(); i++)
+				{
+					cards[i].name = s_items[i].name.c_str();
+					cards[i].favorite = s_items[i].favorite;
+					cards[i].cover = i >= first && i < last ? GetCoverTexture(s_items[i].cover) : nullptr;
+				}
+				page.cards = cards.data();
+				page.card_count = cards.size();
+				page.selected = selected;
+				const Item& current = s_items[selected];
+				page.hints[0] = {'x', T("Jugar")};
+				page.hints[1] = {'s', current.favorite ? T("Quitar favorito") : T("Agregar favorito"), current.path.empty()};
+				page.hints[2] = {'t', T("Actualizar biblioteca")};
+				page.hints[3] = {'o', T("Salir"), true};
+				page.hints[4] = {'l', T("Secciones")};
+				page.hint_count = 5;
+			}
+			ForjaStyle::Draw(canvas, page);
+		}
 	} // namespace
 
 	bool Select(int& pad, std::string& path, GamePlatform& platform)
@@ -1201,7 +1350,8 @@ namespace PS4GameMenu
 			const SettingRow row = PageRow(view, settings_row);
 			ChangeSetting(settings, row, delta, wrap);
 			ProbeLog("Game menu: setting %u changed\n", static_cast<unsigned>(row));
-			save_settings(T("Guardado. Se aplica al iniciar el próximo juego."));
+			// Compilation 143: the style changes the library at once.
+			save_settings(row == SET_STYLE || row == SET_COLOR ? T("Estilo guardado.") : T("Guardado. Se aplica al iniciar el próximo juego."));
 		};
 		// Forja SX2 (2026-10-19): the language picker. At every start while Settings > "Preguntar el idioma al iniciar" says
 		// Sí, and the first time (no language saved yet, the cursor on the PS4's own language). Not when the library comes back
@@ -1728,9 +1878,21 @@ namespace PS4GameMenu
 				else if (data.leftStick.y > 184)
 					navigation = ORBIS_PAD_BUTTON_DOWN;
 			}
+			const bool modern = settings.style == ForjaStyle::Modern; // compilation 143
+			const size_t grid_columns = modern ? ForjaStyle::ModernColumns : GridColumns;
 			if (navigation && (navigation != held_direction || now >= next_repeat))
 			{
-				if (sidebar_focused)
+				if (sidebar_focused && modern)
+				{
+					unsigned next = static_cast<unsigned>(view);
+					if (navigation == ORBIS_PAD_BUTTON_LEFT && next > 0)
+						set_view(static_cast<LibraryView>(next - 1));
+					else if (navigation == ORBIS_PAD_BUTTON_RIGHT && next + 1 < LibraryViewCount)
+						set_view(static_cast<LibraryView>(next + 1));
+					else if (navigation == ORBIS_PAD_BUTTON_DOWN)
+						sidebar_focused = false;
+				}
+				else if (sidebar_focused)
 				{
 					unsigned next = static_cast<unsigned>(view);
 					if (navigation == ORBIS_PAD_BUTTON_UP && next > 0)
@@ -1743,7 +1905,9 @@ namespace PS4GameMenu
 				else if (IsSettingsView(view))
 				{
 					const SettingRow row = PageRow(view, settings_row);
-					if (navigation == ORBIS_PAD_BUTTON_UP && settings_row > 0)
+					if (navigation == ORBIS_PAD_BUTTON_UP && settings_row == 0 && modern)
+						sidebar_focused = true;
+					else if (navigation == ORBIS_PAD_BUTTON_UP && settings_row > 0)
 						--settings_row;
 					else if (navigation == ORBIS_PAD_BUTTON_DOWN && settings_row + 1 < PageRowCount(view))
 						++settings_row;
@@ -1755,7 +1919,7 @@ namespace PS4GameMenu
 						// Compilation 98: what to show is adjusted; the folder opens with X, and the rest are numbers.
 						if (row == SET_GAMES_SOURCE && (navigation == ORBIS_PAD_BUTTON_LEFT || navigation == ORBIS_PAD_BUTTON_RIGHT))
 							change_source(navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1, false);
-						else if (navigation == ORBIS_PAD_BUTTON_LEFT)
+						else if (navigation == ORBIS_PAD_BUTTON_LEFT && !modern)
 							sidebar_focused = true;
 					}
 					else if (navigation == ORBIS_PAD_BUTTON_LEFT)
@@ -1766,19 +1930,21 @@ namespace PS4GameMenu
 				}
 				else
 				{
-					const size_t column = selected % GridColumns;
-					const size_t row = selected / GridColumns;
-					const size_t row_count = (items.size() + GridColumns - 1) / GridColumns;
+					const size_t column = selected % grid_columns;
+					const size_t row = selected / grid_columns;
+					const size_t row_count = (items.size() + grid_columns - 1) / grid_columns;
 					if (navigation == ORBIS_PAD_BUTTON_LEFT && column == 0)
-						sidebar_focused = true;
+						sidebar_focused = !modern;
 					else if (navigation == ORBIS_PAD_BUTTON_LEFT)
 						--selected;
-					else if (navigation == ORBIS_PAD_BUTTON_RIGHT && column + 1 < GridColumns && selected + 1 < items.size())
+					else if (navigation == ORBIS_PAD_BUTTON_RIGHT && column + 1 < grid_columns && selected + 1 < items.size())
 						++selected;
-					else if (navigation == ORBIS_PAD_BUTTON_UP && selected >= GridColumns)
-						selected -= GridColumns;
+					else if (navigation == ORBIS_PAD_BUTTON_UP && selected >= grid_columns)
+						selected -= grid_columns;
+					else if (navigation == ORBIS_PAD_BUTTON_UP && modern)
+						sidebar_focused = true;
 					else if (navigation == ORBIS_PAD_BUTTON_DOWN && row + 1 < row_count)
-						selected = std::min(selected + GridColumns, items.size() - 1);
+						selected = std::min(selected + grid_columns, items.size() - 1);
 				}
 				next_repeat = now + (navigation == held_direction ? 0.10 : 0.35);
 				if (!IsSettingsView(view) || sidebar_focused)
@@ -2728,6 +2894,11 @@ namespace PS4GameMenu
 			IM_COL32(104, 58, 35, 255), IM_COL32(38, 91, 87, 255), IM_COL32(72, 58, 120, 255)};
 		const ImU32 art_b[] = {IM_COL32(8, 25, 46, 255), IM_COL32(23, 37, 63, 255),
 			IM_COL32(33, 24, 47, 255), IM_COL32(14, 42, 46, 255), IM_COL32(25, 25, 67, 255)};
+		// Compilation 143: the library's style (Ajustes > Estilos). The classic one below is the same code as before, in this block.
+		if (s_settings_gs.style == ForjaStyle::Modern)
+			DrawModernLibrary(draw, font, size, scale, origin);
+		else
+		{
 		draw->AddRectFilled(ImVec2(0, 0), size, IM_COL32(3, 13, 25, 255));
 		// Layered navy background and restrained diagonal lighting give the menu
 		// depth without adding a texture or a frame-time allocation.
@@ -2756,9 +2927,10 @@ namespace PS4GameMenu
 		}
 		// The sidebar changes the data source while retaining the same grid.
 		static constexpr const char* sidebar_icons[] = {
-			"menu_biblioteca", "menu_disc", "menu_recentes", "menu_favoritos", "menu_usb", "menu_juegos", "menu_configuracoes"};
+			"menu_biblioteca", "menu_disc", "menu_recentes", "menu_favoritos", "menu_usb", "menu_juegos", "menu_configuracoes", ""};
 		static constexpr const char* sidebar_labels[] = {N_("Biblioteca"), N_("Disco"), N_("Recientes"), N_("Favoritos"), N_("Memoria o USB"),
-			N_("Ajustes de juegos"), N_("Ajustes del emulador")};
+			N_("Ajustes de juegos"), N_("Ajustes del emulador"), N_("Estilos")};
+		static_assert(std::size(sidebar_labels) == LibraryViewCount && std::size(sidebar_icons) == LibraryViewCount);
 		const unsigned active_view = static_cast<unsigned>(s_library_view);
 		for (unsigned i = 0; i < LibraryViewCount; ++i)
 		{
@@ -2770,7 +2942,15 @@ namespace PS4GameMenu
 				draw->AddRect(point(24, y), point(252, y + 58), s_sidebar_focused ? IM_COL32(47, 164, 255, 255) : IM_COL32(35, 116, 181, 210),
 					10 * scale, s_sidebar_focused ? 2.0f * scale : 1.0f * scale, 0);
 			}
-			image(sidebar_icons[i], 43, y + 12, 34, 34);
+			if (sidebar_icons[i][0])
+				image(sidebar_icons[i], 43, y + 12, 34, 34);
+			else
+			{
+				// Compilation 143: Estilos, a palette of the five colors.
+				for (int dot = 0; dot < ForjaStyle::ColorCount; dot++)
+					draw->AddCircleFilled(point(52.0f + 8.0f * static_cast<float>(dot % 3), y + 22.0f + 12.0f * static_cast<float>(dot / 3)),
+						5.0f * scale, ForjaStyle::AccentColor(dot), 16);
+			}
 			text(91, y + 37, active ? 19 : 18, active ? white : muted, T(sidebar_labels[i]), 160);
 		}
 		// Forja SX2: the public version (VERSION) and, in brackets, the build, so a tester sees at a glance whether the new
@@ -2950,6 +3130,7 @@ namespace PS4GameMenu
 		image("controle_bola", exit_x, 1001, 30, 30);
 		text(exit_x + 38, 1023, 16, muted, T("Salir"), 300);
 		}
+		} // compilation 143: the classic style
 		if (s_exit_dialog_visible)
 		{
 			draw->AddRectFilled(ImVec2(0, 0), size, IM_COL32(0, 0, 0, 165));
