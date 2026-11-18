@@ -70,6 +70,10 @@ namespace ForjaGameProfile
 		// UpdateGsSkip; GSRendererPS4.cpp, VSync.
 		int gs_skip = -1;
 		Origin gs_skip_origin = Origin::Global;
+		// Compilation 146: [Forja] SaltarCuadrosOcultaPantalla, for a game that draws each frame into the picture the TV shows
+		// (Dragon Ball Z BT4): that picture is hidden as soon as a frame is chosen to be left out (GSRendererPS4.cpp).
+		int gs_skip_hide_shown = -1;
+		Origin gs_skip_hide_shown_origin = Origin::Global;
 		// [Forja] Huellas (compilation 55): the draw fingerprint rules turned on for the game, their huellas.ini ids with commas
 		// (ps4/vm/main.cpp, LoadRules; pcsx2/ForjaGsRules.h).
 		std::string rules_on;
@@ -280,6 +284,7 @@ namespace ForjaGameProfile
 		read_int("FrameGen", &v.frame_gen, &v.frame_gen_origin);
 		read_int("CpuAuto", &v.cpu_auto, &v.cpu_auto_origin);
 		read_int("SaltarCuadros", &v.gs_skip, &v.gs_skip_origin);
+		read_int("SaltarCuadrosOcultaPantalla", &v.gs_skip_hide_shown, &v.gs_skip_hide_shown_origin); // compilation 146
 		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);
 		read_int("SaltoAprendido", &v.learned_skip16, &v.learned_skip16_origin); // compilation 139
 		read_int("GrabarEnOtroHilo", &v.draw_thread, &v.draw_thread_origin);

@@ -427,6 +427,7 @@ extern std::atomic<unsigned> g_forja_gs_skip_every;    // compilation 63: one fr
 extern std::atomic<bool> g_forja_gs_skip_guard;       // compilation 82: the guard on (always since 86)
 extern std::atomic<bool> g_forja_gs_skip_quick;       // compilation 86: "1 de 2 rápido" (SaltarCuadros 3), short pauses
 extern std::atomic<bool> g_forja_gs_skip_two;         // compilation 88: "2 de 3" (SaltarCuadros 4)
+extern std::atomic<bool> g_forja_gs_skip_hide_shown;  // compilation 146: [Forja] SaltarCuadrosOcultaPantalla (GSRendererPS4.cpp)
 extern std::atomic<bool> g_forja_gs_skip_lag;         // compilation 90: "Al vuelo" (SaltarCuadros 5)
 extern std::atomic<unsigned> g_forja_gs_skip_lag_percent; // compilation 105: at most this share of the frames (UpdateGsSkip)
 // Compilation 82: the Guitar Hero games' crowd, drawn in software once every N of its passes (GSHwHack.cpp, GSC_GuitarHero;
@@ -3009,6 +3010,7 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		}
 		// Compilation 86: 3 is "1 de 2 rápido", the guard with its short pauses (until 85 it had none: flicker in menus).
 		g_forja_gs_skip_guard.store(true, std::memory_order_relaxed);
+		g_forja_gs_skip_hide_shown.store(s_profile.gs_skip_hide_shown == 1, std::memory_order_relaxed); // compilation 146
 		// Compilation 88: 4 is "2 de 3", two frames left out of every three, with the same short pauses.
 		// Compilation 140: 3, 4 and Al vuelo (5) again, as until the 136. The 137 gave Al vuelo the normal pauses (to 30 s) for fewer
 		// flickers, and Dragon Ball Z BT4 with the 139 (2026-11-18) spent more than half its time paused (120, 480, 1800, 1800 vsyncs),

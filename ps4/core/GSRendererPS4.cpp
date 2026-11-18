@@ -79,6 +79,10 @@ std::atomic<bool> g_forja_gs_skip_quick{false};
 // Budokai Tenkaichi 4 for two players (2026-10-25, the 87): at one in two its heavy fights still ran at 48-95 %, the GS at
 // 15-31 ms a refresh. The TV is shown one frame in three; a frame is drawn by force after two hidden ones anyway.
 std::atomic<bool> g_forja_gs_skip_two{false};
+// Compilation 146: [Forja] SaltarCuadrosOcultaPantalla (main.cpp). A game that draws each frame into the picture the TV is showing
+// (Dragon Ball Z BT4, the 143's guard notes: buffer 0x70 shown on both circuits while frame 172, left out, was drawn into it) has its
+// picture hidden from the moment a frame is chosen, so the TV repeats the last whole one instead of a half-drawn one.
+std::atomic<bool> g_forja_gs_skip_hide_shown{false};
 // Compilation 90: Saltar cuadros "Al vuelo" (SaltarCuadros 5, main.cpp): a frame is left out only while the GS is behind,
 // at most two in a row. Dragon Ball for two players with "2 de 3" (the 89, 2026-10-25): full speed and more (100-110 %), but
 // it left out 73-98 of ~105 frames every 5 s, ~5 new pictures a second on the TV, and Joseph saw it slow ("se ve lento").
@@ -1213,6 +1217,9 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 					g_forja_gs_skipped_frames.fetch_add(1, std::memory_order_relaxed);
 					if (guard)
 						s_forja_guard.Chosen(s_forja_hidden_total);
+					// Compilation 146: the picture on the TV is the one this frame draws into: hidden from now (its draws mark it cut).
+					if (g_forja_gs_skip_hide_shown.load(std::memory_order_relaxed))
+						ForjaGsSkipNote(shown, true, false);
 				}
 			}
 			else if (++s_forja_vsyncs_since_frame > 8)
