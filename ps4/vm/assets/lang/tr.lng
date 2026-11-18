@@ -733,6 +733,9 @@ tr: SEÇ  ·  X
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: SEÇ  ·  X  ·  KARE
 
+es: ESCRIBIR  ·  X  ·  CUADRADO
+tr: YAZ  ·  X  ·  KARE
+
 es: CAMBIAR
 tr: DEĞİŞTİR
 
@@ -1024,6 +1027,48 @@ tr: Yazılımla seyirci:  < her %u karede 1 >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: Bu oyun seyirciyi CPU ile çizer, onu en çok yavaşlatan budur. Daha az = daha hızlı; seyirci daha az akıcı hareket eder. Bu oyun için kaydedilir
 
+es: Internet
+tr: İnternet
+
+es: Sala LAN
+tr: LAN odası
+
+es: Juego en línea:  < %s >
+tr: Çevrimiçi oyun:  < %s >
+
+es: Internet: el online original del juego, en los servidores de fans que lo revivieron (pon abajo su DNS). Sala LAN: el modo LAN del juego con amigos por internet; una PS4 crea la sala y las demás entran. Reinicia el juego para que lo vea. Se guarda para este juego
+tr: İnternet: oyunun orijinal çevrimiçi modu, onu yeniden canlandıran hayran sunucularında (DNS'lerini aşağıya yazın). LAN odası: oyunun LAN modu, internet üzerinden arkadaşlarla; bir PS4 odayı kurar, diğerleri katılır. Görmesi için oyunu yeniden başlatın. Bu oyun için kaydedilir
+
+es: DNS del servidor:  < %s >
+tr: Sunucu DNS'i:  < %s >
+
+es: Solo para Internet: el DNS del servidor de fans de este juego (búscalo en la comunidad PS2Online). X lo escribe, Cuadrado vuelve a Auto
+tr: Yalnızca İnternet için: bu oyunun hayran sunucusunun DNS'i (PS2Online topluluğunda arayın). X yazar, Kare Otomatik'e döner
+
+es: Sala LAN, anfitrión:  < %s >
+tr: LAN odası, oda sahibi:  < %s >
+
+es: esta PS4 crea la sala
+tr: bu PS4 odayı kurar
+
+es: Vacío: esta PS4 crea la sala. Para entrar a la de un amigo, escribe su IP o su dominio. X lo escribe, Cuadrado lo borra
+tr: Boş: bu PS4 odayı kurar. Bir arkadaşınınkine girmek için IP'sini veya alan adını yazın. X yazar, Kare siler
+
+es: Sala LAN, clave:  < %s >
+tr: LAN odası, şifre:  < %s >
+
+es: ninguna (hace falta una)
+tr: yok (gerekli)
+
+es: La misma clave para todos los de la sala; sin clave la sala no se abre. X la escribe, Cuadrado la borra
+tr: Odadaki herkes için aynı şifre; şifre olmadan oda açılmaz. X yazar, Kare siler
+
+es: Abrir el puerto del router (UPnP):  < %s >
+tr: Modem portunu aç (UPnP):  < %s >
+
+es: Solo para quien crea la sala: Forja le pide al router que abra el puerto UDP 41020 mientras la sala está abierta. Con No, ábrelo tú en el router
+tr: Yalnızca odayı kuran için: oda açıkken Forja modemden UDP 41020 portunu açmasını ister. Hayır ise modemde kendiniz açın
+
 es: Dibujo por software con traductor:  < %s >
 tr: Çeviricili yazılım çizimi:  < %s >
 
@@ -1281,6 +1326,15 @@ tr: X: PS4 klavyesiyle ne olduğunu yaz (R2 kaydeder). Sol/Sağ: hazır bir cüm
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X: değiştir  ·  Sol/Sağ: başka bir cümle  ·  Kare: sil. Bir sonraki raporla gönderilir
+
+es: DNS del servidor del juego
+tr: Oyun sunucusunun DNS'i
+
+es: IP o dominio del anfitrión de la sala
+tr: Oda sahibinin IP'si veya alan adı
+
+es: Clave de la sala
+tr: Oda şifresi
 
 es: Comentario para el reporte
 tr: Rapor için yorum

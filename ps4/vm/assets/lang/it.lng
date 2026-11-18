@@ -733,6 +733,9 @@ tr: SCEGLI  ·  X
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: SCEGLI  ·  X  ·  QUADRATO
 
+es: ESCRIBIR  ·  X  ·  CUADRADO
+tr: SCRIVI  ·  X  ·  QUADRATO
+
 es: CAMBIAR
 tr: CAMBIA
 
@@ -1024,6 +1027,48 @@ tr: Pubblico via software:  < 1 fotogramma su %u >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: Questo gioco disegna il pubblico con la CPU, ciò che lo rallenta di più. Meno volte = più velocità; il pubblico si muove meno fluido. Salvato per questo gioco
 
+es: Internet
+tr: Internet
+
+es: Sala LAN
+tr: Stanza LAN
+
+es: Juego en línea:  < %s >
+tr: Gioco online:  < %s >
+
+es: Internet: el online original del juego, en los servidores de fans que lo revivieron (pon abajo su DNS). Sala LAN: el modo LAN del juego con amigos por internet; una PS4 crea la sala y las demás entran. Reinicia el juego para que lo vea. Se guarda para este juego
+tr: Internet: l'online originale del gioco, sui server dei fan che l'hanno riportato in vita (metti sotto il loro DNS). Stanza LAN: la modalità LAN del gioco con amici via internet; una PS4 crea la stanza e le altre entrano. Riavvia il gioco perché la veda. Salvato per questo gioco
+
+es: DNS del servidor:  < %s >
+tr: DNS del server:  < %s >
+
+es: Solo para Internet: el DNS del servidor de fans de este juego (búscalo en la comunidad PS2Online). X lo escribe, Cuadrado vuelve a Auto
+tr: Solo per Internet: il DNS del server dei fan di questo gioco (cercalo nella comunità PS2Online). X lo scrive, Quadrato torna ad Auto
+
+es: Sala LAN, anfitrión:  < %s >
+tr: Stanza LAN, host:  < %s >
+
+es: esta PS4 crea la sala
+tr: questa PS4 crea la stanza
+
+es: Vacío: esta PS4 crea la sala. Para entrar a la de un amigo, escribe su IP o su dominio. X lo escribe, Cuadrado lo borra
+tr: Vuoto: questa PS4 crea la stanza. Per entrare in quella di un amico, scrivi il suo IP o dominio. X lo scrive, Quadrato lo cancella
+
+es: Sala LAN, clave:  < %s >
+tr: Stanza LAN, password:  < %s >
+
+es: ninguna (hace falta una)
+tr: nessuna (ne serve una)
+
+es: La misma clave para todos los de la sala; sin clave la sala no se abre. X la escribe, Cuadrado la borra
+tr: La stessa password per tutti nella stanza; senza password la stanza non si apre. X la scrive, Quadrato la cancella
+
+es: Abrir el puerto del router (UPnP):  < %s >
+tr: Aprire la porta del router (UPnP):  < %s >
+
+es: Solo para quien crea la sala: Forja le pide al router que abra el puerto UDP 41020 mientras la sala está abierta. Con No, ábrelo tú en el router
+tr: Solo per chi crea la stanza: Forja chiede al router di aprire la porta UDP 41020 mentre la stanza è aperta. Con No, aprila tu nel router
+
 es: Dibujo por software con traductor:  < %s >
 tr: Disegno software con traduttore:  < %s >
 
@@ -1281,6 +1326,15 @@ tr: X: scrivi con la tastiera della PS4 cosa è successo (R2 lo salva). Sinistra
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X: cambiarlo  ·  Sinistra/Destra: un'altra frase  ·  Quadrato: cancellarlo. Viene inviato con la prossima segnalazione
+
+es: DNS del servidor del juego
+tr: DNS del server del gioco
+
+es: IP o dominio del anfitrión de la sala
+tr: IP o dominio di chi ospita la stanza
+
+es: Clave de la sala
+tr: Password della stanza
 
 es: Comentario para el reporte
 tr: Commento per la segnalazione

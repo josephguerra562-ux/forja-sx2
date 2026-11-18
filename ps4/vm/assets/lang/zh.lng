@@ -733,6 +733,9 @@ tr: 选择  ·  X
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: 选择  ·  X  ·  方块键
 
+es: ESCRIBIR  ·  X  ·  CUADRADO
+tr: 输入  ·  X  ·  方块
+
 es: CAMBIAR
 tr: 切换
 
@@ -1024,6 +1027,48 @@ tr: 软件绘制观众：  < 每 %u 帧画 1 次 >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: 此游戏用 CPU 绘制观众，这是最拖慢它的部分。次数越少 = 速度越快；观众动作不那么流畅。为此游戏保存
 
+es: Internet
+tr: 互联网
+
+es: Sala LAN
+tr: 局域网房间
+
+es: Juego en línea:  < %s >
+tr: 联网游戏:  < %s >
+
+es: Internet: el online original del juego, en los servidores de fans que lo revivieron (pon abajo su DNS). Sala LAN: el modo LAN del juego con amigos por internet; una PS4 crea la sala y las demás entran. Reinicia el juego para que lo vea. Se guarda para este juego
+tr: 互联网:游戏原有的在线模式,使用复活它的玩家服务器(在下方填写其 DNS)。局域网房间:通过互联网与朋友玩游戏的局域网模式;一台 PS4 创建房间,其他加入。重启游戏使其生效。为此游戏保存
+
+es: DNS del servidor:  < %s >
+tr: 服务器 DNS:  < %s >
+
+es: Solo para Internet: el DNS del servidor de fans de este juego (búscalo en la comunidad PS2Online). X lo escribe, Cuadrado vuelve a Auto
+tr: 仅用于互联网:此游戏玩家服务器的 DNS(在 PS2Online 社区查找)。X 输入,方块恢复自动
+
+es: Sala LAN, anfitrión:  < %s >
+tr: 局域网房间,房主:  < %s >
+
+es: esta PS4 crea la sala
+tr: 这台 PS4 创建房间
+
+es: Vacío: esta PS4 crea la sala. Para entrar a la de un amigo, escribe su IP o su dominio. X lo escribe, Cuadrado lo borra
+tr: 留空:这台 PS4 创建房间。要加入朋友的房间,输入他的 IP 或域名。X 输入,方块清除
+
+es: Sala LAN, clave:  < %s >
+tr: 局域网房间,密码:  < %s >
+
+es: ninguna (hace falta una)
+tr: 无(需要设置)
+
+es: La misma clave para todos los de la sala; sin clave la sala no se abre. X la escribe, Cuadrado la borra
+tr: 房间里所有人使用同一个密码;没有密码房间不会开启。X 输入,方块清除
+
+es: Abrir el puerto del router (UPnP):  < %s >
+tr: 打开路由器端口 (UPnP):  < %s >
+
+es: Solo para quien crea la sala: Forja le pide al router que abra el puerto UDP 41020 mientras la sala está abierta. Con No, ábrelo tú en el router
+tr: 仅限创建房间的人:房间开启期间,Forja 请求路由器打开 UDP 41020 端口。选否则需你自己在路由器中打开
+
 es: Dibujo por software con traductor:  < %s >
 tr: 使用变换生成的软件绘制：  < %s >
 
@@ -1281,6 +1326,15 @@ tr: X：用 PS4 键盘写下发生了什么（R2 保存）。左/右：现成的
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X：修改  ·  左/右：换一句  ·  方块键：删除。随下一份报告发送
+
+es: DNS del servidor del juego
+tr: 游戏服务器的 DNS
+
+es: IP o dominio del anfitrión de la sala
+tr: 房主的 IP 或域名
+
+es: Clave de la sala
+tr: 房间密码
 
 es: Comentario para el reporte
 tr: 报告的评论

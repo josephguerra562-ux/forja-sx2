@@ -47,6 +47,14 @@ namespace PS4GameMenu
 		// Compilation 82: the Guitar Hero games' crowd, drawn in software once every N of its passes (main.cpp, PublishCrowdText).
 		// Compilation 83 (Joseph, 2026-10-24: "solo es para Guitar Hero, no es para todos los juegos"): in Extras, not Rendimiento.
 		ROW_CROWD,
+		// Compilation 144: playing on the network (main.cpp, PublishNetText): No / Internet (the game's own online, on a fans' server) /
+		// Sala LAN (its LAN mode with friends over the internet, ps4/vm/ForjaLan.cpp); the server's DNS; the room's host and key;
+		// and whether the router's port may be opened (UPnP).
+		ROW_NET_MODE,
+		ROW_NET_DNS,
+		ROW_NET_HOST,
+		ROW_NET_KEY,
+		ROW_NET_UPNP,
 		// No tocar (compilation 53, Joseph's name): the labs the games are measured with, apart so nobody takes them for settings.
 		// Compilation 59 (Joseph, 2026-10-19: "eso es por no tocar hasta no haber pulido"): frame skip, HD textures and cheats
 		// too, until they are tested and polished; God of War II closed four times that day with them on. (Frame generation

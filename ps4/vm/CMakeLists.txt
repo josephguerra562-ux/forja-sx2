@@ -94,6 +94,8 @@ set(vm_sources
   pcsx2/DEV9/DEV9.cpp
   pcsx2/DEV9/flash.cpp
   pcsx2/DEV9/smap.cpp
+  pcsx2/DEV9/net.cpp
+  pcsx2/DEV9/sockets.cpp
   pcsx2/Dmac.cpp
   pcsx2/FPU.cpp
   pcsx2/FW.cpp
@@ -258,7 +260,9 @@ file(GLOB extra_sources RELATIVE "${PCSX2_ROOT}"
   "${PCSX2_ROOT}/pcsx2/DebugTools/*.cpp")
 list(APPEND vm_sources ${extra_sources})
 # (AI-assisted) Real device/controller implementations; USB ports start disconnected.
-file(GLOB_RECURSE device_sources RELATIVE "${PCSX2_ROOT}" "${PCSX2_ROOT}/pcsx2/USB/*.cpp" "${PCSX2_ROOT}/pcsx2/DEV9/ATA/*.cpp")
+file(GLOB_RECURSE device_sources RELATIVE "${PCSX2_ROOT}" "${PCSX2_ROOT}/pcsx2/USB/*.cpp" "${PCSX2_ROOT}/pcsx2/DEV9/ATA/*.cpp"
+  # Forja SX2: the PS2 network adapter in Sockets mode (PCSX2's DEV9 net stack; host adapter in AdapterUtilsPS4.cpp)
+  "${PCSX2_ROOT}/pcsx2/DEV9/InternalServers/*.cpp" "${PCSX2_ROOT}/pcsx2/DEV9/PacketReader/*.cpp" "${PCSX2_ROOT}/pcsx2/DEV9/Sessions/*.cpp")
 list(FILTER device_sources EXCLUDE REGEX "(cam-(linux|windows|macos)|audiodev-cubeb|usb-pad-sdl-ff|/Win32/|pcap_io)\\.?")
 list(APPEND vm_sources ${device_sources}
   ps4/compat/InputStubs.cpp ps4/compat/AudioStubs.cpp
@@ -291,7 +295,7 @@ target_compile_definitions(ps4_audio_resampler PRIVATE OUTSIDE_SPEEX FLOATING_PO
 target_compile_options(ps4_audio_resampler PRIVATE -march=btver2 -ffunction-sections -fdata-sections -fvisibility=hidden)
 set_property(SOURCE "${PCSX2_ROOT}/ps4/core/AudioStreamPS4.cpp"
   APPEND PROPERTY COMPILE_DEFINITIONS OUTSIDE_SPEEX RANDOM_PREFIX=ps4sx2)
-add_executable(vm_boot main.cpp GameMenu.cpp CoverImage.cpp CoverDownload.cpp ReleaseCheck.cpp HostVM.cpp UIVM.cpp CPUInfoVM.cpp NetworkVM.cpp CaptureVM.cpp DiscVM.cpp PhysicalDisc.cpp DiscCopy.cpp PatchDownload.cpp SessionStats.cpp ForjaReport.cpp PlatformVM.cpp
+add_executable(vm_boot main.cpp GameMenu.cpp CoverImage.cpp CoverDownload.cpp ReleaseCheck.cpp HostVM.cpp UIVM.cpp CPUInfoVM.cpp AdapterUtilsPS4.cpp ForjaLan.cpp UPnPPS4.cpp CaptureVM.cpp DiscVM.cpp PhysicalDisc.cpp DiscCopy.cpp PatchDownload.cpp SessionStats.cpp ForjaReport.cpp PlatformVM.cpp
   "${PCSX2_ROOT}/ps4/core/ThreadCPUMetricsPS4.cpp" "${PCSX2_ROOT}/ps4/core/IPUProfilePS4.cpp"
   "${PCSX2_ROOT}/ps4/core/GSProfilePS4.cpp"
   "${PCSX2_ROOT}/ps4/core/EEEventProfilePS4.cpp"

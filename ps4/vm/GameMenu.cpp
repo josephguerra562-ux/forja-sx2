@@ -2671,6 +2671,17 @@ namespace PS4GameMenu
 						draw->AddLine(ip(-15, -10), ip(0, 2), icon_line, lw);
 						draw->AddLine(ip(15, -10), ip(0, 2), icon_line, lw);
 						break;
+					case ROW_NET_MODE: // a globe (compilation 144)
+					case ROW_NET_DNS:
+					case ROW_NET_HOST:
+					case ROW_NET_KEY:
+					case ROW_NET_UPNP:
+						draw->AddCircle(ip(0, 0), 13.0f * scale, icon_line, 24, lw);
+						draw->AddLine(ip(-13, 0), ip(13, 0), icon_line, lw);
+						draw->AddLine(ip(0, -13), ip(0, 13), icon_line, lw);
+						draw->AddBezierQuadratic(ip(0, -13), ip(-9, 0), ip(0, 13), icon_line, lw);
+						draw->AddBezierQuadratic(ip(0, -13), ip(9, 0), ip(0, 13), icon_line, lw);
+						break;
 					case ROW_CROWD: // three heads, a crowd (compilation 82)
 						for (int i = -1; i <= 1; i++)
 						{
@@ -2734,6 +2745,10 @@ namespace PS4GameMenu
 				if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD || row == ROW_SW_JIT || row == ROW_FPU_EXACT || row == ROW_IOP_FAST ||
 				    row == ROW_IOP_SLEEP || row == ROW_SKIP_AUTO_FINE || row == ROW_CPU_AUTO_UP || row == ROW_FAST_CODE_CHECK || row == ROW_VU1_FAST || row == ROW_EFFECTS_AHEAD || row == ROW_SKIP_REPEATS || row == ROW_CPU_SEAMLESS || row == ROW_DISC_NO_WAIT || row == ROW_CODE_AHEAD || row == ROW_VU_JUMPS || row == ROW_FRAME_PUSH || row == ROW_FG_MARGIN) // 122; 124; 126; 127; 128; 130; 132; 136
 					return T("ELEGIR");
+				if (row == ROW_NET_MODE || row == ROW_NET_UPNP) // compilation 144
+					return T("ELEGIR");
+				if (row == ROW_NET_DNS || row == ROW_NET_HOST || row == ROW_NET_KEY)
+					return T("ESCRIBIR  ·  X  ·  CUADRADO");
 				if (row == ROW_RECOMMENDED)
 					return "X";
 				if (row == ROW_OVERLAY)

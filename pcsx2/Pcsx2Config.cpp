@@ -1347,6 +1347,7 @@ const char* Pcsx2Config::DEV9Options::NetApiNames[] = {
 	"PCAP Switched",
 	"TAP",
 	"Sockets",
+	"Forja LAN",
 	nullptr};
 
 const char* Pcsx2Config::DEV9Options::DnsModeNames[] = {
@@ -1396,13 +1397,23 @@ void Pcsx2Config::DEV9Options::LoadSave(SettingsWrapper& wrap)
 			LoadIPHelper(Mask, maskStr);
 			LoadIPHelper(Gateway, gatewayStr);
 			LoadIPHelper(DNS1, dns1Str);
-			LoadIPHelper(DNS1, dns1Str);
+			// Forja SX2: upstream PCSX2 loads DNS1 twice here, so DNS2 from an ini was never read.
+			LoadIPHelper(DNS2, dns2Str);
 		}
 
 		SettingsWrapEntry(AutoMask);
 		SettingsWrapEntry(AutoGateway);
 		SettingsWrapEnumEx(ModeDNS1, "ModeDNS1", DnsModeNames);
 		SettingsWrapEnumEx(ModeDNS2, "ModeDNS2", DnsModeNames);
+	}
+
+	{
+		// Forja SX2: Sala LAN (EthApi = Forja LAN)
+		SettingsWrapSection("DEV9/ForjaLAN");
+		SettingsWrapEntryEx(LanHost, "Host");
+		SettingsWrapEntryEx(LanPort, "Port");
+		SettingsWrapEntryEx(LanUPnP, "UPnP");
+		SettingsWrapEntryEx(LanKey, "Key");
 	}
 
 	if (wrap.IsLoading())
@@ -1476,6 +1487,11 @@ bool Pcsx2Config::DEV9Options::operator==(const DEV9Options& right) const
 		   OpEqu(ModeDNS2) &&
 
 		   OpEqu(EthHosts) &&
+
+		   OpEqu(LanHost) &&
+		   OpEqu(LanPort) &&
+		   OpEqu(LanUPnP) &&
+		   OpEqu(LanKey) &&
 
 		   OpEqu(HddEnable) &&
 		   OpEqu(HddFile);

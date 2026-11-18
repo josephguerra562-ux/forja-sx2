@@ -733,6 +733,9 @@ tr: 선택  ·  X
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: 선택  ·  X  ·  네모
 
+es: ESCRIBIR  ·  X  ·  CUADRADO
+tr: 입력  ·  X  ·  네모
+
 es: CAMBIAR
 tr: 전환
 
@@ -1024,6 +1027,48 @@ tr: 소프트웨어 관중:  < %u 프레임마다 1번 >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: 이 게임은 관중을 CPU로 그리며, 이것이 가장 느리게 만듭니다. 횟수를 줄이면 = 더 빠름; 관중의 움직임은 덜 부드러워집니다. 이 게임에 저장됩니다
 
+es: Internet
+tr: 인터넷
+
+es: Sala LAN
+tr: LAN 방
+
+es: Juego en línea:  < %s >
+tr: 온라인 플레이:  < %s >
+
+es: Internet: el online original del juego, en los servidores de fans que lo revivieron (pon abajo su DNS). Sala LAN: el modo LAN del juego con amigos por internet; una PS4 crea la sala y las demás entran. Reinicia el juego para que lo vea. Se guarda para este juego
+tr: 인터넷: 게임 원래의 온라인을 그것을 되살린 팬 서버에서 (아래에 그 DNS 입력). LAN 방: 게임의 LAN 모드를 인터넷으로 친구들과; PS4 한 대가 방을 만들고 나머지가 들어옵니다. 적용하려면 게임을 다시 시작하세요. 이 게임에 저장됩니다
+
+es: DNS del servidor:  < %s >
+tr: 서버 DNS:  < %s >
+
+es: Solo para Internet: el DNS del servidor de fans de este juego (búscalo en la comunidad PS2Online). X lo escribe, Cuadrado vuelve a Auto
+tr: 인터넷 전용: 이 게임 팬 서버의 DNS (PS2Online 커뮤니티에서 찾아보세요). X로 입력, 네모로 자동으로 되돌림
+
+es: Sala LAN, anfitrión:  < %s >
+tr: LAN 방, 방장:  < %s >
+
+es: esta PS4 crea la sala
+tr: 이 PS4가 방을 만듦
+
+es: Vacío: esta PS4 crea la sala. Para entrar a la de un amigo, escribe su IP o su dominio. X lo escribe, Cuadrado lo borra
+tr: 비어 있음: 이 PS4가 방을 만듭니다. 친구의 방에 들어가려면 그 IP나 도메인을 입력하세요. X로 입력, 네모로 삭제
+
+es: Sala LAN, clave:  < %s >
+tr: LAN 방, 비밀번호:  < %s >
+
+es: ninguna (hace falta una)
+tr: 없음 (필요함)
+
+es: La misma clave para todos los de la sala; sin clave la sala no se abre. X la escribe, Cuadrado la borra
+tr: 방의 모두가 같은 비밀번호를 씁니다. 비밀번호가 없으면 방이 열리지 않습니다. X로 입력, 네모로 삭제
+
+es: Abrir el puerto del router (UPnP):  < %s >
+tr: 공유기 포트 열기 (UPnP):  < %s >
+
+es: Solo para quien crea la sala: Forja le pide al router que abra el puerto UDP 41020 mientras la sala está abierta. Con No, ábrelo tú en el router
+tr: 방을 만드는 사람만: 방이 열려 있는 동안 Forja가 공유기에 UDP 41020 포트를 열어 달라고 요청합니다. 아니요면 공유기에서 직접 여세요
+
 es: Dibujo por software con traductor:  < %s >
 tr: 변환기로 소프트웨어 그리기:  < %s >
 
@@ -1281,6 +1326,15 @@ tr: X: PS4 키보드로 무슨 일이 있었는지 쓰세요 (R2로 저장). 왼
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X: 바꾸기  ·  왼쪽/오른쪽: 다른 문장  ·  네모: 지우기. 다음 보고서와 함께 보냅니다
+
+es: DNS del servidor del juego
+tr: 게임 서버 DNS
+
+es: IP o dominio del anfitrión de la sala
+tr: 방장의 IP 또는 도메인
+
+es: Clave de la sala
+tr: 방 비밀번호
 
 es: Comentario para el reporte
 tr: 보고서 코멘트

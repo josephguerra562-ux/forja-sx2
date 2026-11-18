@@ -733,6 +733,9 @@ tr: 選択  ·  X
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: 選択  ·  X  ·  □
 
+es: ESCRIBIR  ·  X  ·  CUADRADO
+tr: 入力  ·  X  ·  四角
+
 es: CAMBIAR
 tr: 切替
 
@@ -1024,6 +1027,48 @@ tr: ソフトウェア描画の観客：  < %u フレームに 1 回 >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: このゲームは観客を CPU で描いていて、それが一番の遅さの原因です。回数を減らす = 速くなる。観客の動きは少しなめらかでなくなります。このゲーム用に保存されます
 
+es: Internet
+tr: インターネット
+
+es: Sala LAN
+tr: LAN ルーム
+
+es: Juego en línea:  < %s >
+tr: オンラインプレイ:  < %s >
+
+es: Internet: el online original del juego, en los servidores de fans que lo revivieron (pon abajo su DNS). Sala LAN: el modo LAN del juego con amigos por internet; una PS4 crea la sala y las demás entran. Reinicia el juego para que lo vea. Se guarda para este juego
+tr: インターネット:ゲーム本来のオンラインを、それを復活させたファンのサーバーで(下にその DNS を入力)。LAN ルーム:ゲームの LAN モードをインターネット越しに友だちと。1台の PS4 がルームを作り、ほかが参加します。反映するにはゲームを再起動してください。このゲームに保存されます
+
+es: DNS del servidor:  < %s >
+tr: サーバーの DNS:  < %s >
+
+es: Solo para Internet: el DNS del servidor de fans de este juego (búscalo en la comunidad PS2Online). X lo escribe, Cuadrado vuelve a Auto
+tr: インターネットのみ:このゲームのファンサーバーの DNS(PS2Online コミュニティで探してください)。X で入力、四角で自動に戻す
+
+es: Sala LAN, anfitrión:  < %s >
+tr: LAN ルーム、ホスト:  < %s >
+
+es: esta PS4 crea la sala
+tr: この PS4 がルームを作る
+
+es: Vacío: esta PS4 crea la sala. Para entrar a la de un amigo, escribe su IP o su dominio. X lo escribe, Cuadrado lo borra
+tr: 空欄:この PS4 がルームを作ります。友だちのルームに入るには、その IP かドメインを入力。X で入力、四角で消去
+
+es: Sala LAN, clave:  < %s >
+tr: LAN ルーム、パスワード:  < %s >
+
+es: ninguna (hace falta una)
+tr: なし(必要です)
+
+es: La misma clave para todos los de la sala; sin clave la sala no se abre. X la escribe, Cuadrado la borra
+tr: ルームの全員で同じパスワード。パスワードがないとルームは開きません。X で入力、四角で消去
+
+es: Abrir el puerto del router (UPnP):  < %s >
+tr: ルーターのポートを開く (UPnP):  < %s >
+
+es: Solo para quien crea la sala: Forja le pide al router que abra el puerto UDP 41020 mientras la sala está abierta. Con No, ábrelo tú en el router
+tr: ルームを作る人だけ:ルームが開いている間、Forja がルーターに UDP ポート 41020 を開くよう頼みます。いいえの場合はルーターで自分で開いてください
+
 es: Dibujo por software con traductor:  < %s >
 tr: トランスレーターでソフトウェア描画：  < %s >
 
@@ -1281,6 +1326,15 @@ tr: X：PS4 のキーボードで何が起きたかを書く（R2 で保存）�
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X：変更  ·  左/右：別の文  ·  □：削除。次のレポートと一緒に送られます
+
+es: DNS del servidor del juego
+tr: ゲームサーバーの DNS
+
+es: IP o dominio del anfitrión de la sala
+tr: ルームのホストの IP またはドメイン
+
+es: Clave de la sala
+tr: ルームのパスワード
 
 es: Comentario para el reporte
 tr: レポートへのコメント

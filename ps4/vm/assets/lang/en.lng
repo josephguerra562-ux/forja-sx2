@@ -733,6 +733,9 @@ tr: CHOOSE  ·  X
 es: ELEGIR  ·  X  ·  CUADRADO
 tr: CHOOSE  ·  X  ·  SQUARE
 
+es: ESCRIBIR  ·  X  ·  CUADRADO
+tr: TYPE  ·  X  ·  SQUARE
+
 es: CAMBIAR
 tr: SWITCH
 
@@ -1024,6 +1027,48 @@ tr: Software crowd:  < 1 of every %u frames >
 es: Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego
 tr: This game draws its crowd with the CPU, what slows it down the most. Fewer times = more speed; the crowd moves less smoothly. Saved for this game
 
+es: Internet
+tr: Internet
+
+es: Sala LAN
+tr: LAN room
+
+es: Juego en línea:  < %s >
+tr: Online play:  < %s >
+
+es: Internet: el online original del juego, en los servidores de fans que lo revivieron (pon abajo su DNS). Sala LAN: el modo LAN del juego con amigos por internet; una PS4 crea la sala y las demás entran. Reinicia el juego para que lo vea. Se guarda para este juego
+tr: Internet: the game's original online play, on the fan servers that revived it (enter their DNS below). LAN room: the game's LAN mode with friends over the internet; one PS4 creates the room and the others join. Restart the game so it sees it. Saved for this game
+
+es: DNS del servidor:  < %s >
+tr: Server DNS:  < %s >
+
+es: Solo para Internet: el DNS del servidor de fans de este juego (búscalo en la comunidad PS2Online). X lo escribe, Cuadrado vuelve a Auto
+tr: Internet only: the DNS of this game's fan server (look it up in the PS2Online community). X types it, Square goes back to Auto
+
+es: Sala LAN, anfitrión:  < %s >
+tr: LAN room, host:  < %s >
+
+es: esta PS4 crea la sala
+tr: this PS4 creates the room
+
+es: Vacío: esta PS4 crea la sala. Para entrar a la de un amigo, escribe su IP o su dominio. X lo escribe, Cuadrado lo borra
+tr: Empty: this PS4 creates the room. To join a friend's, type their IP or domain. X types it, Square clears it
+
+es: Sala LAN, clave:  < %s >
+tr: LAN room, password:  < %s >
+
+es: ninguna (hace falta una)
+tr: none (one is needed)
+
+es: La misma clave para todos los de la sala; sin clave la sala no se abre. X la escribe, Cuadrado la borra
+tr: The same password for everyone in the room; without one the room does not open. X types it, Square clears it
+
+es: Abrir el puerto del router (UPnP):  < %s >
+tr: Open the router's port (UPnP):  < %s >
+
+es: Solo para quien crea la sala: Forja le pide al router que abra el puerto UDP 41020 mientras la sala está abierta. Con No, ábrelo tú en el router
+tr: Only for whoever creates the room: Forja asks the router to open UDP port 41020 while the room is open. With No, open it yourself in the router
+
 es: Dibujo por software con traductor:  < %s >
 tr: Software drawing with the translator:  < %s >
 
@@ -1281,6 +1326,15 @@ tr: X: write with the PS4 keyboard what happened (R2 saves it). Left/Right: a re
 
 es: X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte
 tr: X: change it  ·  Left/Right: another phrase  ·  Square: delete it. It's sent with the next report
+
+es: DNS del servidor del juego
+tr: The game server's DNS
+
+es: IP o dominio del anfitrión de la sala
+tr: IP or domain of the room's host
+
+es: Clave de la sala
+tr: Room password
 
 es: Comentario para el reporte
 tr: Comment for the report

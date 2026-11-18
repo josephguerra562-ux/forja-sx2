@@ -468,6 +468,71 @@ Enable = Menos efectos 2 (Sony)
 Si tu archivo tiene su propia lista `Enable`, esa lista manda sobre la de fábrica, así que agrega ahí también
 "Skip Cutscenes". El menú L3+R3 > Extras escribe esa lista por ti. Un parche con el mismo nombre en `/data/ForjaSX2/patches` gana al que viene en el PKG.
 
+## 5b. Jugar online (adaptador de red de la PS2)
+Forja emula el adaptador de red de la PS2 en modo **Sockets**, como el PCSX2 de PC: lo que el juego manda por internet
+sale por la conexión de la PS4 (cable o Wi-Fi). Así se juega el **online original** del juego en los servidores de fans
+que lo revivieron (PS2Online, SOCOM Community, OpenSpy...), por ejemplo Mortal Kombat: Armageddon o Deception.
+Viene **apagado**: solo se prende en el juego cuyo perfil lo pide, así los demás no gastan nada.
+
+1. La PS4 tiene que estar conectada a internet.
+2. En `gamesettings/SERIAL_CRC.ini` del juego (sección 4), agrega:
+   ```ini
+   [DEV9/Eth]
+   EthEnable = true
+   ; El DNS del servidor de fans de ESE juego (cada juego tiene el suyo: búscalo en la tabla de la comunidad PS2Online)
+   ModeDNS1 = Manual
+   DNS1 = 0.0.0.0
+   ; Para ver en logs/ a qué servidores llama el juego (opcional)
+   EthLogDNS = true
+   ```
+   Cambia `0.0.0.0` por el DNS del servidor. Si lo dejas en `Auto`, el juego usa el DNS de la PS4 (sirve para los
+   juegos que no necesitan DNS especial).
+3. Dentro del juego, la configuración de red de la tarjeta de memoria va con **IP automática (DHCP)**. El DNS puede ir
+   en automático (Forja le da el del paso 2) o a mano con el del servidor. Algunos juegos crean esa configuración desde
+   su propio menú; otros piden el disco "Network Adapter Start-Up Disc".
+4. Si el juego pide **DNAS** (error -1xx/-6xx al conectar), pon su parche de DNAS de la comunidad en `patches/`
+   (sección 5) y actívalo como cualquier otro parche.
+5. En `logs/`, al entrar al juego, deben salir `DEV9: PS4 adapter ps4net, IP ...` y `DEV9: PS2 network adapter on`.
+   Si sale `PS4 has no IP address`, la PS4 no tiene internet.
+
+Qué no hace: no es "netplay" entre dos Forja (eso que se ve en páginas web que sincronizan los controles); es el
+online que el juego ya traía. Para los juegos con modo LAN está la Sala LAN (5c). El ping (ICMP) todavía no.
+
+## 5c. Sala LAN: tu propia sala, sin servidores de la comunidad
+Para los juegos con **modo LAN** (los mismos que se juegan por XLink Kai: Gran Turismo 4, Star Wars Battlefront,
+TimeSplitters 2...). Una Forja crea la sala (el **anfitrión**) y las demás entran a ella. Todo lo que la PS2 manda por
+el cable de red viaja al anfitrión, y él lo reparte como si todos estuvieran en la misma casa. No hay servidor en el
+medio: si el anfitrión cierra el juego, la sala se cierra. Hasta 8 jugadores.
+
+**El anfitrión**, en el `gamesettings/` del juego:
+```ini
+[DEV9/Eth]
+EthEnable = true
+EthApi = Forja LAN
+
+[DEV9/ForjaLAN]
+; Vacío = yo creo la sala
+Host =
+Port = 41020
+; Clave opcional: los demás tienen que poner la misma
+Key = mortal
+```
+Al entrar al juego, la PS4 avisa (arriba a la izquierda) la IP que tus amigos tienen que poner. Forja intenta abrir
+el puerto solo (UPnP). Si avisa que no pudo, abre **UDP 41020** en tu router hacia la IP de tu PS4. Si avisa
+**CGNAT**, tu internet no deja que te encuentren desde fuera: que otro sea el anfitrión.
+
+**Los que entran**: lo mismo, pero con la IP (o el dominio, por ejemplo uno gratis de DuckDNS) del anfitrión:
+```ini
+[DEV9/ForjaLAN]
+Host = 186.46.20.15
+Key = mortal
+```
+
+En el juego: configuración de red con **IP automática**. Cada jugador recibe su dirección de la sala
+(192.168.242.10 el anfitrión, .11, .12...). Todos tienen que tener el mismo juego y la misma versión; si no, la
+PS4 avisa. En la misma casa (dos PS4 en el mismo router) se usa la IP local del anfitrión y no hace falta abrir
+nada.
+
 ## 6. Interruptores generales (archivos vacíos en `/data/ForjaSX2/`)
 Afectan a TODOS los juegos. Si el archivo existe, la opción se activa. Reinicia la app después de ponerlo o quitarlo.
 - `vm-ee-cycle-normal`, `vm-ee-cycle-underclock`, `vm-ee-cycle-skip`: velocidad del CPU de la PS2

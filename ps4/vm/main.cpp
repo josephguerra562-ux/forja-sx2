@@ -2222,6 +2222,85 @@ static void PublishCrowdText()
 		T("Este juego dibuja su público con la CPU, lo que más lo frena. Menos veces = más velocidad; el público se mueve menos fluido. Se guarda para este juego"));
 }
 
+// Compilation 144: the network rows (Extras). PCSX2's [DEV9/Eth] and Forja's [DEV9/ForjaLAN] for this game, read from the running settings.
+static int s_keyboard_target = 0; // what the PS4's keyboard writes: 0 the report's comment, 1 the DNS, 2 the room's host, 3 its key
+
+static int NetMode()
+{
+	if (!EmuConfig.DEV9.EthEnable)
+		return 0;
+	return EmuConfig.DEV9.EthApi == Pcsx2Config::DEV9Options::NetApi::ForjaLAN ? 2 : 1;
+}
+
+static void PublishNetText()
+{
+	using ForjaLang::T;
+	using ForjaLang::TF;
+	static constexpr const char* modes[] = {N_("No"), N_("Internet"), N_("Sala LAN")};
+	char label[320];
+	std::snprintf(label, sizeof(label), TF("Juego en línea:  < %s >"), T(modes[NetMode()]));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_NET_MODE, label,
+		T("Internet: el online original del juego, en los servidores de fans que lo revivieron (pon abajo su DNS). Sala LAN: el modo LAN del juego con amigos por internet; una PS4 crea la sala y las demás entran. Reinicia el juego para que lo vea. Se guarda para este juego"));
+	char dns[32] = {};
+	const u8* d = EmuConfig.DEV9.DNS1;
+	if (EmuConfig.DEV9.ModeDNS1 == Pcsx2Config::DEV9Options::DnsMode::Manual)
+		std::snprintf(dns, sizeof(dns), "%u.%u.%u.%u", d[0], d[1], d[2], d[3]);
+	std::snprintf(label, sizeof(label), TF("DNS del servidor:  < %s >"), dns[0] ? dns : T("Auto"));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_NET_DNS, label,
+		T("Solo para Internet: el DNS del servidor de fans de este juego (búscalo en la comunidad PS2Online). X lo escribe, Cuadrado vuelve a Auto"));
+	std::snprintf(label, sizeof(label), TF("Sala LAN, anfitrión:  < %s >"),
+		EmuConfig.DEV9.LanHost.empty() ? T("esta PS4 crea la sala") : EmuConfig.DEV9.LanHost.c_str());
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_NET_HOST, label,
+		T("Vacío: esta PS4 crea la sala. Para entrar a la de un amigo, escribe su IP o su dominio. X lo escribe, Cuadrado lo borra"));
+	const std::string stars(std::min<size_t>(EmuConfig.DEV9.LanKey.size(), 12), '*');
+	std::snprintf(label, sizeof(label), TF("Sala LAN, clave:  < %s >"), stars.empty() ? T("ninguna (hace falta una)") : stars.c_str());
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_NET_KEY, label,
+		T("La misma clave para todos los de la sala; sin clave la sala no se abre. X la escribe, Cuadrado la borra"));
+	std::snprintf(label, sizeof(label), TF("Abrir el puerto del router (UPnP):  < %s >"), T(EmuConfig.DEV9.LanUPnP ? N_("Sí") : N_("No")));
+	PS4GameMenu::SetRowText(PS4GameMenu::ROW_NET_UPNP, label,
+		T("Solo para quien crea la sala: Forja le pide al router que abra el puerto UDP 41020 mientras la sala está abierta. Con No, ábrelo tú en el router"));
+}
+
+// A dotted IPv4 address (four numbers up to 255), for the DNS row.
+static bool NetIsIPv4(const std::string& text)
+{
+	unsigned a, b, c, d;
+	char extra;
+	return std::sscanf(text.c_str(), "%u.%u.%u.%u%c", &a, &b, &c, &d, &extra) == 4 && a < 256 && b < 256 && c < 256 && d < 256;
+}
+
+// What the keyboard wrote for a network row (target 1-3), or its Cuadrado (an empty text): saved for this game.
+static void SaveNetText(int target, std::string text)
+{
+	while (!text.empty() && (text.back() == ' ' || text.back() == '\n' || text.back() == '\r'))
+		text.pop_back();
+	while (!text.empty() && text.front() == ' ')
+		text.erase(text.begin());
+	if (target == 1)
+	{
+		if (!text.empty() && !NetIsIPv4(text))
+		{
+			ProbeLog("Network: \"%s\" is not an IPv4 address; the DNS stays as it was\n", text.c_str());
+			return;
+		}
+		SavePlayerProfile("Network DNS", [text](INISettingsInterface& ini) {
+			ini.SetStringValue("DEV9/Eth", "ModeDNS1", text.empty() ? "Auto" : "Manual");
+			if (!text.empty())
+				ini.SetStringValue("DEV9/Eth", "DNS1", text.c_str());
+		}, true);
+	}
+	else if (target == 2)
+	{
+		text = text.substr(0, 120);
+		SavePlayerProfile("Network room host", [text](INISettingsInterface& ini) { ini.SetStringValue("DEV9/ForjaLAN", "Host", text.c_str()); }, true);
+	}
+	else if (target == 3)
+	{
+		text = text.substr(0, 64);
+		SavePlayerProfile("Network room key", [text](INISettingsInterface& ini) { ini.SetStringValue("DEV9/ForjaLAN", "Key", text.c_str()); }, true);
+	}
+}
+
 // Compilation 116: the GS recorder's row, in No tocar until it is measured in the six test games.
 // Compilation 117: the software draws' JIT row, in No tocar until it is measured.
 static void PublishSwJitText()
@@ -2660,6 +2739,7 @@ static void PublishGameMenu()
 {
 	PublishAutoNotes(); // compilation 76
 	PublishCrowdText(); // compilation 82
+	PublishNetText(); // compilation 144
 	PublishDrawThreadText(); // compilation 116
 	PublishSwJitText(); // compilation 117
 	PublishFpuExactText(); // compilation 120
@@ -4487,6 +4567,23 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			                                        (s_report_phrase + REPORT_PHRASE_COUNT + delta) % REPORT_PHRASE_COUNT;
 			s_report_comment = ForjaLang::T(REPORT_PHRASES[s_report_phrase]);
 			break;
+		case PS4GameMenu::ROW_NET_MODE: // compilation 144: No / Internet / Sala LAN
+		{
+			const int next = (NetMode() + delta + 3) % 3;
+			SavePlayerProfile("Network mode", [next](INISettingsInterface& ini) {
+				ini.SetBoolValue("DEV9/Eth", "EthEnable", next != 0);
+				if (next != 0)
+					ini.SetStringValue("DEV9/Eth", "EthApi", next == 1 ? "Sockets" : "Forja LAN");
+			}, true);
+			ProbeLog("Network: mode %d (0 off, 1 internet, 2 room)\n", next);
+			break;
+		}
+		case PS4GameMenu::ROW_NET_UPNP: // compilation 144: the router's port, only with the player's Sí
+		{
+			const bool next = !EmuConfig.DEV9.LanUPnP;
+			SavePlayerProfile("Network UPnP", [next](INISettingsInterface& ini) { ini.SetBoolValue("DEV9/ForjaLAN", "UPnP", next); }, true);
+			break;
+		}
 		case PS4GameMenu::ROW_CROWD: // compilation 82: the crowd in software every 1, 2, 4 or 8 passes ([Forja] PublicoCada); 137: Al vuelo
 		{
 			if (!GameDrawsCrowdInSoftware())
@@ -5572,7 +5669,11 @@ void VMHostPoll()
 		{
 			if (done)
 			{
-				s_report_comment = written.substr(0, 600); // 200 characters at most, up to 3 bytes each
+				if (s_keyboard_target == 0)
+					s_report_comment = written.substr(0, 600); // 200 characters at most, up to 3 bytes each
+				else
+					SaveNetText(s_keyboard_target, written); // compilation 144
+				s_keyboard_target = 0;
 				PublishGameMenu();
 			}
 			return;
@@ -5624,10 +5725,27 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_CODE_AHEAD || row == PS4GameMenu::ROW_VU_JUMPS || row == PS4GameMenu::ROW_FRAME_PUSH ||
 						   row == PS4GameMenu::ROW_FG_MARGIN ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||
-						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT || row == PS4GameMenu::ROW_REPORT_WHERE))
+						   row == PS4GameMenu::ROW_REPORT_ISSUE || row == PS4GameMenu::ROW_REPORT_COMMENT || row == PS4GameMenu::ROW_REPORT_WHERE ||
+						   row == PS4GameMenu::ROW_NET_DNS || row == PS4GameMenu::ROW_NET_HOST || row == PS4GameMenu::ROW_NET_KEY))
 		{
 			if (row == PS4GameMenu::ROW_SAVE_STATE)
 				SaveGameState();
+			else if (row == PS4GameMenu::ROW_NET_DNS || row == PS4GameMenu::ROW_NET_HOST || row == PS4GameMenu::ROW_NET_KEY) // compilation 144
+			{
+				OrbisUserServiceUserId user = s_pad1_user;
+				if (user == ORBIS_USER_SERVICE_USER_ID_INVALID)
+					sceUserServiceGetInitialUser(&user);
+				s_keyboard_target = row == PS4GameMenu::ROW_NET_DNS ? 1 : row == PS4GameMenu::ROW_NET_HOST ? 2 : 3;
+				const char* title = s_keyboard_target == 1 ? ForjaLang::T("DNS del servidor del juego") :
+				                    s_keyboard_target == 2 ? ForjaLang::T("IP o dominio del anfitrión de la sala") :
+				                                             ForjaLang::T("Clave de la sala");
+				const std::string current = s_keyboard_target == 2 ? EmuConfig.DEV9.LanHost : s_keyboard_target == 3 ? EmuConfig.DEV9.LanKey : "";
+				if (!ForjaKeyboard::Open(user, title, current))
+				{
+					s_keyboard_target = 0;
+					ProbeLog("Keyboard: could not open it\n");
+				}
+			}
 			else if (row == PS4GameMenu::ROW_REPORT_COMMENT) // compilation 86: the PS4's keyboard
 			{
 				OrbisUserServiceUserId user = s_pad1_user;
@@ -5689,10 +5807,13 @@ void VMHostPoll()
 		// comment's, it clears it.
 		if ((pressed & ORBIS_PAD_BUTTON_SQUARE) != 0 &&
 			(row == PS4GameMenu::ROW_GS_FILTER || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_REPORT_COMMENT ||
-				row == PS4GameMenu::ROW_REPORT_WHERE))
+				row == PS4GameMenu::ROW_REPORT_WHERE || row == PS4GameMenu::ROW_NET_DNS || row == PS4GameMenu::ROW_NET_HOST ||
+				row == PS4GameMenu::ROW_NET_KEY))
 		{
 			if (row == PS4GameMenu::ROW_GS_FILTER)
 				BringBackGsGroups();
+			else if (row == PS4GameMenu::ROW_NET_DNS || row == PS4GameMenu::ROW_NET_HOST || row == PS4GameMenu::ROW_NET_KEY) // compilation 144
+				SaveNetText(row == PS4GameMenu::ROW_NET_DNS ? 1 : row == PS4GameMenu::ROW_NET_HOST ? 2 : 3, std::string());
 			else if (row == PS4GameMenu::ROW_REPORT_COMMENT)
 			{
 				s_report_comment.clear();

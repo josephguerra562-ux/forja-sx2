@@ -1034,6 +1034,9 @@ struct Pcsx2Config
 			PCAP_Switched = 2,
 			TAP = 3,
 			Sockets = 4,
+			// Forja SX2: "Sala LAN" — the PS2's raw Ethernet frames tunnelled over UDP between Forjas, one of them the
+			// host (ps4/vm/ForjaLan.cpp). For games with a LAN mode; no community server involved.
+			ForjaLAN = 5,
 		};
 		static const char* NetApiNames[];
 
@@ -1074,6 +1077,15 @@ struct Pcsx2Config
 		DnsMode ModeDNS2{DnsMode::Auto};
 
 		std::vector<HostEntry> EthHosts;
+
+		// Forja SX2 "Sala LAN" ([DEV9/ForjaLAN]): LanHost empty = this Forja creates the room; otherwise the host's
+		// IP or domain. LanKey is an optional room password shared by everyone in the room.
+		std::string LanHost;
+		int LanPort{41020};
+		// Compilation 144: off unless the player says Sí in the menu (Extras > "Abrir el puerto del router"): it asks the router to open
+		// a port, and that is the player's decision.
+		bool LanUPnP{false};
+		std::string LanKey;
 
 		bool HddEnable{false};
 		std::string HddFile;
