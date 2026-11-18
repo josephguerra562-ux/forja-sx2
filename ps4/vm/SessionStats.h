@@ -62,7 +62,9 @@ namespace ForjaSession
 	// Compilation 80: the hang watch's (main.cpp) 10 s without a frame while the game runs.
 	void AddHang();
 	// GS thread (GSRendererPS4.cpp, ForjaSessionHitch): a hitch of gap_ms between two pictures, and what happened in it.
-	void AddHitch(double gap_ms, unsigned ee_blocks_compiled, unsigned ee_rec_resets, unsigned pipelines_created, unsigned disc_kb);
+	// Compilation 138: and ahead_ms, the time "Efectos listos al arrancar" spent making effects ahead in it (its own cause).
+	void AddHitch(double gap_ms, unsigned ee_blocks_compiled, unsigned ee_rec_resets, unsigned pipelines_created, unsigned disc_kb,
+		double ahead_ms);
 	// CPU thread, every heartbeat (main.cpp): the regular flexible memory free, how far the heap reaches, and the sound's
 	// output counters (underruns since its stream opened, frames the limiter turned down). Compilation 79: and whether a movie
 	// plays, so the sound's cuts are told apart (in movies, in the game).

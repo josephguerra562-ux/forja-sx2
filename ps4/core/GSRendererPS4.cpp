@@ -890,7 +890,8 @@ static u32 s_orbis_fg_presents = 0;
 static u32 s_orbis_fg_guard = 0; // 0 = not armed; then vsyncs since the first generated frame
 
 // Forja 1.06: ps4/vm/SessionStats.cpp, the session's summary (weak: the probes link without it).
-extern "C" void ForjaSessionHitch(double gap_ms, unsigned compiled, unsigned resets, unsigned pipelines, unsigned disc_kb)
+// Compilation 138: and the time "Efectos listos al arrancar" spent making effects ahead in it (its hitches were counted as "otras").
+extern "C" void ForjaSessionHitch(double gap_ms, unsigned compiled, unsigned resets, unsigned pipelines, unsigned disc_kb, double ahead_ms)
 	__attribute__((weak));
 static void ForjaReportHitch(bool new_frame)
 {
@@ -981,7 +982,8 @@ static void ForjaReportHitch(bool new_frame)
 			// reads a 2 kB sector every few seconds, so a hitch that only had one in it was counted as the disc's.
 			if (ForjaSessionHitch)
 				ForjaSessionHitch(gap_ms, compiles - s_compiles, resets - s_resets, g_forja_pipelines_created - s_pipelines,
-					disc_wait_ms >= 0.2 * gap_ms ? static_cast<unsigned>((disc - s_disc) / 1024) : 0u);
+					disc_wait_ms >= 0.2 * gap_ms ? static_cast<unsigned>((disc - s_disc) / 1024) : 0u,
+					(g_forja_effects_ahead_us - s_ahead_us) / 1000.0);
 		}
 	}
 	s_last = now;

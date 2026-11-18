@@ -27,6 +27,9 @@
 #if defined(PCSX2_PS4)
 // Forja SX2 (compilation 128): why the draws were split (GSState.cpp, GS thread only); printed with the GS groups line.
 extern u32 g_forja_split_regs[32], g_forja_split_reasons[16], g_forja_split_count;
+// Compilation 138: "Tramos de paleta" (GSState.cpp, GS thread only).
+extern u32 g_forja_pal_cuts, g_forja_pal_join_cuts, g_forja_pal_blocked[4], g_forja_pal_runs[5];
+extern u64 g_forja_pal_draws, g_forja_pal_saved, g_forja_pal_saved16;
 #endif
 
 using PS_ATST  = GSShader::PS_ATST;
@@ -3132,6 +3135,34 @@ namespace
 				std::memset(g_forja_split_regs, 0, sizeof(g_forja_split_regs));
 				std::memset(g_forja_split_reasons, 0, sizeof(g_forja_split_reasons));
 				g_forja_split_count = 0;
+				// Compilation 138: "Tramos de paleta": how many of the draws a palette change cuts could have been one draw.
+				if (g_forja_pal_draws > 0)
+				{
+					const double draws = static_cast<double>(g_forja_pal_draws);
+					ProbeLog("GS palette runs (138): palette cuts %.0f/s, joinable %.0f/s (%.0f %%); blocked: other texture %.0f, format %.0f, "
+							 "other registers %.0f, half a primitive %.0f; draws %.0f/s, fewer if joined %.1f %% (16 palettes a draw: %.1f %%); runs of "
+							 "2, 3-4, 5-8, 9-16, 17+ draws a second: %.0f %.0f %.0f %.0f %.0f\n",
+						g_forja_pal_cuts / seconds, g_forja_pal_join_cuts / seconds,
+						g_forja_pal_cuts ? 100.0 * g_forja_pal_join_cuts / g_forja_pal_cuts : 0.0, g_forja_pal_blocked[0] / seconds,
+						g_forja_pal_blocked[1] / seconds, g_forja_pal_blocked[2] / seconds, g_forja_pal_blocked[3] / seconds, draws / seconds,
+						100.0 * g_forja_pal_saved / draws, 100.0 * g_forja_pal_saved16 / draws, g_forja_pal_runs[0] / seconds,
+						g_forja_pal_runs[1] / seconds, g_forja_pal_runs[2] / seconds, g_forja_pal_runs[3] / seconds, g_forja_pal_runs[4] / seconds);
+				}
+				g_forja_pal_cuts = g_forja_pal_join_cuts = 0;
+				std::memset(g_forja_pal_blocked, 0, sizeof(g_forja_pal_blocked));
+				std::memset(g_forja_pal_runs, 0, sizeof(g_forja_pal_runs));
+				g_forja_pal_draws = g_forja_pal_saved = g_forja_pal_saved16 = 0;
+				// Compilation 138: "Dentro del dibujo", the PS5 port's draw sections (drawprof: [hwprof], [drawsec] with the source,
+				// target and depth lookups, [drawgap]; PCSX2-vm-stdout.log) on their own 5 s a minute, as these lines come every 5 s.
+				// Until the 137 only with the marker vm-drawprof (FTP). On, it reads the clock ~10 times a draw (~1 % of the GS
+				// thread): a twelfth of the time costs ~0.1 %. Switched here, between draws (before OrbisHwDrawTimer takes its start).
+				{
+					OrbisDrawProfRead();
+					static const bool marker = s_orbis_drawprof;
+					static unsigned window = 0;
+					window = (window + 1) % 12;
+					s_orbis_drawprof = marker || window == 0;
+				}
 			}
 #endif
 			// Compilation 52: the four costliest groups' textures, blending and palettes.

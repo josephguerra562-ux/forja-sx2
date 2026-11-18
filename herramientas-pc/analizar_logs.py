@@ -82,7 +82,9 @@ def resumen(s):
                    + (" → vale la pena moverlo a otro núcleo" if media >= 10 else " → bajo, no es prioridad moverlo"))
     if s["tirones"]:
         t = s["tirones"]
-        causas = {"código nuevo del juego (compilación)": sum(1 for x in t if x.get("ee_blocks_compiled", 0) >= 200),
+        # Compilación 138: los tirones de la precarga de efectos ("Efectos listos al arrancar"), aparte.
+        causas = {"precarga de efectos": sum(1 for x in t if x.get("ahead_ms", 0) >= 0.5 * x.get("frame_gap_ms", 1e9)),
+                  "código nuevo del juego (compilación)": sum(1 for x in t if x.get("ee_blocks_compiled", 0) >= 200),
                   "efectos gráficos nuevos": sum(1 for x in t if x.get("pipelines_created", 0) >= 1),
                   "lectura del disco": sum(1 for x in t if x.get("disc_kb", 0) >= 256),
                   "reinicio del traductor (modo video/ajustes)": sum(1 for x in t if x.get("ee_rec_resets", 0) >= 1)}

@@ -1376,6 +1376,52 @@ static inline void ForjaNoteDrawSplit(u32 dirty)
 	for (u32 d = dirty; d != 0; d &= d - 1)
 		g_forja_split_regs[__builtin_ctz(d) & 31]++;
 }
+
+// Forja SX2 (compilation 138): "Tramos de paleta", a meter only. The 1.07 and the 136 (2026-11-14): the draws flushed by a palette change
+// (CLUTCHANGE, ApplyTEX0) were 26,000 a second in Shadow of the Colossus against 4,700 cut by their registers, and 39,000 (61,000 in the
+// heaviest fifth) in Dragon Ball Z BT4 against 1,900, the two games the GS holds back. Joining the draws that only change palette into one
+// ("Paletas unidas": a table of palettes and a row per vertex) is the change that could cut most of them; this says how many could be
+// joined before it is written. A palette cut with a draw pending is joinable when the new TEX0 is the pending draw's (same context, same
+// texture: TBP0, TBW, PSM, TW, TH, TCC, TFX), the texture is T8 or T4, CPSM and CSM do not change, no other register is waiting to cut the
+// draw, and no primitive is half sent. Each draw flushed then either goes on into the next (joinable) or ends a run; a run of N draws
+// would be one draw (or one a 16 palettes, the table's first size). GS thread only; printed with "GS draw splits" (GSRendererHW.cpp).
+u32 g_forja_pal_cuts = 0, g_forja_pal_join_cuts = 0, g_forja_pal_blocked[4] = {}, g_forja_pal_runs[5] = {};
+u64 g_forja_pal_draws = 0, g_forja_pal_saved = 0, g_forja_pal_saved16 = 0;
+static bool s_forja_pal_join = false; // the draw this palette cut flushes could have gone on
+static u32 s_forja_pal_joins = 0, s_forja_pal_seen[16] = {}, s_forja_pal_seen_n = 0, s_forja_pal_over = 0;
+
+static inline void ForjaPalSeen(u32 key)
+{
+	for (u32 k = 0; k < s_forja_pal_seen_n; k++)
+	{
+		if (s_forja_pal_seen[k] == key)
+			return;
+	}
+	if (s_forja_pal_seen_n < 16)
+		s_forja_pal_seen[s_forja_pal_seen_n++] = key;
+	else
+		s_forja_pal_over++; // palettes beyond the first 16 of the run (they could repeat: a high estimate of the extra draws)
+}
+
+static inline void ForjaPalRunFlush(bool joinable)
+{
+	g_forja_pal_draws++;
+	if (joinable)
+	{
+		s_forja_pal_joins++;
+		return;
+	}
+	if (s_forja_pal_joins > 0)
+	{
+		const u32 len = s_forja_pal_joins + 1;
+		g_forja_pal_runs[len <= 2 ? 0 : len <= 4 ? 1 : len <= 8 ? 2 : len <= 16 ? 3 : 4]++;
+		g_forja_pal_saved += s_forja_pal_joins;
+		const u32 palettes = s_forja_pal_seen_n + s_forja_pal_over;
+		const u32 extra = palettes > 16 ? (palettes - 1) / 16 : 0;
+		g_forja_pal_saved16 += s_forja_pal_joins > extra ? s_forja_pal_joins - extra : 0;
+	}
+	s_forja_pal_joins = s_forja_pal_seen_n = s_forja_pal_over = 0;
+}
 #endif
 
 __inline void GSState::CheckFlushes()
@@ -1702,6 +1748,34 @@ void GSState::ApplyTEX0(GIFRegTEX0& TEX0)
 	// No need to flush on CLUT if we aren't texture mapping.
 	if (wt)
 	{
+#if defined(PCSX2_PS4)
+		// Compilation 138: "Tramos de paleta" (above), only counting; the flush below is as it was.
+		s_forja_pal_join = false;
+		if (m_index->tail > 0 && m_prev_env.PRIM.TME && (m_prev_env.CTXT[m_prev_env.PRIM.CTXT].TEX0.PSM & 0x7) >= 3)
+		{
+			const GIFRegTEX0& pending = m_prev_env.CTXT[m_prev_env.PRIM.CTXT].TEX0;
+			int why = -1;
+			if (m_prev_env.PRIM.CTXT != static_cast<u32>(i) || ((pending.U64 ^ TEX0.U64) & 0x1fffffffffull) != 0)
+				why = 0; // another texture
+			else if ((TEX0.PSM != PSMT8 && TEX0.PSM != PSMT4) || pending.CPSM != (TEX0.CPSM & 0xa) || pending.CSM != TEX0.CSM)
+				why = 1; // a format the table would not cover yet
+			else if ((m_dirty_gs_regs & ~(1u << DIRTY_REG_TEX0)) != 0)
+				why = 2; // another register cuts the draw anyway
+			else if (m_vertex->tail != m_vertex->next)
+				why = 3; // half a primitive sent
+			g_forja_pal_cuts++;
+			if (why < 0)
+			{
+				g_forja_pal_join_cuts++;
+				s_forja_pal_join = true;
+				if (s_forja_pal_joins == 0)
+					ForjaPalSeen(pending.CBP | (pending.CSA << 14));
+				ForjaPalSeen(TEX0.CBP | (TEX0.CSA << 14));
+			}
+			else
+				g_forja_pal_blocked[why]++;
+		}
+#endif
 		for (int b = 0; b < m_used_buffers_idx; b++)
 		{
 			GSDrawingEnvironment& buffered_env = (m_current_buffer_idx == b) ? m_prev_env : m_env_buffers[b].m_env;
@@ -2395,6 +2469,8 @@ void GSState::FlushDraw(GSFlushReason reason)
 		}
 		m_state_flush_reason = reason;
 #if defined(PCSX2_PS4)
+		ForjaPalRunFlush(reason == GSFlushReason::CLUTCHANGE && s_forja_pal_join); // compilation 138
+		s_forja_pal_join = false;
 		if (reason != GSFlushReason::UNKNOWN) // compilation 128: a draw flushed for something other than its registers
 			g_forja_split_reasons[__builtin_ctz(static_cast<u32>(reason)) & 15]++;
 #endif

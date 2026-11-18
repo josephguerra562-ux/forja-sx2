@@ -10,10 +10,13 @@ la PS4 o en una compilación fallida, atrapados en segundos y sin dependencias (
            los idiomas latinos dentro de lo que cubre Gontserrat (latín básico, Latin-1 y Latin Extendido-A) o de lo que ya usa el español
   perfiles los perfiles de fábrica (assets/perfiles/*.ini): sin comentarios al final de una línea (el lector de PCSX2 no los acepta),
            sin claves repetidas fuera de las listas, claves de [Forja] que el emulador lee, números donde van números
+  efectos  las listas de efectos de fábrica (assets/efectos/*.bin) son del mismo tfx.glsl que va en el paquete: su huella se calcula
+           como la calcula el emulador (ForjaEffectsCode, FNV-1a), con el archivo en CRLF como queda al armar el paquete en Windows. Si
+           no coincide, la PS4 descarta todas las listas en silencio ("from other effects' code") y vuelven los tirones
   extern   cada variable compartida (g_forja_*, g_orbis_*) declarada con "extern" en un archivo tiene el mismo tipo que donde se define
            (si no coincide, compila y enlaza igual, y falla en la PS4; la 134 no enlazó por una de estas)
 
-Uso: python3 tools/ci/forja_revisiones.py [textos|letras|perfiles|extern ...]   (sin nada: todas). Sale con 1 si alguna falla."""
+Uso: python3 tools/ci/forja_revisiones.py [textos|letras|perfiles|efectos|extern ...]   (sin nada: todas). Sale con 1 si alguna falla."""
 import re
 import struct
 import subprocess
@@ -158,6 +161,35 @@ def perfiles():
     return ok
 
 
+def efectos():
+    import struct as _st
+    raw = (ROOT / "bin" / "resources" / "shaders" / "vulkan" / "tfx.glsl").read_bytes()
+    crlf = raw.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+    h = 1469598103934665603
+    for b in crlf:
+        h = ((h ^ b) * 1099511628211) & 0xFFFFFFFFFFFFFFFF
+    h = ((h ^ 32) * 1099511628211) & 0xFFFFFFFFFFFFFFFF  # sizeof(PipelineSelector)
+    ok = True
+    listas = sorted((VM / "assets" / "efectos").glob("*.bin"))
+    for lista in listas:
+        cab = lista.read_bytes()[:24]
+        if len(cab) < 24:
+            print(f"   {lista.name}: muy corta")
+            ok = False
+            continue
+        magia, version, codigo, cuenta, _ = _st.unpack("<IIQII", cab)
+        if magia != 0x46454A46 or version != 1:
+            print(f"   {lista.name}: no es una lista de efectos (firma {magia:#x}, versión {version})")
+            ok = False
+        elif codigo != h:
+            print(f"   {lista.name}: es de otro tfx.glsl ({codigo:#018x}; el del paquete da {h:#018x}): hay que volver a bajarla de la PS4"
+                  " o no tocar tfx.glsl")
+            ok = False
+    if listas and ok:
+        print(f"   {len(listas)} listas del mismo tfx.glsl ({h:#018x})")
+    return ok
+
+
 def _tipo(t):
     t = re.sub(r"\s+", " ", t.replace("static ", "").strip())
     for a, b in (("std::uint32_t", "u32"), ("uint32_t", "u32"), ("std::uint64_t", "u64"), ("uint64_t", "u64"),
@@ -204,7 +236,8 @@ def extern():
 
 
 REVISIONES = {"textos": (textos, "Textos en los 12 idiomas"), "letras": (letras, "Letras de las traducciones en sus fuentes"),
-              "perfiles": (perfiles, "Perfiles de fábrica"), "extern": (extern, "Variables compartidas con el mismo tipo")}
+              "perfiles": (perfiles, "Perfiles de fábrica"), "efectos": (efectos, "Listas de efectos del mismo sombreador"),
+              "extern": (extern, "Variables compartidas con el mismo tipo")}
 
 
 def main():

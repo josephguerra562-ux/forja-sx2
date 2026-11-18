@@ -30,7 +30,7 @@ namespace
 		bool in_movie = false;
 		// Hitches over 50 ms and over twice the usual gap (the ones GSRendererPS4.cpp logs; compilation 76), by what happened in them.
 		uint32_t hitches = 0, hitches_200 = 0, hitch_pipelines = 0, hitch_resets = 0, hitch_compile = 0, hitch_disc = 0,
-				 hitch_other = 0;
+				 hitch_other = 0, hitch_ahead = 0;
 		double hitch_worst_ms = 0.0;
 		uint64_t flexible_min = 0, heap_max = 0;
 		bool memory_seen = false;
@@ -290,7 +290,8 @@ namespace ForjaSession
 		s.limits[std::clamp(limit, 0, LimitCount - 1)]++;
 	}
 
-	void AddHitch(double gap_ms, unsigned ee_blocks_compiled, unsigned ee_rec_resets, unsigned pipelines_created, unsigned disc_kb)
+	void AddHitch(double gap_ms, unsigned ee_blocks_compiled, unsigned ee_rec_resets, unsigned pipelines_created, unsigned disc_kb,
+		double ahead_ms)
 	{
 		std::lock_guard lock(s_mutex);
 		Stats& s = s_stats;
@@ -299,7 +300,12 @@ namespace ForjaSession
 		s.hitch_worst_ms = std::max(s.hitch_worst_ms, gap_ms);
 		// The first cause that fits, in this order: a new effect (its pipeline compiled), the EE recompiler started over (a
 		// CPU speed change, a movie's start or end), new game code compiled, the disc read, something else.
-		if (pipelines_created > 0)
+		// Compilation 138: first of all, effects made ahead for half the gap or more ("Efectos listos al arrancar": it gives the
+		// pipelines' count back, so its hitches went to "otras"). The 1.07 and the 136 (2026-11-14): 3 to 7 of them a session, the
+		// worst 207 ms (Need for Speed Most Wanted) and 160 ms (Bully).
+		if (ahead_ms >= 0.5 * gap_ms)
+			s.hitch_ahead++;
+		else if (pipelines_created > 0)
 			s.hitch_pipelines++;
 		else if (ee_rec_resets > 0)
 			s.hitch_resets++;
@@ -479,9 +485,9 @@ namespace ForjaSession
 		}
 		const double minutes = seconds / 60.0;
 		Append(text, "Tirones (más de 50 ms y del doble de los de alrededor): %u (%.1f por minuto), %u de más de 200 ms, el peor de %.0f ms. Causas: efectos nuevos "
-			"(sombreadores) %u, recompilador reiniciado %u, código nuevo del juego %u, disco %u, otras %u\n",
+			"(sombreadores) %u, recompilador reiniciado %u, código nuevo del juego %u, disco %u, otras %u, precarga de efectos %u\n",
 			s.hitches, minutes > 0.0 ? s.hitches / minutes : 0.0, s.hitches_200, s.hitch_worst_ms, s.hitch_pipelines,
-			s.hitch_resets, s.hitch_compile, s.hitch_disc, s.hitch_other);
+			s.hitch_resets, s.hitch_compile, s.hitch_disc, s.hitch_other, s.hitch_ahead);
 		// Compilation 80: the limiter's count isn't a fault, it says the game sounds loud (Guitar Hero's 2,247 on 2026-10-23).
 		Append(text, "Sonido: %llu cortes de la salida (%.1f por minuto), %llu de ellos en videos; el limitador suavizó %llu picos de "
 			"volumen (no es un error)\n",
@@ -544,7 +550,7 @@ namespace ForjaSession
 } // namespace ForjaSession
 
 // GSRendererPS4.cpp's hitches (weak there: the probes link without this file).
-extern "C" void ForjaSessionHitch(double gap_ms, unsigned compiled, unsigned resets, unsigned pipelines, unsigned disc_kb)
+extern "C" void ForjaSessionHitch(double gap_ms, unsigned compiled, unsigned resets, unsigned pipelines, unsigned disc_kb, double ahead_ms)
 {
-	ForjaSession::AddHitch(gap_ms, compiled, resets, pipelines, disc_kb);
+	ForjaSession::AddHitch(gap_ms, compiled, resets, pipelines, disc_kb, ahead_ms); // compilation 138: ahead_ms
 }

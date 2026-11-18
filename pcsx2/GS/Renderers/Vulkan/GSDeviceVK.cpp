@@ -3727,6 +3727,7 @@ void GSDeviceVK::Destroy()
 	std::unique_lock lock(s_instance_mutex);
 #if defined(PCSX2_PS4)
 	ForjaEffectsSave(); // compilation 127: the game's list of effects, with this session's last ones
+	ForjaEffectsDeviceGone(); // compilation 138
 #endif
 
 	GSDevice::Destroy();
@@ -7460,7 +7461,7 @@ void GSDeviceVK::DestroyResources()
 
 	for (auto& it : m_tfx_pipelines)
 		vkDestroyPipeline(m_device, it.second, nullptr);
-#ifdef ORBIS_VULKAN
+#if defined(ORBIS_VULKAN) || defined(PCSX2_PS4)
 	for (OrbisPipeSlot& slot : m_orbis_pipe_cache) // vk-285-90
 		slot.pipeline = VK_NULL_HANDLE;
 #endif
@@ -7867,11 +7868,13 @@ VkPipeline GSDeviceVK::CreateTFXPipeline(const PipelineSelector& p)
 
 VkPipeline GSDeviceVK::GetTFXPipeline(const PipelineSelector& p)
 {
-#ifdef ORBIS_VULKAN
+#if defined(ORBIS_VULKAN) || defined(PCSX2_PS4)
 	// PS5 port (vk-285-85): consecutive draws often repeat the selector; the hash and map lookup were
 	// ~1.3% of the GS thread in vk-285-84's Shadow of the Colossus profile. vk-285-90: a 64-entry
 	// direct-mapped cache instead of the last lookup alone (the map lookup was still ~1.5% in vk-285-89's:
 	// the game alternates between a few pipelines). Needs proper testing.
+	// Forja SX2 (compilation 138): on the PS4 as well (it was written for the PS5 port and only built there). Pure CPU work, nothing
+	// of the driver: a slot holds a pipeline of m_tfx_pipelines, emptied with them (DestroyResources) and when the game changes.
 	u64 w[4];
 	std::memcpy(w, &p, sizeof(w));
 	static_assert(sizeof(PipelineSelector) == sizeof(w));
@@ -7879,10 +7882,13 @@ VkPipeline GSDeviceVK::GetTFXPipeline(const PipelineSelector& p)
 	if (slot.pipeline != VK_NULL_HANDLE && slot.sel == p)
 		return slot.pipeline;
 #endif
+	// Compilation 138: the order the game first uses each effect in (the direct cache sends the first use of each here).
+	if (m_forja_fx_used.insert(p).second)
+		m_forja_fx_order.push_back(p);
 	const auto it = m_tfx_pipelines.find(p);
 	if (it != m_tfx_pipelines.end())
 	{
-#ifdef ORBIS_VULKAN
+#if defined(ORBIS_VULKAN) || defined(PCSX2_PS4)
 		slot.sel = p;
 		slot.pipeline = it->second;
 #endif
@@ -7891,7 +7897,7 @@ VkPipeline GSDeviceVK::GetTFXPipeline(const PipelineSelector& p)
 
 	VkPipeline pipeline = CreateTFXPipeline(p);
 	m_tfx_pipelines.emplace(p, pipeline);
-#ifdef ORBIS_VULKAN
+#if defined(ORBIS_VULKAN) || defined(PCSX2_PS4)
 	slot.sel = p;
 	slot.pipeline = pipeline;
 #endif
@@ -8011,13 +8017,17 @@ void GSDeviceVK::ForjaEffectsSave()
 	if (s_fx.serial.empty())
 		return;
 	// This session's effects first, then the file's that it did not use, up to the cap.
+	// Compilation 138: in the order the game first used them in this game (m_forja_fx_order), so the next session makes first what the
+	// intro and the first menu need. Until the 137 they went in m_tfx_pipelines' order (an unordered_map: none), and the made-ahead
+	// effects the game never used were kept from the file's list, as now.
 	std::unordered_set<PipelineSelector, PipelineSelectorHash> seen;
 	std::vector<PipelineSelector> out;
-	out.reserve(std::min(m_tfx_pipelines.size() + s_fx.list.size(), FORJA_EFFECTS_MAX));
-	for (const auto& it : m_tfx_pipelines)
+	out.reserve(std::min(m_forja_fx_order.size() + s_fx.list.size(), FORJA_EFFECTS_MAX));
+	for (const PipelineSelector& p : m_forja_fx_order)
 	{
-		if (it.second != VK_NULL_HANDLE && out.size() < FORJA_EFFECTS_MAX && seen.insert(it.first).second)
-			out.push_back(it.first);
+		const auto it = m_tfx_pipelines.find(p);
+		if (it != m_tfx_pipelines.end() && it->second != VK_NULL_HANDLE && out.size() < FORJA_EFFECTS_MAX && seen.insert(p).second)
+			out.push_back(p);
 	}
 	for (const PipelineSelector& p : s_fx.list)
 	{
@@ -8042,6 +8052,13 @@ void GSDeviceVK::ForjaEffectsSave()
 		ProbeLog("Effects list saved: %s, %zu effects (%zu made in this session)\n", s_fx.serial.c_str(), out.size(), m_tfx_pipelines.size());
 	else
 		std::remove(tmp.c_str());
+}
+
+// Compilation 138: from Destroy. ForjaEffectsTick tells a new device by its address, and a device made right after the last one often
+// gets the same address: the list was not read again and nothing was made ahead after the renderer was made again.
+void GSDeviceVK::ForjaEffectsDeviceGone()
+{
+	s_fx.device = nullptr;
 }
 
 void GSDeviceVK::ForjaEffectsTick()
@@ -8069,6 +8086,12 @@ void GSDeviceVK::ForjaEffectsTick()
 		{
 			ForjaEffectsSave(); // the last game's (nothing when there was none)
 			s_fx.serial = serial;
+			m_forja_fx_order.clear(); // compilation 138
+			m_forja_fx_used.clear();
+#if defined(ORBIS_VULKAN) || defined(PCSX2_PS4)
+			for (OrbisPipeSlot& slot : m_orbis_pipe_cache)
+				slot.pipeline = VK_NULL_HANDLE;
+#endif
 			s_fx.list.clear();
 			s_fx.next = 0;
 			s_fx.made = s_fx.had = 0;

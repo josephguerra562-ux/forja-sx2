@@ -22,6 +22,7 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set> // Forja SX2 (compilation 138): m_forja_fx_used
 #include <vector>
 
 class VKSwapChain;
@@ -502,7 +503,7 @@ private:
 	std::unordered_map<GSHWDrawConfig::PSSelector, VkShaderModule, GSHWDrawConfig::PSSelectorHash>
 		m_tfx_fragment_shaders;
 	std::unordered_map<PipelineSelector, VkPipeline, PipelineSelectorHash> m_tfx_pipelines;
-#ifdef ORBIS_VULKAN
+#if defined(ORBIS_VULKAN) || defined(PCSX2_PS4) // Forja SX2 (compilation 138): on the PS4 too
 	// vk-285-90: GetTFXPipeline's direct-mapped cache in front of m_tfx_pipelines (was the last lookup alone).
 	struct OrbisPipeSlot
 	{
@@ -644,6 +645,10 @@ public:
 	// now (also when the device goes, from Destroy).
 	void ForjaEffectsTick();
 	void ForjaEffectsSave();
+	void ForjaEffectsDeviceGone(); // compilation 138: Destroy, so the next device makes its effects ahead again
+	// Compilation 138: the effects in the order the game first used them in this game (GetTFXPipeline), the list's order when saved.
+	std::vector<PipelineSelector> m_forja_fx_order;
+	std::unordered_set<PipelineSelector, PipelineSelectorHash> m_forja_fx_used;
 #endif
 
 	bool SetGPUTimingEnabled(bool enabled) override;
