@@ -1513,6 +1513,7 @@ static void recExecute()
 }
 
 ////////////////////////////////////////////////////
+static void ForjaFlushCacheConst(); // compilation 141, below
 void R5900::Dynarec::OpcodeImpl::recSYSCALL()
 {
 	EE::Profiler.EmitOp(eeOpcode::SYSCALL);
@@ -1521,6 +1522,9 @@ void R5900::Dynarec::OpcodeImpl::recSYSCALL()
 		// If it's FlushCache or iFlushCache, we can skip it since we don't support cache in the JIT.
 		if (g_cpuConstRegs[3].UC[0] == 0x64 || g_cpuConstRegs[3].UC[0] == 0x68)
 		{
+			// Compilation 141: with "Revisión rápida" an instruction cache flush is when the game's new code is checked.
+			if (g_ps4_skip_smc_checks)
+				recCall(ForjaFlushCacheConst);
 			// Emulate the amount of cycles it takes for the exception handlers to run
 			// This number was found by using github.com/F0bes/flushcache-cycles
 			s_nBlockCycles += 5650;
@@ -1612,6 +1616,90 @@ void recClear(u32 addr, u32 size)
 		ClearRecLUT(PC_GETBLOCK(lowerextent), upperextent - lowerextent);
 }
 
+
+// Compilation 141: "Código al día". In this port every RAM block relies on its own check of the code it was made from (no page
+// protection), and "Revisión rápida del código" ([Forja] RevisionRapida, g_ps4_skip_smc_checks) leaves that check out: then nothing
+// notices when the game puts other code where translated code was, until the recompiler starts over. Until the 140 that happened often
+// by accident: every change of the PS2 CPU (the video mode at each movie) reset it. With "CPU sin tirones" those resets stopped, and
+// Need for Speed (2026-11-17, the 138) jumped to 0xeeeeeeee right after two movies without a reset. Two ways the code comes in, the two
+// of a real PS2 (whose instruction cache has the same problem):
+//  - the disc, through SIF0 (Sif0.cpp, WriteFifoToEE): the blocks under what was written are compared with the copy of the code they
+//    were made from (recRAMCopy), and the ones that changed are made again (the same code read again costs nothing);
+//  - the game's own stores, which a game must follow with FlushCache(2) (or 3) before running them: then every block is compared the
+//    same way (at most one full pass every 100 ms).
+// Only with RevisionRapida on: with the checks in the blocks, each block finds out by itself as before.
+std::atomic<u32> g_forja_fresh_loads{0}, g_forja_fresh_load_blocks{0}, g_forja_fresh_flushes{0}, g_forja_fresh_scans{0};
+std::atomic<u32> g_forja_fresh_flush_blocks{0}, g_forja_fresh_scan_us{0};
+
+static bool ForjaBlockChanged(const BASEBLOCKEX& b)
+{
+	if (b.size == 0 || b.startpc >= Ps2MemSize::ExposedRam || b.startpc + b.size * 4 > Ps2MemSize::ExposedRam)
+		return false;
+	const void* now = PSM(b.startpc);
+	return now && std::memcmp(&recRAMCopy[b.startpc], now, b.size * 4) != 0;
+}
+
+static u32 ForjaRedoChanged(std::vector<std::pair<u32, u32>>& changed)
+{
+	for (const auto& [start, words] : changed)
+		recClear(start, words);
+	return static_cast<u32>(changed.size());
+}
+
+// Sif0.cpp: the disc wrote `bytes` at `addr` (a DMA address of the EE's RAM).
+void ForjaCodeLoaded(u32 addr, u32 bytes)
+{
+	if (!g_ps4_skip_smc_checks || bytes < 4 || (addr & 0x80000000u) || addr >= maxrecmem)
+		return;
+	const u32 first = HWADDR(addr), last = first + bytes - 4;
+	int idx = recBlocks.LastIndex(last);
+	static std::vector<std::pair<u32, u32>> changed;
+	changed.clear();
+	for (BASEBLOCKEX* b; idx >= 0 && (b = recBlocks[idx]); idx--)
+	{
+		if (b->startpc + b->size * 4 <= first)
+			break;
+		if (ForjaBlockChanged(*b))
+			changed.emplace_back(b->startpc, b->size);
+	}
+	if (changed.empty())
+		return;
+	g_forja_fresh_loads.fetch_add(1, std::memory_order_relaxed);
+	g_forja_fresh_load_blocks.fetch_add(ForjaRedoChanged(changed), std::memory_order_relaxed);
+}
+
+// R5900OpcodeImpl.cpp (SYSCALL) and the FlushCache below: the game asked to invalidate the instruction cache (op 2 or 3).
+void ForjaICacheFlushed(u32 op)
+{
+	if (!g_ps4_skip_smc_checks || (op != 2 && op != 3))
+		return;
+	g_forja_fresh_flushes.fetch_add(1, std::memory_order_relaxed);
+	static auto last_scan = std::chrono::steady_clock::time_point{};
+	const auto start = std::chrono::steady_clock::now();
+	if (last_scan.time_since_epoch().count() != 0 && start - last_scan < std::chrono::milliseconds(100))
+		return;
+	last_scan = start;
+	static std::vector<std::pair<u32, u32>> changed;
+	changed.clear();
+	for (int i = 0;; i++)
+	{
+		const BASEBLOCKEX* b = recBlocks[i];
+		if (!b)
+			break;
+		if (ForjaBlockChanged(*b))
+			changed.emplace_back(b->startpc, b->size);
+	}
+	const u32 redone = changed.empty() ? 0 : ForjaRedoChanged(changed);
+	g_forja_fresh_scans.fetch_add(1, std::memory_order_relaxed);
+	g_forja_fresh_flush_blocks.fetch_add(redone, std::memory_order_relaxed);
+	g_forja_fresh_scan_us.fetch_add(static_cast<u32>(
+		std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count()), std::memory_order_relaxed);
+}
+
+static void ForjaFlushCacheConst()
+{
+	ForjaICacheFlushed(cpuRegs.GPR.n.a0.UL[0]);
+}
 
 static int* s_pCode;
 

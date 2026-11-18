@@ -84,6 +84,11 @@ extern std::atomic<u32> g_orbis_rec_compiles, g_orbis_rec_discards, g_orbis_rec_
 extern bool g_ps4_vtlb_register_cache;
 extern bool g_ps4_vtlb_bulk_register_cache;
 extern bool g_ps4_skip_smc_checks;
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+// Compilation 141: "Código al día" (x86/ix86-32/iR5900.cpp).
+extern std::atomic<u32> g_forja_fresh_loads, g_forja_fresh_load_blocks, g_forja_fresh_flushes, g_forja_fresh_scans;
+extern std::atomic<u32> g_forja_fresh_flush_blocks, g_forja_fresh_scan_us;
+#endif
 extern bool g_ps4_bytecopy_fusion;
 extern std::atomic<int> g_orbis_waitloop_ext;
 extern std::atomic<u32> g_forja_resumes; // ps4/core/GSRendererPS4.cpp: the hitch detector skips the L3+R3 menu's gap
@@ -3568,7 +3573,9 @@ static int s_skip16_floor = 0;
 // Compilation 140 (herramientas/simulaciones/simular_con_traza.py, the console's own traces of the 139: Guitar Hero III and Need for
 // Speed replayed to the console's own skip and changes): down under 0.82 after 3 s without a vsync lost. Guitar Hero 41 -> 31 changes a
 // minute, Need for Speed 44 -> 39, the same speed and fewer vsyncs lost, -0.1 to -0.3 % frames.
-static constexpr double SI_UP_TARGET = 0.95, SI_DOWN_BELOW = 0.82, SI_DOWN_TARGET = 0.94, SI_DEBT_HIGH = 0.6, SI_E = 0.35;
+// Compilation 141 (the 140's traces too, 8 in all): the 3 s are what calm it; the 0.82 only held the skip higher (God of War II -1.2 %
+// frames). Down under 0.85 again after the 3 s: the 139's frames with 7 % fewer changes.
+static constexpr double SI_UP_TARGET = 0.95, SI_DOWN_BELOW = 0.85, SI_DOWN_TARGET = 0.94, SI_DEBT_HIGH = 0.6, SI_E = 0.35;
 static constexpr int SI_MAX_UP = 8, SI_MAX_DOWN = 4;
 static struct
 {
@@ -3808,7 +3815,10 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 	}
 	if (u_now >= 2.5)
 		s_si.last_long = s_si.n;
-	s_si.time_at[std::clamp(s_si.value, 0, 48)]++;
+	// Compilation 141: what is learnt is where the game works (a use of 0.7 or more): in menus the skip goes to 0 and Dragon Ball learnt
+	// 0 from a session whose fights wanted 48.
+	if (u_now >= 0.7)
+		s_si.time_at[std::clamp(s_si.value, 0, 48)]++;
 	ForjaSkipTraceNote(u_now, s_si.debt, s_si.value);
 	s_si.highs = s_si.debt > SI_DEBT_HIGH ? s_si.highs + 1 : 0;
 	s_si.us[s_si.next] = u_now;
@@ -5085,6 +5095,29 @@ static void PublishReportText()
 		                           T("X: cambiarlo  ·  Izquierda/Derecha: otra frase  ·  Cuadrado: borrarlo. Se manda con el próximo reporte"));
 }
 
+// Compilation 141: what "Código al día" did, every 5 s when something happened.
+static void LogFreshCode(double elapsed)
+{
+#if defined(PCSX2_PS4_VM_BOOT_JIT)
+	static double last = 0.0;
+	static u32 seen_loads = 0, seen_flushes = 0;
+	if (elapsed - last < 5.0)
+		return;
+	last = elapsed;
+	const u32 loads = g_forja_fresh_loads.load(std::memory_order_relaxed), flushes = g_forja_fresh_flushes.load(std::memory_order_relaxed);
+	if (loads == seen_loads && flushes == seen_flushes)
+		return;
+	seen_loads = loads;
+	seen_flushes = flushes;
+	ProbeLog("Fresh code (141): fast code check %s; disc loads over changed code %u (%u blocks made again); instruction cache flushes %u, "
+			 "passes %u (%u blocks changed, %.2f ms in all)\n", g_ps4_skip_smc_checks ? "on" : "off", loads,
+		g_forja_fresh_load_blocks.load(std::memory_order_relaxed), flushes, g_forja_fresh_scans.load(std::memory_order_relaxed),
+		g_forja_fresh_flush_blocks.load(std::memory_order_relaxed), g_forja_fresh_scan_us.load(std::memory_order_relaxed) / 1000.0);
+#else
+	(void)elapsed;
+#endif
+}
+
 void VMHostPoll()
 {
 	++s_host_poll_calls;
@@ -5126,6 +5159,7 @@ void VMHostPoll()
 		UpdateFramePush(elapsed); // compilation 132
 		UpdateGsSkip(elapsed);
 		UpdateOutputRate(elapsed);
+		LogFreshCode(elapsed); // compilation 141
 		CheckLoadedState(elapsed); // compilation 61
 	}
 	// (AI-assisted) Verbose 1s heartbeat when paused/menu open, 5s otherwise. Needs proper testing.

@@ -9,6 +9,7 @@
 #include "IopHw.h"
 
 _sif sif0;
+extern void ForjaCodeLoaded(u32 addr, u32 bytes) __attribute__((weak)); // compilation 141 (x86/ix86-32/iR5900.cpp)
 
 static bool done = false;
 
@@ -41,6 +42,10 @@ static __fi bool WriteFifoToEE()
 
 	// Clearing handled by vtlb memory protection and manual blocks.
 	//Cpu->Clear(sif0ch.madr, readSize*4);
+	// Compilation 141: this port has no page protection, and "Revisión rápida" leaves the blocks' own check out: the translated code
+	// under what the disc just wrote is compared and made again if it changed (x86/ix86-32/iR5900.cpp, "Código al día").
+	if (ForjaCodeLoaded)
+		ForjaCodeLoaded(sif0ch.madr, static_cast<u32>(readSize) << 4);
 
 	sif0ch.madr += readSize << 4;
 	sif0.ee.cycles += readSize;	// fixme : BIAS is factored in above
