@@ -360,6 +360,7 @@ static unsigned s_cpu_auto_room_checks = 0;
 // until the next may be, and the wait after a failed one.
 static bool s_cpu_auto_up = false, s_skip_auto_fine = false;
 static bool s_skip_keeps_frames = false; // 146 in the app: [Forja] SaltoCuidaCuadros, "Al vuelo cuida los cuadros"
+static bool s_gs_skip_by_gs = false; // 147 in the app: [Forja] SaltarCuadrosPorGS
 // Compilation 124: "Revisión rápida del código" for this game ([Forja] RevisionRapida), and the FTP marker vm-skip-smc (for every game).
 static bool s_fast_code_game = false, s_fast_code_marker = false;
 // Compilation 127: "Efectos listos al arrancar" for this game ([Forja] EfectosListos); the GS thread reads the atomic at every vsync.
@@ -3047,6 +3048,10 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	s_fast_code_game = s_profile.fast_code == 1; // compilation 124: the recompiler takes it at the game's start (or from the row, with a reset)
 	if (s_fast_code_game || s_profile.fast_code_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("Fast code check (compilation 124): %s (%s)\n", s_fast_code_game ? "on" : "off", ProfileOriginName(s_profile.fast_code_origin));
+	s_gs_skip_by_gs = s_profile.gs_skip_by_gs == 1; // 147 in the app
+	if (s_gs_skip_by_gs || s_profile.gs_skip_by_gs_origin != ForjaGameProfile::Origin::Global)
+		ProbeLog("Saltar cuadros when the GS holds the game back (147 in the app): %s (%s)\n", s_gs_skip_by_gs ? "on" : "off",
+			ProfileOriginName(s_profile.gs_skip_by_gs_origin));
 	s_skip_keeps_frames = s_profile.skip_keeps_frames == 1; // 146 in the app
 	if (s_skip_keeps_frames || s_profile.skip_keeps_frames_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("Cycle skip keeps the frames (146 in the app): %s (%s)\n", s_skip_keeps_frames ? "on" : "off",
@@ -4181,7 +4186,43 @@ static void UpdateCycleSkipFast(double elapsed)
 	// crowd, generated frames: they read the same load), then this skip (no hitch, no flicker), and only after 3 s at its top Saltar
 	// cuadros (the GS) and the CPU automático (the EE). Dragon Ball's fights keep the skip at its top: Saltar cuadros works there as before.
 	const bool at_top = s_si.value >= 48 && s_top_since >= 0.0 && elapsed - s_top_since >= 3.0;
-	g_forja_gs_skip_director.store(at_top, std::memory_order_relaxed);
+	// 147 in the app, [Forja] SaltarCuadrosPorGS: the director also lets Saltar cuadros act while the GS is what holds the game back
+	// (its thread at 88 % or more and the EE's 25 points under it, for 1 s; it closes after 3 s without that). The cycle skip helps the
+	// EE, not the GS: Dragon Ball's fights (GS-bound, EE 40-55 %) kept the skip moving 41 times a minute, so it was never 3 s at its top
+	// and Saltar cuadros stayed at 0 %. Its stretches with the GS at 90-95 %: the 144, with the director, 86 % and 18.4 frames of the
+	// game a second (~17 pictures shown); the 124, Saltar cuadros free, 93 % and 27.9 (~19 shown, 2,570 frames left out in 5 minutes):
+	// faster AND more pictures. herramientas/simulaciones/simular_automaticos.py's model: 84 % without leaving out -> 98 % leaving 21 %.
+	static double s_gs_bound_since = -1.0, s_gs_free_since = -1.0;
+	static bool s_gs_bound = false;
+	if (s_gs_skip_by_gs && !s_video_active)
+	{
+		const double gs = PerformanceMetrics::GetGSThreadUsage(), ee = PerformanceMetrics::GetCPUThreadUsage();
+		if (gs >= 88.0 && ee < gs - 25.0)
+		{
+			s_gs_free_since = -1.0;
+			if (s_gs_bound_since < 0.0)
+				s_gs_bound_since = elapsed;
+			if (!s_gs_bound && elapsed - s_gs_bound_since >= 1.0)
+			{
+				s_gs_bound = true;
+				ProbeLog("Saltar cuadros: the GS holds the game back (GS %.0f %%, EE %.0f %%): the director lets it act\n", gs, ee);
+			}
+		}
+		else
+		{
+			s_gs_bound_since = -1.0;
+			if (s_gs_free_since < 0.0)
+				s_gs_free_since = elapsed;
+			if (s_gs_bound && elapsed - s_gs_free_since >= 3.0)
+			{
+				s_gs_bound = false;
+				ProbeLog("Saltar cuadros: the GS no longer holds the game back (GS %.0f %%, EE %.0f %%)\n", gs, ee);
+			}
+		}
+	}
+	else
+		s_gs_bound = false;
+	g_forja_gs_skip_director.store(at_top || s_gs_bound, std::memory_order_relaxed);
 	if (quarters != s_published)
 	{
 		s_published = quarters;

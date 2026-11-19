@@ -78,6 +78,10 @@ namespace ForjaGameProfile
 		// cuts the game's frames goes back. Off unless the game's profile turns it on (Downhill Domination, God of War II) until measured.
 		int skip_keeps_frames = -1;
 		Origin skip_keeps_frames_origin = Origin::Global;
+		// 147 in the app: [Forja] SaltarCuadrosPorGS, the director (ps4/vm/main.cpp) lets Saltar cuadros act while the GS is what holds
+		// the game back, not only after 3 s of the cycle skip at its top. Off unless the game's profile turns it on (Dragon Ball Z BT4).
+		int gs_skip_by_gs = -1;
+		Origin gs_skip_by_gs_origin = Origin::Global;
 		// [Forja] Huellas (compilation 55): the draw fingerprint rules turned on for the game, their huellas.ini ids with commas
 		// (ps4/vm/main.cpp, LoadRules; pcsx2/ForjaGsRules.h).
 		std::string rules_on;
@@ -290,6 +294,7 @@ namespace ForjaGameProfile
 		read_int("SaltarCuadros", &v.gs_skip, &v.gs_skip_origin);
 		read_int("SaltarCuadrosOcultaPantalla", &v.gs_skip_hide_shown, &v.gs_skip_hide_shown_origin); // compilation 146
 		read_int("SaltoCuidaCuadros", &v.skip_keeps_frames, &v.skip_keeps_frames_origin); // 146 in the app
+		read_int("SaltarCuadrosPorGS", &v.gs_skip_by_gs, &v.gs_skip_by_gs_origin); // 147 in the app
 		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);
 		read_int("SaltoAprendido", &v.learned_skip16, &v.learned_skip16_origin); // compilation 139
 		read_int("GrabarEnOtroHilo", &v.draw_thread, &v.draw_thread_origin);
