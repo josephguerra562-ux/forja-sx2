@@ -419,7 +419,7 @@ namespace PS4GameMenu
 			std::string name, serial;
 			u32 crc = 0;
 			bool own = false; // the player has a profile of their own for it
-			int ee_rate = 0, cpu_auto = 0, gs_skip = 5, upscale = 1, frame_gen = 0; // 147 in the app: the CPU native, its automático off
+			int ee_rate = 0, cpu_auto = -5, gs_skip = 5, upscale = 1, frame_gen = 0; // 149 in the app: native with the automático as fallback
 		};
 		constexpr int GameSkipChoices[] = {0, 5, 3, 4}; // No, Al vuelo, 1 de 2 rápido, 2 de 3
 

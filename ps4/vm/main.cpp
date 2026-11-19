@@ -796,7 +796,7 @@ static void ForjaApplyBase()
 {
 	ForjaSettings::Values settings = ForjaSettings::Load();
 	if (settings.migrated)
-		ProbeLog("Base 147: ajustes.ini given the new base (CPU 100 %% native, CPU automático off), saved=%d\n",
+		ProbeLog("Base 149: ajustes.ini given the new base (CPU 100 %% native, the CPU automático down to 31 %% as its fallback), saved=%d\n",
 			ForjaSettings::Save(settings) ? 1 : 0);
 	constexpr const char* marker = "/data/ForjaSX2/ajustes-base-146";
 	if (access(marker, F_OK) == 0)

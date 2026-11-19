@@ -20,7 +20,7 @@ namespace ForjaSettings
 	// Compilation 146 (Joseph, 2026-11-18: "una configuración base ... que corra bien para casi todos los juegos ... cuando se actualice
 	// forja, forzarles a esa actualización general y luego ya, que configure"): the base of the files written before it is put back
 	// once (Load: `migrated`; main.cpp saves it and clears the players' old per-game CPU and skip keys, keeping a copy).
-	constexpr int BaseVersion = 147; // 147 in the app: the PS2 CPU native (100 %) for every game, the CPU automático off
+	constexpr int BaseVersion = 149; // 149 in the app: the PS2 CPU "native with a fallback" (147: native, the automático off)
 
 	struct Values
 	{
@@ -37,7 +37,10 @@ namespace ForjaSettings
 		int ee_rate = 0;
 		// [Forja] CpuAuto for every game without its own (compilation 45): 0 off, -1..-6 the lowest EE rate it may step down
 		// to (main.cpp, UpdateCpuAuto). -6: a game raised above 27 % in L3+R3 comes back down in its heavy scenes.
-		int cpu_auto = 0; // 147 in the app: off, the PS2 CPU stays at 100 % (146: -5, down to 31 %)
+		// 149 in the app (Joseph, 2026-11-19: "Sí, nativa con respaldo"): the PS2 CPU at 100 % while the game runs at full speed; one step
+		// down only when the EE holds it back 3 s with the cycle skip at its top, and back up when there is room (CpuAutoSube). Down to 31 %.
+		// The 147 had it off (native always): the 148 on the console, GTA at 85 % and Guitar Hero at 92 % with the EE holding them back.
+		int cpu_auto = -5;
 		int version = 0; // compilation 146: the base the file was written with (BaseVersion)
 		bool migrated = false; // Load put the new base back: save it
 		int upscale = 1;      // internal resolution, 1..4
@@ -161,11 +164,12 @@ namespace ForjaSettings
 		if (v.version < BaseVersion)
 		{
 			// Compilation 146: an older file gets the new base once; what is the player's own taste (language, folder, style, button,
-			// stick, overlay, aspect) stays. 147 in the app: the CPU native and the CPU automático off; a 146 file keeps its resolution.
+			// stick, overlay, aspect) stays. 147 in the app: the CPU native; 149: with the CPU automático as its fallback (down to 31 %).
+			// A 146 file or newer keeps its resolution.
 			if (v.version < 146)
 				v.upscale = 1;
 			v.ee_rate = 0;
-			v.cpu_auto = 0;
+			v.cpu_auto = -5;
 			v.version = BaseVersion;
 			v.migrated = true;
 		}
