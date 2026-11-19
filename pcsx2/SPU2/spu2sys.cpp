@@ -55,7 +55,10 @@ void SetIrqCall(int core)
 {
 	if (ForjaSPU2OnMixThread())
 	{
-		g_forja_spu2_irq_missed.fetch_or(1u << core, std::memory_order_relaxed);
+		// 149 in the app: only an IRQ this call would raise (the 148 counted a core whose IRQ was already pending too: GTA's
+		// irq_late=65 were those, raised by nobody; the EE thread's own call below does the same check).
+		if (!(Spdif.Info & (4 << core)) && Cores[core].IRQEnable)
+			g_forja_spu2_irq_missed.fetch_or(1u << core, std::memory_order_relaxed);
 		return;
 	}
 	//SPU2::ConLog("* SPU2: Irq Called (%04x) at cycle %d.\n", Spdif.Info, Cycles);

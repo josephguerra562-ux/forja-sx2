@@ -598,6 +598,109 @@ static float s_stick_scale = 1.33f;
 // [Forja] CpuAuto, from L3+R3 or Options) go, a copy of each file first in gamesettings/antes-147; ajustes.ini's base is 147 (ForjaSettings.h).
 // Nothing else of the player's is touched (huellas, resolution, frame generation, patches): Dragon Ball's huella stays as the player left it
 // (its fights without it, the 124: 92 % and 28.2 frames, against 94.8 % and 28.4 with it: the same).
+// 149 in the app, once (marker /data/ForjaSX2/ajustes-149): a player's deinterlace for a game whose factory profile has a measured one
+// goes (a copy of the file first, in gamesettings/antes-149). Guitar Hero III (2026-11-19, the 148): its factory Blend (6) was hidden by
+// a Bob (4) left from trying the modes in the 145, and Bob makes the thin lines shimmer by itself (it shows each field alone, one line
+// up or down every refresh): the neck, the crowd, the grass. With Blend the 148's fix for its flicker applies (GSRendererPS4.cpp).
+// L3+R3 > Imagen still changes it for whoever wants another.
+static void ForjaApplyDeinterlace149()
+{
+	constexpr const char* marker = "/data/ForjaSX2/ajustes-149";
+	if (access(marker, F_OK) == 0)
+		return;
+	const std::string dir = "/data/ForjaSX2/gamesettings";
+	const std::string backup = dir + "/antes-149";
+	unsigned files = 0;
+	const auto read_all = [](const std::string& path, std::string& text) {
+		std::FILE* f = std::fopen(path.c_str(), "rb");
+		if (!f)
+			return false;
+		char buffer[4096];
+		size_t n;
+		while ((n = std::fread(buffer, 1, sizeof(buffer), f)) > 0)
+			text.append(buffer, n);
+		std::fclose(f);
+		return true;
+	};
+	// The text without [EmuCore/GS] deinterlace_mode, and whether it had one.
+	const auto without_mode = [](const std::string& text, bool* had) {
+		std::string section, kept;
+		*had = false;
+		size_t at = 0;
+		while (at < text.size())
+		{
+			size_t end = text.find('\n', at);
+			const std::string line = text.substr(at, end == std::string::npos ? std::string::npos : end - at + 1);
+			at = end == std::string::npos ? text.size() : end + 1;
+			std::string bare = line;
+			while (!bare.empty() && (bare.back() == '\n' || bare.back() == '\r' || bare.back() == ' ' || bare.back() == '\t'))
+				bare.pop_back();
+			const size_t lead = bare.find_first_not_of(" \t");
+			bare = lead == std::string::npos ? std::string() : bare.substr(lead);
+			if (!bare.empty() && bare.front() == '[' && bare.back() == ']')
+				section = bare.substr(1, bare.size() - 2);
+			else if (const size_t eq = bare.find('='); section == "EmuCore/GS" && eq != std::string::npos && bare[0] != ';')
+			{
+				std::string key = bare.substr(0, eq);
+				while (!key.empty() && (key.back() == ' ' || key.back() == '\t'))
+					key.pop_back();
+				if (key == "deinterlace_mode")
+				{
+					*had = true;
+					continue;
+				}
+			}
+			kept += line;
+		}
+		return kept;
+	};
+	if (DIR* d = opendir(dir.c_str()))
+	{
+		while (const dirent* e = readdir(d))
+		{
+			const std::string name = e->d_name;
+			const size_t cut = name.find('_');
+			if (name.size() < 5 || name.compare(name.size() - 4, 4, ".ini") != 0 || cut == std::string::npos)
+				continue;
+			const std::string path = dir + "/" + name;
+			std::string text, factory;
+			bool player_has = false, factory_has = false;
+			if (!read_all(path, text))
+				continue;
+			const std::string kept = without_mode(text, &player_has);
+			if (!player_has || !read_all(ForjaGameProfile::FactoryPath(name.substr(0, cut)), factory))
+				continue;
+			without_mode(factory, &factory_has);
+			if (!factory_has)
+				continue;
+			mkdir(backup.c_str(), 0777);
+			if (std::FILE* f = std::fopen((backup + "/" + name).c_str(), "wb"))
+			{
+				std::fwrite(text.data(), 1, text.size(), f);
+				std::fclose(f);
+			}
+			else
+				continue; // no copy, no change
+			const std::string temporary = path + ".tmp";
+			if (std::FILE* f = std::fopen(temporary.c_str(), "wb"))
+			{
+				const bool written = std::fwrite(kept.data(), 1, kept.size(), f) == kept.size();
+				if (std::fclose(f) == 0 && written && std::rename(temporary.c_str(), path.c_str()) == 0)
+				{
+					files++;
+					ProbeLog("Deinterlace 149: %s had its own mode; the game's measured one comes back \n", name.c_str());
+				}
+			}
+		}
+		closedir(d);
+	}
+	if (std::FILE* f = std::fopen(marker, "w"))
+	{
+		std::fprintf(f, "149: %u perfiles con el desentrelazado medido de vuelta (copia en gamesettings/antes-149)\n", files);
+		std::fclose(f);
+	}
+}
+
 static void ForjaApplyNative147()
 {
 	constexpr const char* marker = "/data/ForjaSX2/ajustes-147";
@@ -6968,6 +7071,7 @@ int main()
 	ProbeLog("Telemetry: start=%d\n", telemetry_started ? 1 : 0);
 	ForjaApplyBase(); // compilation 146: after the log is up
 	ForjaApplyNative147(); // 147 in the app: the PS2 CPU native for every game
+	ForjaApplyDeinterlace149(); // 149 in the app: a game's measured deinterlace back
 	// Compilation 78: whether this build sends the players' reports (ForjaReport.cpp), so a log says it without trying one.
 	ProbeLog("Reports: %s\n", ForjaReport::HasChannel() ? "the reports channel is set (Reportar este juego sends to Forja's Discord)" :
 															  "no reports channel in this build (reports are kept in /data/ForjaSX2/reportes)");
