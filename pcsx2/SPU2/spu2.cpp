@@ -24,6 +24,7 @@
 #include <emmintrin.h>
 #include <mutex>
 #include <thread>
+#include <sched.h>
 #include <unistd.h>
 
 extern void ProbeLog(const char* format, ...);
@@ -48,6 +49,16 @@ static bool s_output_muted = false;
 // anything reads or writes the SPU2's registers, and dropped on a reset or a loaded savestate.
 extern void (*g_forja_spu2_catch_up)();
 extern void ForjaSPU2ClearPending();
+
+// Forja SX2 (147 in the app): the mixing thread's mark (SetIrqCall, spu2sys.cpp), the IRQs it handed over, and the horizon's counters
+// for the 5 s line (the horizon itself: below, before ForjaSPU2Sync).
+thread_local bool g_forja_spu2_on_mix_thread = false;
+std::atomic<u32> g_forja_spu2_irq_missed{0};
+namespace
+{
+	u64 s_forja_spu2_horizon_queued = 0, s_forja_spu2_horizon_calcs = 0;
+	u32 s_forja_spu2_irq_late = 0;
+} // namespace
 
 // Forja SX2 (compilation 32): the SPU2 mix on a thread of its own, on the audio core (nucleos.txt AUDIO=).
 // The mix took 8 to 14 % of the EE thread in every game (2026-10-16: the voices, the cores' mix and reverb, the output), and
@@ -86,10 +97,15 @@ namespace
 
 	void ForjaSPU2Thread()
 	{
+		g_forja_spu2_on_mix_thread = true; // 147 in the app: SetIrqCall (spu2sys.cpp) hands an IRQ from here to the EE thread
 		PS4ThreadAffinity::PinCurrentThread("Audio", 5);
 		// Between bursts of samples it keeps looking for ~50 us, then naps 0.2 ms at a time, and 2 ms at a time once nothing
 		// came for 0.1 s (a pause, the library): being late costs nothing but the EE thread mixing those samples itself.
-		const Common::Timer::Value spin_ticks = Common::Timer::ConvertNanosecondsToValue(50000.0);
+		// 147 in the app: ~1 ms of looking, not 50 us. The samples come in bursts (a TimeUpdate every few samples); after 50 us it napped
+		// and the EE thread mixed what came meanwhile itself: in God of War II's fights 25 % of the mix and 52 ms of the EE thread a
+		// second in ~4,000 syncs, in Need for Speed up to 50 %. The audio core is this thread's alone (nucleos.txt AUDIO=).
+		const Common::Timer::Value spin_ticks = Common::Timer::ConvertNanosecondsToValue(1000000.0);
+		const Common::Timer::Value yield_ticks = Common::Timer::ConvertNanosecondsToValue(50000.0);
 		const Common::Timer::Value long_idle_ticks = Common::Timer::ConvertMillisecondsToValue(100.0);
 		Common::Timer::Value idle_since = 0;
 		u32 idle_checks = 0;
@@ -111,6 +127,10 @@ namespace
 						usleep(idle > long_idle_ticks ? 2000 : 200);
 						continue;
 					}
+					// 147 in the app: past the old 50 us it keeps looking, but gives its turn away at each look: the audio write thread
+					// (AudioStreamPS4.cpp) is on the same core and must not wait for this one.
+					if (idle > yield_ticks)
+						sched_yield();
 				}
 				_mm_pause();
 				continue;
@@ -155,16 +175,122 @@ namespace
 		if (seconds > 0.0 && total > 0.0)
 			ProbeLog("Audio SPU2 thread: on=%d mixed_by_thread_pct=%.1f by_EE_at_sync_pct=%.1f by_EE_direct_pct=%.1f "
 					 "(irq_armed_pct=%.1f) syncs_per_second=%.0f EE_sync_ms_per_second=%.1f reads_free_per_second=%.0f "
-					 "reads_mixed_per_second=%.0f\n",
+					 "reads_mixed_per_second=%.0f irq_horizon_pct=%.1f horizon_calcs_per_second=%.0f irq_late=%u\n",
 				s_forja_spu2_threaded, thread_mixed * 100.0 / total, s_forja_spu2_stolen * 100.0 / total,
 				s_forja_spu2_direct * 100.0 / total, s_forja_spu2_direct_irq * 100.0 / total, s_forja_spu2_syncs / seconds,
 				Common::Timer::ConvertValueToMilliseconds(s_forja_spu2_sync_ticks) / seconds, s_forja_spu2_reads_free / seconds,
-				s_forja_spu2_reads_mixed / seconds);
+				s_forja_spu2_reads_mixed / seconds, s_forja_spu2_horizon_queued * 100.0 / total, s_forja_spu2_horizon_calcs / seconds,
+				s_forja_spu2_irq_late);
 		s_forja_spu2_queued = s_forja_spu2_direct = s_forja_spu2_direct_irq = s_forja_spu2_stolen = 0;
 		s_forja_spu2_syncs = s_forja_spu2_sync_ticks = 0;
 		s_forja_spu2_reads_free = s_forja_spu2_reads_mixed = 0;
+		s_forja_spu2_horizon_queued = s_forja_spu2_horizon_calcs = 0;
 	}
 } // namespace
+
+// Forja SX2 (147 in the app): "Sonido fuera del EE". While a core's IRQ is armed every sample used to be mixed on the EE thread so the IRQ
+// fires at its very sample (GTA San Andreas, 2026-11-19: 100 % of its samples, the mix 8.5 % of the EE thread and 12 % with the reverb and
+// the envelopes). A voice only moves straight on from NextA, or jumps to its loop start (LoopStartA, its current block's start when that
+// block has the loop start mark, or a block further on, which is on the straight line anyway). So before it checks IRQA it takes at least
+// k steps: IRQA - NextA straight on, or 1 + (IRQA - LoopStartA), or 1 + (IRQA - its block's start), with the wrap of the memory; and 0 when
+// IRQA is its block's start (UpdateBlockHeader checks it every sample). A sample takes one step, two when it crosses into another block
+// (once in 7 samples at most): in s samples, s + (s+6)/7 steps at most. The voices' samples before that, minus 2, go to the mixing
+// thread; an output area write (voices 1 and 3, the cores' dry and wet outputs, the external input: 16 areas at base + OutPos) is known
+// per sample, and the reverb's area with an IRQ in it keeps the EE thread mixing. herramientas/simulaciones/simular_sonido_horizonte.py
+// copies DecodeSamples, IncrementNextA, the loops, UpdatePitch and ConsumeSamples: 12,000 random cases, 4,370 with an IRQ, the horizon
+// never past it (6,000 of them without the margin). Anything that changes the voices or the IRQ (a register write, a DMA, a key on or
+// off, a savestate) computes it again; an IRQ the thread would raise anyway goes to the EE thread (SetIrqCall) and is logged.
+namespace
+{
+	bool s_forja_spu2_horizon_dirty = true;
+	u32 s_forja_spu2_horizon_end = 0; // the first sample (Cycles) that might reach IRQA
+	int s_forja_spu2_horizon_on = -1; // /data/ForjaSX2/vm-spu2-alarma-exacta keeps the old way (every sample on the EE thread)
+
+	bool ForjaSPU2CoreCanRaise(int i)
+	{
+		return Cores[i].IRQEnable && !(Spdif.Info & (4 << i)); // SetIrqCall's own condition
+	}
+
+	// The samples from now on that cannot reach an armed IRQA (the EE thread, with the queue mixed).
+	u32 ForjaSPU2Horizon()
+	{
+		constexpr u32 cap = 4096, margin = 2;
+		u32 irqa[2];
+		int armed = 0;
+		for (int i = 0; i < 2; i++)
+			if (ForjaSPU2CoreCanRaise(i))
+				irqa[armed++] = Cores[i].IRQA & 0xFFFFF;
+		if (armed == 0)
+			return cap;
+		// The reverb reads and writes its whole area every other sample: an IRQA in it stays on the EE thread.
+		for (int c = 0; c < 2; c++)
+			if (Cores[c].FxEnable)
+				for (int j = 0; j < armed; j++)
+					if (irqa[j] >= Cores[c].EffectsStartA && irqa[j] <= Cores[c].EffectsEndA)
+						return 0;
+		u32 k_min = 2 * cap;
+		for (int c = 0; c < 2; c++)
+		{
+			for (int v = 0; v < 24; v++)
+			{
+				const V_Voice& vc = Cores[c].Voices[v];
+				const u32 next = vc.NextA & 0xFFFFF, block = next & 0xFFFF8, loop = vc.LoopStartA & 0xFFFFF;
+				for (int j = 0; j < armed; j++)
+				{
+					const u32 a = irqa[j];
+					if (a == block)
+						return 0;
+					const u32 k = std::min({(a - next) & 0xFFFFFu, 1 + ((a - block) & 0xFFFFFu), 1 + ((a - loop) & 0xFFFFFu)});
+					k_min = std::min(k_min, k);
+				}
+			}
+		}
+		// The most samples s with s + (s+6)/7 steps before step k_min (8 steps in 7 samples, the first crossing at once).
+		u32 safe = k_min >= 2 ? ((k_min - 1) * 7) / 8 : 0;
+		while (safe > 0 && safe + (safe + 6) / 7 > k_min)
+			safe--;
+		safe = safe > margin ? safe - margin : 0;
+		return std::min(safe, cap);
+	}
+
+	// An output area written at this sample (Mixer.cpp: spu2M_WriteFast at base + OutPos) with an armed IRQA in it.
+	bool ForjaSPU2OutputHits(u16 outpos)
+	{
+		static constexpr u32 bases[] = {0x400, 0x600, 0xc00, 0xe00, 0x800, 0xa00, 0x1000, 0x1200, 0x1400, 0x1600, 0x1800, 0x1a00, 0x1c00,
+			0x1e00};
+		for (int i = 0; i < 2; i++)
+		{
+			if (!ForjaSPU2CoreCanRaise(i))
+				continue;
+			const u32 a = Cores[i].IRQA & 0xFFFFF;
+			if (a >= 0x2000)
+				continue;
+			for (const u32 b : bases)
+				if (a == b + outpos)
+					return true;
+		}
+		return false;
+	}
+} // namespace
+
+void ForjaSPU2HorizonDirty()
+{
+	s_forja_spu2_horizon_dirty = true;
+}
+
+// An IRQ the mixing thread would have raised: raised now, on the EE thread, and told once in the log.
+static void ForjaSPU2RaiseMissed()
+{
+	const u32 missed = g_forja_spu2_irq_missed.exchange(0, std::memory_order_relaxed);
+	if (!missed)
+		return;
+	for (int i = 0; i < 2; i++)
+		if (missed & (1u << i))
+			SetIrqCall(i);
+	if (s_forja_spu2_irq_late++ == 0)
+		ProbeLog("Audio SPU2 thread: an IRQ reached on the mixing thread, raised on the EE thread (the horizon was short: tell Forja)\n");
+	s_forja_spu2_horizon_dirty = true;
+}
 
 void ForjaSPU2Sync()
 {
@@ -205,6 +331,8 @@ void ForjaSPU2Sync()
 void ForjaSPU2CatchUp()
 {
 	ForjaSPU2Sync();
+	ForjaSPU2RaiseMissed(); // 147 in the app
+	s_forja_spu2_horizon_dirty = true;
 	if (g_forja_spu2_catch_up)
 		g_forja_spu2_catch_up();
 }
@@ -271,7 +399,32 @@ void ForjaSPU2Submit(StereoOut32 in0, StereoOut32 in1, u16 outpos, u32 cycles)
 		ProbeLog("Audio SPU2 thread: %s (/data/ForjaSX2/vm-spu2-mismo-hilo keeps the mix on the EE thread)\n",
 			s_forja_spu2_threaded ? "the mix runs on the audio core" : "off, the mix stays on the EE thread");
 	}
-	const bool irq_armed = Cores[0].IRQEnable || Cores[1].IRQEnable;
+	bool irq_armed = Cores[0].IRQEnable || Cores[1].IRQEnable;
+	// 147 in the app: with an IRQ armed, the samples before the horizon go to the mixing thread all the same.
+	bool by_horizon = false;
+	if (irq_armed && s_forja_spu2_threaded > 0 && !(PlayMode & 8)) // the thread starts below, at the first such sample
+	{
+		if (s_forja_spu2_horizon_on < 0)
+		{
+			s_forja_spu2_horizon_on = access("/data/ForjaSX2/vm-spu2-alarma-exacta", F_OK) != 0 ? 1 : 0;
+			ProbeLog("Audio SPU2 IRQ horizon (147 in the app): %s\n", s_forja_spu2_horizon_on ?
+				"on, the samples that cannot reach IRQA are mixed on the audio core" : "off (vm-spu2-alarma-exacta)");
+		}
+		if (s_forja_spu2_horizon_on)
+		{
+			ForjaSPU2RaiseMissed();
+			if (s_forja_spu2_horizon_dirty || static_cast<s32>(cycles - s_forja_spu2_horizon_end) >= 0)
+			{
+				ForjaSPU2Sync(); // the voices as they are now
+				s_forja_spu2_horizon_end = cycles + ForjaSPU2Horizon();
+				s_forja_spu2_horizon_dirty = false;
+				s_forja_spu2_horizon_calcs++;
+			}
+			by_horizon = static_cast<s32>(cycles - s_forja_spu2_horizon_end) < 0 && !ForjaSPU2OutputHits(outpos);
+			if (by_horizon)
+				irq_armed = false;
+		}
+	}
 	if (!s_forja_spu2_threaded || irq_armed || (PlayMode & 8))
 	{
 		ForjaSPU2Sync(); // the queue first: samples are mixed in order
@@ -298,6 +451,7 @@ void ForjaSPU2Submit(StereoOut32 in0, StereoOut32 in1, u16 outpos, u32 cycles)
 	s_forja_spu2_ring[head % FORJA_SPU2_RING] = {in0, in1, cycles, outpos};
 	s_forja_spu2_head.store(head + 1, std::memory_order_release);
 	s_forja_spu2_queued++;
+	s_forja_spu2_horizon_queued += by_horizon ? 1 : 0;
 	ForjaSPU2LogMaybe();
 }
 
@@ -877,6 +1031,8 @@ s32 SPU2freeze(FreezeAction mode, freezeData* data)
 		case FreezeAction::Load:
 			ForjaSPU2Sync();
 			ForjaSPU2ClearPending();
+			g_forja_spu2_irq_missed.store(0, std::memory_order_relaxed); // 147 in the app: the loaded state's own
+			s_forja_spu2_horizon_dirty = true;
 			return SPU2Savestate::ThawIt(spud);
 		case FreezeAction::Save:
 			ForjaSPU2CatchUp();

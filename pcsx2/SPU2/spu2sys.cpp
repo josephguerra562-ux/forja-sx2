@@ -7,6 +7,7 @@
 // This module contains (most!) stuff which is directly related to SPU2 emulation.
 // Contents should be cross-platform compatible whenever possible.
 
+#include <atomic>
 #include "IopCounters.h"
 #include "IopDma.h"
 #include "IopHw.h"
@@ -45,8 +46,18 @@ u32 g_forja_mix_cycles = 0;
 
 static bool psxmode = false;
 
+// Forja SX2 (147 in the app): spu2.cpp's mixing thread mixes samples the IRQ horizon says cannot reach IRQA. Should one ever reach it
+// anyway, the interrupt is not raised from that thread: the EE thread raises it at its next SPU2 sample or sync (spu2.cpp) and logs it.
+extern thread_local bool g_forja_spu2_on_mix_thread;
+extern std::atomic<u32> g_forja_spu2_irq_missed;
+
 void SetIrqCall(int core)
 {
+	if (g_forja_spu2_on_mix_thread)
+	{
+		g_forja_spu2_irq_missed.fetch_or(1u << core, std::memory_order_relaxed);
+		return;
+	}
 	//SPU2::ConLog("* SPU2: Irq Called (%04x) at cycle %d.\n", Spdif.Info, Cycles);
 	if (!(Spdif.Info & (4 << core)) && Cores[core].IRQEnable)
 	{
@@ -350,7 +361,10 @@ __forceinline void TimeUpdate(u64 cClocks)
 
 		// Forja SX2: a key on or off changes voices the SPU2 mixing thread may still be mixing (spu2.cpp).
 		if (Cores[0].KeyOff | Cores[0].KeyOn | Cores[1].KeyOff | Cores[1].KeyOn)
+		{
 			ForjaSPU2Sync();
+			ForjaSPU2HorizonDirty(); // 147 in the app: the voices' addresses change
+		}
 
 		for(int c = 0; c < 2; c++)
 		{
