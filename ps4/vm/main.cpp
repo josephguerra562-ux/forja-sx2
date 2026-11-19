@@ -2349,9 +2349,9 @@ static void PublishNetText()
 	const u8* d = EmuConfig.DEV9.DNS1;
 	if (EmuConfig.DEV9.ModeDNS1 == Pcsx2Config::DEV9Options::DnsMode::Manual)
 		std::snprintf(dns, sizeof(dns), "%u.%u.%u.%u", d[0], d[1], d[2], d[3]);
-	std::snprintf(label, sizeof(label), TF("DNS del servidor:  < %s >"), dns[0] ? dns : T("Auto"));
+	std::snprintf(label, sizeof(label), TF("DNS del servidor:  < %s >"), dns[0] ? dns : T("Auto (PS2Online)"));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_NET_DNS, label,
-		T("Solo para Internet: el DNS del servidor de fans de este juego (búscalo en la comunidad PS2Online). X lo escribe, Cuadrado vuelve a Auto"));
+		T("Solo para Internet. Auto usa el de PS2Online, la comunidad que revivió el online de muchos juegos (Mortal Kombat Armageddon ya entra). Si a tu juego lo revivió otro grupo, escribe su DNS con X; Cuadrado vuelve a Auto"));
 	std::snprintf(label, sizeof(label), TF("Sala LAN, anfitrión:  < %s >"),
 		EmuConfig.DEV9.LanHost.empty() ? T("esta PS4 crea la sala") : EmuConfig.DEV9.LanHost.c_str());
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_NET_HOST, label,
@@ -2453,16 +2453,6 @@ static void PublishIopSleepText()
 	std::snprintf(label, sizeof(label), TF("IOP dormido en el juego:  < %s >"), T(s_iop_sleep_game ? N_("Sí") : N_("No")));
 	PS4GameMenu::SetRowText(PS4GameMenu::ROW_IOP_SLEEP, label,
 		T("Prueba: el IOP (el procesador del disco y del sonido) duerme mientras espera, como ya hace en los videos, y deja más tiempo al juego. Si el sonido se corta o el juego se traba, ponlo en No. Se guarda para este juego"));
-}
-
-static void PublishSkipAutoFineText()
-{
-	using ForjaLang::T;
-	using ForjaLang::TF;
-	char label[256];
-	std::snprintf(label, sizeof(label), TF("Salto Auto afinado:  < %s >"), T(s_skip_auto_fine ? N_("Sí") : N_("No")));
-	PS4GameMenu::SetRowText(PS4GameMenu::ROW_SKIP_AUTO_FINE, label,
-		T("Prueba, con el Salto de ciclo en Auto: vuelve a probar con menos salto cada minuto cuando el juego va bien, para recuperar los cuadros al salir de un lugar pesado. Se guarda para este juego"));
 }
 
 static void PublishCpuAutoUpText()
@@ -2849,7 +2839,6 @@ static void PublishGameMenu()
 	PublishFpuExactText(); // compilation 120
 	PublishIopFastText(); // compilation 120
 	PublishIopSleepText(); // compilation 122
-	PublishSkipAutoFineText();
 	PublishCpuAutoUpText();
 	PublishFastCodeText(); // compilation 124
 	PublishVu1FastText(); // compilation 126
@@ -4735,12 +4724,6 @@ static void ChangeGameMenuRow(unsigned row, int delta)
 			SavePlayerProfile("IOP asleep in the game", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "IopDormido", next); }, false);
 			break;
 		}
-		case PS4GameMenu::ROW_SKIP_AUTO_FINE: // compilation 122: No / Sí ([Forja] SaltoAutoAfinado)
-		{
-			const int next = s_skip_auto_fine ? 0 : 1;
-			SavePlayerProfile("Cycle skip auto fine", [next](INISettingsInterface& ini) { ini.SetIntValue("Forja", "SaltoAutoAfinado", next); }, false);
-			break;
-		}
 		case PS4GameMenu::ROW_VU1_FAST: // compilation 126: PCSX2's keys, so the game layer is reloaded (the VU recompilers start over)
 		{
 			// On: the flag hack and no clamping. Off (compilation 127, when the global is already without clamping): the clamp back, and the
@@ -5167,6 +5150,44 @@ static std::string ReportSmallFile(const char* path, size_t max_bytes)
 	return std::string("--- ") + path + " (" + date + ")\n" + text + "\n";
 }
 
+// Compilation 146 (app): the console's list of effects for this game (/data/ForjaSX2/cache/efectos/<serial>.bin, made by
+// GSDeviceVK.cpp: 'FJEF', 24 bytes of header and 32 per effect, at most 2048), in hexadecimal at the end of the report. In the lab,
+// herramientas/efectos_de_reportes.py joins the reports' lists with the project's (ps4/vm/assets/efectos), and the settings center
+// brings them to every player: a game nobody on the project has gets its effects made at the start from its players' sessions.
+static std::string ReportEffectsList(const std::string& serial)
+{
+	if (serial.empty())
+		return {};
+	std::string name;
+	for (const char c : serial)
+		name += (std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_') ? c : '_';
+	const std::string path = "/data/ForjaSX2/cache/efectos/" + name + ".bin";
+	std::FILE* file = std::fopen(path.c_str(), "rb");
+	if (!file)
+		return {};
+	std::string raw(24 + 32 * 2048, '\0');
+	raw.resize(std::fread(raw.data(), 1, raw.size(), file));
+	std::fclose(file);
+	u32 magic = 0, count = 0;
+	if (raw.size() < 24)
+		return {};
+	std::memcpy(&magic, raw.data(), 4);
+	std::memcpy(&count, raw.data() + 16, 4);
+	if (magic != 0x46454A46u || count > 2048 || raw.size() != 24 + 32 * static_cast<size_t>(count))
+		return {};
+	static constexpr char digits[] = "0123456789abcdef";
+	std::string out = "\n--- Efectos " + name + " (" + std::to_string(count) + ", FJEF en hexadecimal)\n";
+	for (size_t i = 0; i < raw.size(); i++)
+	{
+		const unsigned char b = static_cast<unsigned char>(raw[i]);
+		out += digits[b >> 4];
+		out += digits[b & 15];
+		if (i % 64 == 63)
+			out += '\n';
+	}
+	return out + "\n--- Fin de los efectos\n";
+}
+
 static void SendReport(double elapsed)
 {
 	s_report_too_soon = elapsed - s_report_last_sent < 60.0;
@@ -5213,6 +5234,7 @@ static void SendReport(double elapsed)
 	text += ReportSmallFile("/data/ForjaSX2/crash.log", 4096);
 	text += ReportSmallFile("/data/ForjaSX2/logs/crash.log", 4096);
 	text += ReportSmallFile("/data/ForjaSX2/logs/hang.log", 2048);
+	text += ReportEffectsList(serial); // compilation 146 (app)
 
 	// Compilation 80: with what went wrong and what the meters measured, so the channel's line says it without the file.
 	char summary[768];
@@ -5830,7 +5852,7 @@ void VMHostPoll()
 						   row == PS4GameMenu::ROW_PATCH || row == PS4GameMenu::ROW_VU1_FILTER || row == PS4GameMenu::ROW_GS_FILTER ||
 						   row == PS4GameMenu::ROW_TEXTURES || row == PS4GameMenu::ROW_DRAW_THREAD || row == PS4GameMenu::ROW_SW_JIT ||
 						   row == PS4GameMenu::ROW_FPU_EXACT || row == PS4GameMenu::ROW_IOP_FAST || row == PS4GameMenu::ROW_IOP_SLEEP ||
-						   row == PS4GameMenu::ROW_SKIP_AUTO_FINE || row == PS4GameMenu::ROW_CPU_AUTO_UP || row == PS4GameMenu::ROW_FAST_CODE_CHECK || row == PS4GameMenu::ROW_VU1_FAST || row == PS4GameMenu::ROW_EFFECTS_AHEAD || row == PS4GameMenu::ROW_SKIP_REPEATS || row == PS4GameMenu::ROW_CPU_SEAMLESS || row == PS4GameMenu::ROW_DISC_NO_WAIT ||
+						   row == PS4GameMenu::ROW_CPU_AUTO_UP || row == PS4GameMenu::ROW_FAST_CODE_CHECK || row == PS4GameMenu::ROW_VU1_FAST || row == PS4GameMenu::ROW_EFFECTS_AHEAD || row == PS4GameMenu::ROW_SKIP_REPEATS || row == PS4GameMenu::ROW_CPU_SEAMLESS || row == PS4GameMenu::ROW_DISC_NO_WAIT ||
 						   row == PS4GameMenu::ROW_CODE_AHEAD || row == PS4GameMenu::ROW_VU_JUMPS || row == PS4GameMenu::ROW_FRAME_PUSH ||
 						   row == PS4GameMenu::ROW_FG_MARGIN ||
 						   row == PS4GameMenu::ROW_RECOMMENDED || row == PS4GameMenu::ROW_CHANGE_DISC || row == PS4GameMenu::ROW_REPORT ||

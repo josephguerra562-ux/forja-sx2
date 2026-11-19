@@ -186,14 +186,28 @@ std::vector<IP_Address> AdapterUtils::GetGateways(const Adapter* adapter)
 	return out;
 }
 
+// Compilation 146 (app): "Auto" gives the PS2 the DNS of PS2Online (45.7.228.197) first and the PS4's second. Sony's and GameSpy's
+// servers are gone; that DNS sends their names to the fans' servers (2026-11-18: gate1.eu.dnas.playstation.org, gpcm.gamespy.com and
+// peerchat.gamespy.com answered; Mortal Kombat Armageddon PAL went online with it in Forja). It does not answer other names, so the
+// PS4's own DNS stays as the second one. A game revived by another group takes its DNS in En línea > DNS del servidor (Manual).
+static constexpr u8 FORJA_FANS_DNS[4] = {45, 7, 228, 197};
+
 std::vector<IP_Address> AdapterUtils::GetDNS(const Adapter* adapter)
 {
 	(void)adapter;
 	std::vector<IP_Address> out;
+	{
+		IP_Address fans{};
+		std::memcpy(fans.bytes, FORJA_FANS_DNS, 4);
+		out.push_back(fans);
+	}
 	if (const std::optional<in_addr> d1 = NetCtlAddress(ORBIS_NET_CTL_INFO_PRIMARY_DNS))
 		out.push_back(ToIP(*d1));
 	if (const std::optional<in_addr> d2 = NetCtlAddress(ORBIS_NET_CTL_INFO_SECONDARY_DNS))
 		out.push_back(ToIP(*d2));
+	if (out.size() >= 2)
+		Console.WriteLn("DEV9: Auto DNS: PS2Online %u.%u.%u.%u, then the PS4's %u.%u.%u.%u", out[0].bytes[0], out[0].bytes[1],
+			out[0].bytes[2], out[0].bytes[3], out[1].bytes[0], out[1].bytes[1], out[1].bytes[2], out[1].bytes[3]);
 	return out;
 }
 

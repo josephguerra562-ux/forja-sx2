@@ -76,10 +76,10 @@ namespace PS4GameMenu
 		ROW_FPU_EXACT,
 		ROW_IOP_FAST,
 		// Compilation 122 (Joseph, 2026-11-07, Shadow of the Colossus: "aumentan los FPS pero disminuye la velocidad"): "IOP dormido en el
-		// juego" (the IOP's sleep of compilation 67, until now in movies only; [Forja] IopDormido), "Salto Auto afinado" ([Forja]
-		// SaltoAutoAfinado) and "CPU automático vuelve a subir" ([Forja] CpuAutoSube), main.cpp. All three off until measured.
+		// juego" (the IOP's sleep of compilation 67, until now in movies only; [Forja] IopDormido) and "CPU automático vuelve a subir"
+		// ([Forja] CpuAutoSube), main.cpp. Its third, "Salto Auto afinado", went in the 146 (app): it tuned the old cycle skip Auto,
+		// removed in the 140, and had nothing left to do.
 		ROW_IOP_SLEEP,
-		ROW_SKIP_AUTO_FINE,
 		ROW_CPU_AUTO_UP,
 		// Compilation 124: "Revisión rápida del código" ([Forja] RevisionRapida): the EE recompiler without the check of every block's
 		// code (x86/ix86-32/iR5900.cpp, g_ps4_skip_smc_checks; until now only by FTP with vm-skip-smc). Off until each game is tested.

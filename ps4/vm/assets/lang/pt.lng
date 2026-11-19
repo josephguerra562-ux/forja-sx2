@@ -1081,8 +1081,11 @@ tr: Internet: o online original do jogo, nos servidores de fãs que o reviveram 
 es: DNS del servidor:  < %s >
 tr: DNS do servidor:  < %s >
 
-es: Solo para Internet: el DNS del servidor de fans de este juego (búscalo en la comunidad PS2Online). X lo escribe, Cuadrado vuelve a Auto
-tr: Só para Internet: o DNS do servidor de fãs deste jogo (procure na comunidade PS2Online). X escreve, Quadrado volta para Auto
+es: Auto (PS2Online)
+tr: Auto (PS2Online)
+
+es: Solo para Internet. Auto usa el de PS2Online, la comunidad que revivió el online de muchos juegos (Mortal Kombat Armageddon ya entra). Si a tu juego lo revivió otro grupo, escribe su DNS con X; Cuadrado vuelve a Auto
+tr: Só para Internet. Auto usa o da PS2Online, a comunidade que reviveu o online de muitos jogos (Mortal Kombat Armageddon já entra). Se outro grupo reviveu o seu jogo, escreva o DNS dele com X; Quadrado volta para Auto
 
 es: Sala LAN, anfitrión:  < %s >
 tr: Sala LAN, anfitrião:  < %s >
@@ -1134,12 +1137,6 @@ tr: IOP dormindo no jogo:  < %s >
 
 es: Prueba: el IOP (el procesador del disco y del sonido) duerme mientras espera, como ya hace en los videos, y deja más tiempo al juego. Si el sonido se corta o el juego se traba, ponlo en No. Se guarda para este juego
 tr: Teste: o IOP (o processador do disco e do som) dorme enquanto espera, como já faz nos vídeos, e deixa mais tempo para o jogo. Se o som cortar ou o jogo travar, coloque em Não. Salvo para este jogo
-
-es: Salto Auto afinado:  < %s >
-tr: Salto Auto ajustado:  < %s >
-
-es: Prueba, con el Salto de ciclo en Auto: vuelve a probar con menos salto cada minuto cuando el juego va bien, para recuperar los cuadros al salir de un lugar pesado. Se guarda para este juego
-tr: Teste, com o Salto de ciclo em Auto: volta a tentar com menos salto a cada minuto quando o jogo vai bem, para recuperar os quadros ao sair de um lugar pesado. Salvo para este jogo
 
 es: CPU automático vuelve a subir:  < %s >
 tr: CPU automática volta a subir:  < %s >

@@ -1081,8 +1081,11 @@ tr: インターネット:ゲーム本来のオンラインを、それを復活
 es: DNS del servidor:  < %s >
 tr: サーバーの DNS:  < %s >
 
-es: Solo para Internet: el DNS del servidor de fans de este juego (búscalo en la comunidad PS2Online). X lo escribe, Cuadrado vuelve a Auto
-tr: インターネットのみ:このゲームのファンサーバーの DNS(PS2Online コミュニティで探してください)。X で入力、四角で自動に戻す
+es: Auto (PS2Online)
+tr: 自動 (PS2Online)
+
+es: Solo para Internet. Auto usa el de PS2Online, la comunidad que revivió el online de muchos juegos (Mortal Kombat Armageddon ya entra). Si a tu juego lo revivió otro grupo, escribe su DNS con X; Cuadrado vuelve a Auto
+tr: インターネットのみ。自動は PS2Online の DNS を使います。多くのゲームのオンラインを復活させたコミュニティです(Mortal Kombat Armageddon は接続できます)。別のグループが復活させたゲームなら、X でその DNS を入力。四角で自動に戻す
 
 es: Sala LAN, anfitrión:  < %s >
 tr: LAN ルーム、ホスト:  < %s >
@@ -1134,12 +1137,6 @@ tr: ゲーム中のIOPスリープ：  < %s >
 
 es: Prueba: el IOP (el procesador del disco y del sonido) duerme mientras espera, como ya hace en los videos, y deja más tiempo al juego. Si el sonido se corta o el juego se traba, ponlo en No. Se guarda para este juego
 tr: テスト：IOP（ディスクとサウンドのプロセッサー）が待っている間はスリープし、ビデオの時と同じようにゲームに時間を回します。音が途切れたりゲームが止まったら「いいえ」に。このゲーム用に保存
-
-es: Salto Auto afinado:  < %s >
-tr: 細かい自動スキップ：  < %s >
-
-es: Prueba, con el Salto de ciclo en Auto: vuelve a probar con menos salto cada minuto cuando el juego va bien, para recuperar los cuadros al salir de un lugar pesado. Se guarda para este juego
-tr: テスト、サイクルスキップが自動の時：ゲームが問題なく動くなら1分ごとにスキップを減らして試し、重い場所を出た後にフレームを取り戻します。このゲーム用に保存
 
 es: CPU automático vuelve a subir:  < %s >
 tr: CPU自動調整で上げ直す：  < %s >

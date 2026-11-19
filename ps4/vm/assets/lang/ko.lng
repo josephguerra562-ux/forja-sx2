@@ -1081,8 +1081,11 @@ tr: 인터넷: 게임 원래의 온라인을 그것을 되살린 팬 서버에�
 es: DNS del servidor:  < %s >
 tr: 서버 DNS:  < %s >
 
-es: Solo para Internet: el DNS del servidor de fans de este juego (búscalo en la comunidad PS2Online). X lo escribe, Cuadrado vuelve a Auto
-tr: 인터넷 전용: 이 게임 팬 서버의 DNS (PS2Online 커뮤니티에서 찾아보세요). X로 입력, 네모로 자동으로 되돌림
+es: Auto (PS2Online)
+tr: 자동 (PS2Online)
+
+es: Solo para Internet. Auto usa el de PS2Online, la comunidad que revivió el online de muchos juegos (Mortal Kombat Armageddon ya entra). Si a tu juego lo revivió otro grupo, escribe su DNS con X; Cuadrado vuelve a Auto
+tr: 인터넷 전용. 자동은 많은 게임의 온라인을 되살린 커뮤니티 PS2Online의 DNS를 씁니다 (Mortal Kombat Armageddon은 이미 접속됩니다). 다른 그룹이 되살린 게임이면 X로 그 DNS를 입력, 네모로 자동으로 되돌림
 
 es: Sala LAN, anfitrión:  < %s >
 tr: LAN 방, 방장:  < %s >
@@ -1134,12 +1137,6 @@ tr: 게임 중 IOP 대기:  < %s >
 
 es: Prueba: el IOP (el procesador del disco y del sonido) duerme mientras espera, como ya hace en los videos, y deja más tiempo al juego. Si el sonido se corta o el juego se traba, ponlo en No. Se guarda para este juego
 tr: 테스트: IOP(디스크와 사운드 프로세서)가 기다리는 동안 멈춰서, 비디오에서처럼 게임에 시간을 더 줍니다. 소리가 끊기거나 게임이 멈추면 아니요로 하세요. 이 게임에 저장됩니다
-
-es: Salto Auto afinado:  < %s >
-tr: 세밀한 자동 건너뛰기:  < %s >
-
-es: Prueba, con el Salto de ciclo en Auto: vuelve a probar con menos salto cada minuto cuando el juego va bien, para recuperar los cuadros al salir de un lugar pesado. Se guarda para este juego
-tr: 테스트, 사이클 건너뛰기가 자동일 때: 게임이 문제없이 돌아가면 1분마다 더 적은 건너뛰기를 다시 시도해, 무거운 곳에서 나와서 프레임을 되찾습니다. 이 게임에 저장됩니다
 
 es: CPU automático vuelve a subir:  < %s >
 tr: CPU 자동 조절 다시 올리기:  < %s >

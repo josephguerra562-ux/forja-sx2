@@ -2749,14 +2749,6 @@ namespace PS4GameMenu
 						draw->AddLine(ip(2, -6), ip(8, 4), icon_line, lw);
 						draw->AddLine(ip(-16, 13), ip(16, 13), icon_line, lw);
 						break;
-					case ROW_SKIP_AUTO_FINE: // two steps with a fine mark (compilation 122)
-						draw->AddLine(ip(-15, 12), ip(-5, 12), icon_line, lw);
-						draw->AddLine(ip(-5, 12), ip(-5, 0), icon_line, lw);
-						draw->AddLine(ip(-5, 0), ip(5, 0), icon_line, lw);
-						draw->AddLine(ip(5, 0), ip(5, -12), icon_line, lw);
-						draw->AddLine(ip(5, -12), ip(15, -12), icon_line, lw);
-						draw->AddLine(ip(12, 6), ip(12, 12), icon_line, lw);
-						break;
 					case ROW_SKIP_REPEATS: // two frames, the second crossed out (compilation 128)
 						draw->AddLine(ip(-18, -8), ip(-4, -8), icon_line, lw);
 						draw->AddLine(ip(-4, -8), ip(-4, 8), icon_line, lw);
@@ -2969,7 +2961,7 @@ namespace PS4GameMenu
 				if (row == ROW_PATCH || row == ROW_CHEATS || row == ROW_CHANGE_DISC || row == ROW_REPORT)
 					return T("ELEGIR  ·  X");
 				if (row == ROW_TEXTURES || row == ROW_DRAW_THREAD || row == ROW_SW_JIT || row == ROW_FPU_EXACT || row == ROW_IOP_FAST ||
-				    row == ROW_IOP_SLEEP || row == ROW_SKIP_AUTO_FINE || row == ROW_CPU_AUTO_UP || row == ROW_FAST_CODE_CHECK || row == ROW_VU1_FAST || row == ROW_EFFECTS_AHEAD || row == ROW_SKIP_REPEATS || row == ROW_CPU_SEAMLESS || row == ROW_DISC_NO_WAIT || row == ROW_CODE_AHEAD || row == ROW_VU_JUMPS || row == ROW_FRAME_PUSH || row == ROW_FG_MARGIN) // 122; 124; 126; 127; 128; 130; 132; 136
+				    row == ROW_IOP_SLEEP || row == ROW_CPU_AUTO_UP || row == ROW_FAST_CODE_CHECK || row == ROW_VU1_FAST || row == ROW_EFFECTS_AHEAD || row == ROW_SKIP_REPEATS || row == ROW_CPU_SEAMLESS || row == ROW_DISC_NO_WAIT || row == ROW_CODE_AHEAD || row == ROW_VU_JUMPS || row == ROW_FRAME_PUSH || row == ROW_FG_MARGIN) // 122; 124; 126; 127; 128; 130; 132; 136
 					return T("ELEGIR");
 				if (row == ROW_NET_MODE || row == ROW_NET_UPNP) // compilation 144
 					return T("ELEGIR");

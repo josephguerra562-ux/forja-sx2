@@ -1081,8 +1081,11 @@ tr: Internet : le jeu en ligne d'origine, sur les serveurs de fans qui l'ont fai
 es: DNS del servidor:  < %s >
 tr: DNS du serveur :  < %s >
 
-es: Solo para Internet: el DNS del servidor de fans de este juego (búscalo en la comunidad PS2Online). X lo escribe, Cuadrado vuelve a Auto
-tr: Internet uniquement : le DNS du serveur de fans de ce jeu (cherchez-le dans la communauté PS2Online). X l'écrit, Carré revient à Auto
+es: Auto (PS2Online)
+tr: Auto (PS2Online)
+
+es: Solo para Internet. Auto usa el de PS2Online, la comunidad que revivió el online de muchos juegos (Mortal Kombat Armageddon ya entra). Si a tu juego lo revivió otro grupo, escribe su DNS con X; Cuadrado vuelve a Auto
+tr: Internet uniquement. Auto utilise celui de PS2Online, la communauté qui a fait revivre le jeu en ligne de nombreux jeux (Mortal Kombat Armageddon s'y connecte déjà). Si un autre groupe a fait revivre votre jeu, écrivez son DNS avec X ; Carré revient à Auto
 
 es: Sala LAN, anfitrión:  < %s >
 tr: Salon LAN, hôte :  < %s >
@@ -1134,12 +1137,6 @@ tr: IOP en veille dans le jeu :  < %s >
 
 es: Prueba: el IOP (el procesador del disco y del sonido) duerme mientras espera, como ya hace en los videos, y deja más tiempo al juego. Si el sonido se corta o el juego se traba, ponlo en No. Se guarda para este juego
 tr: Test : l'IOP (le processeur du disque et du son) dort pendant qu'il attend, comme il le fait déjà dans les vidéos, et laisse plus de temps au jeu. Si le son se coupe ou si le jeu se bloque, mettez Non. Enregistré pour ce jeu
-
-es: Salto Auto afinado:  < %s >
-tr: Saut Auto affiné :  < %s >
-
-es: Prueba, con el Salto de ciclo en Auto: vuelve a probar con menos salto cada minuto cuando el juego va bien, para recuperar los cuadros al salir de un lugar pesado. Se guarda para este juego
-tr: Test, avec le Saut de cycle sur Auto : il réessaie avec moins de saut chaque minute quand le jeu tourne bien, pour retrouver les images en quittant un endroit lourd. Enregistré pour ce jeu
 
 es: CPU automático vuelve a subir:  < %s >
 tr: CPU automatique remonte :  < %s >
