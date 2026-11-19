@@ -137,6 +137,27 @@ static bool s_nBlockFF;
 static bool s_orbis_ff_ext; // vk-285-126: s_nBlockFF only by the wider rule (counted when it runs)
 static bool s_ps4_multiblock_wait;
 static u32 s_ps4_multiblock_wait_config;
+// Forja SX2 (147 in the app): "Esperas sin vueltas", a game's own wait loop listed in its profile ([Forja] BucleDeEspera).
+static bool s_forja_wait_listed;
+static u32 s_forja_wait_config;
+static u32 s_forja_wait_pcs[4] = {};
+static u32 s_forja_wait_guards[4] = {};
+static std::atomic<u32> s_forja_wait_count{0};
+u64 g_forja_wait_loop_runs = 0, g_forja_wait_loop_forwards = 0;
+std::atomic<u32> g_forja_wait_loop_blocks{0};
+
+// main.cpp, from the game's profile: the blocks that jump back in a wait loop, and their guard (bit 31 on: the word at gp + the
+// low 16 bits, signed, must be 0 for the loop's round to have done nothing). Blocks compiled after this see it.
+void ForjaSetWaitLoops(const u32* pcs, const u32* guards, u32 count)
+{
+	count = std::min<u32>(count, 4);
+	for (u32 i = 0; i < count; i++)
+	{
+		s_forja_wait_pcs[i] = pcs[i];
+		s_forja_wait_guards[i] = guards[i];
+	}
+	s_forja_wait_count.store(count, std::memory_order_release);
+}
 u64 g_ps4_multiblock_wait_blocks = 0;
 u64 g_ps4_multiblock_wait_runs = 0;
 u64 g_ps4_multiblock_wait_iterations = 0;
@@ -2274,6 +2295,25 @@ static u32 scaleblockcycles()
 	return scaled;
 }
 
+// Forja SX2 (147 in the app): a listed wait loop jumps back. The round just run read memory and wrote registers only (checked when the
+// block was made); when its guard says it called nothing either, the EE's time goes on to the next event at once, as the single-block
+// wait loops do (s_nBlockFF): the interrupt the game polls for comes without the rounds in between, and the round after it sees it.
+static void ForjaWaitLoopForward(u32 config)
+{
+	++g_forja_wait_loop_runs;
+	if (config & 0x80000000u)
+	{
+		const u32 address = cpuRegs.GPR.r[28].UL[0] + static_cast<u32>(static_cast<s32>(static_cast<s16>(config & 0xffff)));
+		if (memRead32(address) != 0)
+			return; // the loop has a call to make: it does its rounds as on the console
+	}
+	if (cpuRegs.nextEventCycle > cpuRegs.cycle)
+	{
+		cpuRegs.cycle = cpuRegs.nextEventCycle;
+		++g_forja_wait_loop_forwards;
+	}
+}
+
 static void PS4FastForwardMultiBlockWait(u32 config)
 {
 	const u32 counter_reg = config & 31;
@@ -2496,7 +2536,13 @@ static void iBranchTest(u32 newpc)
 	//    cpuRegs.cycle += blockcycles;
 	//    if ( cpuRegs.cycle > g_nextEventCycle ) { DoEvents(); }
 
-	if (EmuConfig.Speedhacks.WaitLoop && s_ps4_multiblock_wait && newpc == s_branchTo)
+	if (EmuConfig.Speedhacks.WaitLoop && s_forja_wait_listed && newpc == s_branchTo) // 147 in the app
+	{
+		ForjaCycleAdd(ptr64[&cpuRegs.cycle]);
+		xFastCall((void*)ForjaWaitLoopForward, s_forja_wait_config);
+		xJMP((void*)DispatcherEvent);
+	}
+	else if (EmuConfig.Speedhacks.WaitLoop && s_ps4_multiblock_wait && newpc == s_branchTo)
 	{
 		ForjaCycleAdd(ptr64[&cpuRegs.cycle]); // compilation 128 (was xADD with scaleblockcycles())
 		xFastCall((void*)PS4FastForwardMultiBlockWait, s_ps4_multiblock_wait_config);
@@ -3676,6 +3722,8 @@ StartRecomp:
 	s_orbis_ff_ext = false;
 	s_ps4_multiblock_wait = false;
 	s_ps4_multiblock_wait_config = 0;
+	s_forja_wait_listed = false; // 147 in the app
+	s_forja_wait_config = 0;
 	s_ps4_bytecopy_loop = false;
 	s_ps4_bytecopy_config = 0;
 	s_ps4_bytecopy_native = nullptr;
@@ -3861,6 +3909,47 @@ StartRecomp:
 		}
 	}
 #endif
+
+	// Forja SX2 (147 in the app): "Esperas sin vueltas". A wait loop of several blocks, listed in the game's profile by the block that
+	// jumps back (GTA San Andreas, 2026-11-19: 0x34dee8-0x34df24 polls two counters an interrupt brings together and a flag, and calls a
+	// function only through a pointer at gp-14376; 18 % of the EE's time in its sessions). Checked here, whatever the profile says: the
+	// jump goes back at most 64 instructions, and from there to here no store, no system call, no COP0 write (EI, DI, ERET, MTC0), and a
+	// call only with a guard.
+	if (!s_nBlockFF && !s_ps4_multiblock_wait && s_branchTo < startpc && startpc - s_branchTo <= 256)
+	{
+		const u32 count = s_forja_wait_count.load(std::memory_order_acquire);
+		for (u32 i = 0; i < count; i++)
+		{
+			if (s_forja_wait_pcs[i] != startpc)
+				continue;
+			const bool guarded = (s_forja_wait_guards[i] & 0x80000000u) != 0;
+			bool clean = true;
+			for (u32 pc = s_branchTo; pc < s_nEndBlock && clean; pc += 4)
+			{
+				const u32 code = memRead32(pc);
+				const u32 op = code >> 26, fn = code & 63, rs = (code >> 21) & 31;
+				if ((op >= 0x28 && op <= 0x2e) || op == 0x1f || op == 0x3f || op == 0x39 || op == 0x3d || op == 0x3e || op == 0x3c)
+					clean = false; // SB SH SWL SW SDL SDR SWR, SQ, SD, SWC1, SDC1, SQC2, SC
+				else if (op == 0 && (fn == 0x0c || fn == 0x0d))
+					clean = false; // SYSCALL, BREAK
+				else if (op == 0x10 && (rs == 4 || rs >= 0x10))
+					clean = false; // MTC0, and the COP0 operations (ERET, EI, DI, TLB)
+				else if (!guarded && (op == 3 || (op == 0 && fn == 9)))
+					clean = false; // JAL, JALR without a guard
+			}
+			if (clean)
+			{
+				s_forja_wait_listed = true;
+				s_forja_wait_config = s_forja_wait_guards[i];
+				if (g_forja_wait_loop_blocks.fetch_add(1, std::memory_order_relaxed) == 0)
+					Console.WriteLn("Wait loop (147 in the app): 0x%08x -> 0x%08x recognized%s", startpc, s_branchTo,
+						guarded ? ", with its call guard" : "");
+			}
+			else
+				Console.WriteLn("Wait loop (147 in the app): 0x%08x listed but it stores, calls or changes COP0: left as it is", startpc);
+			break;
+		}
+	}
 
 #if defined(PCSX2_PS4_VM_BOOT)
 	// (AI-assisted) Match an exact forward copy; keep the original instructions

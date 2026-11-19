@@ -2407,6 +2407,32 @@ static void SaveNetText(int target, std::string text)
 	}
 }
 
+// 147 in the app: [Forja] BucleDeEspera, "<block hex>:<gp offset of the call pointer, decimal>" with commas, for the EE recompiler
+// (iR5900.cpp checks each loop again when it makes the block).
+extern void ForjaSetWaitLoops(const u32* pcs, const u32* guards, u32 count);
+static void ApplyWaitLoops(const std::string& list)
+{
+	u32 pcs[4] = {}, guards[4] = {}, count = 0;
+	size_t at = 0;
+	while (at < list.size() && count < 4)
+	{
+		const size_t end = std::min(list.find(',', at), list.size());
+		const std::string item = list.substr(at, end - at);
+		at = end + 1;
+		unsigned pc = 0;
+		int offset = 0;
+		const int got = std::sscanf(item.c_str(), " %x : %d", &pc, &offset);
+		if (got < 1 || pc == 0 || (pc & 3) != 0)
+			continue;
+		pcs[count] = pc;
+		guards[count] = got >= 2 && offset >= -32768 && offset <= 32767 ? (0x80000000u | (static_cast<u32>(offset) & 0xffffu)) : 0u;
+		count++;
+	}
+	ForjaSetWaitLoops(pcs, guards, count);
+	if (count)
+		ProbeLog("Wait loops (147 in the app): %u listed (%s)\n", count, list.c_str());
+}
+
 // Compilation 116: the GS recorder's row, in No tocar until it is measured in the six test games.
 // Compilation 117: the software draws' JIT row, in No tocar until it is measured.
 static void PublishSwJitText()
@@ -3132,6 +3158,7 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	ApplyVu1SkipList(s_profile.vu1_skip); // compilation 44: the VU1 filter
 	ApplyGsFilterList(s_profile.gs_filter); // compilation 51: the GS filter
 	ApplyRulesOn(s_profile.rules_on); // compilation 55: the fingerprint rules the player turned on
+	ApplyWaitLoops(s_profile.wait_loops); // 147 in the app: "Esperas sin vueltas"
 	ProbeLog("Game profile: %s %08X factory=%d player=%d video_mode=%d (%s) video_ee_rate=%d (%s) frame_gen=%d (%s) "
 			 "cores=\"%s\" (%s) cpu_auto=%d (%s)\n",
 		s_profile.serial.empty() ? "(no serial)" : s_profile.serial.c_str(), s_profile.crc, s_profile.has_factory ? 1 : 0,

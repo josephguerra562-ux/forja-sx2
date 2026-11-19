@@ -124,7 +124,7 @@ def claves_forja():
 
 def perfiles():
     conocidas = claves_forja()
-    texto_libre = {"Nucleos", "Huellas", "GSQuitar", "VU1Quitar"}  # valores que no son un número
+    texto_libre = {"Nucleos", "Huellas", "GSQuitar", "VU1Quitar", "BucleDeEspera"}  # valores que no son un número (147: "34df20:-14376")
     listas = {"Patches", "Cheats"}  # secciones donde una clave repetida es una lista
     ok = True
     for ini in sorted((VM / "assets" / "perfiles").glob("*.ini")):

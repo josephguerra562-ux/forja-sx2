@@ -86,6 +86,9 @@ namespace ForjaGameProfile
 		// (ps4/vm/main.cpp, LoadRules; pcsx2/ForjaGsRules.h).
 		std::string rules_on;
 		Origin rules_on_origin = Origin::Global;
+		// 147 in the app: [Forja] BucleDeEspera, the game's own wait loops that span several blocks (iR5900.cpp, ForjaSetWaitLoops):
+		// "<the block with the jump back, hex>:<gp offset of a call pointer that must be 0, decimal>", commas between.
+		std::string wait_loops;
 		// [Forja] PublicoCada (compilation 82): the Guitar Hero games' crowd, drawn in software (GSHwHack.cpp, GSC_GuitarHero) once
 		// every 1, 2, 4 or 8 of its passes; 0 not set (main.cpp's default).
 		int crowd_every = 0;
@@ -393,6 +396,8 @@ namespace ForjaGameProfile
 			v.cores_origin = Origin::Player;
 		else if (v.has_factory && factory.GetStringValue("Forja", "Nucleos", &v.cores))
 			v.cores_origin = Origin::Factory;
+		if (!(v.has_player && player.GetStringValue("Forja", "BucleDeEspera", &v.wait_loops)) && v.has_factory) // 147 in the app
+			factory.GetStringValue("Forja", "BucleDeEspera", &v.wait_loops);
 		if (v.has_player && player.GetStringValue("Forja", "Huellas", &v.rules_on))
 			v.rules_on_origin = Origin::Player;
 		else if (v.has_factory && factory.GetStringValue("Forja", "Huellas", &v.rules_on))
