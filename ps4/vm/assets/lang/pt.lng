@@ -757,6 +757,9 @@ tr: Desempenho
 es: Extras
 tr: Extras
 
+es: En línea
+tr: Online
+
 es: No tocar
 tr: Não mexa
 
@@ -1308,9 +1311,6 @@ tr: Nos vídeos
 
 es: %d/%m a las %H:%M
 tr: %d/%m às %H:%M
-
-es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
-tr: Este estado é de %s, de antes do seu último salvamento no cartão. Se o jogo disser que o save está danificado, o cartão está bem: reinicie o jogo sem carregar o estado
 
 es: Reportar este juego:  < %s >
 tr: Relatar este jogo:  < %s >

@@ -757,6 +757,9 @@ tr: パフォーマンス
 es: Extras
 tr: エクストラ
 
+es: En línea
+tr: オンライン
+
 es: No tocar
 tr: さわらない
 
@@ -1308,9 +1311,6 @@ tr: 動画
 
 es: %d/%m a las %H:%M
 tr: %m月%d日 %H:%M
-
-es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
-tr: このステートは %s のもので、メモリーカードへの最後のセーブより前です。ゲームがセーブデータが壊れていると言っても、カードは正常です。ステートを読み込まずにゲームを再起動してください
 
 es: Reportar este juego:  < %s >
 tr: このゲームを報告：  < %s >

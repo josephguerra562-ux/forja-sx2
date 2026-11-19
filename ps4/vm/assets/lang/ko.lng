@@ -757,6 +757,9 @@ tr: 성능
 es: Extras
 tr: 부가 기능
 
+es: En línea
+tr: 온라인
+
 es: No tocar
 tr: 손대지 않기
 
@@ -1308,9 +1311,6 @@ tr: 동영상에서
 
 es: %d/%m a las %H:%M
 tr: %m월 %d일 %H:%M
-
-es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
-tr: 이 상태는 %s의 것으로, 메모리 카드의 마지막 저장보다 이전입니다. 게임이 저장 데이터가 손상됐다고 하면 카드는 괜찮습니다. 상태를 불러오지 말고 게임을 다시 시작하세요
 
 es: Reportar este juego:  < %s >
 tr: 이 게임 보고:  < %s >

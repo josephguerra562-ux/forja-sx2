@@ -2952,7 +2952,7 @@ namespace PS4GameMenu
 			// one list again, as DolphinPS4's menu, but each option on one line, its explanation in a box under the list, and the old tabs as
 			// the list's sections, so the ~55 rows read in groups.
 			static constexpr const char* tab_names[TAB_COUNT] = {N_("Partida"), N_("Imagen"), N_("Rendimiento"), N_("Extras"),
-				N_("No tocar"), N_("Reportes"), N_("Sistema")};
+				N_("En línea"), N_("No tocar"), N_("Reportes"), N_("Sistema")};
 			const auto action_of = [&](unsigned row) -> const char* {
 				if (row == ROW_RESOLUTION || row == ROW_EE_RATE)
 					return T("AJUSTAR");

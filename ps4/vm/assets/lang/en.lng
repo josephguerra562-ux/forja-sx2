@@ -757,6 +757,9 @@ tr: Performance
 es: Extras
 tr: Extras
 
+es: En línea
+tr: Online
+
 es: No tocar
 tr: Don't touch
 
@@ -1308,9 +1311,6 @@ tr: In the videos
 
 es: %d/%m a las %H:%M
 tr: %d/%m at %H:%M
-
-es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
-tr: This state is from %s, before your last save on the memory card. If the game says the save is damaged, the card is fine: restart the game without loading the state
 
 es: Reportar este juego:  < %s >
 tr: Report this game:  < %s >

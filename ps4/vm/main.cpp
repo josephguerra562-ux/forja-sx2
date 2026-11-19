@@ -4932,27 +4932,8 @@ static bool LoadGameState()
 	const double undo_ms = Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - t0);
 	Error error;
 	const bool loaded = VMManager::LoadStateFromSlot(slot, false, &error);
-	// Compilation 146: a state older than the memory card's last save brings back what the game knew of the card that day, and some
-	// games then call today's saves damaged (Dragon Ball, 2026-11-18: a state of 4 November, the card written on the 18th). The card
-	// is fine: the game must be started again without the state to see it.
-	if (loaded)
-	{
-		struct stat state_info = {}, card_info = {};
-		const std::string state_path = VMManager::GetSaveStateFileName(VMManager::GetDiscSerial().c_str(), VMManager::GetDiscCRC(), slot);
-		const std::string card_path = Path::Combine(EmuFolders::MemoryCards, EmuConfig.Mcd[0].Filename);
-		if (!state_path.empty() && stat(state_path.c_str(), &state_info) == 0 && stat(card_path.c_str(), &card_info) == 0 &&
-			card_info.st_mtime > state_info.st_mtime + 60)
-		{
-			char when[64];
-			std::strftime(when, sizeof(when), "%d/%m/%Y", std::localtime(&state_info.st_mtime));
-			char text[400];
-			std::snprintf(text, sizeof(text), ForjaLang::TF("Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado"), when);
-			extern void ForjaNotify(const std::string& message);
-			ForjaNotify(text);
-			ProbeLog("Save state: slot %d is older than the memory card (state %lld, card %lld): warned\n", slot,
-				static_cast<long long>(state_info.st_mtime), static_cast<long long>(card_info.st_mtime));
-		}
-	}
+	// Compilation 146 had a notice here for a state older than the memory card; Joseph (2026-11-18): "no quiero que esté ahí molestando
+	// a los jugadores". Gone.
 	if (!loaded)
 		s_state_action = PS4GameMenu::STATE_LOAD_FAILED;
 	if (loaded)
@@ -6003,8 +5984,8 @@ void VMHostPoll()
 				RefreshStateSlot();
 			}
 			else if (PS4GameMenu::TabOfRow(row) == 1 || PS4GameMenu::TabOfRow(row) == 2 ||
-					 PS4GameMenu::TabOfRow(row) == PS4GameMenu::TAB_PATCHES ||
-					 PS4GameMenu::TabOfRow(row) == PS4GameMenu::TAB_LAB) // Imagen, Rendimiento, Extras and No tocar
+					 PS4GameMenu::TabOfRow(row) == PS4GameMenu::TAB_PATCHES || PS4GameMenu::TabOfRow(row) == PS4GameMenu::TAB_ONLINE ||
+					 PS4GameMenu::TabOfRow(row) == PS4GameMenu::TAB_LAB) // Imagen, Rendimiento, Extras, En línea and No tocar
 				ChangeGameMenuRow(row, navigation == ORBIS_PAD_BUTTON_LEFT ? -1 : 1);
 			PublishGameMenu();
 		}

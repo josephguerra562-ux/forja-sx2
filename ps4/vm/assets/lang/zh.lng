@@ -757,6 +757,9 @@ tr: 性能
 es: Extras
 tr: 附加
 
+es: En línea
+tr: 联网
+
 es: No tocar
 tr: 勿动
 
@@ -1308,9 +1311,6 @@ tr: 在视频中
 
 es: %d/%m a las %H:%M
 tr: %m月%d日 %H:%M
-
-es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
-tr: 此即时存档来自 %s,早于你在记忆卡上的最后一次存档。如果游戏说存档损坏,记忆卡其实没问题:不加载即时存档重新启动游戏
 
 es: Reportar este juego:  < %s >
 tr: 报告此游戏：  < %s >

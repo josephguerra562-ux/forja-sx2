@@ -757,6 +757,9 @@ tr: Performans
 es: Extras
 tr: Ekstralar
 
+es: En línea
+tr: Çevrimiçi
+
 es: No tocar
 tr: Dokunma
 
@@ -1308,9 +1311,6 @@ tr: Videolarda
 
 es: %d/%m a las %H:%M
 tr: %d.%m, %H:%M
-
-es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
-tr: Bu durum %s tarihli, karttaki son kaydınızdan önce. Oyun kaydın bozuk olduğunu söylerse kart sağlamdır: oyunu durumu yüklemeden yeniden başlatın
 
 es: Reportar este juego:  < %s >
 tr: Bu oyunu bildir:  < %s >

@@ -757,6 +757,9 @@ tr: Performances
 es: Extras
 tr: Extras
 
+es: En línea
+tr: En ligne
+
 es: No tocar
 tr: Ne pas toucher
 
@@ -1308,9 +1311,6 @@ tr: Dans les vidéos
 
 es: %d/%m a las %H:%M
 tr: %d/%m à %H:%M
-
-es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
-tr: Cet état date du %s, d'avant votre dernière sauvegarde sur la carte. Si le jeu dit que la partie est endommagée, la carte va bien : relancez le jeu sans charger l'état
 
 es: Reportar este juego:  < %s >
 tr: Signaler ce jeu :  < %s >

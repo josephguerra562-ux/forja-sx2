@@ -120,12 +120,13 @@ namespace PS4GameMenu
 		ROW_COUNT
 	};
 
-	constexpr unsigned TAB_COUNT = 7;
+	constexpr unsigned TAB_COUNT = 8;
 	constexpr unsigned TAB_PATCHES = 3;
-	constexpr unsigned TAB_LAB = 4;     // compilation 53: "No tocar"
-	constexpr unsigned TAB_REPORTS = 5; // compilation 86: "Reportes"
+	constexpr unsigned TAB_ONLINE = 4;  // the 145 (Joseph, 2026-11-18): "otro apartado debajo de extras ... el juego en línea"
+	constexpr unsigned TAB_LAB = 5;     // compilation 53: "No tocar"
+	constexpr unsigned TAB_REPORTS = 6; // compilation 86: "Reportes"
 	// The first row of each tab, and ROW_COUNT after the last.
-	constexpr unsigned TAB_FIRST_ROW[TAB_COUNT + 1] = {ROW_RESUME, ROW_RESOLUTION, ROW_EE_RATE, ROW_PATCH, ROW_VU1_FILTER,
+	constexpr unsigned TAB_FIRST_ROW[TAB_COUNT + 1] = {ROW_RESUME, ROW_RESOLUTION, ROW_EE_RATE, ROW_PATCH, ROW_NET_MODE, ROW_VU1_FILTER,
 		ROW_REPORT, ROW_RESET_PROFILE, ROW_COUNT};
 
 	constexpr unsigned TabOfRow(unsigned row)

@@ -757,6 +757,9 @@ tr: Prestazioni
 es: Extras
 tr: Extra
 
+es: En línea
+tr: Online
+
 es: No tocar
 tr: Non toccare
 
@@ -1308,9 +1311,6 @@ tr: Nei video
 
 es: %d/%m a las %H:%M
 tr: %d/%m alle %H:%M
-
-es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
-tr: Questo stato è del %s, prima del tuo ultimo salvataggio sulla scheda. Se il gioco dice che il salvataggio è danneggiato, la scheda va bene: riavvia il gioco senza caricare lo stato
 
 es: Reportar este juego:  < %s >
 tr: Segnala questo gioco:  < %s >

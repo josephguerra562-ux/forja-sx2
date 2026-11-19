@@ -757,6 +757,9 @@ tr: الأداء
 es: Extras
 tr: إضافات
 
+es: En línea
+tr: عبر الإنترنت
+
 es: No tocar
 tr: لا تلمس
 
@@ -1308,9 +1311,6 @@ tr: في الفيديوهات
 
 es: %d/%m a las %H:%M
 tr: %d/%m الساعة %H:%M
-
-es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
-tr: هذه الحالة من %s، قبل آخر حفظ لك على البطاقة. إذا قالت اللعبة إن الحفظ تالف، فالبطاقة سليمة: أعد تشغيل اللعبة دون تحميل الحالة
 
 es: Reportar este juego:  < %s >
 tr: الإبلاغ عن هذه اللعبة:  < %s >

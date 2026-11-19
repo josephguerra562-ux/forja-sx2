@@ -757,6 +757,9 @@ tr: Производительность
 es: Extras
 tr: Дополнительно
 
+es: En línea
+tr: Онлайн
+
 es: No tocar
 tr: Не трогать
 
@@ -1308,9 +1311,6 @@ tr: В видеороликах
 
 es: %d/%m a las %H:%M
 tr: %d.%m в %H:%M
-
-es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
-tr: Это состояние от %s, раньше вашего последнего сохранения на карте. Если игра говорит, что сохранение повреждено, с картой всё в порядке: перезапустите игру без загрузки состояния
 
 es: Reportar este juego:  < %s >
 tr: Сообщить об игре:  < %s >

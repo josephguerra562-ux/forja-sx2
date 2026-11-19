@@ -757,6 +757,9 @@ tr: Wydajność
 es: Extras
 tr: Dodatki
 
+es: En línea
+tr: Online
+
 es: No tocar
 tr: Nie ruszać
 
@@ -1308,9 +1311,6 @@ tr: W filmach
 
 es: %d/%m a las %H:%M
 tr: %d.%m o %H:%M
-
-es: Este estado es del %s, de antes de tu último guardado en la tarjeta. Si el juego dice que la partida está dañada, la tarjeta está bien: reinicia el juego sin cargar el estado
-tr: Ten stan jest z %s, sprzed ostatniego zapisu na karcie. Jeśli gra mówi, że zapis jest uszkodzony, karta jest w porządku: uruchom grę ponownie bez wczytywania stanu
 
 es: Reportar este juego:  < %s >
 tr: Zgłoś tę grę:  < %s >
