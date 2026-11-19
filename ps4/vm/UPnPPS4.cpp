@@ -327,5 +327,5 @@ void ForjaNotify(const std::string& message)
 	std::snprintf(req.message, sizeof(req.message), "%s", message.c_str());
 	std::snprintf(req.iconUri, sizeof(req.iconUri), "%s", "cxml://psnotification/tex_icon_system");
 	sceKernelSendNotificationRequest(0, &req, sizeof(req), 0);
-	Console.WriteLn("Sala LAN: %s", message.c_str());
+	Console.WriteLn("Forja notice: %s", message.c_str()); // the messages carry their own "Sala LAN:" (it showed twice in the log)
 }
