@@ -237,6 +237,27 @@ def extern():
     return ok
 
 
+def tls():
+    """La 147 (2026-11-19): un "extern thread_local" leído desde otro archivo hace que clang llame a una función de inicio (_ZTH...) que el
+    armado del FSELF de la PS4 no encuentra: la compilación se cae al final ("missing module for symbol _ZTH..."). Solo pasan los del
+    traductor (common/emitter, pcsx2/x86/iCore.h), que enlazan desde siempre."""
+    permitidos = {"common/emitter/x86types.h", "pcsx2/x86/iCore.h"}
+    malos = []
+    for base in ("common", "pcsx2", "ps4"):
+        for ruta in (ROOT / base).rglob("*"):
+            if ruta.suffix not in (".cpp", ".h", ".hpp", ".inl") or "3rdparty" in ruta.parts:
+                continue
+            rel = ruta.relative_to(ROOT).as_posix()
+            if rel in permitidos:
+                continue
+            for n, linea in enumerate(ruta.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+                if re.match(r"\s*extern\s+thread_local\b", linea):
+                    malos.append(f"{rel}:{n}: {linea.strip()[:100]}")
+    for m in malos:
+        print("   " + m + " -> dejarla en su archivo y leerla con una función")
+    return not malos
+
+
 def _espacios_por_linea(texto):
     """El número de namespaces abiertos al empezar cada línea (sin contar llaves en comentarios, textos ni líneas #)."""
     pila, profundidades = [], []
@@ -353,7 +374,8 @@ def espacios():
 REVISIONES = {"textos": (textos, "Textos en los 12 idiomas"), "letras": (letras, "Letras de las traducciones en sus fuentes"),
               "perfiles": (perfiles, "Perfiles de fábrica"), "efectos": (efectos, "Listas de efectos del mismo sombreador"),
               "extern": (extern, "Variables compartidas con el mismo tipo"),
-              "espacios": (espacios, "Lo compartido, en el mismo espacio de nombres")}
+              "espacios": (espacios, "Lo compartido, en el mismo espacio de nombres"),
+              "hilos": (tls, "Variables de hilo (thread_local) que no cruzan archivos")}
 
 
 def main():

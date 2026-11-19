@@ -48,12 +48,12 @@ static bool psxmode = false;
 
 // Forja SX2 (147 in the app): spu2.cpp's mixing thread mixes samples the IRQ horizon says cannot reach IRQA. Should one ever reach it
 // anyway, the interrupt is not raised from that thread: the EE thread raises it at its next SPU2 sample or sync (spu2.cpp) and logs it.
-extern thread_local bool g_forja_spu2_on_mix_thread;
+extern bool ForjaSPU2OnMixThread(); // spu2.cpp: true on the SPU2 mixing thread
 extern std::atomic<u32> g_forja_spu2_irq_missed;
 
 void SetIrqCall(int core)
 {
-	if (g_forja_spu2_on_mix_thread)
+	if (ForjaSPU2OnMixThread())
 	{
 		g_forja_spu2_irq_missed.fetch_or(1u << core, std::memory_order_relaxed);
 		return;

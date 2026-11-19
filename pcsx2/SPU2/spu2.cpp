@@ -52,7 +52,13 @@ extern void ForjaSPU2ClearPending();
 
 // Forja SX2 (147 in the app): the mixing thread's mark (SetIrqCall, spu2sys.cpp), the IRQs it handed over, and the horizon's counters
 // for the 5 s line (the horizon itself: below, before ForjaSPU2Sync).
-thread_local bool g_forja_spu2_on_mix_thread = false;
+// The mark stays in this file: an "extern thread_local" read from another file makes clang call a TLS init function (_ZTH...) that
+// the PS4's FSELF builder cannot resolve (the 147's first build, 2026-11-19: "missing module for symbol _ZTH26g_forja_spu2_on_mix_thread").
+static thread_local bool s_forja_spu2_on_mix_thread = false;
+bool ForjaSPU2OnMixThread()
+{
+	return s_forja_spu2_on_mix_thread;
+}
 std::atomic<u32> g_forja_spu2_irq_missed{0};
 namespace
 {
@@ -97,7 +103,7 @@ namespace
 
 	void ForjaSPU2Thread()
 	{
-		g_forja_spu2_on_mix_thread = true; // 147 in the app: SetIrqCall (spu2sys.cpp) hands an IRQ from here to the EE thread
+		s_forja_spu2_on_mix_thread = true; // 147 in the app: SetIrqCall (spu2sys.cpp) hands an IRQ from here to the EE thread
 		PS4ThreadAffinity::PinCurrentThread("Audio", 5);
 		// Between bursts of samples it keeps looking for ~50 us, then naps 0.2 ms at a time, and 2 ms at a time once nothing
 		// came for 0.1 s (a pause, the library): being late costs nothing but the EE thread mixing those samples itself.
