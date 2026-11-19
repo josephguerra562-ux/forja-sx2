@@ -360,7 +360,6 @@ static unsigned s_cpu_auto_room_checks = 0;
 // until the next may be, and the wait after a failed one.
 static bool s_cpu_auto_up = false, s_skip_auto_fine = false;
 static bool s_skip_keeps_frames = false; // 146 in the app: [Forja] SaltoCuidaCuadros, "Al vuelo cuida los cuadros"
-static bool s_gs_skip_by_gs = false; // 147 in the app: [Forja] SaltarCuadrosPorGS
 // Compilation 124: "Revisión rápida del código" for this game ([Forja] RevisionRapida), and the FTP marker vm-skip-smc (for every game).
 static bool s_fast_code_game = false, s_fast_code_marker = false;
 // Compilation 127: "Efectos listos al arrancar" for this game ([Forja] EfectosListos); the GS thread reads the atomic at every vsync.
@@ -594,6 +593,111 @@ static float s_stick_scale = 1.33f;
 // profiles lose the CPU, cycle skip and Saltar cuadros keys of the old tests, so the base and the factory profiles count again (a copy
 // of each file goes to gamesettings/antes-146 first). Resolution, aspect, patches, the crowd, the guardian's list, the learnt skip and
 // the rest stay.
+// 147 in the app, once (marker /data/ForjaSX2/ajustes-147): a player's profile with "Huellas =" empty hides its factory profile's huellas.
+// Dragon Ball Z BT4 (2026-11-08, the 124's hour of tests): "Menos efectos: sombreado de personajes" was turned off in Extras > Parche, and
+// every session since ran without it: its GS cost 60 % more a frame (the 112's fights, with it: 98.6 % and 29.4 frames; the 144's,
+// without: 90 % and 18). The empty key goes (a copy of the file first, in gamesettings/antes-147), so the factory's comes back; Extras >
+// Parche still turns it off for whoever wants the shading.
+static void ForjaApplyHuellas147()
+{
+	constexpr const char* marker = "/data/ForjaSX2/ajustes-147";
+	if (access(marker, F_OK) == 0)
+		return;
+	const std::string dir = "/data/ForjaSX2/gamesettings";
+	const std::string backup = dir + "/antes-147";
+	unsigned files = 0;
+	const auto read_all = [](const std::string& path, std::string& text) {
+		std::FILE* f = std::fopen(path.c_str(), "rb");
+		if (!f)
+			return false;
+		char buffer[4096];
+		size_t n;
+		while ((n = std::fread(buffer, 1, sizeof(buffer), f)) > 0)
+			text.append(buffer, n);
+		std::fclose(f);
+		return true;
+	};
+	// The value of [Forja] Huellas in a profile's text ("" when absent, "-" when present but empty).
+	const auto huellas_of = [](const std::string& text, std::string* without) {
+		std::string section, found, kept;
+		size_t at = 0;
+		while (at < text.size())
+		{
+			size_t end = text.find('\n', at);
+			const std::string line = text.substr(at, end == std::string::npos ? std::string::npos : end - at + 1);
+			at = end == std::string::npos ? text.size() : end + 1;
+			std::string bare = line;
+			while (!bare.empty() && (bare.back() == '\n' || bare.back() == '\r' || bare.back() == ' ' || bare.back() == '\t'))
+				bare.pop_back();
+			const size_t lead = bare.find_first_not_of(" \t");
+			bare = lead == std::string::npos ? std::string() : bare.substr(lead);
+			if (!bare.empty() && bare.front() == '[' && bare.back() == ']')
+				section = bare.substr(1, bare.size() - 2);
+			else if (const size_t eq = bare.find('='); section == "Forja" && eq != std::string::npos && bare[0] != ';')
+			{
+				std::string key = bare.substr(0, eq);
+				while (!key.empty() && (key.back() == ' ' || key.back() == '\t'))
+					key.pop_back();
+				if (key == "Huellas")
+				{
+					std::string value = bare.substr(eq + 1);
+					const size_t v = value.find_first_not_of(" \t");
+					found = v == std::string::npos ? "-" : value.substr(v);
+					continue; // left out of `without`
+				}
+			}
+			kept += line;
+		}
+		if (without)
+			*without = kept;
+		return found;
+	};
+	if (DIR* d = opendir(dir.c_str()))
+	{
+		while (const dirent* e = readdir(d))
+		{
+			const std::string name = e->d_name;
+			const size_t cut = name.find('_');
+			if (name.size() < 5 || name.compare(name.size() - 4, 4, ".ini") != 0 || cut == std::string::npos)
+				continue;
+			const std::string path = dir + "/" + name;
+			std::string text, factory, kept;
+			if (!read_all(path, text) || huellas_of(text, &kept) != "-")
+				continue;
+			const std::string serial = name.substr(0, cut);
+			if (!read_all(ForjaGameProfile::FactoryPath(serial), factory))
+				continue;
+			const std::string wanted = huellas_of(factory, nullptr);
+			if (wanted.empty() || wanted == "-")
+				continue;
+			mkdir(backup.c_str(), 0777);
+			if (std::FILE* f = std::fopen((backup + "/" + name).c_str(), "wb"))
+			{
+				std::fwrite(text.data(), 1, text.size(), f);
+				std::fclose(f);
+			}
+			else
+				continue; // no copy, no change
+			const std::string temporary = path + ".tmp";
+			if (std::FILE* f = std::fopen(temporary.c_str(), "wb"))
+			{
+				const bool written = std::fwrite(kept.data(), 1, kept.size(), f) == kept.size();
+				if (std::fclose(f) == 0 && written && std::rename(temporary.c_str(), path.c_str()) == 0)
+				{
+					files++;
+					ProbeLog("Huellas 147: %s had \"Huellas =\" empty; its factory's come back (%s)\n", name.c_str(), wanted.c_str());
+				}
+			}
+		}
+		closedir(d);
+	}
+	if (std::FILE* f = std::fopen(marker, "w"))
+	{
+		std::fprintf(f, "147: %u perfiles con las huellas de fabrica de vuelta (copia en gamesettings/antes-147)\n", files);
+		std::fclose(f);
+	}
+}
+
 static void ForjaApplyBase()
 {
 	ForjaSettings::Values settings = ForjaSettings::Load();
@@ -3074,10 +3178,6 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	s_fast_code_game = s_profile.fast_code == 1; // compilation 124: the recompiler takes it at the game's start (or from the row, with a reset)
 	if (s_fast_code_game || s_profile.fast_code_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("Fast code check (compilation 124): %s (%s)\n", s_fast_code_game ? "on" : "off", ProfileOriginName(s_profile.fast_code_origin));
-	s_gs_skip_by_gs = s_profile.gs_skip_by_gs == 1; // 147 in the app
-	if (s_gs_skip_by_gs || s_profile.gs_skip_by_gs_origin != ForjaGameProfile::Origin::Global)
-		ProbeLog("Saltar cuadros when the GS holds the game back (147 in the app): %s (%s)\n", s_gs_skip_by_gs ? "on" : "off",
-			ProfileOriginName(s_profile.gs_skip_by_gs_origin));
 	s_skip_keeps_frames = s_profile.skip_keeps_frames == 1; // 146 in the app
 	if (s_skip_keeps_frames || s_profile.skip_keeps_frames_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("Cycle skip keeps the frames (146 in the app): %s (%s)\n", s_skip_keeps_frames ? "on" : "off",
@@ -4213,43 +4313,7 @@ static void UpdateCycleSkipFast(double elapsed)
 	// crowd, generated frames: they read the same load), then this skip (no hitch, no flicker), and only after 3 s at its top Saltar
 	// cuadros (the GS) and the CPU automático (the EE). Dragon Ball's fights keep the skip at its top: Saltar cuadros works there as before.
 	const bool at_top = s_si.value >= 48 && s_top_since >= 0.0 && elapsed - s_top_since >= 3.0;
-	// 147 in the app, [Forja] SaltarCuadrosPorGS: the director also lets Saltar cuadros act while the GS is what holds the game back
-	// (its thread at 88 % or more and the EE's 25 points under it, for 1 s; it closes after 3 s without that). The cycle skip helps the
-	// EE, not the GS: Dragon Ball's fights (GS-bound, EE 40-55 %) kept the skip moving 41 times a minute, so it was never 3 s at its top
-	// and Saltar cuadros stayed at 0 %. Its stretches with the GS at 90-95 %: the 144, with the director, 86 % and 18.4 frames of the
-	// game a second (~17 pictures shown); the 124, Saltar cuadros free, 93 % and 27.9 (~19 shown, 2,570 frames left out in 5 minutes):
-	// faster AND more pictures. herramientas/simulaciones/simular_automaticos.py's model: 84 % without leaving out -> 98 % leaving 21 %.
-	static double s_gs_bound_since = -1.0, s_gs_free_since = -1.0;
-	static bool s_gs_bound = false;
-	if (s_gs_skip_by_gs && !s_video_active)
-	{
-		const double gs = PerformanceMetrics::GetGSThreadUsage(), ee = PerformanceMetrics::GetCPUThreadUsage();
-		if (gs >= 88.0 && ee < gs - 25.0)
-		{
-			s_gs_free_since = -1.0;
-			if (s_gs_bound_since < 0.0)
-				s_gs_bound_since = elapsed;
-			if (!s_gs_bound && elapsed - s_gs_bound_since >= 1.0)
-			{
-				s_gs_bound = true;
-				ProbeLog("Saltar cuadros: the GS holds the game back (GS %.0f %%, EE %.0f %%): the director lets it act\n", gs, ee);
-			}
-		}
-		else
-		{
-			s_gs_bound_since = -1.0;
-			if (s_gs_free_since < 0.0)
-				s_gs_free_since = elapsed;
-			if (s_gs_bound && elapsed - s_gs_free_since >= 3.0)
-			{
-				s_gs_bound = false;
-				ProbeLog("Saltar cuadros: the GS no longer holds the game back (GS %.0f %%, EE %.0f %%)\n", gs, ee);
-			}
-		}
-	}
-	else
-		s_gs_bound = false;
-	g_forja_gs_skip_director.store(at_top || s_gs_bound, std::memory_order_relaxed);
+	g_forja_gs_skip_director.store(at_top, std::memory_order_relaxed);
 	if (quarters != s_published)
 	{
 		s_published = quarters;
@@ -6912,6 +6976,7 @@ int main()
 		FORJA_VERSION_MINOR, FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER, FORJA_LTO_ON);
 	ProbeLog("Telemetry: start=%d\n", telemetry_started ? 1 : 0);
 	ForjaApplyBase(); // compilation 146: after the log is up
+	ForjaApplyHuellas147(); // 147 in the app
 	// Compilation 78: whether this build sends the players' reports (ForjaReport.cpp), so a log says it without trying one.
 	ProbeLog("Reports: %s\n", ForjaReport::HasChannel() ? "the reports channel is set (Reportar este juego sends to Forja's Discord)" :
 															  "no reports channel in this build (reports are kept in /data/ForjaSX2/reportes)");
