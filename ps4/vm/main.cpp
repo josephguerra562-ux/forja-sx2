@@ -593,82 +593,71 @@ static float s_stick_scale = 1.33f;
 // profiles lose the CPU, cycle skip and Saltar cuadros keys of the old tests, so the base and the factory profiles count again (a copy
 // of each file goes to gamesettings/antes-146 first). Resolution, aspect, patches, the crowd, the guardian's list, the learnt skip and
 // the rest stay.
-// 147 in the app, once (marker /data/ForjaSX2/ajustes-147): a player's profile with "Huellas =" empty hides its factory profile's huellas.
-// Dragon Ball Z BT4 (2026-11-08, the 124's hour of tests): "Menos efectos: sombreado de personajes" was turned off in Extras > Parche, and
-// every session since ran without it: its GS cost 60 % more a frame (the 112's fights, with it: 98.6 % and 29.4 frames; the 144's,
-// without: 90 % and 18). The empty key goes (a copy of the file first, in gamesettings/antes-147), so the factory's comes back; Extras >
-// Parche still turns it off for whoever wants the shading.
-static void ForjaApplyHuellas147()
+// 147 in the app, once (marker /data/ForjaSX2/ajustes-147): every game with the PS2 CPU native. Joseph (2026-11-19): "que todos los juegos
+// vayan nativos con el 100 % en la CPU del emulador". The players' own CPU and CPU automático for a game ([EmuCore/Speedhacks] EECycleRate,
+// [Forja] CpuAuto, from L3+R3 or Options) go, a copy of each file first in gamesettings/antes-147; ajustes.ini's base is 147 (ForjaSettings.h).
+// Nothing else of the player's is touched (huellas, resolution, frame generation, patches): Dragon Ball's huella stays as the player left it
+// (its fights without it, the 124: 92 % and 28.2 frames, against 94.8 % and 28.4 with it: the same).
+static void ForjaApplyNative147()
 {
 	constexpr const char* marker = "/data/ForjaSX2/ajustes-147";
 	if (access(marker, F_OK) == 0)
 		return;
+	static constexpr const char* drop[][2] = {{"EmuCore/Speedhacks", "EECycleRate"}, {"Forja", "CpuAuto"}};
 	const std::string dir = "/data/ForjaSX2/gamesettings";
 	const std::string backup = dir + "/antes-147";
-	unsigned files = 0;
-	const auto read_all = [](const std::string& path, std::string& text) {
-		std::FILE* f = std::fopen(path.c_str(), "rb");
-		if (!f)
-			return false;
-		char buffer[4096];
-		size_t n;
-		while ((n = std::fread(buffer, 1, sizeof(buffer), f)) > 0)
-			text.append(buffer, n);
-		std::fclose(f);
-		return true;
-	};
-	// The value of [Forja] Huellas in a profile's text ("" when absent, "-" when present but empty).
-	const auto huellas_of = [](const std::string& text, std::string* without) {
-		std::string section, found, kept;
-		size_t at = 0;
-		while (at < text.size())
-		{
-			size_t end = text.find('\n', at);
-			const std::string line = text.substr(at, end == std::string::npos ? std::string::npos : end - at + 1);
-			at = end == std::string::npos ? text.size() : end + 1;
-			std::string bare = line;
-			while (!bare.empty() && (bare.back() == '\n' || bare.back() == '\r' || bare.back() == ' ' || bare.back() == '\t'))
-				bare.pop_back();
-			const size_t lead = bare.find_first_not_of(" \t");
-			bare = lead == std::string::npos ? std::string() : bare.substr(lead);
-			if (!bare.empty() && bare.front() == '[' && bare.back() == ']')
-				section = bare.substr(1, bare.size() - 2);
-			else if (const size_t eq = bare.find('='); section == "Forja" && eq != std::string::npos && bare[0] != ';')
-			{
-				std::string key = bare.substr(0, eq);
-				while (!key.empty() && (key.back() == ' ' || key.back() == '\t'))
-					key.pop_back();
-				if (key == "Huellas")
-				{
-					std::string value = bare.substr(eq + 1);
-					const size_t v = value.find_first_not_of(" \t");
-					found = v == std::string::npos ? "-" : value.substr(v);
-					continue; // left out of `without`
-				}
-			}
-			kept += line;
-		}
-		if (without)
-			*without = kept;
-		return found;
-	};
+	unsigned files = 0, keys = 0;
 	if (DIR* d = opendir(dir.c_str()))
 	{
 		while (const dirent* e = readdir(d))
 		{
 			const std::string name = e->d_name;
-			const size_t cut = name.find('_');
-			if (name.size() < 5 || name.compare(name.size() - 4, 4, ".ini") != 0 || cut == std::string::npos)
+			if (name.size() < 5 || name.compare(name.size() - 4, 4, ".ini") != 0)
 				continue;
 			const std::string path = dir + "/" + name;
-			std::string text, factory, kept;
-			if (!read_all(path, text) || huellas_of(text, &kept) != "-")
+			std::string text;
+			if (std::FILE* f = std::fopen(path.c_str(), "rb"))
+			{
+				char buffer[4096];
+				size_t n;
+				while ((n = std::fread(buffer, 1, sizeof(buffer), f)) > 0)
+					text.append(buffer, n);
+				std::fclose(f);
+			}
+			else
 				continue;
-			const std::string serial = name.substr(0, cut);
-			if (!read_all(ForjaGameProfile::FactoryPath(serial), factory))
-				continue;
-			const std::string wanted = huellas_of(factory, nullptr);
-			if (wanted.empty() || wanted == "-")
+			std::string section, kept;
+			unsigned dropped = 0;
+			size_t at = 0;
+			while (at < text.size())
+			{
+				size_t end = text.find('\n', at);
+				const std::string line = text.substr(at, end == std::string::npos ? std::string::npos : end - at + 1);
+				at = end == std::string::npos ? text.size() : end + 1;
+				std::string bare = line;
+				while (!bare.empty() && (bare.back() == '\n' || bare.back() == '\r' || bare.back() == ' '))
+					bare.pop_back();
+				const size_t lead = bare.find_first_not_of(" \t");
+				bare = lead == std::string::npos ? std::string() : bare.substr(lead);
+				if (!bare.empty() && bare.front() == '[' && bare.back() == ']')
+					section = bare.substr(1, bare.size() - 2);
+				else if (const size_t eq = bare.find('='); eq != std::string::npos && bare[0] != ';' && bare[0] != '#')
+				{
+					std::string key = bare.substr(0, eq);
+					while (!key.empty() && (key.back() == ' ' || key.back() == '\t'))
+						key.pop_back();
+					bool remove = false;
+					for (const auto& pair : drop)
+						remove |= section == pair[0] && key == pair[1];
+					if (remove)
+					{
+						dropped++;
+						continue;
+					}
+				}
+				kept += line;
+			}
+			if (dropped == 0)
 				continue;
 			mkdir(backup.c_str(), 0777);
 			if (std::FILE* f = std::fopen((backup + "/" + name).c_str(), "wb"))
@@ -685,7 +674,7 @@ static void ForjaApplyHuellas147()
 				if (std::fclose(f) == 0 && written && std::rename(temporary.c_str(), path.c_str()) == 0)
 				{
 					files++;
-					ProbeLog("Huellas 147: %s had \"Huellas =\" empty; its factory's come back (%s)\n", name.c_str(), wanted.c_str());
+					keys += dropped;
 				}
 			}
 		}
@@ -693,16 +682,18 @@ static void ForjaApplyHuellas147()
 	}
 	if (std::FILE* f = std::fopen(marker, "w"))
 	{
-		std::fprintf(f, "147: %u perfiles con las huellas de fabrica de vuelta (copia en gamesettings/antes-147)\n", files);
+		std::fprintf(f, "147: CPU nativa; %u perfiles sin su CPU o CPU automatico propios (%u claves; copia en gamesettings/antes-147)\n", files, keys);
 		std::fclose(f);
 	}
+	ProbeLog("Native 147: %u player profiles had their own CPU or CPU automático taken out (%u keys; copies in %s)\n", files, keys,
+		backup.c_str());
 }
 
 static void ForjaApplyBase()
 {
 	ForjaSettings::Values settings = ForjaSettings::Load();
 	if (settings.migrated)
-		ProbeLog("Base 146: ajustes.ini given the new base (CPU 100 %%, CPU automático down to 31 %%, 1x), saved=%d\n",
+		ProbeLog("Base 147: ajustes.ini given the new base (CPU 100 %% native, CPU automático off), saved=%d\n",
 			ForjaSettings::Save(settings) ? 1 : 0);
 	constexpr const char* marker = "/data/ForjaSX2/ajustes-base-146";
 	if (access(marker, F_OK) == 0)
@@ -6976,7 +6967,7 @@ int main()
 		FORJA_VERSION_MINOR, FORJA_VERSION_MAJOR, FORJA_VERSION_MINOR, FORJA_BUILD_NUMBER, FORJA_LTO_ON);
 	ProbeLog("Telemetry: start=%d\n", telemetry_started ? 1 : 0);
 	ForjaApplyBase(); // compilation 146: after the log is up
-	ForjaApplyHuellas147(); // 147 in the app
+	ForjaApplyNative147(); // 147 in the app: the PS2 CPU native for every game
 	// Compilation 78: whether this build sends the players' reports (ForjaReport.cpp), so a log says it without trying one.
 	ProbeLog("Reports: %s\n", ForjaReport::HasChannel() ? "the reports channel is set (Reportar este juego sends to Forja's Discord)" :
 															  "no reports channel in this build (reports are kept in /data/ForjaSX2/reportes)");
