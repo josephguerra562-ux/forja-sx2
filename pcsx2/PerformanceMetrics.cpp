@@ -9,6 +9,8 @@
 
 #include "PerformanceMetrics.h"
 
+#include <atomic>
+
 #include "GS.h"
 #include "GS/GSCapture.h"
 #include "MTGS.h"
@@ -141,8 +143,16 @@ void PerformanceMetrics::Reset()
 		stat.last_cpu_time = stat.handle.GetCPUTime();
 }
 
+// Forja SX2 (146 in the app): the game's frames as the internal FPS counts them (privileged register writes, or framebuffer blits),
+// for "Al vuelo cuida los cuadros" (ps4/vm/main.cpp, on the EE thread; this runs on the GS thread).
+std::atomic<u64> g_forja_frames_reg{0}, g_forja_frames_blit{0};
+
 void PerformanceMetrics::Update(bool gs_register_write, bool fb_blit, bool is_skipping_present)
 {
+	if (gs_register_write)
+		g_forja_frames_reg.fetch_add(1, std::memory_order_relaxed);
+	if (fb_blit)
+		g_forja_frames_blit.fetch_add(1, std::memory_order_relaxed);
 	if (!is_skipping_present)
 	{
 		const float frame_time = s_last_frame_time.GetTimeMillisecondsAndReset();

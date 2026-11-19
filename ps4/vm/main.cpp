@@ -359,6 +359,7 @@ static unsigned s_cpu_auto_room_checks = 0;
 // help (a step up left and not blocked) and whether it is at the game's factory value. The CPU's tries up: when the last one was, how long
 // until the next may be, and the wait after a failed one.
 static bool s_cpu_auto_up = false, s_skip_auto_fine = false;
+static bool s_skip_keeps_frames = false; // 146 in the app: [Forja] SaltoCuidaCuadros, "Al vuelo cuida los cuadros"
 // Compilation 124: "Revisión rápida del código" for this game ([Forja] RevisionRapida), and the FTP marker vm-skip-smc (for every game).
 static bool s_fast_code_game = false, s_fast_code_marker = false;
 // Compilation 127: "Efectos listos al arrancar" for this game ([Forja] EfectosListos); the GS thread reads the atomic at every vsync.
@@ -3046,6 +3047,10 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	s_fast_code_game = s_profile.fast_code == 1; // compilation 124: the recompiler takes it at the game's start (or from the row, with a reset)
 	if (s_fast_code_game || s_profile.fast_code_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("Fast code check (compilation 124): %s (%s)\n", s_fast_code_game ? "on" : "off", ProfileOriginName(s_profile.fast_code_origin));
+	s_skip_keeps_frames = s_profile.skip_keeps_frames == 1; // 146 in the app
+	if (s_skip_keeps_frames || s_profile.skip_keeps_frames_origin != ForjaGameProfile::Origin::Global)
+		ProbeLog("Cycle skip keeps the frames (146 in the app): %s (%s)\n", s_skip_keeps_frames ? "on" : "off",
+			ProfileOriginName(s_profile.skip_keeps_frames_origin));
 	// Compilation 128: on unless the profile says 0 (measured on 2026-11-08: Bully's effect hitches 6 -> 1, Shadow's 14 -> 2).
 	s_effects_ahead_game = s_profile.effects_ahead != 0; // compilation 127
 	g_forja_effects_ahead.store(s_effects_ahead_game, std::memory_order_relaxed);
@@ -3769,7 +3774,15 @@ static struct
 	unsigned ups = 0, downs = 0, backs = 0, vsyncs = 0, late = 0, lost = 0, hitches = 0;
 	int low_seen = 1000, high_seen = -1;
 	double u_sum = 0.0;
+	// 146 in the app, "Al vuelo cuida los cuadros": the game's frames and the lost vsyncs, added up, at each of the last 64 vsyncs; the
+	// step up being watched (from what value, at which vsync, frames and lost vsyncs in the 50 before); and the ceiling it left.
+	u64 frames_at[64] = {}, lost_at_n[64] = {}, lost_total = 0;
+	int watch_from = -1, ceiling = 48;
+	u64 watch_n = 0, watch_frames = 0, watch_lost = 0, ceiling_until = 0;
+	unsigned guards = 0;
 } s_si;
+
+extern std::atomic<u64> g_forja_frames_reg, g_forja_frames_blit; // pcsx2/PerformanceMetrics.cpp (GS thread)
 
 static void ForjaSkipInstantSet(int value16)
 {
@@ -3788,6 +3801,7 @@ static void ForjaSkipInstantReset()
 	s_si.debt = 0.0;
 	s_si.down_from = -1;
 	std::fill(std::begin(s_si.lost_at), std::end(s_si.lost_at), 0);
+	s_si.watch_from = -1; // 146 in the app: a pause or a load in the middle is not the step's doing
 }
 
 // Compilation 139: the trace of the last minute's vsyncs (the use, the limiter's delay, the skip), written when the menu opens to
@@ -3985,6 +3999,7 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 			s_si.lost_at[s_si.lost_next] = s_si.n;
 			s_si.lost_next = (s_si.lost_next + 1) % 16;
 			s_si.lost += static_cast<unsigned>(whole);
+			s_si.lost_total += static_cast<u64>(whole); // 146 in the app
 		}
 		else
 			s_si.hitches++; // a lone hitch: no skip fixes it
@@ -3995,6 +4010,53 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 	// 0 from a session whose fights wanted 48.
 	if (u_now >= 0.7)
 		s_si.time_at[std::clamp(s_si.value, 0, 48)]++;
+	// 146 in the app, "Al vuelo cuida los cuadros" ([Forja] SaltoCuidaCuadros). Al vuelo (140) goes up when a vsync is lost and does not
+	// look at the game's frames. Downhill Domination at 1x (the 145, 2026-11-19; Joseph: "muchos tirones"): every step to 40-48
+	// sixteenths cut its frames from 50 to 25-36, to save 1-6 vsyncs of 250 (under 2 % of speed); the old Auto (102-122) compared
+	// the frames and went back. Here: 50 vsyncs after a step up, if the game's frames fell over 20 % and no more than 5 of the 50 vsyncs
+	// before it were lost, the skip goes back and that value is its ceiling for 20 s; 10 of 50 lost under the ceiling (real slow
+	// motion) lift it. herramientas/simulaciones/simular_cuadros_salto.py, the console's traces calibrated to its own frames: God of
+	// War II 38.9 -> 44.0 frames a second (99.1 -> 98.9 %), Downhill 48.3 -> 48.7 (99.3 -> 98.5 %) without the 50/25 swings; Need for
+	// Speed, GTA, Dragon Ball, Guitar Hero and Resident Evil 4 the same (it never acts in them).
+	{
+		const bool blit = EmuConfig.Gamefixes.BlitInternalFPSHack;
+		const u64 reg = g_forja_frames_reg.load(std::memory_order_relaxed), fb = g_forja_frames_blit.load(std::memory_order_relaxed);
+		const unsigned at = static_cast<unsigned>(s_si.n % 64);
+		s_si.frames_at[at] = blit ? fb : (reg != 0 ? reg : fb);
+		s_si.lost_at_n[at] = s_si.lost_total;
+	}
+	if (s_si.ceiling < 48 && s_si.n >= s_si.ceiling_until)
+		s_si.ceiling = 48;
+	if (s_skip_keeps_frames && s_si.n >= 50)
+	{
+		const auto frames_in = [](u64 end, u64 span) { return s_si.frames_at[end % 64] - s_si.frames_at[(end - span) % 64]; };
+		const auto lost_in = [](u64 end, u64 span) { return s_si.lost_at_n[end % 64] - s_si.lost_at_n[(end - span) % 64]; };
+		if (s_si.ceiling < 48 && lost_in(s_si.n, 50) >= 10)
+		{
+			ProbeLog("Cycle skip keeps the frames: ceiling %d/16 lifted (%llu of 50 vsyncs lost)\n", s_si.ceiling,
+				static_cast<unsigned long long>(lost_in(s_si.n, 50)));
+			s_si.ceiling = 48;
+		}
+		if (s_si.watch_from >= 0 && s_si.n - s_si.watch_n >= 50)
+		{
+			const u64 after = frames_in(s_si.n, 50);
+			const int from = s_si.watch_from;
+			s_si.watch_from = -1;
+			if (s_si.watch_frames >= 10 && after * 10 < s_si.watch_frames * 8 && s_si.watch_lost <= 5)
+			{
+				ProbeLog("Cycle skip keeps the frames: %d -> %d/16 cut the frames %llu -> %llu in 50 vsyncs (%llu lost before); back to %d, "
+						 "its ceiling for 20 s\n", from, s_si.value, static_cast<unsigned long long>(s_si.watch_frames),
+					static_cast<unsigned long long>(after), static_cast<unsigned long long>(s_si.watch_lost), from);
+				s_si.ceiling = from;
+				s_si.ceiling_until = s_si.n + 1000;
+				s_si.guards++;
+				ForjaSkipInstantSet(from);
+				s_si.down_from = -1;
+				s_si.wait = 25;
+				return;
+			}
+		}
+	}
 	ForjaSkipTraceNote(u_now, s_si.debt, s_si.value);
 	s_si.highs = s_si.debt > SI_DEBT_HIGH ? s_si.highs + 1 : 0;
 	s_si.us[s_si.next] = u_now;
@@ -4030,10 +4092,18 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 	}
 	if (s_si.down_from >= 0 && s_si.n - s_si.last_down > 25)
 		s_si.down_from = -1; // it held
-	if (losing && s_si.value < 48)
+	const int top = s_skip_keeps_frames ? s_si.ceiling : 48; // 146 in the app
+	if (losing && s_si.value < top)
 	{
 		const int wanted = static_cast<int>(std::ceil(quarters_for(SI_UP_TARGET) * 4.0));
-		ForjaSkipInstantSet(std::min({48, s_si.value + SI_MAX_UP, std::max(s_si.value + 1, wanted)}));
+		if (s_skip_keeps_frames && s_si.watch_from < 0 && s_si.n >= 50) // 146 in the app: watch this step's next 50 vsyncs
+		{
+			s_si.watch_from = s_si.value;
+			s_si.watch_n = s_si.n;
+			s_si.watch_frames = s_si.frames_at[s_si.n % 64] - s_si.frames_at[(s_si.n - 50) % 64];
+			s_si.watch_lost = s_si.lost_at_n[s_si.n % 64] - s_si.lost_at_n[(s_si.n - 50) % 64];
+		}
+		ForjaSkipInstantSet(std::min({top, s_si.value + SI_MAX_UP, std::max(s_si.value + 1, wanted)}));
 		std::fill(std::begin(s_si.lost_at), std::end(s_si.lost_at), 0);
 		s_si.wait = 6;
 		s_si.highs = 0;
@@ -4074,13 +4144,16 @@ static void UpdateCycleSkipFast(double elapsed)
 		// Compilation 139: "Al vuelo con memoria": where the game spent most of its last session (God of War II, 2026-11-17: it started
 		// at 0 and spent its first minutes climbing to ~1.4 skips, losing vsyncs on the way).
 		const int learned = s_profile.crc == crc ? s_profile.learned_skip16 : -1;
-		const int start = learned >= 0 ? std::max(floor16, learned) : floor16;
+		// 146 in the app: with "cuida los cuadros", at most 2 whole skips to start (Downhill learnt 48, the top, from a session that
+		// swung 0-48, and its first 8 s ran at 24 frames a second).
+		const int start = learned >= 0 ? std::max(floor16, s_skip_keeps_frames ? std::min(learned, 32) : learned) : floor16;
 		ForjaSkipInstantSet(start);
 		std::fill(std::begin(s_si.time_at), std::end(s_si.time_at), 0u);
 		s_skip_auto_can_help = true; // compilation 139: not "at the top" before it has measured anything
 		s_last_line = elapsed;
-		ProbeLog("Cycle skip al vuelo (compilation 139, by the limiter's delay): starts at %d sixteenths (%s; factory %d)\n", start,
-			learned >= 0 ? "where the last session spent most of its time" : "the game's factory value", floor16);
+		ProbeLog("Cycle skip al vuelo (compilation 139, by the limiter's delay): starts at %d sixteenths (%s; factory %d)%s\n", start,
+			learned >= 0 ? "where the last session spent most of its time" : "the game's factory value", floor16,
+			s_skip_keeps_frames ? "; keeps the frames (146 in the app)" : "");
 	}
 	s_skip16_floor = floor16;
 	s_skip_instant_on = true;
