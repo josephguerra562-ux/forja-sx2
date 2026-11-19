@@ -1268,7 +1268,28 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 			g_forja_gs_skip_stats[5].fetch_add(1, std::memory_order_relaxed);
 	}
 
-	const bool blank_frame = forja_repeat_skipped ? false : !Merge(field);
+	// 147 in the app: with an interlaced output (SMODE2.INT) every refresh is the other field, and the deinterlacers that keep a picture
+	// (weave, blend, adaptive: GSDevice::Interlace weaves this field's lines into m_weavebob, the other field's lines stay as they were)
+	// need each refresh made. Compilation 130 left out the Merge of a refresh "Refrescos sin repetir" leaves out: that field's lines then
+	// stayed from 2 or more frames back and showed with the new frame's: Guitar Hero III (Blend, 2,035 frames of 2 refreshes in the 145's
+	// session) flickered in what moves or is thin (the neck, the crowd, the singer, the grass), more in heavy views (Joseph, 2026-11-19:
+	// "sigue parpadeando"); it did not with Blend in the 112, before the 128. herramientas/simulaciones/simular_campos_gh.py, that
+	// session's frame pacing: 9 % of the pictures with the other field from an old frame (~220 flickers a minute), 0 with this. Such a
+	// refresh is made again and only its presentation is left out (the 128-129 way); a progressive output or Bob/Off keep the 130's.
+	const GSInterlaceMode forja_mode = GSConfig.InterlaceMode;
+	const bool forja_weaves = m_regs->SMODE2.INT && forja_mode != GSInterlaceMode::Off && forja_mode != GSInterlaceMode::BobTFF &&
+							  forja_mode != GSInterlaceMode::BobBFF;
+	if (forja_repeat_skipped && forja_weaves)
+	{
+		static bool s_forja_weave_logged = false;
+		if (!s_forja_weave_logged)
+		{
+			s_forja_weave_logged = true;
+			ProbeLog("Repeated refreshes (147 in the app): interlaced output, deinterlace %d: each refresh is still made for its field, "
+					 "only its presentation is left out\n", static_cast<int>(forja_mode));
+		}
+	}
+	const bool blank_frame = (forja_repeat_skipped && !forja_weaves) ? false : !Merge(field);
 
 	m_last_draw_n = s_n;
 	m_last_transfer_n = s_transfer_n;
