@@ -24,6 +24,8 @@
 #include "OrbisEEProf.h" // compilation 110: g_orbis_ee_waiting
 #include "ForjaGsPhase.h"
 #include "ps4/core/ForjaFlipThread.h" // 154 in the app
+extern std::atomic<u64> g_forja_disc_reads, g_forja_disc_read_ns, g_forja_disc_read_max_ns; // pcsx2/CDVD/ThreadedFileReader.cpp (156)
+extern std::atomic<int> g_forja_disc_usb;
 #include <unistd.h>
 #include <string>
 extern double GetVerticalFrequency(); // pcsx2/GS.h (Counters.cpp): the PS2's refresh at the game's own rate (compilation 77)
@@ -510,6 +512,22 @@ void Host::OnPerformanceMetricsUpdated()
 			last_room_ns = room_ns;
 			const std::uint64_t longest = ForjaFlipThread::max_ns.exchange(0, std::memory_order_relaxed);
 			const std::uint32_t queue_max = ForjaFlipThread::queue_max.exchange(0, std::memory_order_relaxed);
+			// 156 in the app: the disc reader's reads in these seconds (pcsx2/CDVD/ThreadedFileReader.cpp), and where the image is.
+			{
+				static std::uint64_t last_reads = 0, last_read_ns = 0;
+				const std::uint64_t reads = g_forja_disc_reads.load(std::memory_order_relaxed);
+				const std::uint64_t read_ns = g_forja_disc_read_ns.load(std::memory_order_relaxed);
+				const std::uint64_t d_reads = reads - last_reads, d_read_ns = read_ns - last_read_ns;
+				last_reads = reads;
+				last_read_ns = read_ns;
+				const std::uint64_t read_longest = g_forja_disc_read_max_ns.exchange(0, std::memory_order_relaxed);
+				const int usb = g_forja_disc_usb.load(std::memory_order_relaxed);
+				if (d_reads > 0 && profile_interval > 0.0)
+					ProbeLog("Disc reads (156 in the app): %llu reads, %.2f ms each (longest %.1f), %.0f %% of the reader's time; the image %s\n",
+						static_cast<unsigned long long>(d_reads), static_cast<double>(d_read_ns) / 1e6 / static_cast<double>(d_reads),
+						static_cast<double>(read_longest) / 1e6, static_cast<double>(d_read_ns) / 1e7 / profile_interval,
+						usb == 1 ? "on a USB drive" : usb == 0 ? "inside the PS4" : "?");
+			}
 			if (d_flips > 0 && profile_interval > 0.0)
 				ProbeLog("GS flip (154 in the app): %llu flips, %.2f ms each inside the flip call (longest %.2f), %llu in its own thread; "
 						 "the GS waited for room %llu times (%.2f ms); queue up to %u\n",

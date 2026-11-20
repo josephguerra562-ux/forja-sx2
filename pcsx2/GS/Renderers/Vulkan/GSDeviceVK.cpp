@@ -43,7 +43,7 @@
 #include <cstdio> // Forja SX2: the GPU-side flip's guard file
 #include <unistd.h> // (AI-assisted) access() for the PS4 flip marker
 #include "ps4/core/ForjaFlipThread.h" // 155 in the app, "Flip sin candado"
-extern bool g_orbis_fg_wanted; // 156 in the app: below in this file; frame generation keeps the GPU-side flip
+extern bool g_orbis_fg_wanted, g_orbis_fg_gave_up; // 156 in the app: below in this file; frame generation keeps the GPU-side flip
 #endif
 
 // vk-285-36, vk-285-38: the GS thread's time in Vulkan calls, by kind (VKOrbisTiming.h), printed
@@ -2589,7 +2589,8 @@ void GSDeviceVK::SubmitCommandBuffer(VKSwapChain* present_swap_chain)
 		// and flips from the CPU; the GPU-side flip held the bridge's lock for the GPU's time, and the GS waited behind it.
 		// 156 in the app: not while frame generation is on (its pacing presents generated frames between the game's: the GPU-side
 		// flip, as before).
-		if (m_ps4_gpu_flip_next && ForjaFlipThread::wanted.load(std::memory_order_relaxed) == 2 && !g_orbis_fg_wanted)
+		if (m_ps4_gpu_flip_next && ForjaFlipThread::wanted.load(std::memory_order_relaxed) == 2 &&
+			!(g_orbis_fg_wanted && !g_orbis_fg_gave_up)) // frame generation that gave up for this game (Dragon Ball BT4) is off
 		{
 			if (present_swap_chain->PresentCurrentImageAfterFence(resources.fence))
 			{

@@ -14,6 +14,34 @@
 #include "ps4/core/ThreadAffinityPS4.h"
 #include <atomic>
 extern std::atomic<u64> g_forja_disc_bytes; // ps4/core/GSRendererPS4.cpp
+#include <chrono>
+// 156 in the app: the disc reader's own reads (each ReadChunk: 128 KB of a flat ISO, a CHD hunk...), for the "Disc reads" line in
+// ps4/vm/HostVM.cpp's 5 s block, and where the image is. Joseph (2026-11-20): "me habían dicho que estaba un poco lento el tema de
+// jugar a través de los USB" - no session or report had a game played from USB (the /usb0 lines were the library reading headers),
+// so this measures it: a USB drive's latency would show here before it shows as hitches.
+std::atomic<u64> g_forja_disc_reads{0}, g_forja_disc_read_ns{0}, g_forja_disc_read_max_ns{0};
+std::atomic<int> g_forja_disc_usb{-1}; // 1 the image is on a USB drive (/usb0.., /mnt/usb..), 0 inside the PS4, -1 none open
+namespace
+{
+	struct ForjaDiscReadTimer
+	{
+		std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
+		~ForjaDiscReadTimer()
+		{
+			const u64 ns = static_cast<u64>(
+				std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - t0).count());
+			g_forja_disc_reads.fetch_add(1, std::memory_order_relaxed);
+			g_forja_disc_read_ns.fetch_add(ns, std::memory_order_relaxed);
+			u64 old = g_forja_disc_read_max_ns.load(std::memory_order_relaxed);
+			while (ns > old && !g_forja_disc_read_max_ns.compare_exchange_weak(old, ns, std::memory_order_relaxed))
+			{
+			}
+		}
+	};
+} // namespace
+#define FORJA_DISC_READ_TIMER ForjaDiscReadTimer forja_disc_read_timer
+#else
+#define FORJA_DISC_READ_TIMER do { } while (0)
 #endif
 
 #include <cstring>
@@ -140,7 +168,11 @@ void ThreadedFileReader::Loop()
 					}
 					else
 					{
-						int amt = ReadChunk(static_cast<char*>(buf->ptr) + bufsize, chunk.chunkID);
+						int amt;
+						{
+							FORJA_DISC_READ_TIMER; // 156 in the app
+							amt = ReadChunk(static_cast<char*>(buf->ptr) + bufsize, chunk.chunkID);
+						}
 						if (amt <= 0)
 							break;
 						buf->size.store(bufsize + amt, std::memory_order_release);
@@ -190,7 +222,11 @@ ThreadedFileReader::Buffer* ThreadedFileReader::GetBlockPtr(const Chunk& block)
 		}
 		buf.size.store(0, std::memory_order_relaxed);
 	}
-	int size = ReadChunk(buf.ptr, block.chunkID);
+	int size;
+	{
+		FORJA_DISC_READ_TIMER; // 156 in the app
+		size = ReadChunk(buf.ptr, block.chunkID);
+	}
 	if (size > 0)
 	{
 		buf.offset = block.offset;
@@ -230,7 +266,11 @@ bool ThreadedFileReader::Decompress(void* target, u64 begin, u32 size)
 		}
 		else
 		{
-			int amt = ReadChunk(write, chunk.chunkID);
+			int amt;
+			{
+				FORJA_DISC_READ_TIMER; // 156 in the app
+				amt = ReadChunk(write, chunk.chunkID);
+			}
 			if (amt < static_cast<int>(chunk.length))
 				return false;
 			write += chunk.length;
@@ -308,6 +348,9 @@ bool ThreadedFileReader::CheckAvailableMemoryForPrecaching(u64 required_size, Er
 bool ThreadedFileReader::Open(std::string filename, Error* error)
 {
 	CancelAndWaitUntilStopped();
+#if defined(PCSX2_PS4_VM_BOOT)
+	g_forja_disc_usb.store((filename.rfind("/usb", 0) == 0 || filename.rfind("/mnt/usb", 0) == 0) ? 1 : 0, std::memory_order_relaxed);
+#endif
 	return Open2(std::move(filename), error);
 }
 
