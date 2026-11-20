@@ -336,6 +336,19 @@ __fi void mVUsetupFlags(mV, microFlagCycles& mFC)
 	}
 }
 
+// 153 in the app, "Banderas muertas del VU1" ([Forja] VU1BanderasMuertas; set at the game's start by ps4/vm/main.cpp, defined in
+// pcsx2/MTVU.cpp): the flags (1 status, 2 MAC: needExactMatch's bits) that no code of this game reads across a JR/JALR. Without it
+// a JR/JALR asks all three flags exact, and every block whose next block might be past one computes the status and MAC flags of its
+// last FMACs at every run. God of War II (the 152's VU1 map, 2026-11-20, simular_vu1_banderas.py): in 386 programs nothing reads or
+// sets the status flag, and its 53 MAC readers read their own program's FMACs; its hottest loop (transforming vertices, leaving by
+// JALR) spent 28 % of its x86 on those flags. The clip flag stays exact. Only for VU1.
+#include <atomic>
+extern std::atomic<int> g_forja_vu1_dead_flags;
+static __fi int ForjaFlagsKeptAtJump(const microVU& mVU)
+{
+	return mVU.index ? (7 & ~g_forja_vu1_dead_flags.load(std::memory_order_relaxed)) : 7;
+}
+
 #define shortBranch() \
 	{ \
 		if ((branch == 3) || (branch == 4)) /*Branches*/ \
@@ -348,7 +361,7 @@ __fi void mVUsetupFlags(mV, microFlagCycles& mFC)
 		else if (branch == 5) /*JR/JARL*/ \
 		{ \
 			if (sCount + found < 4) \
-				mVUregs.needExactMatch |= 7; \
+				mVUregs.needExactMatch |= ForjaFlagsKeptAtJump(mVU); /* 153 in the app */ \
 			break; \
 		} \
 		else /*E-Bit End*/ \
@@ -464,7 +477,7 @@ void mVUsetFlagInfo(mV)
 	{
 		if (!doConstProp || !mVUlow.constJump.isValid)
 		{
-			mVUregs.needExactMatch |= 0x7;
+			mVUregs.needExactMatch |= ForjaFlagsKeptAtJump(mVU); // 153 in the app: 0x7 unless the game's dead flags
 		}
 		else
 		{

@@ -396,6 +396,7 @@ extern std::atomic<int> g_orbis_vu1_dump_request; // pcsx2/MTVU.cpp: the VU thre
 static bool s_vu1_map_wanted = false; // 152 in the app: /data/ForjaSX2/vm-vu1-mapa at the game's start
 static unsigned s_vu1_map_beats = 0;
 extern u64 g_forja_mpg_total, g_forja_mpg_same;
+extern std::atomic<int> g_forja_vu1_dead_flags; // pcsx2/MTVU.cpp (153 in the app, "Banderas muertas del VU1")
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
 extern std::atomic<unsigned> g_forja_vsync_load;
 extern std::atomic<int> g_forja_deinterlace_factory; // compilation 137: pcsx2/VMManager.cpp, the game's factory deinterlace mode
@@ -3403,6 +3404,14 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		const bool no = access("/data/ForjaSX2/vm-vu1-ahorro-no", F_OK) == 0;
 		const bool on = !no && s_profile.vu1_ahorro == 1;
 		g_forja_vu1_ahorro.store(on, std::memory_order_relaxed);
+		// 153 in the app, "Banderas muertas del VU1" ([Forja] VU1BanderasMuertas; /data/ForjaSX2/vm-vu1-banderas-exactas turns it off).
+		// Before the game's first VU1 compile: microVU reads it as it compiles.
+		const bool exact_flags = access("/data/ForjaSX2/vm-vu1-banderas-exactas", F_OK) == 0;
+		const int dead = (exact_flags || s_profile.vu1_dead_flags < 0) ? 0 : (s_profile.vu1_dead_flags & 3);
+		g_forja_vu1_dead_flags.store(dead, std::memory_order_relaxed);
+		if (dead || exact_flags || s_profile.vu1_dead_flags_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("VU1 dead flags (153 in the app): %s%s (%s)%s\n", dead & 1 ? "status " : "", dead & 2 ? "MAC" : (dead ? "" : "none"),
+				ProfileOriginName(s_profile.vu1_dead_flags_origin), exact_flags ? ", vm-vu1-banderas-exactas" : "");
 		if (on || no || s_profile.vu1_ahorro_origin != ForjaGameProfile::Origin::Global)
 			ProbeLog("VU1 savings (152 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.vu1_ahorro_origin),
 				no ? ", vm-vu1-ahorro-no" : "");

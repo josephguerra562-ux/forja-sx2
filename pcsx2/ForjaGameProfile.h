@@ -88,6 +88,10 @@ namespace ForjaGameProfile
 		// unless the game's profile turns it on: God of War II.
 		int vu1_ahorro = -1;
 		Origin vu1_ahorro_origin = Origin::Global;
+		// 153 in the app: [Forja] VU1BanderasMuertas, "Banderas muertas del VU1" (pcsx2/x86/microVU_Flags.inl): 1 the status flag, 2 the
+		// MAC flag, 3 both, that no VU1 code of the game reads across a JR/JALR (measured with vm-vu1-mapa). Off unless the profile says.
+		int vu1_dead_flags = -1;
+		Origin vu1_dead_flags_origin = Origin::Global;
 		// [Forja] Huellas (compilation 55): the draw fingerprint rules turned on for the game, their huellas.ini ids with commas
 		// (ps4/vm/main.cpp, LoadRules; pcsx2/ForjaGsRules.h).
 		std::string rules_on;
@@ -305,6 +309,7 @@ namespace ForjaGameProfile
 		read_int("SaltoCuidaCuadros", &v.skip_keeps_frames, &v.skip_keeps_frames_origin); // 146 in the app
 		read_int("VifMenosTurnos", &v.vif1_fuse, &v.vif1_fuse_origin); // 151 in the app
 		read_int("VU1Ahorro", &v.vu1_ahorro, &v.vu1_ahorro_origin); // 152 in the app
+		read_int("VU1BanderasMuertas", &v.vu1_dead_flags, &v.vu1_dead_flags_origin); // 153 in the app
 		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);
 		read_int("SaltoAprendido", &v.learned_skip16, &v.learned_skip16_origin); // compilation 139
 		read_int("GrabarEnOtroHilo", &v.draw_thread, &v.draw_thread_origin);
@@ -440,6 +445,7 @@ namespace ForjaGameProfile
 			v.gs_skip = std::min(v.gs_skip, 5); // compilation 82: 3; 88: 4, two in three left out; 90: 5, on the fly
 		v.learned_skip16 = std::clamp(v.learned_skip16, -1, 48); // compilation 139
 		v.vif1_fuse = std::clamp(v.vif1_fuse, -1, 1024); // 151 in the app
+		v.vu1_dead_flags = std::clamp(v.vu1_dead_flags, -1, 3); // 153 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"
 			v.crowd_every = v.crowd_every >= 32 ? 32 : v.crowd_every >= 16 ? 16 : v.crowd_every >= 8 ? 8 : v.crowd_every >= 4 ? 4 :
 			                v.crowd_every >= 2 ? 2 : 1; // compilation 88: 16 and 32

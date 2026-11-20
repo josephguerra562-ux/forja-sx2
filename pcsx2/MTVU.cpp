@@ -35,6 +35,8 @@ std::atomic<u64> g_orbis_vu1_cycles{0}, g_orbis_vu1_runs{0};
 // (microVU_Execute.inl) and, in ExecuteRingBuffer, a microcode upload with the bytes already there leaves the translated programs alone. The
 // uploads and the ones kept (VU thread), for the heartbeat.
 std::atomic<bool> g_forja_vu1_ahorro{false};
+// 153 in the app, "Banderas muertas del VU1" ([Forja] VU1BanderasMuertas): microVU_Flags.inl reads it when it compiles VU1 code.
+std::atomic<int> g_forja_vu1_dead_flags{0};
 u64 g_forja_mpg_total = 0, g_forja_mpg_same = 0;
 
 #if defined(PCSX2_PS4_VM_BOOT)
