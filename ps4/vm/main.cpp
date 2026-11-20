@@ -28,6 +28,7 @@
 #include "common/Timer.h"
 #include "ps2/BiosTools.h"
 #include "R5900.h"
+#include "OrbisEEDiag.h" // 150 in the app: vm-eediag
 #include "R3000A.h"
 #include "IPU/IPU.h"
 #include "IPU/IPU_MultiISA.h"
@@ -598,6 +599,99 @@ static float s_stick_scale = 1.33f;
 // [Forja] CpuAuto, from L3+R3 or Options) go, a copy of each file first in gamesettings/antes-147; ajustes.ini's base is 147 (ForjaSettings.h).
 // Nothing else of the player's is touched (huellas, resolution, frame generation, patches): Dragon Ball's huella stays as the player left it
 // (its fights without it, the 124: 92 % and 28.2 frames, against 94.8 % and 28.4 with it: the same).
+// 150 in the app, once (marker /data/ForjaSX2/ajustes-150): a game's own "CPU automático: No" ([Forja] CpuAuto = 0) goes (a copy of
+// the file first, in gamesettings/antes-150). The 147 took every game's own CPU out (ForjaApplyNative147); in the 147 and the 148 the
+// base had the CPU automático off, and a "No" saved then (God of War II and Need for Speed, 2026-11-19: L3+R3 > CPU automático pressed
+// round to "No") is the base of that time, not a choice against the fallback. Joseph chose the fallback for every game (2026-11-19,
+// "Sí, nativa con respaldo"); with the "No" those two kept the CPU native even where the EE held them back. A game's own floor (-1 to
+// -6) stays: that one the player picked.
+static void ForjaApplyRespaldo150()
+{
+	constexpr const char* marker = "/data/ForjaSX2/ajustes-150";
+	if (access(marker, F_OK) == 0)
+		return;
+	const std::string dir = "/data/ForjaSX2/gamesettings";
+	const std::string backup = dir + "/antes-150";
+	unsigned files = 0;
+	if (DIR* d = opendir(dir.c_str()))
+	{
+		while (const dirent* e = readdir(d))
+		{
+			const std::string name = e->d_name;
+			if (name.size() < 5 || name.compare(name.size() - 4, 4, ".ini") != 0)
+				continue;
+			const std::string path = dir + "/" + name;
+			std::string text;
+			if (std::FILE* f = std::fopen(path.c_str(), "rb"))
+			{
+				char buffer[4096];
+				size_t n;
+				while ((n = std::fread(buffer, 1, sizeof(buffer), f)) > 0)
+					text.append(buffer, n);
+				std::fclose(f);
+			}
+			else
+				continue;
+			std::string section, kept;
+			bool dropped = false;
+			size_t at = 0;
+			while (at < text.size())
+			{
+				size_t end = text.find('\n', at);
+				const std::string line = text.substr(at, end == std::string::npos ? std::string::npos : end - at + 1);
+				at = end == std::string::npos ? text.size() : end + 1;
+				std::string bare = line;
+				while (!bare.empty() && (bare.back() == '\n' || bare.back() == '\r' || bare.back() == ' ' || bare.back() == '\t'))
+					bare.pop_back();
+				const size_t lead = bare.find_first_not_of(" \t");
+				bare = lead == std::string::npos ? std::string() : bare.substr(lead);
+				if (!bare.empty() && bare.front() == '[' && bare.back() == ']')
+					section = bare.substr(1, bare.size() - 2);
+				else if (const size_t eq = bare.find('='); section == "Forja" && eq != std::string::npos && bare[0] != ';' && bare[0] != '#')
+				{
+					std::string key = bare.substr(0, eq), value = bare.substr(eq + 1);
+					while (!key.empty() && (key.back() == ' ' || key.back() == '\t'))
+						key.pop_back();
+					const size_t v = value.find_first_not_of(" \t");
+					value = v == std::string::npos ? std::string() : value.substr(v);
+					if (key == "CpuAuto" && (value == "0" || value == "-0"))
+					{
+						dropped = true;
+						continue;
+					}
+				}
+				kept += line;
+			}
+			if (!dropped)
+				continue;
+			mkdir(backup.c_str(), 0777);
+			if (std::FILE* f = std::fopen((backup + "/" + name).c_str(), "wb"))
+			{
+				std::fwrite(text.data(), 1, text.size(), f);
+				std::fclose(f);
+			}
+			else
+				continue; // no copy, no change
+			const std::string temporary = path + ".tmp";
+			if (std::FILE* f = std::fopen(temporary.c_str(), "wb"))
+			{
+				const bool written = std::fwrite(kept.data(), 1, kept.size(), f) == kept.size();
+				if (std::fclose(f) == 0 && written && std::rename(temporary.c_str(), path.c_str()) == 0)
+				{
+					files++;
+					ProbeLog("Respaldo 150: %s had \"CPU automático: No\" from the 147-148; the fallback is back \n", name.c_str());
+				}
+			}
+		}
+		closedir(d);
+	}
+	if (std::FILE* f = std::fopen(marker, "w"))
+	{
+		std::fprintf(f, "150: %u perfiles sin su \"CPU automatico: No\" de la 147-148 (copia en gamesettings/antes-150)\n", files);
+		std::fclose(f);
+	}
+}
+
 // 149 in the app, once (marker /data/ForjaSX2/ajustes-149): a player's deinterlace for a game whose factory profile has a measured one
 // goes (a copy of the file first, in gamesettings/antes-149). Guitar Hero III (2026-11-19, the 148): its factory Blend (6) was hidden by
 // a Bob (4) left from trying the modes in the 145, and Bob makes the thin lines shimmer by itself (it shows each field alone, one line
@@ -5815,6 +5909,93 @@ void VMHostPoll()
 					s_profile.cores.empty() ? "global" : s_profile.cores.c_str());
 			s_last_audio_us = audio_us;
 		}
+		if (OrbisEEDiag::on.load(std::memory_order_relaxed) && interval > 0.0)
+		{
+			// 150 in the app (/data/ForjaSX2/vm-eediag): God of War II's heavy scenes (the 148, 2026-11-19) need the EE ~20 ms a frame and
+			// a quarter of it is handing work to the VU1 (VIF1 DMA, ~2,100 VU1 programs a frame). Before taking that off the EE: which VIF
+			// codes each game sends (the ones that need the EE's own state: MARK, FLUSH*, DIRECT*, the interrupt bit), which interrupts it
+			// takes (the GS and VU1 ones handed over by the VU thread) and which system calls it makes.
+			static u64 s_vif[128] = {}, s_vif_irq = 0, s_intc[16] = {}, s_dmac[16] = {}, s_sys[256] = {}, s_cpu_int[32] = {};
+			static u64 s_mtvu[4] = {}, s_ev[5] = {};
+			static bool s_diag_first = true;
+			const auto rate = [interval](u64 now, u64 before) { return now >= before ? static_cast<double>(now - before) / interval : 0.0; };
+			if (!s_diag_first)
+			{
+				double v[128];
+				for (int i = 0; i < 128; i++)
+					v[i] = rate(OrbisEEDiag::vif1_codes[i], s_vif[i]);
+				double unpack = 0.0, known = 0.0;
+				for (int i = 0x60; i < 0x80; i++)
+					unpack += v[i];
+				static constexpr int named[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x10, 0x11, 0x13, 0x14, 0x15, 0x17, 0x20, 0x30,
+					0x31, 0x4a, 0x50, 0x51};
+				for (const int i : named)
+					known += v[i];
+				double all = 0.0;
+				for (int i = 0; i < 128; i++)
+					all += v[i];
+				ProbeLog("EE diag (150): vif1_codes_per_second unpack=%.0f mscal=%.0f mscalf=%.0f mscnt=%.0f mpg=%.0f direct=%.0f directhl=%.0f "
+						 "flush=%.0f flusha=%.0f flushe=%.0f mark=%.0f mskpath3=%.0f stmask=%.0f strow=%.0f stcol=%.0f stcycl=%.0f stmod=%.0f "
+						 "base=%.0f offset=%.0f itop=%.0f nop=%.0f other=%.0f with_irq_bit=%.0f\n",
+					unpack, v[0x14], v[0x15], v[0x17], v[0x4a], v[0x50], v[0x51], v[0x11], v[0x13], v[0x10], v[0x07], v[0x06], v[0x20], v[0x30],
+					v[0x31], v[0x01], v[0x05], v[0x03], v[0x02], v[0x04], v[0x00], all - unpack - known, rate(OrbisEEDiag::vif1_irq_codes, s_vif_irq));
+				double i_[16], d_[16];
+				for (int i = 0; i < 16; i++)
+				{
+					i_[i] = rate(OrbisEEDiag::intc_irq[i], s_intc[i]);
+					d_[i] = rate(OrbisEEDiag::dmac_irq[i], s_dmac[i]);
+				}
+				ProbeLog("EE diag (150): intc_per_second gs=%.0f sbus=%.0f vblank_s=%.0f vblank_e=%.0f vif0=%.0f vif1=%.0f vu0=%.0f vu1=%.0f ipu=%.0f "
+						 "tim0=%.0f tim1=%.0f tim2=%.0f tim3=%.0f sfifo=%.0f vu0wd=%.0f; from_vu1_thread finish=%.0f signal=%.0f label=%.0f tbit=%.0f; "
+						 "dmac_per_second vif0=%.0f vif1=%.0f gif=%.0f ipu_from=%.0f ipu_to=%.0f sif0=%.0f sif1=%.0f sif2=%.0f spr_from=%.0f spr_to=%.0f\n",
+					i_[0], i_[1], i_[2], i_[3], i_[4], i_[5], i_[6], i_[7], i_[8], i_[9], i_[10], i_[11], i_[12], i_[13], i_[14],
+					rate(OrbisEEDiag::mtvu_finish, s_mtvu[0]), rate(OrbisEEDiag::mtvu_signal, s_mtvu[1]), rate(OrbisEEDiag::mtvu_label, s_mtvu[2]),
+					rate(OrbisEEDiag::mtvu_tbit, s_mtvu[3]), d_[0], d_[1], d_[2], d_[3], d_[4], d_[5], d_[6], d_[7], d_[8], d_[9]);
+				// The 10 system calls made most often, and the 8 kinds of event scheduled most often.
+				std::pair<double, int> top[256];
+				int count = 0;
+				for (int call = 0; call < 256; call++)
+				{
+					const double r = rate(OrbisEEDiag::syscalls[call], s_sys[call]);
+					if (r > 0.0)
+						top[count++] = {r, call};
+				}
+				std::sort(top, top + count, [](const std::pair<double, int>& a, const std::pair<double, int>& b) { return a.first > b.first; });
+				count = std::min(count, 10);
+				char calls[256] = {};
+				size_t used = 0;
+				for (int i = 0; i < count && used + 24 < sizeof(calls); i++)
+					used += std::snprintf(calls + used, sizeof(calls) - used, "%s%02x=%.0f", i ? "," : "", top[i].second, top[i].first);
+				char events[256] = {};
+				used = 0;
+				for (int n = 0; n < 32 && used + 24 < sizeof(events); n++)
+				{
+					const double r = rate(OrbisEEDiag::cpu_int[n], s_cpu_int[n]);
+					if (r >= 1.0)
+						used += std::snprintf(events + used, sizeof(events) - used, "%s%d=%.0f", used ? "," : "", n, r);
+				}
+				ProbeLog("EE diag (150): syscalls_per_second %s; events_per_second %s; event_tests_with_dma=%.0f counters=%.0f iop_rapid=%.0f "
+						 "intc_taken=%.0f dmac_taken=%.0f (per second)\n",
+					count ? calls : "none", used ? events : "none", rate(OrbisEEDiag::ev_dma, s_ev[0]), rate(OrbisEEDiag::rcnt, s_ev[1]),
+					rate(OrbisEEDiag::iop_rapid, s_ev[2]), rate(OrbisEEDiag::exc_intc, s_ev[3]), rate(OrbisEEDiag::exc_dmac, s_ev[4]));
+			}
+			s_diag_first = false;
+			std::copy(std::begin(OrbisEEDiag::vif1_codes), std::end(OrbisEEDiag::vif1_codes), s_vif);
+			std::copy(std::begin(OrbisEEDiag::intc_irq), std::end(OrbisEEDiag::intc_irq), s_intc);
+			std::copy(std::begin(OrbisEEDiag::dmac_irq), std::end(OrbisEEDiag::dmac_irq), s_dmac);
+			std::copy(std::begin(OrbisEEDiag::syscalls), std::end(OrbisEEDiag::syscalls), s_sys);
+			std::copy(std::begin(OrbisEEDiag::cpu_int), std::end(OrbisEEDiag::cpu_int), s_cpu_int);
+			s_vif_irq = OrbisEEDiag::vif1_irq_codes;
+			s_mtvu[0] = OrbisEEDiag::mtvu_finish;
+			s_mtvu[1] = OrbisEEDiag::mtvu_signal;
+			s_mtvu[2] = OrbisEEDiag::mtvu_label;
+			s_mtvu[3] = OrbisEEDiag::mtvu_tbit;
+			s_ev[0] = OrbisEEDiag::ev_dma;
+			s_ev[1] = OrbisEEDiag::rcnt;
+			s_ev[2] = OrbisEEDiag::iop_rapid;
+			s_ev[3] = OrbisEEDiag::exc_intc;
+			s_ev[4] = OrbisEEDiag::exc_dmac;
+		}
 		{
 			// Forja SX2: the SPU2 mixing cost measured in IopCounters.cpp (EE thread, like this heartbeat).
 			extern u64 g_forja_spu2_calls, g_forja_spu2_sampled_ticks;
@@ -6776,6 +6957,9 @@ static void* RunVM(void*)
 		ProbeLog("Controller: DualShock 2 analog mode enabled; both sticks and analog triggers forwarded.\n");
 		LoadStickSensitivity();
 		s_verbose_diag = access("/data/ForjaSX2/vm-verbose-log", F_OK) == 0;
+		// 150 in the app: the EE counters (OrbisEEDiag.h) while /data/ForjaSX2/vm-eediag is there, read at each game's start.
+		OrbisEEDiag::on.store(access("/data/ForjaSX2/vm-eediag", F_OK) == 0 ? 1 : 0, std::memory_order_relaxed);
+		ProbeLog("EE diag (150): %s\n", OrbisEEDiag::on.load(std::memory_order_relaxed) ? "on (vm-eediag): the EE diag lines every 5 s" : "off");
 		ProbeLog("Verbose diagnostics: %s (single marker /data/ForjaSX2/vm-verbose-log forces 1s heartbeat, TimedWaitGS, and GS/EE hotspot sampling)\n",
 			s_verbose_diag ? "ENABLED" : "disabled");
 		s_run_timer.Reset();
@@ -7072,6 +7256,7 @@ int main()
 	ForjaApplyBase(); // compilation 146: after the log is up
 	ForjaApplyNative147(); // 147 in the app: the PS2 CPU native for every game
 	ForjaApplyDeinterlace149(); // 149 in the app: a game's measured deinterlace back
+	ForjaApplyRespaldo150(); // 150 in the app: the CPU "native with a fallback" in every game
 	// Compilation 78: whether this build sends the players' reports (ForjaReport.cpp), so a log says it without trying one.
 	ProbeLog("Reports: %s\n", ForjaReport::HasChannel() ? "the reports channel is set (Reportar este juego sends to Forja's Discord)" :
 															  "no reports channel in this build (reports are kept in /data/ForjaSX2/reportes)");

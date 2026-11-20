@@ -25,6 +25,9 @@ namespace OrbisEEDiag
 	extern u64 iop_rapid; // event tests that set the next one 48 cycles on (the IOP behind)
 	extern u64 rcnt; // event tests that ran the counters
 	extern u64 vif1_codes[128]; // VIF1 codes read, by command
+	// 150 in the app (PS4): VIF1 codes with the interrupt bit, and the GS and VU1 interrupts the VU thread hands the EE
+	// (VU_Thread::Get_MTVUChanges): a game that waits for its frame on a FINISH, SIGNAL or LABEL sent through PATH1 does it here.
+	extern u64 vif1_irq_codes, mtvu_finish, mtvu_signal, mtvu_label, mtvu_tbit;
 } // namespace OrbisEEDiag
 
 // Live switches (the GS thread sets them from flag files once a second; see OrbisEEDiag.cpp).
@@ -47,11 +50,8 @@ extern u64 g_orbis_tid_hits, g_orbis_tid_checks, g_orbis_tid_mismatches, g_orbis
 extern std::atomic<int> g_orbis_waitloop_ext;
 extern u64 g_orbis_waitloop_ext_blocks, g_orbis_waitloop_ext_runs;
 
-#if defined(PCSX2_PS4)
-// The PS5-only live EE diagnostics have no PS4 flag-file/logging adapter yet.
-// Keep their instrumentation out of the PS4 build until that adapter exists.
-#define ORBIS_EEDIAG(expr) do { } while (0)
-#else
+// 150 in the app: on the PS4 too. /data/ForjaSX2/vm-eediag turns them on at each game's start (ps4/vm/main.cpp) and the EE
+// thread's heartbeat writes the "EE diag (150):" lines every 5 s; without the file each site is one load and a branch not taken.
 #define ORBIS_EEDIAG(expr) \
 	do \
 	{ \
@@ -60,7 +60,6 @@ extern u64 g_orbis_waitloop_ext_blocks, g_orbis_waitloop_ext_runs;
 			expr; \
 		} \
 	} while (0)
-#endif
 
 // The core's clock in cycles per TSC tick while a chain of dependent adds ran (Zen 2 retires one a cycle):
 // times the TSC's frequency, the clock the calling thread's core ran at. 2^16 iterations of 8 adds, ~0.15 ms.

@@ -840,6 +840,7 @@ void VU_Thread::Get_MTVUChanges()
 		// If load of signal was moved after clearing the flag, the other thread could write a new value before we load without noticing the double signal
 		// Prevent that with release semantics
 		mtvuInterrupts.fetch_and(~InterruptFlagSignal, std::memory_order_release);
+		ORBIS_EEDIAG(OrbisEEDiag::mtvu_signal++); // 150 in the app
 		GUNIT_WARN("SIGNAL firing");
 		const u32 signalMsk = (u32)(signal >> 32);
 		const u32 signalData = (u32)signal;
@@ -863,6 +864,7 @@ void VU_Thread::Get_MTVUChanges()
 	if (interrupts & InterruptFlagFinish)
 	{
 		mtvuInterrupts.fetch_and(~InterruptFlagFinish, std::memory_order_relaxed);
+		ORBIS_EEDIAG(OrbisEEDiag::mtvu_finish++); // 150 in the app
 		GUNIT_WARN("Finish firing");
 		gifUnit.gsFINISH.gsFINISHFired = false;
 		gifUnit.gsFINISH.gsFINISHPending = true;
@@ -877,6 +879,7 @@ void VU_Thread::Get_MTVUChanges()
 		// We do not want the exchange of gsLabel to move ahead of clearing the flag, or the other thread could add more work before we clear the flag, resulting in an update with the flag unset
 		// acquire semantics should supply that guarantee
 		const u64 label = gsLabel.exchange(0, std::memory_order_relaxed);
+		ORBIS_EEDIAG(OrbisEEDiag::mtvu_label++); // 150 in the app
 		GUNIT_WARN("LABEL firing");
 		const u32 labelMsk = (u32)(label >> 32);
 		const u32 labelData = (u32)label;
@@ -901,6 +904,7 @@ void VU_Thread::Get_MTVUChanges()
 		mtvuInterrupts.fetch_and(~(InterruptFlagVUTBit | (interrupts & InterruptFlagVUEBit)), std::memory_order_relaxed);
 		VU0.VI[REG_VPU_STAT].UL &= ~0xFF00;
 		VU0.VI[REG_VPU_STAT].UL |= 0x0400;
+		ORBIS_EEDIAG(OrbisEEDiag::mtvu_tbit++); // 150 in the app
 		//DevCon.Warning("T-Bit registered %x", VU0.VI[REG_VPU_STAT].UL);
 		hwIntcIrq(7);
 	}

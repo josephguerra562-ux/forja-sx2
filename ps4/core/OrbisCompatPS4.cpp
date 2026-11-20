@@ -34,6 +34,22 @@ std::atomic<int> g_orbis_hle_tid{0};
 std::atomic<int> g_orbis_eret_fast{0};
 std::atomic<int> g_orbis_vif1_fuse{0};
 u64 g_orbis_vif1_fused = 0;
+
+// 150 in the app: the PS5 port's EE counters (pcsx2/OrbisEEDiag.h), kept by the EE thread while /data/ForjaSX2/vm-eediag is there.
+namespace OrbisEEDiag
+{
+	std::atomic<int> on{0};
+	u64 syscalls[256] = {};
+	u64 cpu_int[32] = {};
+	u64 dmac_irq[16] = {};
+	u64 intc_irq[16] = {};
+	u64 exc_intc = 0, exc_dmac = 0;
+	u64 ev_dma = 0;
+	u64 iop_rapid = 0;
+	u64 rcnt = 0;
+	u64 vif1_codes[128] = {};
+	u64 vif1_irq_codes = 0, mtvu_finish = 0, mtvu_signal = 0, mtvu_label = 0, mtvu_tbit = 0;
+} // namespace OrbisEEDiag
 OrbisTidCache g_orbis_tid{};
 u64 g_orbis_hle_flushes = 0;
 u64 g_orbis_tid_hits = 0;
