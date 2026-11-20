@@ -3403,13 +3403,16 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		const bool force_on = access("/data/ForjaSX2/vm-flip-hilo", F_OK) == 0;
 		const bool force_gpu = access("/data/ForjaSX2/vm-flip-hilo-gpu", F_OK) == 0;
 		const bool force_off = access("/data/ForjaSX2/vm-flip-sin-hilo", F_OK) == 0;
-		const int mode = force_off ? 0 : force_gpu ? 1 : force_on ? 2 : std::max(0, s_profile.flip_thread);
+		// 156 in the app: 2 for every game unless its profile says otherwise ([Forja] FlipEnHilo = 0 turns it off for a game). The 155 on
+		// the console (2026-11-20, God of War II at 2x): the GS's end of frame 22 -> 2-3 %, ~39.5 -> ~43 frames a second, the picture
+		// right; and every other game's GS still spent 7-16 % of its time in the GPU-side flip (Dragon Ball BT4 12 %, Downhill 16 %,
+		// Guitar Hero 10 %, Need for Speed 8 %, Shadow 7 %). While frame generation is on, GSDeviceVK keeps the GPU-side flip.
+		const int mode = force_off ? 0 : force_gpu ? 1 : force_on ? 2 : (s_profile.flip_thread >= 0 ? s_profile.flip_thread : 2);
 		ForjaFlipThread::wanted.store(mode, std::memory_order_relaxed);
-		if (mode || force_on || force_gpu || force_off || s_profile.flip_thread_origin != ForjaGameProfile::Origin::Global)
-			ProbeLog("GS flip in its own thread (154-155 in the app): %s (%s)%s%s%s\n",
-				mode == 2 ? "on, from the CPU once the frame is done (155)" : mode == 1 ? "on, GPU-side (154)" : "off",
-				ProfileOriginName(s_profile.flip_thread_origin), force_on ? ", vm-flip-hilo" : "", force_gpu ? ", vm-flip-hilo-gpu" : "",
-				force_off ? ", vm-flip-sin-hilo" : "");
+		ProbeLog("GS flip in its own thread (154-156 in the app): %s (%s)%s%s%s\n",
+			mode == 2 ? "on, from the CPU once the frame is done" : mode == 1 ? "on, GPU-side (154)" : "off",
+			s_profile.flip_thread >= 0 ? ProfileOriginName(s_profile.flip_thread_origin) : "factory for every game, 156",
+			force_on ? ", vm-flip-hilo" : "", force_gpu ? ", vm-flip-hilo-gpu" : "", force_off ? ", vm-flip-sin-hilo" : "");
 	}
 	{
 		// 151 in the app, "VIF1 en menos turnos" ([Forja] VifMenosTurnos, cycles; pcsx2/R5900.cpp, CPU_INT). With it, the PS5 port's simple
