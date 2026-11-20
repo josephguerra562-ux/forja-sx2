@@ -7,7 +7,12 @@
 // next frame; the flip itself goes out as soon as before (no frame of delay, unlike the deferred CPU flip of vm-cpu-flip, which
 // left the menu one press behind).
 //
-// wanted: set by ps4/vm/main.cpp at each game's start ([Forja] FlipEnHilo, vm-flip-hilo, vm-flip-sin-hilo).
+// wanted: set by ps4/vm/main.cpp at each game's start ([Forja] FlipEnHilo, vm-flip-hilo, vm-flip-sin-hilo): 0 the GS thread flips,
+// 1 the GPU-side flip from the flip thread (154), 2 "Flip sin candado" (155): the flip thread waits for the frame's fence and flips
+// from the CPU (sceVideoOutSubmitFlip). The 154 on the console (2026-11-20, God of War II at 2x): 33.5 -> ~39.5 frames a second, but
+// the GPU-side flip holds the bridge's lock (dev->lock in ac_ps4_drm.c) for its ~9.4 ms, and every fence wait of the GS thread takes
+// that lock at each poll (ps4_wait_common): the GS still waited ~20 % of its time (a mutex and a condition variable in Mesa), with
+// the GPU busy 37 %. sceVideoOutSubmitFlip takes no lock of the bridge, and a fence wait only takes it for an instant at each poll.
 // The rest: the meter, printed every 5 s by ps4/vm/HostVM.cpp ("GS flip (154 in the app)"): the time inside the flip call,
 // whichever thread made it, and the GS thread's waits for room in the queue.
 #pragma once

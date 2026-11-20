@@ -280,7 +280,7 @@ bool VKSwapChain::CreateVideoOutImages()
 	const PS4Port::VulkanVideoOut::Dispatch dispatch = {vkGetPhysicalDeviceFormatProperties,
 		vkGetPhysicalDeviceMemoryProperties, vkCreateImage, vkGetImageMemoryRequirements, vkAllocateMemory,
 		vkMapMemory, vkGetImageSubresourceLayout, vkBindImageMemory, vkUnmapMemory, vkDestroyImage, vkFreeMemory,
-		vkDeviceWaitIdle};
+		vkDeviceWaitIdle, vkWaitForFences};
 	m_video_out = std::make_unique<PS4Port::VulkanVideoOut>(GSDeviceVK::GetInstance()->GetPhysicalDevice(),
 		GSDeviceVK::GetInstance()->GetDevice(), dispatch, [](const char* message) { Console.WriteLn("%s", message); });
 	if (!m_video_out->Create())
@@ -774,6 +774,27 @@ u32 VKSwapChain::FreeVideoOutImages()
 	return m_is_video_out && m_video_out ? m_video_out->FreeImages() : 0;
 #else
 	return 0;
+#endif
+}
+
+bool VKSwapChain::PresentCurrentImageAfterFence(VkFence fence)
+{
+#if defined(PCSX2_PS4)
+	// Refused: the image stays acquired, so the caller can still present it another way.
+	if (!m_is_video_out || !m_video_out || !m_video_out->PresentAfterFence(fence))
+		return false;
+	m_image_acquire_result.reset();
+	return true;
+#else
+	return false;
+#endif
+}
+
+void VKSwapChain::WaitVideoOutFlipsUsing(VkFence fence)
+{
+#if defined(PCSX2_PS4)
+	if (m_is_video_out && m_video_out)
+		m_video_out->WaitFlipsUsingFence(fence);
 #endif
 }
 

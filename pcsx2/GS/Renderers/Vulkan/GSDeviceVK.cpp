@@ -42,6 +42,7 @@
 #if defined(PCSX2_PS4)
 #include <cstdio> // Forja SX2: the GPU-side flip's guard file
 #include <unistd.h> // (AI-assisted) access() for the PS4 flip marker
+#include "ps4/core/ForjaFlipThread.h" // 155 in the app, "Flip sin candado"
 #endif
 
 // vk-285-36, vk-285-38: the GS thread's time in Vulkan calls, by kind (VKOrbisTiming.h), printed
@@ -2583,6 +2584,18 @@ void GSDeviceVK::SubmitCommandBuffer(VKSwapChain* present_swap_chain)
 #if defined(PCSX2_PS4)
 		// Forja SX2: GPU-side flip. The flip is queued behind the submission above, so neither this thread nor the next
 		// frame's BeginPresent waits for the GPU to finish this frame (at 4x that wait was ~6 ms a frame on a PS4 Pro).
+		// Forja SX2 (155 in the app, "Flip sin candado", ForjaFlipThread::wanted 2): the flip thread waits for this submission's fence
+		// and flips from the CPU; the GPU-side flip held the bridge's lock for the GPU's time, and the GS waited behind it.
+		if (m_ps4_gpu_flip_next && ForjaFlipThread::wanted.load(std::memory_order_relaxed) == 2)
+		{
+			if (present_swap_chain->PresentCurrentImageAfterFence(resources.fence))
+			{
+				m_ps4_gpu_flip_next = false;
+				m_ps4_defer_next_flip = false;
+				return;
+			}
+			// The flip thread could not take it: the GPU-side flip below, as before.
+		}
 		if (m_ps4_gpu_flip_next)
 		{
 			m_ps4_gpu_flip_next = false;
@@ -2793,6 +2806,11 @@ void GSDeviceVK::ActivateCommandBuffer(u32 index)
 	}
 
 	// Reset fence to unsignaled before starting.
+#if defined(PCSX2_PS4)
+	// Forja SX2 (155 in the app, "Flip sin candado"): the flip thread may still be about to wait for this fence; its flip goes first.
+	if (m_swap_chain)
+		m_swap_chain->WaitVideoOutFlipsUsing(resources.fence);
+#endif
 	VkResult res = vkResetFences(m_device, 1, &resources.fence);
 	if (res != VK_SUCCESS)
 		LOG_VULKAN_ERROR(res, "vkResetFences failed: ");

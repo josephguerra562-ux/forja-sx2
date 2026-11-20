@@ -83,7 +83,7 @@ namespace ForjaGameProfile
 		int skip_ceiling16 = -1;
 		Origin skip_ceiling16_origin = Origin::Global;
 		// 154 in the app: [Forja] FlipEnHilo, "Flip en su propio hilo" (ps4/core/ForjaFlipThread.h): 1 the GPU-side flip from a thread
-		// of its own instead of the GS thread. Off unless the profile says.
+		// of its own instead of the GS thread; 2 (155) that thread waits for the frame and flips from the CPU. Off unless the profile says.
 		int flip_thread = -1;
 		Origin flip_thread_origin = Origin::Global;
 		// 151 in the app: [Forja] VifMenosTurnos, "VIF1 en menos turnos" (pcsx2/R5900.cpp, CPU_INT): the VIF1 DMA's next step, due in fewer
@@ -457,7 +457,7 @@ namespace ForjaGameProfile
 		v.vif1_fuse = std::clamp(v.vif1_fuse, -1, 1024); // 151 in the app
 		v.vu1_dead_flags = std::clamp(v.vu1_dead_flags, -1, 3); // 153 in the app
 		v.skip_ceiling16 = std::clamp(v.skip_ceiling16, -1, 48); // 154 in the app
-		v.flip_thread = std::clamp(v.flip_thread, -1, 1); // 154 in the app
+		v.flip_thread = std::clamp(v.flip_thread, -1, 2); // 154-155 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"
 			v.crowd_every = v.crowd_every >= 32 ? 32 : v.crowd_every >= 16 ? 16 : v.crowd_every >= 8 ? 8 : v.crowd_every >= 4 ? 4 :
 			                v.crowd_every >= 2 ? 2 : 1; // compilation 88: 16 and 32

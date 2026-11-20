@@ -52,6 +52,7 @@ namespace PS4Port
 			PFN_vkDestroyImage DestroyImage;
 			PFN_vkFreeMemory FreeMemory;
 			PFN_vkDeviceWaitIdle DeviceWaitIdle;
+			PFN_vkWaitForFences WaitForFences; // 155 in the app: the flip thread's wait for a frame ("Flip sin candado")
 		};
 
 		VulkanVideoOut(VkPhysicalDevice gpu, VkDevice device, const Dispatch& dispatch, Logger logger);
@@ -68,6 +69,12 @@ namespace PS4Port
 		// 154 in the app (ForjaFlipThread.h, "Flip en su propio hilo"): with ForjaFlipThread::wanted, the call goes to a thread of its
 		// own, since the driver's call returns only once the GPU reaches the flip; false then if an earlier flip there was refused.
 		bool PresentFromGpu();
+		// 155 in the app, "Flip sin candado" (ForjaFlipThread::wanted 2): the flip thread waits for `fence` (the frame's submission)
+		// and then flips from the CPU, so the bridge's lock is never held for the GPU's time. Call it right after the frame's
+		// vkQueueSubmit. False if the flip thread can't take it (then the caller flips as before).
+		bool PresentAfterFence(VkFence fence);
+		// 155 in the app: before the GS resets `fence` (GSDeviceVK::ActivateCommandBuffer), the flips that wait for it go out first.
+		void WaitFlipsUsingFence(VkFence fence);
 		void Release() { m_acquired = false; }
 		bool WaitForFlip(OrbisKernelUseconds timeout = 5000000);
 		// Forja SX2 (compilation 41): the images Acquire would hand out now without waiting (0 when it would wait).
@@ -98,9 +105,10 @@ namespace PS4Port
 		{
 			std::uint32_t buffer;
 			std::int64_t arg;
+			VkFence fence; // 155 in the app: VK_NULL_HANDLE for a GPU-side flip; else wait for it and flip from the CPU
 		};
 		static constexpr std::uint32_t FlipQueueSize = 8;
-		bool QueueFlip(std::uint32_t buffer, std::int64_t arg);
+		bool QueueFlip(std::uint32_t buffer, std::int64_t arg, VkFence fence = VK_NULL_HANDLE);
 		void FlipThreadMain();
 		void DrainFlipThread();
 		void StopFlipThread();
@@ -139,6 +147,7 @@ namespace PS4Port
 		std::array<FlipJob, FlipQueueSize> m_flip_jobs{};
 		std::uint32_t m_flip_head = 0, m_flip_tail = 0;
 		bool m_flip_busy = false, m_flip_stop = false;
+		VkFence m_flip_busy_fence = VK_NULL_HANDLE; // 155 in the app: the fence of the job being sent
 		std::atomic<bool> m_flip_refused{false};
 		// Forja SX2 (compilation 37): the refresh asked of VideoOut (0: never changed), the frame of the switch to 50 Hz and
 		// whether its guard file is down, and when the reported rate is read next.

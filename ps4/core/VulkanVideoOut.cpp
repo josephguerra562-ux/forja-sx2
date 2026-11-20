@@ -507,7 +507,41 @@ bool PS4Port::VulkanVideoOut::PresentFromGpu()
 
 // 154 in the app, "Flip en su propio hilo": the GS thread's side. The flips go out in the order they were queued; a full queue (it
 // never is: Acquire waits for the image two frames back to be on screen) waits for room, and the meter counts it.
-bool PS4Port::VulkanVideoOut::QueueFlip(std::uint32_t buffer, std::int64_t arg)
+bool PS4Port::VulkanVideoOut::PresentAfterFence(VkFence fence)
+{
+	if (!m_acquired || m_buffer_set < 0 || fence == VK_NULL_HANDLE || !m_dispatch.WaitForFences)
+		return false;
+	if (m_flip_refused.load(std::memory_order_acquire))
+	{
+		DrainFlipThread();
+		return false;
+	}
+	const std::int64_t arg = static_cast<std::int64_t>(m_frame_count + 1);
+	if (!QueueFlip(m_current_index, arg, fence))
+		return false;
+	if (m_gpu_flip_count++ < 3)
+		Log("VideoOut: flip %llu: buffer=%u (from the CPU in its own thread, once the frame is done)", static_cast<unsigned long long>(arg),
+			m_current_index);
+	m_frame_count++;
+	m_flip_pending = true;
+	m_acquired = false;
+	m_gpu_flips = true; // Acquire and FreeImages wait by flipArg: a flip still in the queue is not in the system's pending count yet
+	return true;
+}
+
+void PS4Port::VulkanVideoOut::WaitFlipsUsingFence(VkFence fence)
+{
+	if (fence == VK_NULL_HANDLE)
+		return;
+	std::unique_lock lock(m_flip_mutex);
+	bool used = m_flip_busy && m_flip_busy_fence == fence;
+	for (std::uint32_t i = m_flip_head; !used && i != m_flip_tail; i++)
+		used = m_flip_jobs[i % FlipQueueSize].fence == fence;
+	if (used)
+		m_flip_idle.wait(lock, [this] { return m_flip_head == m_flip_tail && !m_flip_busy; });
+}
+
+bool PS4Port::VulkanVideoOut::QueueFlip(std::uint32_t buffer, std::int64_t arg, VkFence fence)
 {
 	std::unique_lock lock(m_flip_mutex);
 	if (!m_flip_thread.joinable())
@@ -531,7 +565,7 @@ bool PS4Port::VulkanVideoOut::QueueFlip(std::uint32_t buffer, std::int64_t arg)
 		ForjaFlipThread::room_waits.fetch_add(1, std::memory_order_relaxed);
 		ForjaFlipThread::room_wait_ns.fetch_add(ForjaFlipNowNs() - t0, std::memory_order_relaxed);
 	}
-	m_flip_jobs[m_flip_tail % FlipQueueSize] = FlipJob{buffer, arg};
+	m_flip_jobs[m_flip_tail % FlipQueueSize] = FlipJob{buffer, arg, fence};
 	m_flip_tail++;
 	const std::uint32_t depth = m_flip_tail - m_flip_head;
 	std::uint32_t old = ForjaFlipThread::queue_max.load(std::memory_order_relaxed);
@@ -557,22 +591,43 @@ void PS4Port::VulkanVideoOut::FlipThreadMain()
 			break; // stop, and nothing left to flip
 		const FlipJob job = m_flip_jobs[m_flip_head % FlipQueueSize];
 		m_flip_busy = true;
+		m_flip_busy_fence = job.fence;
 		lock.unlock();
 		if (!m_flip_refused.load(std::memory_order_acquire))
 		{
 			const std::uint64_t t0 = ForjaFlipNowNs();
-			const int result = ac_ps4_submit_flip(m_handle, job.buffer, ORBIS_VIDEO_OUT_FLIP_VSYNC, job.arg);
-			ForjaFlipThread::Record(ForjaFlipNowNs() - t0, true);
-			if (result != 0)
+			if (job.fence != VK_NULL_HANDLE)
 			{
-				Log("VideoOut: GPU-side flip refused in its own thread: %#x buffer=%u frame=%lld; the CPU flip from the next frame", result,
-					job.buffer, static_cast<long long>(job.arg));
-				m_flip_refused.store(true, std::memory_order_release);
+				// 155 in the app, "Flip sin candado": the frame's fence (the bridge only takes its lock for an instant at each poll), then
+				// the CPU flip (no lock of the bridge). 2 s is a GPU hang: no flip, and the session goes back to the GS thread's flips.
+				const VkResult wait = m_dispatch.WaitForFences(m_device, 1, &job.fence, VK_TRUE, 2000000000ull);
+				const int result = wait == VK_SUCCESS ?
+				                       sceVideoOutSubmitFlip(m_handle, static_cast<int>(job.buffer), ORBIS_VIDEO_OUT_FLIP_VSYNC, job.arg) :
+				                       -1;
+				ForjaFlipThread::Record(ForjaFlipNowNs() - t0, true);
+				if (result != 0)
+				{
+					Log("VideoOut: flip from its own thread failed: fence %d, flip %#x, buffer=%u frame=%lld; the GS thread flips from the next "
+						"frame", static_cast<int>(wait), result, job.buffer, static_cast<long long>(job.arg));
+					m_flip_refused.store(true, std::memory_order_release);
+				}
+			}
+			else
+			{
+				const int result = ac_ps4_submit_flip(m_handle, job.buffer, ORBIS_VIDEO_OUT_FLIP_VSYNC, job.arg);
+				ForjaFlipThread::Record(ForjaFlipNowNs() - t0, true);
+				if (result != 0)
+				{
+					Log("VideoOut: GPU-side flip refused in its own thread: %#x buffer=%u frame=%lld; the CPU flip from the next frame", result,
+						job.buffer, static_cast<long long>(job.arg));
+					m_flip_refused.store(true, std::memory_order_release);
+				}
 			}
 		}
 		lock.lock();
 		m_flip_head++;
 		m_flip_busy = false;
+		m_flip_busy_fence = VK_NULL_HANDLE;
 		m_flip_idle.notify_all();
 	}
 }

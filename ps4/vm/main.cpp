@@ -3398,13 +3398,18 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	{
 		// 154 in the app, "Flip en su propio hilo" ([Forja] FlipEnHilo; /data/ForjaSX2/vm-flip-hilo turns it on for any game and
 		// vm-flip-sin-hilo off): ps4/core/ForjaFlipThread.h. The VideoOut lives across games, so this only says which way each flip goes.
+		// 155 in the app: 2, "Flip sin candado" (the flip thread waits for the frame's fence and flips from the CPU); vm-flip-hilo now
+		// means 2 for any game, vm-flip-hilo-gpu the 154's way (1).
 		const bool force_on = access("/data/ForjaSX2/vm-flip-hilo", F_OK) == 0;
+		const bool force_gpu = access("/data/ForjaSX2/vm-flip-hilo-gpu", F_OK) == 0;
 		const bool force_off = access("/data/ForjaSX2/vm-flip-sin-hilo", F_OK) == 0;
-		const bool on = !force_off && (force_on || s_profile.flip_thread == 1);
-		ForjaFlipThread::wanted.store(on ? 1 : 0, std::memory_order_relaxed);
-		if (on || force_on || force_off || s_profile.flip_thread_origin != ForjaGameProfile::Origin::Global)
-			ProbeLog("GS flip in its own thread (154 in the app): %s (%s)%s%s\n", on ? "on" : "off",
-				ProfileOriginName(s_profile.flip_thread_origin), force_on ? ", vm-flip-hilo" : "", force_off ? ", vm-flip-sin-hilo" : "");
+		const int mode = force_off ? 0 : force_gpu ? 1 : force_on ? 2 : std::max(0, s_profile.flip_thread);
+		ForjaFlipThread::wanted.store(mode, std::memory_order_relaxed);
+		if (mode || force_on || force_gpu || force_off || s_profile.flip_thread_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("GS flip in its own thread (154-155 in the app): %s (%s)%s%s%s\n",
+				mode == 2 ? "on, from the CPU once the frame is done (155)" : mode == 1 ? "on, GPU-side (154)" : "off",
+				ProfileOriginName(s_profile.flip_thread_origin), force_on ? ", vm-flip-hilo" : "", force_gpu ? ", vm-flip-hilo-gpu" : "",
+				force_off ? ", vm-flip-sin-hilo" : "");
 	}
 	{
 		// 151 in the app, "VIF1 en menos turnos" ([Forja] VifMenosTurnos, cycles; pcsx2/R5900.cpp, CPU_INT). With it, the PS5 port's simple

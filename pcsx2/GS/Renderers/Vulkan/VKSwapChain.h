@@ -87,6 +87,10 @@ public:
 	bool PresentCurrentImage();
 	// Forja SX2: PS4 VideoOut, GPU-side flip queued behind the submitted frame (VulkanVideoOut::PresentFromGpu).
 	bool PresentCurrentImageFromGpu();
+	// Forja SX2 (155 in the app, "Flip sin candado"): the flip thread waits for `fence` and flips from the CPU (VulkanVideoOut).
+	bool PresentCurrentImageAfterFence(VkFence fence);
+	// Forja SX2 (155 in the app): the flips that wait for `fence` go out before it is reset.
+	void WaitVideoOutFlipsUsing(VkFence fence);
 	// Forja SX2 (compilation 41): VideoOut images free now, without a wait (VulkanVideoOut::FreeImages); 0 off the PS4.
 	u32 FreeVideoOutImages();
 	void ReleaseCurrentImage();
