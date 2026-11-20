@@ -219,7 +219,7 @@ u64 g_forja_vif1_fused = 0;
 // Set by vif1Interrupt (Vif1_Dma.cpp) only around the CPU_INT of a step that moved data on. Never around a wait (for PATH2/3, a FLUSH,
 // the VU, a stall): a wait joined into the scan would come straight back with nothing changed, and the scan would never end.
 bool g_forja_vif1_step = false;
-static u32 s_forja_vif1_run = 0; // joined in a row: past 4096 one step goes back to the scheduler (a safety net, never in a normal chain)
+static u32 s_forja_vif1_run = 0; // joined in a row: past 4096 one step goes back to the scheduler (a safety net)
 
 // sets a branch test to occur some time from an arbitrary starting point.
 __fi void cpuSetNextEvent( u64 startCycle, s32 delta )
@@ -669,12 +669,20 @@ __fi void CPU_INT( EE_EventType n, s32 ecycle)
 	// as PCSX2 already does under 4. Only from inside the scan, and only a step that moved data (g_forja_vif1_step), never a wait or the
 	// EE starting a transfer.
 	bool forja_join = ecycle < 4;
-	if (n == DMAC_VIF1 && !forja_join)
+	if (n == DMAC_VIF1 && !forja_join && g_forja_vif1_step && ecycle < g_forja_vif1_fuse.load(std::memory_order_relaxed))
 	{
-		forja_join = g_forja_vif1_step && ecycle < g_forja_vif1_fuse.load(std::memory_order_relaxed) && ++s_forja_vif1_run <= 4096;
-		if (!forja_join)
-			s_forja_vif1_run = 0;
+		// And only while that event test would have had nothing else to do: the counters (vsync, hblank, the EE's timers) not due by the
+		// step's time, and the IOP not owed an event by then (the scan's end gives the IOP its time, as each event test does). So a
+		// vsync or an IOP event is never later than it would be without this (the VIF1 cycle skip's jumps included: past a counter's
+		// time the next step goes back to the scheduler and that event test runs it).
+		const u64 due = cpuRegs.cycle + static_cast<u64>(ecycle);
+		const double iop_left = static_cast<double>(static_cast<s64>(psxRegs.iopNextEventCycle - psxRegs.cycle)) * s_orbis_ratio;
+		forja_join = static_cast<s64>(due - nextStartCounter) < nextDeltaCounter &&
+					 static_cast<double>(static_cast<s64>(EEsCycle) + static_cast<s64>(due - EEoCycle)) < iop_left &&
+					 ++s_forja_vif1_run <= 4096;
 	}
+	if (n == DMAC_VIF1 && !forja_join)
+		s_forja_vif1_run = 0;
 	if (forja_join && !(cpuRegs.dmastall & (1 << n)) && eeRunInterruptScan != INT_NOT_RUNNING)
 	{
 		if (ecycle >= 4)
