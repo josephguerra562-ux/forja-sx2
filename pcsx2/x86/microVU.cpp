@@ -66,7 +66,7 @@ void mVUreset(microVU& mVU, bool resetReserve)
 
 	mVU.regs().nextBlockCycles = 0;
 	memset(&mVU.prog.lpState, 0, sizeof(mVU.prog.lpState));
-#ifdef ORBIS_VULKAN
+#if defined(ORBIS_VULKAN) || defined(PCSX2_PS4) // 152 in the app: the PS4 too
 	mVU.entryCacheGeneration++; // PS5 port (vk-285-11): mVUexecute's lookup cache
 #endif
 	mVU.profiler.Reset(mVU.index);
@@ -102,7 +102,7 @@ void mVUreset(microVU& mVU, bool resetReserve)
 // Free Allocated Resources
 void mVUclose(microVU& mVU)
 {
-#ifdef ORBIS_VULKAN
+#if defined(ORBIS_VULKAN) || defined(PCSX2_PS4) // 152 in the app: the PS4 too
 	mVU.entryCacheGeneration++; // PS5 port (vk-285-11): mVUexecute's lookup cache
 #endif
 	// Delete Programs and Block Managers
@@ -121,7 +121,7 @@ void mVUclose(microVU& mVU)
 // Clears Block Data in specified range
 __fi void mVUclear(mV, u32 addr, u32 size)
 {
-#ifdef ORBIS_VULKAN
+#if defined(ORBIS_VULKAN) || defined(PCSX2_PS4) // 152 in the app: the PS4 too
 	mVU.entryCacheGeneration++; // PS5 port (vk-285-11): mVUexecute's lookup cache
 #endif
 	if (!mVU.prog.cleared)
@@ -558,7 +558,12 @@ void OrbisVU1Dump()
 	put(VU1.Mem, 0x4000);
 
 	const u8* const base = mVU.cache;
+#if defined(PCSX2_PS4)
+	// 152 in the app: at most 16 MiB of the code on the PS4 (its flexible memory); the blocks past it keep their entry addresses.
+	const u64 used = (mVU.prog.x86ptr && mVU.prog.x86ptr > base) ? std::min<u64>(static_cast<u64>(mVU.prog.x86ptr - base), 16u << 20) : 0;
+#else
 	const u64 used = (mVU.prog.x86ptr && mVU.prog.x86ptr > base) ? static_cast<u64>(mVU.prog.x86ptr - base) : 0;
+#endif
 	put64(reinterpret_cast<u64>(base));
 	put64(used);
 	put(base, used);
@@ -608,7 +613,11 @@ void OrbisVU1Dump()
 	const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
 
 	char path[96];
+#if defined(PCSX2_PS4)
+	std::snprintf(path, sizeof(path), "/data/ForjaSX2/logs/vu1dump-%d.bin", n); // 152 in the app: Forja's logs (vm-vu1-mapa, main.cpp)
+#else
 	std::snprintf(path, sizeof(path), "/data/PCSX2/logs/vu1dump-%d.bin", n);
+#endif
 	printf("[vudump] %d: %u programs, %u blocks, code %p + %#llx, %zu bytes, built in %.1f ms on the MTVU thread -> %s\n", n,
 		nprog, nblocks, static_cast<const void*>(base), static_cast<unsigned long long>(used), out.size(), ms, path);
 	fflush(stdout);

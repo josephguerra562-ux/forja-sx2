@@ -390,6 +390,12 @@ static bool s_skip_fast_running = false; // compilation 131: "Salto de ciclo: Al
 extern std::atomic<int> g_forja_skip16; // pcsx2/MTVU.cpp (compilation 135)
 extern std::atomic<s32> g_forja_vif1_fuse; // pcsx2/R5900.cpp (151 in the app, "VIF1 en menos turnos")
 extern u64 g_forja_vif1_fused;
+extern u64 g_forja_vif1_not_joined[5]; // pcsx2/R5900.cpp (152 in the app)
+extern std::atomic<bool> g_forja_vu1_ahorro; // pcsx2/MTVU.cpp (152 in the app, "Ahorro del VU1")
+extern std::atomic<int> g_orbis_vu1_dump_request; // pcsx2/MTVU.cpp: the VU thread runs OrbisVU1Dump (microVU.cpp) between two programs
+static bool s_vu1_map_wanted = false; // 152 in the app: /data/ForjaSX2/vm-vu1-mapa at the game's start
+static unsigned s_vu1_map_beats = 0;
+extern u64 g_forja_mpg_total, g_forja_mpg_same;
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
 extern std::atomic<unsigned> g_forja_vsync_load;
 extern std::atomic<int> g_forja_deinterlace_factory; // compilation 137: pcsx2/VMManager.cpp, the game's factory deinterlace mode
@@ -3385,6 +3391,22 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				cycles > 4 ? "on" : "off", cycles > 4 ? cycles : 4, ProfileOriginName(s_profile.vif1_fuse_origin),
 				exact ? ", vm-vif-turnos-exactos" : "");
 	}
+	{
+		// 152 in the app, "Ahorro del VU1" ([Forja] VU1Ahorro; /data/ForjaSX2/vm-vu1-ahorro-no turns it off). Set before the game's
+		// first VU1 program: the VU thread reads it at every run.
+		// The VU1's map (vm-vu1-mapa): its programs, their blocks and their x86 entries, after ~60 and ~120 s of play, to tell which VU1
+		// microcode the samples' JIT addresses are (OrbisVU1Dump, the PS5 port's vk-285-74).
+		s_vu1_map_wanted = access("/data/ForjaSX2/vm-vu1-mapa", F_OK) == 0;
+		s_vu1_map_beats = 0;
+		if (s_vu1_map_wanted)
+			ProbeLog("VU1 map (152 in the app): on (vm-vu1-mapa), dumps at ~60 and ~120 s of play to logs/vu1dump-0.bin and -1.bin\n");
+		const bool no = access("/data/ForjaSX2/vm-vu1-ahorro-no", F_OK) == 0;
+		const bool on = !no && s_profile.vu1_ahorro == 1;
+		g_forja_vu1_ahorro.store(on, std::memory_order_relaxed);
+		if (on || no || s_profile.vu1_ahorro_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("VU1 savings (152 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.vu1_ahorro_origin),
+				no ? ", vm-vu1-ahorro-no" : "");
+	}
 	// Compilation 128: on unless the profile says 0 (measured on 2026-11-08: Bully's effect hitches 6 -> 1, Shadow's 14 -> 2).
 	s_effects_ahead_game = s_profile.effects_ahead != 0; // compilation 127
 	g_forja_effects_ahead.store(s_effects_ahead_game, std::memory_order_relaxed);
@@ -5926,12 +5948,37 @@ void VMHostPoll()
 		}
 		{
 			// 151 in the app, "VIF1 en menos turnos": the VIF1 steps joined into the scan (EE thread, like this heartbeat).
-			static u64 s_last_vif1_fused = 0;
+			static u64 s_last_vif1_fused = 0, s_last_not[5] = {};
 			const s32 limit = g_forja_vif1_fuse.load(std::memory_order_relaxed);
 			if (limit > 4 && interval > 0.0 && vm_state == VMState::Running)
-				ProbeLog("VIF1 in fewer turns: steps_joined_per_second=%.0f (under %d cycles)\n",
-					static_cast<double>(g_forja_vif1_fused - s_last_vif1_fused) / interval, limit);
+			{
+				double why[5];
+				for (int i = 0; i < 5; i++)
+					why[i] = static_cast<double>(g_forja_vif1_not_joined[i] - s_last_not[i]) / interval;
+				ProbeLog("VIF1 in fewer turns: steps_joined_per_second=%.0f (under %d cycles); not joined per second: over_limit=%.0f "
+						 "counter_due=%.0f iop_owed=%.0f run_cap=%.0f waits=%.0f\n",
+					static_cast<double>(g_forja_vif1_fused - s_last_vif1_fused) / interval, limit, why[0], why[1], why[2], why[3], why[4]);
+			}
 			s_last_vif1_fused = g_forja_vif1_fused;
+			std::copy(std::begin(g_forja_vif1_not_joined), std::end(g_forja_vif1_not_joined), s_last_not);
+			// 152 in the app, the VU1's map: a dump at the 12th and the 24th heartbeat of play (~60 and ~120 s).
+			if (s_vu1_map_wanted && vm_state == VMState::Running && PerformanceMetrics::GetInternalFPS() >= 5.0f)
+			{
+				s_vu1_map_beats++;
+				if (s_vu1_map_beats == 12 || s_vu1_map_beats == 24)
+				{
+					g_orbis_vu1_dump_request.store(1, std::memory_order_relaxed);
+					ProbeLog("VU1 map: dump requested after %u heartbeats of play\n", s_vu1_map_beats);
+				}
+			}
+			// 152 in the app, "Ahorro del VU1": the microcode uploads and the ones kept (their bytes already there).
+			static u64 s_last_mpg = 0, s_last_mpg_same = 0;
+			const u64 mpg = g_forja_mpg_total, mpg_same = g_forja_mpg_same; // VU thread's counters (read whole, 64-bit)
+			if (g_forja_vu1_ahorro.load(std::memory_order_relaxed) && interval > 0.0 && vm_state == VMState::Running)
+				ProbeLog("VU1 savings: microcode_uploads_per_second=%.0f kept_same=%.0f\n", static_cast<double>(mpg - s_last_mpg) / interval,
+					static_cast<double>(mpg_same - s_last_mpg_same) / interval);
+			s_last_mpg = mpg;
+			s_last_mpg_same = mpg_same;
 		}
 		if (OrbisEEDiag::on.load(std::memory_order_relaxed) && interval > 0.0)
 		{

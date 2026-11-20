@@ -31,6 +31,11 @@ std::atomic<int> g_orbis_vu_waiting{0}; // vk-285-29: the VU1 profiler skips the
 // request the GS thread raises when /data/PCSX2/flags/vudump appears (served here, between
 // programs, where the recompiler's lists can't change under it; x86/microVU.cpp).
 std::atomic<u64> g_orbis_vu1_cycles{0}, g_orbis_vu1_runs{0};
+// 152 in the app, "Ahorro del VU1" ([Forja] VU1Ahorro, set at the game's start by ps4/vm/main.cpp): the microVU runs of the PS5 port
+// (microVU_Execute.inl) and, in ExecuteRingBuffer, a microcode upload with the bytes already there leaves the translated programs alone. The
+// uploads and the ones kept (VU thread), for the heartbeat.
+std::atomic<bool> g_forja_vu1_ahorro{false};
+u64 g_forja_mpg_total = 0, g_forja_mpg_same = 0;
 
 #if defined(PCSX2_PS4_VM_BOOT)
 extern void ProbeLog(const char* format, ...);
@@ -531,6 +536,17 @@ void VU_Thread::ExecuteRingBuffer()
 					u32 vu_micro_addr = Read();
 					u32 size = Read();
 					OrbisHist(4, vu_micro_addr, size, 0, 0); // vk-285-80
+					// 152 in the app ("Ahorro del VU1"): God of War II uploads microcode ~3,400 times a second (vm-eediag, 2026-11-20). Each
+					// Clear empties the quick table and the pipeline state, and the next runs search the programs again (bcmp, mVUcompileJIT).
+					// Bytes equal to what is there change nothing: the translated programs stay right, as if no upload had come.
+					g_forja_mpg_total++;
+					if (g_forja_vu1_ahorro.load(std::memory_order_relaxed) && size &&
+						std::memcmp(&VU1.Micro[vu_micro_addr], &buffer[m_read_pos], size) == 0)
+					{
+						m_read_pos += size_u32(size);
+						g_forja_mpg_same++;
+						break;
+					}
 					CpuVU1->Clear(vu_micro_addr, size);
 					Read(&VU1.Micro[vu_micro_addr], size);
 					break;

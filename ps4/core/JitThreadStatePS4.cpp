@@ -24,6 +24,13 @@ namespace
 
 OrbisJitThreadState& GetOrbisJitThreadState()
 {
+	// 152 in the app: the thread's state, once found, from a thread_local of this file. Every x86Ptr, j8Ptr and j32Ptr of the emitter
+	// came here (each instruction a recompiler writes) and paid a pthread_once and a pthread_getspecific; God of War II's VU1 thread
+	// paid them at every microprogram start (~76,000 a second: GetOrbisJitThreadState, __wrap_pthread_once and xSetPtr in its samples).
+	// A plain pointer: no TLS initialiser, nothing shared between files (the CI's "hilos"). The key below still owns and frees it.
+	static thread_local OrbisJitThreadState* t_state = nullptr;
+	if (t_state) [[likely]]
+		return *t_state;
 	pxAssertRel(pthread_once(&s_key_once, CreateKey) == 0, "Cannot initialize PS4 JIT TLS key");
 	auto* state = static_cast<OrbisJitThreadState*>(pthread_getspecific(s_state_key));
 	if (!state)
@@ -38,5 +45,6 @@ OrbisJitThreadState& GetOrbisJitThreadState()
 		if (length > 0 && length < static_cast<int>(sizeof(message)))
 			write(STDOUT_FILENO, message, static_cast<size_t>(length));
 	}
+	t_state = state;
 	return *state;
 }

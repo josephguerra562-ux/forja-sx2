@@ -220,6 +220,9 @@ u64 g_forja_vif1_fused = 0;
 // the VU, a stall): a wait joined into the scan would come straight back with nothing changed, and the scan would never end.
 bool g_forja_vif1_step = false;
 static u32 s_forja_vif1_run = 0; // joined in a row: past 4096 one step goes back to the scheduler (a safety net)
+// 152 in the app: the VIF1 steps of 4 cycles or more not joined, by why: 0 over the limit, 1 a counter due, 2 the IOP owed an event,
+// 3 the 4096 in a row, 4 a wait (not a step that moved data). Only with the limit on (EE thread, for the heartbeat).
+u64 g_forja_vif1_not_joined[5] = {};
 
 // sets a branch test to occur some time from an arbitrary starting point.
 __fi void cpuSetNextEvent( u64 startCycle, s32 delta )
@@ -669,7 +672,10 @@ __fi void CPU_INT( EE_EventType n, s32 ecycle)
 	// as PCSX2 already does under 4. Only from inside the scan, and only a step that moved data (g_forja_vif1_step), never a wait or the
 	// EE starting a transfer.
 	bool forja_join = ecycle < 4;
-	if (n == DMAC_VIF1 && !forja_join && g_forja_vif1_step && ecycle < g_forja_vif1_fuse.load(std::memory_order_relaxed))
+	if (n == DMAC_VIF1 && !forja_join && g_forja_vif1_fuse.load(std::memory_order_relaxed) > 4 &&
+		(!g_forja_vif1_step || ecycle >= g_forja_vif1_fuse.load(std::memory_order_relaxed)))
+		g_forja_vif1_not_joined[g_forja_vif1_step ? 0 : 4]++; // 152 in the app
+	else if (n == DMAC_VIF1 && !forja_join && g_forja_vif1_step && ecycle < g_forja_vif1_fuse.load(std::memory_order_relaxed))
 	{
 		// And only while that event test would have had nothing else to do: the counters (vsync, hblank, the EE's timers) not due by the
 		// step's time, and the IOP not owed an event by then (the scan's end gives the IOP its time, as each event test does). So a
@@ -677,9 +683,11 @@ __fi void CPU_INT( EE_EventType n, s32 ecycle)
 		// time the next step goes back to the scheduler and that event test runs it).
 		const u64 due = cpuRegs.cycle + static_cast<u64>(ecycle);
 		const double iop_left = static_cast<double>(static_cast<s64>(psxRegs.iopNextEventCycle - psxRegs.cycle)) * s_orbis_ratio;
-		forja_join = static_cast<s64>(due - nextStartCounter) < nextDeltaCounter &&
-					 static_cast<double>(static_cast<s64>(EEsCycle) + static_cast<s64>(due - EEoCycle)) < iop_left &&
-					 ++s_forja_vif1_run <= 4096;
+		const bool counters_ok = static_cast<s64>(due - nextStartCounter) < nextDeltaCounter;
+		const bool iop_ok = counters_ok && static_cast<double>(static_cast<s64>(EEsCycle) + static_cast<s64>(due - EEoCycle)) < iop_left;
+		forja_join = iop_ok && ++s_forja_vif1_run <= 4096;
+		if (!forja_join)
+			g_forja_vif1_not_joined[!counters_ok ? 1 : !iop_ok ? 2 : 3]++; // 152 in the app
 	}
 	if (n == DMAC_VIF1 && !forja_join)
 		s_forja_vif1_run = 0;

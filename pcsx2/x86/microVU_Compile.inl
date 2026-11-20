@@ -1040,9 +1040,11 @@ perf_and_return:
 // only emitted here, so the outermost mVUcompile (it recurses through branch targets) now sets them
 // from mVU.prog.x86ptr and saves the end back; runs that compile nothing touch no TLS. Needs proper
 // testing beyond the PS5 build.
+// 152 in the app: on the PS4 too, for VU0 and VU1. With the old per-run set and save still on (VU0, and VU1 without [Forja] VU1Ahorro)
+// it sets the same pointers mVUexecute set and saves the same end mVUcleanUp saves: the two agree.
 void* mVUcompile(microVU& mVU, u32 startPC, uptr pState)
 {
-#ifdef ORBIS_VULKAN
+#if defined(ORBIS_VULKAN) || defined(PCSX2_PS4) // 152 in the app: the PS4 too
 	struct EmitterScope
 	{
 		microVU& mVU;

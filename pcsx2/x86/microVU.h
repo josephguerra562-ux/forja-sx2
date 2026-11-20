@@ -122,7 +122,7 @@ struct microVU
 	u32 totalCycles;  // Total Cycles that mVU is expected to run for
 	s32 cycles;       // Cycles Counter
 	u32 compileDepth; // PS5 port: mVUcompile nesting; the outermost one sets and saves the emitter pointers
-#ifdef ORBIS_VULKAN
+#if defined(ORBIS_VULKAN) || defined(PCSX2_PS4) // 152 in the app: the PS4 too
 	// PS5 port (vk-285-11): mVUexecute's recent program/block lookups (microVU_Execute.inl). A lookup
 	// walks the quick table, the program's block array and the block manager's variants: cold cache
 	// lines on a console whose memory latency is high, ~9% of the EE thread at a fight's peak.
@@ -301,7 +301,7 @@ public:
 };
 
 // microVU rec structs
-#ifdef ORBIS_VULKAN // PS5 port: the entry cache is cache-line aligned (vk-285-11)
+#if defined(ORBIS_VULKAN) || defined(PCSX2_PS4) // 152 in the app: the PS4 too (PS5 port: the entry cache is cache-line aligned, vk-285-11)
 alignas(64) microVU microVU0;
 alignas(64) microVU microVU1;
 #else

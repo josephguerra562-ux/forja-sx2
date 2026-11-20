@@ -83,6 +83,11 @@ namespace ForjaGameProfile
 		// unless the game's profile sets it: God of War II, measured.
 		int vif1_fuse = -1;
 		Origin vif1_fuse_origin = Origin::Global;
+		// 152 in the app: [Forja] VU1Ahorro, "Ahorro del VU1" (pcsx2/MTVU.cpp, microVU_Execute.inl): the VU1's runs without the emitter's
+		// pointers and with the PS5 port's lookup cache, and a microcode upload that changes no byte leaves the programs alone. Off
+		// unless the game's profile turns it on: God of War II.
+		int vu1_ahorro = -1;
+		Origin vu1_ahorro_origin = Origin::Global;
 		// [Forja] Huellas (compilation 55): the draw fingerprint rules turned on for the game, their huellas.ini ids with commas
 		// (ps4/vm/main.cpp, LoadRules; pcsx2/ForjaGsRules.h).
 		std::string rules_on;
@@ -299,6 +304,7 @@ namespace ForjaGameProfile
 		read_int("SaltarCuadrosOcultaPantalla", &v.gs_skip_hide_shown, &v.gs_skip_hide_shown_origin); // compilation 146
 		read_int("SaltoCuidaCuadros", &v.skip_keeps_frames, &v.skip_keeps_frames_origin); // 146 in the app
 		read_int("VifMenosTurnos", &v.vif1_fuse, &v.vif1_fuse_origin); // 151 in the app
+		read_int("VU1Ahorro", &v.vu1_ahorro, &v.vu1_ahorro_origin); // 152 in the app
 		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);
 		read_int("SaltoAprendido", &v.learned_skip16, &v.learned_skip16_origin); // compilation 139
 		read_int("GrabarEnOtroHilo", &v.draw_thread, &v.draw_thread_origin);

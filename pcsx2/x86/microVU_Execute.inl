@@ -6,6 +6,12 @@
 #include "Config.h"
 #include "GS/MultiISA.h"
 
+#include <atomic>
+
+// 152 in the app, "Ahorro del VU1" ([Forja] VU1Ahorro; set at the game's start by ps4/vm/main.cpp, defined in pcsx2/MTVU.cpp): the VU1's
+// runs without the emitter's pointers (mVUcompile sets them when it emits) and with the PS5 port's lookup cache (vk-285-9, vk-285-11).
+extern std::atomic<bool> g_forja_vu1_ahorro;
+
 //------------------------------------------------------------------
 // Dispatcher Functions
 //------------------------------------------------------------------
@@ -328,7 +334,16 @@ _mVUt void* mVUexecute(u32 startPC, u32 cycles)
 	mVU.cycles = cycles;
 	mVU.totalCycles = cycles;
 
-#ifndef ORBIS_VULKAN // PS5 port: mVUcompile sets the emitter pointers when it emits (microVU_Compile.inl)
+#if defined(PCSX2_PS4) && !defined(ORBIS_VULKAN)
+	// 152 in the app: VU0 always, and VU1 without "Ahorro del VU1", as before (the pointers at every run, no lookup cache).
+	if (vuIndex == 0 || !g_forja_vu1_ahorro.load(std::memory_order_relaxed))
+	{
+		xSetTextPtr(mVU.textPtr());
+		xSetPtr(mVU.prog.x86ptr); // Set x86ptr to where last program left off
+		return mVUsearchProg<vuIndex>(startPC & vuLimit, (uptr)&mVU.prog.lpState);
+	}
+#endif
+#if !defined(ORBIS_VULKAN) && !defined(PCSX2_PS4)
 	xSetTextPtr(mVU.textPtr());
 	xSetPtr(mVU.prog.x86ptr); // Set x86ptr to where last program left off
 #else
@@ -376,6 +391,13 @@ _mVUt void mVUcleanUp()
 
 #ifdef ORBIS_VULKAN // PS5 port: mVUcompile saved the end of the emitted code in mVU.prog.x86ptr
 	if ((mVU.prog.x86ptr < mVU.prog.x86start) || (mVU.prog.x86ptr >= mVU.prog.x86end))
+#elif defined(PCSX2_PS4)
+	// 152 in the app: with "Ahorro del VU1" the VU1's run set no pointer; mVUcompile saved the end, if it emitted.
+	const bool forja_saved = vuIndex == 1 && g_forja_vu1_ahorro.load(std::memory_order_relaxed);
+	if (!forja_saved)
+		mVU.prog.x86ptr = x86Ptr;
+	if (forja_saved ? ((mVU.prog.x86ptr < mVU.prog.x86start) || (mVU.prog.x86ptr >= mVU.prog.x86end)) :
+					  ((xGetPtr() < mVU.prog.x86start) || (xGetPtr() >= mVU.prog.x86end)))
 #else
 	mVU.prog.x86ptr = x86Ptr;
 
