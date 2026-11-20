@@ -82,6 +82,10 @@ namespace ForjaGameProfile
 		// ForjaSkipTecho). -1 (or 48) none. Off unless the profile says.
 		int skip_ceiling16 = -1;
 		Origin skip_ceiling16_origin = Origin::Global;
+		// 154 in the app: [Forja] FlipEnHilo, "Flip en su propio hilo" (ps4/core/ForjaFlipThread.h): 1 the GPU-side flip from a thread
+		// of its own instead of the GS thread. Off unless the profile says.
+		int flip_thread = -1;
+		Origin flip_thread_origin = Origin::Global;
 		// 151 in the app: [Forja] VifMenosTurnos, "VIF1 en menos turnos" (pcsx2/R5900.cpp, CPU_INT): the VIF1 DMA's next step, due in fewer
 		// cycles than this, runs in the same pass of the event scan instead of a new event test (PCSX2 does it under 4 cycles). Off (the 4)
 		// unless the game's profile sets it: God of War II, measured.
@@ -312,6 +316,7 @@ namespace ForjaGameProfile
 		read_int("SaltarCuadrosOcultaPantalla", &v.gs_skip_hide_shown, &v.gs_skip_hide_shown_origin); // compilation 146
 		read_int("SaltoCuidaCuadros", &v.skip_keeps_frames, &v.skip_keeps_frames_origin); // 146 in the app
 		read_int("SaltoTecho", &v.skip_ceiling16, &v.skip_ceiling16_origin); // 154 in the app
+		read_int("FlipEnHilo", &v.flip_thread, &v.flip_thread_origin); // 154 in the app
 		read_int("VifMenosTurnos", &v.vif1_fuse, &v.vif1_fuse_origin); // 151 in the app
 		read_int("VU1Ahorro", &v.vu1_ahorro, &v.vu1_ahorro_origin); // 152 in the app
 		read_int("VU1BanderasMuertas", &v.vu1_dead_flags, &v.vu1_dead_flags_origin); // 153 in the app
@@ -452,6 +457,7 @@ namespace ForjaGameProfile
 		v.vif1_fuse = std::clamp(v.vif1_fuse, -1, 1024); // 151 in the app
 		v.vu1_dead_flags = std::clamp(v.vu1_dead_flags, -1, 3); // 153 in the app
 		v.skip_ceiling16 = std::clamp(v.skip_ceiling16, -1, 48); // 154 in the app
+		v.flip_thread = std::clamp(v.flip_thread, -1, 1); // 154 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"
 			v.crowd_every = v.crowd_every >= 32 ? 32 : v.crowd_every >= 16 ? 16 : v.crowd_every >= 8 ? 8 : v.crowd_every >= 4 ? 4 :
 			                v.crowd_every >= 2 ? 2 : 1; // compilation 88: 16 and 32

@@ -10,7 +10,10 @@
 
 #include <array>
 #include <atomic>
+#include <condition_variable>
 #include <cstdint>
+#include <mutex>
+#include <thread>
 
 namespace PS4Port
 {
@@ -62,6 +65,8 @@ namespace PS4Port
 		// Forja SX2: GPU-side flip, as DolphinPS4 presents (ac_ps4_submit_flip, in the Mesa of our SDK: RADV on Sony's GNM
 		// driver). The flip is queued behind the GPU work submitted so far, so the CPU waits neither for the GPU to finish
 		// the frame nor for vblank. Call it right after the frame's vkQueueSubmit. False if the driver refused it (logged).
+		// 154 in the app (ForjaFlipThread.h, "Flip en su propio hilo"): with ForjaFlipThread::wanted, the call goes to a thread of its
+		// own, since the driver's call returns only once the GPU reaches the flip; false then if an earlier flip there was refused.
 		bool PresentFromGpu();
 		void Release() { m_acquired = false; }
 		bool WaitForFlip(OrbisKernelUseconds timeout = 5000000);
@@ -87,6 +92,18 @@ namespace PS4Port
 		// Forja SX2 (compilation 37): g_output_hz_request against the rate set now, and what VideoOut reports.
 		void UpdateOutputRate();
 		bool ConfigureRefresh(std::uint64_t refresh_rate, const char* why);
+		// 154 in the app, "Flip en su propio hilo": the queue to the flip thread (in order), its loop, waiting until every queued flip
+		// went out (before a CPU flip, a wait for the flips, and teardown), and stopping it.
+		struct FlipJob
+		{
+			std::uint32_t buffer;
+			std::int64_t arg;
+		};
+		static constexpr std::uint32_t FlipQueueSize = 8;
+		bool QueueFlip(std::uint32_t buffer, std::int64_t arg);
+		void FlipThreadMain();
+		void DrainFlipThread();
+		void StopFlipThread();
 		void ReadOutputRate(bool log);
 		struct ImageMemory
 		{
@@ -115,6 +132,14 @@ namespace PS4Port
 		// flipArg instead (each flip's argument is its 1-based frame number).
 		bool m_gpu_flips = false;
 		std::uint64_t m_gpu_flip_count = 0;
+		// 154 in the app: the flip thread (started at its first flip) and its queue; head, tail, busy and stop under m_flip_mutex.
+		std::thread m_flip_thread;
+		std::mutex m_flip_mutex;
+		std::condition_variable m_flip_wake, m_flip_idle;
+		std::array<FlipJob, FlipQueueSize> m_flip_jobs{};
+		std::uint32_t m_flip_head = 0, m_flip_tail = 0;
+		bool m_flip_busy = false, m_flip_stop = false;
+		std::atomic<bool> m_flip_refused{false};
 		// Forja SX2 (compilation 37): the refresh asked of VideoOut (0: never changed), the frame of the switch to 50 Hz and
 		// whether its guard file is down, and when the reported rate is read next.
 		int m_output_hz = 0;

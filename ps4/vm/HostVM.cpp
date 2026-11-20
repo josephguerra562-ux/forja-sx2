@@ -23,6 +23,7 @@
 #include "Memory.h"
 #include "OrbisEEProf.h" // compilation 110: g_orbis_ee_waiting
 #include "ForjaGsPhase.h"
+#include "ps4/core/ForjaFlipThread.h" // 154 in the app
 #include <unistd.h>
 #include <string>
 extern double GetVerticalFrequency(); // pcsx2/GS.h (Counters.cpp): the PS2's refresh at the game's own rate (compilation 77)
@@ -490,6 +491,32 @@ void Host::OnPerformanceMetricsUpdated()
 					 "GS idle per_refresh_ms=%.2f of GS_ms=%.2f\n",
 				ms[0] + ms[1] + ms[2], ms[0], ms[1], ms[2], PerformanceMetrics::GetCPUThreadAverageTime(), ms[3],
 				PerformanceMetrics::GetGSThreadAverageTime());
+		// 154 in the app: the time inside the VideoOut flip call (ac_ps4_submit_flip: sceGnmSubmitAndFlipCommandBuffers, which returns
+		// once the GPU reaches the flip) per flip, in the GS thread (the old way) or in its own thread ("Flip en su propio hilo",
+		// ForjaFlipThread.h), and the GS thread's waits for room in that thread's queue.
+		{
+			static std::uint64_t last_flips = 0, last_ns = 0, last_threaded = 0, last_room = 0, last_room_ns = 0;
+			const std::uint64_t flips = ForjaFlipThread::flips.load(std::memory_order_relaxed);
+			const std::uint64_t flip_ns = ForjaFlipThread::ns.load(std::memory_order_relaxed);
+			const std::uint64_t threaded = ForjaFlipThread::threaded.load(std::memory_order_relaxed);
+			const std::uint64_t room = ForjaFlipThread::room_waits.load(std::memory_order_relaxed);
+			const std::uint64_t room_ns = ForjaFlipThread::room_wait_ns.load(std::memory_order_relaxed);
+			const std::uint64_t d_flips = flips - last_flips, d_ns = flip_ns - last_ns, d_threaded = threaded - last_threaded;
+			const std::uint64_t d_room = room - last_room, d_room_ns = room_ns - last_room_ns;
+			last_flips = flips;
+			last_ns = flip_ns;
+			last_threaded = threaded;
+			last_room = room;
+			last_room_ns = room_ns;
+			const std::uint64_t longest = ForjaFlipThread::max_ns.exchange(0, std::memory_order_relaxed);
+			const std::uint32_t queue_max = ForjaFlipThread::queue_max.exchange(0, std::memory_order_relaxed);
+			if (d_flips > 0 && profile_interval > 0.0)
+				ProbeLog("GS flip (154 in the app): %llu flips, %.2f ms each inside the flip call (longest %.2f), %llu in its own thread; "
+						 "the GS waited for room %llu times (%.2f ms); queue up to %u\n",
+					static_cast<unsigned long long>(d_flips), static_cast<double>(d_ns) / 1e6 / static_cast<double>(d_flips),
+					static_cast<double>(longest) / 1e6, static_cast<unsigned long long>(d_threaded), static_cast<unsigned long long>(d_room),
+					static_cast<double>(d_room_ns) / 1e6, queue_max);
+		}
 		// Compilation 100: which GIF path's buffer the EE waits on.
 		static unsigned long long last_path[3] = {};
 		double path_ms[3] = {};

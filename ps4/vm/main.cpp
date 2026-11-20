@@ -38,6 +38,7 @@
 #include <sys/stat.h>
 #include "CDVD/CDVD.h"
 #include "ps4/core/VulkanVideoOut.h"
+#include "ps4/core/ForjaFlipThread.h" // 154 in the app
 #include "ps4/core/ThreadCPUMetricsPS4.h"
 #include "ps4/core/ThreadAffinityPS4.h"
 #include "ps4/core/AudioStreamPS4.h"
@@ -3395,6 +3396,17 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				no_ceiling ? ", vm-salto-sin-techo" : "");
 	}
 	{
+		// 154 in the app, "Flip en su propio hilo" ([Forja] FlipEnHilo; /data/ForjaSX2/vm-flip-hilo turns it on for any game and
+		// vm-flip-sin-hilo off): ps4/core/ForjaFlipThread.h. The VideoOut lives across games, so this only says which way each flip goes.
+		const bool force_on = access("/data/ForjaSX2/vm-flip-hilo", F_OK) == 0;
+		const bool force_off = access("/data/ForjaSX2/vm-flip-sin-hilo", F_OK) == 0;
+		const bool on = !force_off && (force_on || s_profile.flip_thread == 1);
+		ForjaFlipThread::wanted.store(on ? 1 : 0, std::memory_order_relaxed);
+		if (on || force_on || force_off || s_profile.flip_thread_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("GS flip in its own thread (154 in the app): %s (%s)%s%s\n", on ? "on" : "off",
+				ProfileOriginName(s_profile.flip_thread_origin), force_on ? ", vm-flip-hilo" : "", force_off ? ", vm-flip-sin-hilo" : "");
+	}
+	{
 		// 151 in the app, "VIF1 en menos turnos" ([Forja] VifMenosTurnos, cycles; pcsx2/R5900.cpp, CPU_INT). With it, the PS5 port's simple
 		// VIF codes in the transfer loop too (STCYCL, STMOD, BASE, OFFSET, ITOP without the handler table's call: Vif_Transfer.cpp,
 		// vk-285-102; God of War II sends ~260,000 of them a second). /data/ForjaSX2/vm-vif-turnos-exactos turns both off.
@@ -4165,6 +4177,7 @@ static struct
 	// and the lifts.
 	u64 techo_lifted_until = 0;
 	unsigned techo_at = 0, techo_lifts = 0;
+	unsigned techo_lift_count = 0; // in this game (each lift twice as long; the sixth turns the ceiling off)
 } s_si;
 
 // 154 in the app: the most Al vuelo may go up to now (48: no ceiling, or lifted).
@@ -4437,10 +4450,22 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 		if (s_si.techo_lifted_until == 0 && s_si.n >= 50 && s_si.value >= s_skip_techo16 &&
 			s_si.lost_at_n[s_si.n % 64] - s_si.lost_at_n[(s_si.n - 50) % 64] >= 10)
 		{
-			s_si.techo_lifted_until = s_si.n + 500;
+			// Each lift in the same game twice as long (10, 20, 40, 80, 160 s); the sixth leaves the game without a ceiling: a place
+			// where the PS4 cannot hold it (at 2x before the flip in its own thread, the GS was full at ~34 frames) would otherwise
+			// come back to slow motion after every lift.
+			const unsigned k = std::min(s_si.techo_lift_count, 4u);
+			s_si.techo_lifted_until = s_si.n + (500ull << k);
 			s_si.techo_lifts++;
-			ProbeLog("Cycle skip ceiling (154 in the app): %d/16 lifted for 10 s (%llu of 50 vsyncs lost)\n", s_skip_techo16,
-				static_cast<unsigned long long>(s_si.lost_at_n[s_si.n % 64] - s_si.lost_at_n[(s_si.n - 50) % 64]));
+			s_si.techo_lift_count++;
+			ProbeLog("Cycle skip ceiling (154 in the app): %d/16 lifted for %u s (%llu of 50 vsyncs lost; lift %u of 6 in this game)\n",
+				s_skip_techo16, 10u << k, static_cast<unsigned long long>(s_si.lost_at_n[s_si.n % 64] - s_si.lost_at_n[(s_si.n - 50) % 64]),
+				s_si.techo_lift_count);
+			if (s_si.techo_lift_count >= 6)
+			{
+				ProbeLog("Cycle skip ceiling (154 in the app): off for the rest of this game (6 lifts)\n");
+				s_skip_techo16 = 48;
+				s_si.techo_lifted_until = 0;
+			}
 		}
 	}
 	if (s_si.ceiling < 48 && s_si.n >= s_si.ceiling_until)
@@ -4566,6 +4591,7 @@ static void UpdateCycleSkipFast(double elapsed)
 		// swung 0-48, and its first 8 s ran at 24 frames a second).
 		const int start_learned = learned >= 0 ? std::max(floor16, s_skip_keeps_frames ? std::min(learned, 32) : learned) : floor16;
 		s_si.techo_lifted_until = 0; // 154 in the app: and never over the ceiling
+		s_si.techo_lift_count = 0;
 		const int start = std::max(floor16, std::min(start_learned, s_skip_techo16));
 		ForjaSkipInstantSet(start);
 		std::fill(std::begin(s_si.time_at), std::end(s_si.time_at), 0u);

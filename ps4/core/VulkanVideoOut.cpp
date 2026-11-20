@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0+
 // (AI-assisted) Linear Vulkan images registered directly with the PS4 VideoOut service.
 #include "VulkanVideoOut.h"
+#include "ForjaFlipThread.h" // 154 in the app
+#include "ThreadAffinityPS4.h"
 
 #include <orbis/Sysmodule.h>
 #include <orbis/UserService.h>
 #include <orbis/VideoOut.h>
 #include <algorithm>
+#include <chrono>
 #include <cstdarg>
 #include <cstdio>
 #include <limits>
@@ -277,6 +280,7 @@ bool PS4Port::VulkanVideoOut::WaitPendingAtMost(std::uint32_t max_pending, Orbis
 
 bool PS4Port::VulkanVideoOut::WaitForFlip(OrbisKernelUseconds timeout)
 {
+	DrainFlipThread(); // 154 in the app: the queued GPU-side flips first
 	if (!WaitPendingAtMost(0, timeout))
 		return false;
 	m_flip_pending = false;
@@ -439,6 +443,7 @@ bool PS4Port::VulkanVideoOut::Present()
 {
 	if (!m_acquired || m_buffer_set < 0)
 		return false;
+	DrainFlipThread(); // 154 in the app: a CPU flip goes out after the GPU-side flips already queued
 	const int result = sceVideoOutSubmitFlip(m_handle, static_cast<int>(m_current_index), ORBIS_VIDEO_OUT_FLIP_VSYNC,
 		static_cast<std::int64_t>(m_frame_count + 1));
 	if (result != 0)
@@ -455,20 +460,44 @@ bool PS4Port::VulkanVideoOut::Present()
 	return true;
 }
 
+static std::uint64_t ForjaFlipNowNs()
+{
+	return static_cast<std::uint64_t>(
+		std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
 bool PS4Port::VulkanVideoOut::PresentFromGpu()
 {
 	if (!m_acquired || m_buffer_set < 0)
 		return false;
-	const int result = ac_ps4_submit_flip(m_handle, m_current_index, ORBIS_VIDEO_OUT_FLIP_VSYNC,
-		static_cast<std::int64_t>(m_frame_count + 1));
-	if (result != 0)
+	const std::int64_t arg = static_cast<std::int64_t>(m_frame_count + 1);
+	// 154 in the app, "Flip en su propio hilo" (ForjaFlipThread.h): the same call, from the flip thread.
+	const bool threaded = ForjaFlipThread::wanted.load(std::memory_order_relaxed) != 0;
+	if (m_flip_refused.load(std::memory_order_acquire))
 	{
-		Log("VideoOut: GPU-side flip refused: %#x buffer=%u frame=%llu", result, m_current_index,
-			static_cast<unsigned long long>(m_frame_count));
-		return false;
+		DrainFlipThread();
+		return false; // GSDeviceVK: this frame and the rest of the session with the CPU flip
 	}
-	if (m_gpu_flip_count++ < 3)
-		Log("VideoOut: GPU-side flip %llu: buffer=%u", static_cast<unsigned long long>(m_frame_count + 1), m_current_index);
+	if (threaded && QueueFlip(m_current_index, arg))
+	{
+		if (m_gpu_flip_count++ < 3)
+			Log("VideoOut: GPU-side flip %llu: buffer=%u (in its own thread)", static_cast<unsigned long long>(arg), m_current_index);
+	}
+	else
+	{
+		DrainFlipThread(); // the switch went off between games: the flips still queued go first
+		const std::uint64_t t0 = ForjaFlipNowNs();
+		const int result = ac_ps4_submit_flip(m_handle, m_current_index, ORBIS_VIDEO_OUT_FLIP_VSYNC, arg);
+		ForjaFlipThread::Record(ForjaFlipNowNs() - t0, false);
+		if (result != 0)
+		{
+			Log("VideoOut: GPU-side flip refused: %#x buffer=%u frame=%llu", result, m_current_index,
+				static_cast<unsigned long long>(m_frame_count));
+			return false;
+		}
+		if (m_gpu_flip_count++ < 3)
+			Log("VideoOut: GPU-side flip %llu: buffer=%u", static_cast<unsigned long long>(arg), m_current_index);
+	}
 	m_frame_count++;
 	m_flip_pending = true;
 	m_acquired = false;
@@ -476,8 +505,101 @@ bool PS4Port::VulkanVideoOut::PresentFromGpu()
 	return true;
 }
 
+// 154 in the app, "Flip en su propio hilo": the GS thread's side. The flips go out in the order they were queued; a full queue (it
+// never is: Acquire waits for the image two frames back to be on screen) waits for room, and the meter counts it.
+bool PS4Port::VulkanVideoOut::QueueFlip(std::uint32_t buffer, std::int64_t arg)
+{
+	std::unique_lock lock(m_flip_mutex);
+	if (!m_flip_thread.joinable())
+	{
+		m_flip_stop = false;
+		try
+		{
+			m_flip_thread = std::thread(&VulkanVideoOut::FlipThreadMain, this);
+		}
+		catch (...)
+		{
+			Log("VideoOut: the flip thread could not start; the GS thread flips");
+			return false;
+		}
+		Log("VideoOut: flip thread started (154 in the app, \"Flip en su propio hilo\")");
+	}
+	if (m_flip_tail - m_flip_head >= FlipQueueSize)
+	{
+		const std::uint64_t t0 = ForjaFlipNowNs();
+		m_flip_idle.wait(lock, [this] { return m_flip_tail - m_flip_head < FlipQueueSize; });
+		ForjaFlipThread::room_waits.fetch_add(1, std::memory_order_relaxed);
+		ForjaFlipThread::room_wait_ns.fetch_add(ForjaFlipNowNs() - t0, std::memory_order_relaxed);
+	}
+	m_flip_jobs[m_flip_tail % FlipQueueSize] = FlipJob{buffer, arg};
+	m_flip_tail++;
+	const std::uint32_t depth = m_flip_tail - m_flip_head;
+	std::uint32_t old = ForjaFlipThread::queue_max.load(std::memory_order_relaxed);
+	while (depth > old && !ForjaFlipThread::queue_max.compare_exchange_weak(old, depth, std::memory_order_relaxed))
+	{
+	}
+	lock.unlock();
+	m_flip_wake.notify_one();
+	return true;
+}
+
+// The flip thread: on the helpers' core (it mostly sleeps inside the driver's call), one flip at a time, in order. A refused flip
+// is logged once; the ones queued after it are dropped and PresentFromGpu answers false from then on, so GSDeviceVK goes to the
+// CPU flip for the rest of the session (as when the GS thread's own call is refused).
+void PS4Port::VulkanVideoOut::FlipThreadMain()
+{
+	PS4ThreadAffinity::PinCurrentThreadToHelpers("GS flip");
+	std::unique_lock lock(m_flip_mutex);
+	for (;;)
+	{
+		m_flip_wake.wait(lock, [this] { return m_flip_stop || m_flip_head != m_flip_tail; });
+		if (m_flip_head == m_flip_tail)
+			break; // stop, and nothing left to flip
+		const FlipJob job = m_flip_jobs[m_flip_head % FlipQueueSize];
+		m_flip_busy = true;
+		lock.unlock();
+		if (!m_flip_refused.load(std::memory_order_acquire))
+		{
+			const std::uint64_t t0 = ForjaFlipNowNs();
+			const int result = ac_ps4_submit_flip(m_handle, job.buffer, ORBIS_VIDEO_OUT_FLIP_VSYNC, job.arg);
+			ForjaFlipThread::Record(ForjaFlipNowNs() - t0, true);
+			if (result != 0)
+			{
+				Log("VideoOut: GPU-side flip refused in its own thread: %#x buffer=%u frame=%lld; the CPU flip from the next frame", result,
+					job.buffer, static_cast<long long>(job.arg));
+				m_flip_refused.store(true, std::memory_order_release);
+			}
+		}
+		lock.lock();
+		m_flip_head++;
+		m_flip_busy = false;
+		m_flip_idle.notify_all();
+	}
+}
+
+void PS4Port::VulkanVideoOut::DrainFlipThread()
+{
+	std::unique_lock lock(m_flip_mutex);
+	m_flip_idle.wait(lock, [this] { return m_flip_head == m_flip_tail && !m_flip_busy; });
+}
+
+void PS4Port::VulkanVideoOut::StopFlipThread()
+{
+	{
+		std::lock_guard lock(m_flip_mutex);
+		if (!m_flip_thread.joinable())
+			return;
+		m_flip_stop = true;
+	}
+	m_flip_wake.notify_all();
+	m_flip_thread.join(); // it sends what is queued first
+	std::lock_guard lock(m_flip_mutex);
+	m_flip_stop = false;
+}
+
 bool PS4Port::VulkanVideoOut::Destroy()
 {
+	StopFlipThread(); // 154 in the app: before the images and the output go
 	if (m_handle < 0 && !m_flip_queue_created &&
 		std::all_of(m_images.begin(), m_images.end(), [](const ImageMemory& image) { return !image.image && !image.memory && !image.mapped; }))
 		return true;
