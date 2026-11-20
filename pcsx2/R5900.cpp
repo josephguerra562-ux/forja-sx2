@@ -211,6 +211,16 @@ void cpuTlbMissW(u32 addr, u32 bd) {
 // tests are counted once for the [eestat] line (GSRenderer.cpp reads it once a second).
 std::atomic<u64> g_orbis_ee_evtests{0};
 
+// 151 in the app, "VIF1 en menos turnos" ([Forja] VifMenosTurnos, set at the game's start by ps4/vm/main.cpp): below this many cycles,
+// the VIF1 DMA's next step runs in the same pass of the event scan (CPU_INT). 4 is PCSX2's own rule, for every channel. The steps it
+// joined (EE thread), for the heartbeat's line.
+std::atomic<s32> g_forja_vif1_fuse{4};
+u64 g_forja_vif1_fused = 0;
+// Set by vif1Interrupt (Vif1_Dma.cpp) only around the CPU_INT of a step that moved data on. Never around a wait (for PATH2/3, a FLUSH,
+// the VU, a stall): a wait joined into the scan would come straight back with nothing changed, and the scan would never end.
+bool g_forja_vif1_step = false;
+static u32 s_forja_vif1_run = 0; // joined in a row: past 4096 one step goes back to the scheduler (a safety net, never in a normal chain)
+
 // sets a branch test to occur some time from an arbitrary starting point.
 __fi void cpuSetNextEvent( u64 startCycle, s32 delta )
 {
@@ -653,8 +663,22 @@ __fi void CPU_INT( EE_EventType n, s32 ecycle)
 	ORBIS_EEDIAG(OrbisEEDiag::cpu_int[n & 31]++); // vk-285-100
 	// If it's retunning too quick, just rerun the DMA, there's no point in running the EE for < 4 cycles.
 	// This causes a huge uplift in performance for ONI FMV's.
-	if (ecycle < 4 && !(cpuRegs.dmastall & (1 << n)) && eeRunInterruptScan != INT_NOT_RUNNING)
+	// 151 in the app ("VIF1 en menos turnos"): for the VIF1 the limit comes from the game's profile. God of War II (2026-11-20): ~284,000
+	// VIF1 steps a second, ~20-120 cycles apart, and each one a whole event test (the IOP, the counters, the VU sync): ~3 ms of the EE's
+	// ~25 a heavy frame. Joined, the chain runs to its end (or a stall, or a longer wait) in one scan; the EE runs those cycles after it,
+	// as PCSX2 already does under 4. Only from inside the scan, and only a step that moved data (g_forja_vif1_step), never a wait or the
+	// EE starting a transfer.
+	bool forja_join = ecycle < 4;
+	if (n == DMAC_VIF1 && !forja_join)
 	{
+		forja_join = g_forja_vif1_step && ecycle < g_forja_vif1_fuse.load(std::memory_order_relaxed) && ++s_forja_vif1_run <= 4096;
+		if (!forja_join)
+			s_forja_vif1_run = 0;
+	}
+	if (forja_join && !(cpuRegs.dmastall & (1 << n)) && eeRunInterruptScan != INT_NOT_RUNNING)
+	{
+		if (ecycle >= 4)
+			g_forja_vif1_fused++;
 		eeRunInterruptScan = INT_REQ_LOOP;
 		cpuRegs.interrupt |= 1 << n;
 		cpuRegs.sCycle[n] = cpuRegs.cycle;

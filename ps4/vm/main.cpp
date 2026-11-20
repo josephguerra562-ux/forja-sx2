@@ -388,6 +388,8 @@ extern std::atomic<bool> g_forja_vu_jump_inline; // pcsx2/x86/microVU.cpp
 #endif
 static bool s_skip_fast_running = false; // compilation 131: "Salto de ciclo: Al vuelo" has the game's skip (UpdateCycleSkipFast)
 extern std::atomic<int> g_forja_skip16; // pcsx2/MTVU.cpp (compilation 135)
+extern std::atomic<s32> g_forja_vif1_fuse; // pcsx2/R5900.cpp (151 in the app, "VIF1 en menos turnos")
+extern u64 g_forja_vif1_fused;
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
 extern std::atomic<unsigned> g_forja_vsync_load;
 extern std::atomic<int> g_forja_deinterlace_factory; // compilation 137: pcsx2/VMManager.cpp, the game's factory deinterlace mode
@@ -3370,6 +3372,19 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 	if (s_skip_keeps_frames || s_profile.skip_keeps_frames_origin != ForjaGameProfile::Origin::Global)
 		ProbeLog("Cycle skip keeps the frames (146 in the app): %s (%s)\n", s_skip_keeps_frames ? "on" : "off",
 			ProfileOriginName(s_profile.skip_keeps_frames_origin));
+	{
+		// 151 in the app, "VIF1 en menos turnos" ([Forja] VifMenosTurnos, cycles; pcsx2/R5900.cpp, CPU_INT). With it, the PS5 port's simple
+		// VIF codes in the transfer loop too (STCYCL, STMOD, BASE, OFFSET, ITOP without the handler table's call: Vif_Transfer.cpp,
+		// vk-285-102; God of War II sends ~260,000 of them a second). /data/ForjaSX2/vm-vif-turnos-exactos turns both off.
+		const bool exact = access("/data/ForjaSX2/vm-vif-turnos-exactos", F_OK) == 0;
+		const int cycles = exact ? 0 : s_profile.vif1_fuse;
+		g_forja_vif1_fuse.store(cycles > 4 ? cycles : 4, std::memory_order_relaxed);
+		g_orbis_vif_fast.store(cycles > 4 ? 1 : 0, std::memory_order_relaxed);
+		if (cycles > 4 || exact || s_profile.vif1_fuse_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("VIF1 in fewer turns (151 in the app): %s, steps due in under %d cycles join the scan (%s)%s\n",
+				cycles > 4 ? "on" : "off", cycles > 4 ? cycles : 4, ProfileOriginName(s_profile.vif1_fuse_origin),
+				exact ? ", vm-vif-turnos-exactos" : "");
+	}
 	// Compilation 128: on unless the profile says 0 (measured on 2026-11-08: Bully's effect hitches 6 -> 1, Shadow's 14 -> 2).
 	s_effects_ahead_game = s_profile.effects_ahead != 0; // compilation 127
 	g_forja_effects_ahead.store(s_effects_ahead_game, std::memory_order_relaxed);
@@ -5908,6 +5923,15 @@ void VMHostPoll()
 				ProbeLog("Threads: audio_mix_pct=%.1f plan=\"%s\"\n", 100.0 * static_cast<double>(audio_us - s_last_audio_us) / (interval * 1000000.0),
 					s_profile.cores.empty() ? "global" : s_profile.cores.c_str());
 			s_last_audio_us = audio_us;
+		}
+		{
+			// 151 in the app, "VIF1 en menos turnos": the VIF1 steps joined into the scan (EE thread, like this heartbeat).
+			static u64 s_last_vif1_fused = 0;
+			const s32 limit = g_forja_vif1_fuse.load(std::memory_order_relaxed);
+			if (limit > 4 && interval > 0.0 && vm_state == VMState::Running)
+				ProbeLog("VIF1 in fewer turns: steps_joined_per_second=%.0f (under %d cycles)\n",
+					static_cast<double>(g_forja_vif1_fused - s_last_vif1_fused) / interval, limit);
+			s_last_vif1_fused = g_forja_vif1_fused;
 		}
 		if (OrbisEEDiag::on.load(std::memory_order_relaxed) && interval > 0.0)
 		{

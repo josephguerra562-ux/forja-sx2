@@ -10,6 +10,8 @@
 #include "Vif_Dynarec.h"
 #include "OrbisEEDiag.h" // vk-285-100
 
+extern bool g_forja_vif1_step; // R5900.cpp: 151 in the app, "VIF1 en menos turnos" (CPU_INT joins only these steps)
+
 u32 g_vif1Cycles = 0;
 // PS5 port (vk-285-99): VIF1 DMA tags read, by ID (REFE, CNT, NEXT, REF, REFS, CALL, RET, END), for the
 // [eestat] line: the chains' shape decides how far ahead their tags and data can be prefetched.
@@ -468,7 +470,9 @@ __fi void vif1Interrupt()
 					g_orbis_vif1_fused++;
 					continue;
 				}
+				g_forja_vif1_step = !vif1Regs.stat.VGW && !vif1.vifstalled.enabled; // 151 in the app: a step that moved data on, not a stall
 				CPU_INT(DMAC_VIF1, g_vif1Cycles);
+				g_forja_vif1_step = false;
 			}
 		}
 		return;
@@ -503,7 +507,9 @@ __fi void vif1Interrupt()
 					g_orbis_vif1_fused++;
 					continue;
 				}
+				g_forja_vif1_step = !vif1Regs.stat.VGW && !vif1.vifstalled.enabled; // 151 in the app: a step that moved data on, not a stall
 				CPU_INT(DMAC_VIF1, g_vif1Cycles);
+				g_forja_vif1_step = false;
 			}
 		}
 		return;
