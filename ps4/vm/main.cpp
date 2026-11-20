@@ -361,6 +361,7 @@ static unsigned s_cpu_auto_room_checks = 0;
 // until the next may be, and the wait after a failed one.
 static bool s_cpu_auto_up = false, s_skip_auto_fine = false;
 static bool s_skip_keeps_frames = false; // 146 in the app: [Forja] SaltoCuidaCuadros, "Al vuelo cuida los cuadros"
+static int s_skip_techo16 = 48; // 154 in the app: [Forja] SaltoTecho, "Techo del salto" (48: none)
 // Compilation 124: "Revisión rápida del código" for this game ([Forja] RevisionRapida), and the FTP marker vm-skip-smc (for every game).
 static bool s_fast_code_game = false, s_fast_code_marker = false;
 // Compilation 127: "Efectos listos al arrancar" for this game ([Forja] EfectosListos); the GS thread reads the atomic at every vsync.
@@ -3380,6 +3381,20 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		ProbeLog("Cycle skip keeps the frames (146 in the app): %s (%s)\n", s_skip_keeps_frames ? "on" : "off",
 			ProfileOriginName(s_profile.skip_keeps_frames_origin));
 	{
+		// 154 in the app, "Techo del salto" ([Forja] SaltoTecho; /data/ForjaSX2/vm-salto-sin-techo turns it off). The cycle skip adds each
+		// VU1 program's cycles times the skip to the EE's clock (MTVU.cpp, ExecuteVU): in God of War II that is ~85 % of each frame's PS2
+		// time at 2.3 skips, and the frame lasts 1.5 vsyncs (33 FPS) with no thread full (the 153, 2026-11-20: EE 70 % and asleep 24 %,
+		// VU1 70 %, GS 61 %). Al vuelo goes up at each vsync lost, but this game loses ~1 % of them at any skip (940 stretches of 44
+		// sessions: 0.8-1.3 % from 1 to 2.5 skips), so it only goes up: 3 s without one lost is rare. Its geometry a second (VU1 cycles)
+		// was 146 millions at 1.5 skips and 107 at 2.5, at the same speed. herramientas/simulaciones/simular_techo_salto.py: the 153's
+		// heavy stretches 33.5 -> 42 frames a second with 24 sixteenths. 10 of 50 vsyncs lost at the ceiling (real slow motion) lift it 10 s.
+		const bool no_ceiling = access("/data/ForjaSX2/vm-salto-sin-techo", F_OK) == 0;
+		s_skip_techo16 = (no_ceiling || s_profile.skip_ceiling16 < 0) ? 48 : std::clamp(s_profile.skip_ceiling16, 0, 48);
+		if (s_skip_techo16 < 48 || no_ceiling || s_profile.skip_ceiling16_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("Cycle skip ceiling (154 in the app): %d/16 (%s)%s\n", s_skip_techo16, ProfileOriginName(s_profile.skip_ceiling16_origin),
+				no_ceiling ? ", vm-salto-sin-techo" : "");
+	}
+	{
 		// 151 in the app, "VIF1 en menos turnos" ([Forja] VifMenosTurnos, cycles; pcsx2/R5900.cpp, CPU_INT). With it, the PS5 port's simple
 		// VIF codes in the transfer loop too (STCYCL, STMOD, BASE, OFFSET, ITOP without the handler table's call: Vif_Transfer.cpp,
 		// vk-285-102; God of War II sends ~260,000 of them a second). /data/ForjaSX2/vm-vif-turnos-exactos turns both off.
@@ -4146,7 +4161,17 @@ static struct
 	int watch_from = -1, ceiling = 48;
 	u64 watch_n = 0, watch_frames = 0, watch_lost = 0, ceiling_until = 0;
 	unsigned guards = 0;
+	// 154 in the app, "Techo del salto": until which vsync the ceiling is lifted (0: not lifted); for the 5 s line, the vsyncs at it
+	// and the lifts.
+	u64 techo_lifted_until = 0;
+	unsigned techo_at = 0, techo_lifts = 0;
 } s_si;
+
+// 154 in the app: the most Al vuelo may go up to now (48: no ceiling, or lifted).
+static int ForjaSkipTecho()
+{
+	return (s_skip_techo16 < 48 && s_si.techo_lifted_until == 0) ? s_skip_techo16 : 48;
+}
 
 extern std::atomic<u64> g_forja_frames_reg, g_forja_frames_blit; // pcsx2/PerformanceMetrics.cpp (GS thread)
 
@@ -4391,6 +4416,33 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 		s_si.frames_at[at] = blit ? fb : (reg != 0 ? reg : fb);
 		s_si.lost_at_n[at] = s_si.lost_total;
 	}
+	// 154 in the app, "Techo del salto" ([Forja] SaltoTecho): 10 of the last 50 vsyncs lost at the ceiling (real slow motion, not the ~1 %
+	// God of War II loses at any skip) lift it for 10 s; then the skip goes back under it.
+	if (s_skip_techo16 < 48)
+	{
+		if (s_si.techo_lifted_until != 0 && s_si.n >= s_si.techo_lifted_until)
+			s_si.techo_lifted_until = 0;
+		// Over the ceiling and not lifted (the lift's 10 s ended, or the profile came in after Al vuelo had started): back under it at
+		// once. Never under the game's floor (ForjaSkipInstantSet keeps it), so a floor over the ceiling does not loop here.
+		if (s_si.techo_lifted_until == 0 && s_si.value > std::max(s_skip_techo16, s_skip16_floor))
+		{
+			ProbeLog("Cycle skip ceiling (154 in the app): back to %d/16 (from %d)\n", s_skip_techo16, s_si.value);
+			ForjaSkipInstantSet(s_skip_techo16);
+			s_si.down_from = -1;
+			s_si.wait = 25;
+			return;
+		}
+		if (s_si.value >= s_skip_techo16)
+			s_si.techo_at++;
+		if (s_si.techo_lifted_until == 0 && s_si.n >= 50 && s_si.value >= s_skip_techo16 &&
+			s_si.lost_at_n[s_si.n % 64] - s_si.lost_at_n[(s_si.n - 50) % 64] >= 10)
+		{
+			s_si.techo_lifted_until = s_si.n + 500;
+			s_si.techo_lifts++;
+			ProbeLog("Cycle skip ceiling (154 in the app): %d/16 lifted for 10 s (%llu of 50 vsyncs lost)\n", s_skip_techo16,
+				static_cast<unsigned long long>(s_si.lost_at_n[s_si.n % 64] - s_si.lost_at_n[(s_si.n - 50) % 64]));
+		}
+	}
 	if (s_si.ceiling < 48 && s_si.n >= s_si.ceiling_until)
 		s_si.ceiling = 48;
 	if (s_skip_keeps_frames && s_si.n >= 50)
@@ -4458,7 +4510,7 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 	}
 	if (s_si.down_from >= 0 && s_si.n - s_si.last_down > 25)
 		s_si.down_from = -1; // it held
-	const int top = s_skip_keeps_frames ? s_si.ceiling : 48; // 146 in the app
+	const int top = std::min(s_skip_keeps_frames ? s_si.ceiling : 48, ForjaSkipTecho()); // 146 in the app; 154: the ceiling
 	if (losing && s_si.value < top)
 	{
 		const int wanted = static_cast<int>(std::ceil(quarters_for(SI_UP_TARGET) * 4.0));
@@ -4512,7 +4564,9 @@ static void UpdateCycleSkipFast(double elapsed)
 		const int learned = s_profile.crc == crc ? s_profile.learned_skip16 : -1;
 		// 146 in the app: with "cuida los cuadros", at most 2 whole skips to start (Downhill learnt 48, the top, from a session that
 		// swung 0-48, and its first 8 s ran at 24 frames a second).
-		const int start = learned >= 0 ? std::max(floor16, s_skip_keeps_frames ? std::min(learned, 32) : learned) : floor16;
+		const int start_learned = learned >= 0 ? std::max(floor16, s_skip_keeps_frames ? std::min(learned, 32) : learned) : floor16;
+		s_si.techo_lifted_until = 0; // 154 in the app: and never over the ceiling
+		const int start = std::max(floor16, std::min(start_learned, s_skip_techo16));
 		ForjaSkipInstantSet(start);
 		std::fill(std::begin(s_si.time_at), std::end(s_si.time_at), 0u);
 		s_skip_auto_can_help = true; // compilation 139: not "at the top" before it has measured anything
@@ -4559,6 +4613,9 @@ static void UpdateCycleSkipFast(double elapsed)
 			ProbeLog("Cycle skip al vuelo: 5 s: now %d/16 (from %d to %d), up %u, down %u, back %u; EE late in %u of %u vsyncs, mean use %.2f; "
 					 "vsyncs lost to the delay %u, to lone hitches %u times\n", s_si.value, s_si.low_seen, s_si.high_seen, s_si.ups, s_si.downs,
 				s_si.backs, s_si.late, s_si.vsyncs, s_si.u_sum / s_si.vsyncs, s_si.lost, s_si.hitches);
+		if (s_skip_techo16 < 48 && s_si.vsyncs > 0) // 154 in the app
+			ProbeLog("Cycle skip ceiling (154 in the app): %d/16, at it in %u of %u vsyncs, lifted %u times%s\n", s_skip_techo16,
+				s_si.techo_at, s_si.vsyncs, s_si.techo_lifts, s_si.techo_lifted_until ? " (lifted now)" : "");
 		// Compilation 140: who had which knob in these 5 s.
 		ProbeLog("Director (140): speed %.0f %%; cycle skip %d/16 (%s); CPU %d %% (automático %d steps down); Saltar cuadros %s (mode %d, "
 				 "at most %u %%); crowd 1 in %u; frame generation %s\n",
@@ -4567,6 +4624,7 @@ static void UpdateCycleSkipFast(double elapsed)
 			g_forja_crowd_every.load(std::memory_order_relaxed), !g_orbis_fg_wanted ? "off" : g_orbis_fg_engaged ? "making frames" : "on, idle");
 		s_last_line = elapsed;
 		s_si.ups = s_si.downs = s_si.backs = s_si.vsyncs = s_si.late = s_si.lost = s_si.hitches = 0;
+		s_si.techo_at = s_si.techo_lifts = 0; // 154 in the app
 		s_si.u_sum = 0.0;
 		s_si.low_seen = 1000;
 		s_si.high_seen = -1;
