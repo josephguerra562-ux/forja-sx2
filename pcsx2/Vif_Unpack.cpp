@@ -7,6 +7,8 @@
 #include "Vif_Dma.h"
 #include "Vif_Dynarec.h"
 #include "MTVU.h"
+#include <atomic>
+extern std::atomic<int> g_forja_vif_nocopy_mode; // MTVU.cpp (175 in the app, "VIF sin copia")
 
 // Forja SX2: see Vif_Dynarec.h (set in VMManager::InitializeCPUProviders()).
 bool newVifDynaRec = false;
@@ -422,7 +424,18 @@ _vifT int nVifUnpack(const u8* data)
 		{
 			if (g_forja_vif_tramos_mode.load(std::memory_order_relaxed) == 1) // 167 in the app: check the run's prediction
 				ForjaVif1TramoCheck(vif, vifRegs, data);
-			vu1Thread.VifUnpack(vif, vifRegs, (u8*)data, (size + 4) & ~0x3);
+			// 175 in the app, "VIF sin copia": data in the game's main RAM (not the scratchpad, not this file's buffer of a split unpack)
+			// goes as its address in mode 2 (1 in 32 still as a check), as a copy and its address in mode 1.
+			int forja_nocopy = 0;
+			if (const int nc = g_forja_vif_nocopy_mode.load(std::memory_order_relaxed))
+			{
+				if (data != v.buffer && data >= eeMem->Main && data + size + 4 <= eeMem->Main + Ps2MemSize::MainRam)
+				{
+					static u32 s_forja_nocopy_n = 0;
+					forja_nocopy = (nc == 2 && (++s_forja_nocopy_n & 31) != 0) ? 2 : 1;
+				}
+			}
+			vu1Thread.VifUnpack(vif, vifRegs, (u8*)data, (size + 4) & ~0x3, forja_nocopy);
 		}
 
 		vif.pass = 0;

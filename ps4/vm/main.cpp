@@ -430,6 +430,10 @@ extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app
 // the controllers decode one vsync out of two (their pose stays the last one in between). Only data changes: the recompiled code
 // reads the word at each call. The word is only touched while it holds one of the two (anything else: not this program, left alone),
 // and goes back to the function before every state save, so a saved state never keeps the animation off.
+extern std::atomic<int> g_forja_vif_nocopy_mode; // pcsx2/MTVU.cpp (175 in the app, "VIF sin copia")
+extern std::atomic<bool> g_forja_vif_nocopy_check_only;
+extern std::atomic<u64> g_forja_vif_nocopy_checked, g_forja_vif_nocopy_wrong, g_forja_vif_nocopy_ptr;
+extern u32 g_forja_vif_nocopy_first_wrong[2];
 static bool s_anim_half_on = false;
 static u32 s_anim_half_addr = 0, s_anim_half_fn = 0, s_anim_half_empty = 0;
 static unsigned s_anim_half_n = 0;
@@ -3533,6 +3537,23 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				no ? ", vm-vif-adelanto-no" : "");
 	}
 	{
+		// 175 in the app, "VIF sin copia" ([Forja] VifSinCopia; pcsx2/MTVU.cpp). 1 starts checking (the copy against the game's RAM when
+		// the VU thread would read it; on by itself after 200,000 the same, off at the first different). /data/ForjaSX2/vm-vif-sincopia-no
+		// turns it off, vm-vif-sincopia-comprobar only checks, vm-vif-sincopia-directo goes on without checking.
+		const bool no = access("/data/ForjaSX2/vm-vif-sincopia-no", F_OK) == 0;
+		const bool check_only = !no && access("/data/ForjaSX2/vm-vif-sincopia-comprobar", F_OK) == 0;
+		const bool direct = !no && !check_only && access("/data/ForjaSX2/vm-vif-sincopia-directo", F_OK) == 0;
+		const bool want = !no && (s_profile.vif_nocopy == 1 || check_only || direct);
+		g_forja_vif_nocopy_checked.store(0, std::memory_order_relaxed);
+		g_forja_vif_nocopy_wrong.store(0, std::memory_order_relaxed);
+		g_forja_vif_nocopy_check_only.store(check_only, std::memory_order_relaxed);
+		g_forja_vif_nocopy_mode.store(want ? (direct ? 2 : 1) : 0, std::memory_order_relaxed);
+		if (want || no || s_profile.vif_nocopy_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("VIF without copy (175 in the app): %s (%s)%s%s%s\n", want ? (direct ? "on" : "checking first") : "off",
+				ProfileOriginName(s_profile.vif_nocopy_origin), no ? ", vm-vif-sincopia-no" : "", check_only ? ", vm-vif-sincopia-comprobar" : "",
+				direct ? ", vm-vif-sincopia-directo" : "");
+	}
+	{
 		// 174 in the app, "Animación a medias" ([Forja] AnimMediasDir/AnimMediasFuncion/AnimMediasVacia). /data/ForjaSX2/vm-anim-completa
 		// turns it off.
 		const bool full = access("/data/ForjaSX2/vm-anim-completa", F_OK) == 0;
@@ -6364,6 +6385,16 @@ void VMHostPoll()
 				}
 				ProbeLog("VIF1 tags per second: refe=%.0f cnt=%.0f next=%.0f ref=%.0f refs=%.0f call=%.0f ret=%.0f end=%.0f\n", r[0], r[1], r[2],
 					r[3], r[4], r[5], r[6], r[7]);
+			}
+			// 175 in the app, "VIF sin copia": its mode, the unpacks read from the game's RAM, and the check (the first different: bytes, where).
+			{
+				const int nm = g_forja_vif_nocopy_mode.load(std::memory_order_relaxed);
+				const u64 nwrong = g_forja_vif_nocopy_wrong.load(std::memory_order_acquire);
+				if ((nm != 0 || nwrong != 0) && vm_state == VMState::Running)
+					ProbeLog("VIF without copy: mode=%d from_ram=%llu checked=%llu wrong=%llu first_wrong=[bytes=%u at=%u]\n", nm,
+						static_cast<unsigned long long>(g_forja_vif_nocopy_ptr.load(std::memory_order_relaxed)),
+						static_cast<unsigned long long>(g_forja_vif_nocopy_checked.load(std::memory_order_relaxed)),
+						static_cast<unsigned long long>(nwrong), g_forja_vif_nocopy_first_wrong[0], g_forja_vif_nocopy_first_wrong[1]);
 			}
 			// 174 in the app, "Animación a medias": the vsyncs it skipped the decoding, the word's changes, and the vsyncs the word held
 			// something else (not this program, or still loading).

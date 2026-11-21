@@ -150,6 +150,10 @@ namespace ForjaGameProfile
 		// and AnimMediasVacia (an empty function of the game), so that function runs one vsync out of two. Off unless all three are set.
 		int anim_half_addr = -1, anim_half_fn = -1, anim_half_empty = -1;
 		Origin anim_half_origin = Origin::Global;
+		// 175 in the app: [Forja] VifSinCopia, "VIF sin copia" (pcsx2/MTVU.cpp, Vif_Unpack.cpp): 1 the VU thread reads each UNPACK from the
+		// game's RAM (it starts checking and goes on by itself). Off unless the profile says.
+		int vif_nocopy = -1;
+		Origin vif_nocopy_origin = Origin::Global;
 		// 152 in the app: [Forja] VU1Ahorro, "Ahorro del VU1" (pcsx2/MTVU.cpp, microVU_Execute.inl): the VU1's runs without the emitter's
 		// pointers and with the PS5 port's lookup cache, and a microcode upload that changes no byte leaves the programs alone. Off
 		// unless the game's profile turns it on: God of War II.
@@ -393,6 +397,7 @@ namespace ForjaGameProfile
 		read_int("AnimMediasDir", &v.anim_half_addr, &v.anim_half_origin); // 174 in the app
 		read_int("AnimMediasFuncion", &v.anim_half_fn, &v.anim_half_origin);
 		read_int("AnimMediasVacia", &v.anim_half_empty, &v.anim_half_origin);
+		read_int("VifSinCopia", &v.vif_nocopy, &v.vif_nocopy_origin); // 175 in the app
 		read_int("VU1Ahorro", &v.vu1_ahorro, &v.vu1_ahorro_origin); // 152 in the app
 		read_int("VU1BanderasMuertas", &v.vu1_dead_flags, &v.vu1_dead_flags_origin); // 153 in the app
 		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);
@@ -546,6 +551,7 @@ namespace ForjaGameProfile
 		v.vif_adelanto = std::clamp(v.vif_adelanto, -1, 1); // 170 in the app
 		v.gs_vt_once = std::clamp(v.gs_vt_once, -1, 1); // 171 in the app
 		v.ee_lzcnt = std::clamp(v.ee_lzcnt, -1, 1); // 173 in the app
+		v.vif_nocopy = std::clamp(v.vif_nocopy, -1, 1); // 175 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"
 			v.crowd_every = v.crowd_every >= 32 ? 32 : v.crowd_every >= 16 ? 16 : v.crowd_every >= 8 ? 8 : v.crowd_every >= 4 ? 4 :
 			                v.crowd_every >= 2 ? 2 : 1; // compilation 88: 16 and 32

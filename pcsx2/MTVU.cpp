@@ -186,6 +186,38 @@ std::atomic<int> g_orbis_mtvu_batch{0};
 // in the caches (a 16 MB lap comes back to lines long gone to memory). 256..16384. Needs proper testing.
 std::atomic<u32> g_orbis_mtvu_ring_kb{16384};
 extern std::atomic<bool> g_forja_vif_adelanto; // Vif1_Dma.cpp (170 in the app)
+// 175 in the app, "VIF sin copia" ([Forja] VifSinCopia, set at the game's start by ps4/vm/main.cpp; the EE side in Vif_Unpack.cpp).
+// What the EE spends on the VIF is mostly moving the data: each UNPACK's bytes read from the game's RAM and written into this ring
+// (the 167-170 showed the bookkeeping isn't the cost). The VU thread can read them from the game's RAM itself, if the game hasn't
+// written them again by then. Mode 1 (check): the EE copies as always and adds the address; the VU thread compares its copy with the
+// RAM right when it would read it (memcmp of the unpack's bytes) and unpacks the copy. 200,000 the same: mode 2 (only the address;
+// still 1 in 32 sent as a check). One different: mode 0 (always the copy), and the meter says how many bytes and where.
+std::atomic<int> g_forja_vif_nocopy_mode{0};
+std::atomic<bool> g_forja_vif_nocopy_check_only{false};
+std::atomic<u64> g_forja_vif_nocopy_checked{0}, g_forja_vif_nocopy_wrong{0}, g_forja_vif_nocopy_ptr{0};
+u32 g_forja_vif_nocopy_first_wrong[2] = {}; // the unpack's bytes, the first byte that differed
+
+static void ForjaVifNoCopyChecked(const u8* copy, const u8* live, u32 bytes)
+{
+	if (std::memcmp(copy, live, bytes) == 0)
+	{
+		const u64 ok = g_forja_vif_nocopy_checked.fetch_add(1, std::memory_order_relaxed) + 1;
+		if (ok >= 200000 && g_forja_vif_nocopy_mode.load(std::memory_order_relaxed) == 1 &&
+			!g_forja_vif_nocopy_check_only.load(std::memory_order_relaxed) && g_forja_vif_nocopy_wrong.load(std::memory_order_relaxed) == 0)
+			g_forja_vif_nocopy_mode.store(2, std::memory_order_relaxed);
+		return;
+	}
+	if (g_forja_vif_nocopy_wrong.load(std::memory_order_relaxed) == 0)
+	{
+		u32 at = 0;
+		while (at < bytes && copy[at] == live[at])
+			at++;
+		g_forja_vif_nocopy_first_wrong[0] = bytes;
+		g_forja_vif_nocopy_first_wrong[1] = at;
+	}
+	g_forja_vif_nocopy_wrong.fetch_add(1, std::memory_order_release);
+	g_forja_vif_nocopy_mode.store(0, std::memory_order_relaxed);
+}
 // 169 in the app: nothing ever set it (no EmuCore/Speedhacks/OrbisMTVURingKB is read): the lap was always the whole 16 MB, 8 times the
 // 2 MB L2 the EE, VU1 and GS cores share (nucleos.txt: 1, 2, 3), so every line the EE writes into the ring and the VU thread reads back
 // goes out to memory and returns (~120-250 MB/s in God of War II). ps4/vm/main.cpp now sets it from [Forja] VU1ColaKB.
@@ -270,7 +302,9 @@ enum MTVU_EVENT
 	MTVU_VIF_UNPACK,     // Execute Vif Unpack
 	MTVU_NULL_PACKET,    // Go back to beginning of buffer
 	MTVU_RESET,
-	MTVU_VIF1_TRAMO      // 167 in the app, "VIF en tramos": a run of VIF1 codes (Vif_Dma.h)
+	MTVU_VIF1_TRAMO,     // 167 in the app, "VIF en tramos": a run of VIF1 codes (Vif_Dma.h)
+	MTVU_VIF_UNPACK_CHECK, // 175 in the app, "VIF sin copia": an unpack's copy and the address it came from (compared)
+	MTVU_VIF_UNPACK_PTR    // 175 in the app: an unpack read from the game's RAM
 };
 
 // Calls the vif unpack functions from the MTVU thread
@@ -662,6 +696,34 @@ void VU_Thread::ExecuteRingBuffer()
 					const u32 packet = Read();
 					ForjaVif1TramoRun(&buffer[m_read_pos], words, s, packet, vif, vifRegs);
 					m_read_pos += words + 1;
+					break;
+				}
+				case MTVU_VIF_UNPACK_PTR: // 175 in the app, "VIF sin copia": straight from the game's RAM
+				{
+					u32 vif_copy_size = static_cast<u32>((uptr)&vif.StructEnd - (uptr)&vif.tag);
+					Read(&vif.tag, vif_copy_size);
+					ReadRegs(&vifRegs);
+					Read(); // the size (the unpack knows its own)
+					const u32 lo = Read();
+					const u32 hi = Read();
+					MTVU_Unpack(reinterpret_cast<void*>(static_cast<uptr>(lo) | (static_cast<uptr>(hi) << 32)), vifRegs);
+					g_forja_vif_nocopy_ptr.fetch_add(1, std::memory_order_relaxed);
+					break;
+				}
+				case MTVU_VIF_UNPACK_CHECK: // 175 in the app: the copy against the game's RAM now, then the copy unpacked
+				{
+					u32 vif_copy_size = static_cast<u32>((uptr)&vif.StructEnd - (uptr)&vif.tag);
+					Read(&vif.tag, vif_copy_size);
+					ReadRegs(&vifRegs);
+					const u32 size = Read();
+					const u32* copy = &buffer[m_read_pos];
+					m_read_pos += size_u32(size);
+					const u32 lo = Read();
+					const u32 hi = Read();
+					const u8* live = reinterpret_cast<const u8*>(static_cast<uptr>(lo) | (static_cast<uptr>(hi) << 32));
+					// The unpack's own bytes: VifUnpack is given 4 more (the word after them, which an unpack may read).
+					ForjaVifNoCopyChecked(reinterpret_cast<const u8*>(copy), live, size >= 4 ? size - 4 : size);
+					MTVU_Unpack(const_cast<u32*>(copy), vifRegs);
 					break;
 				}
 				case MTVU_NULL_PACKET:
@@ -1121,17 +1183,18 @@ void VU_Thread::ExecuteVU(u32 vu_addr, u32 vif_top, u32 vif_itop, u32 fbrst)
 	}
 }
 
-void VU_Thread::VifUnpack(vifStruct& _vif, VIFregisters& _vifRegs, const u8* data, u32 size)
+void VU_Thread::VifUnpack(vifStruct& _vif, VIFregisters& _vifRegs, const u8* data, u32 size, int nocopy)
 {
 	MTVU_LOG("MTVU - VifUnpack!");
 	const u32 vif_copy_size = (u32)((uptr)&_vif.StructEnd - (uptr)&_vif.tag);
-	const s32 words = 1 + size_u32(vif_copy_size) + size_u32(sizeof(VIFregistersMTVU)) + 1 + size_u32(size);
+	const bool with_data = nocopy != 2; // 175 in the app
+	const s32 words = 1 + size_u32(vif_copy_size) + size_u32(sizeof(VIFregistersMTVU)) + 1 + (with_data ? size_u32(size) : 0) + (nocopy ? 2 : 0);
 	ReserveSpace(words);
 	{
 		// vk-285-90: the same layout as Write/WriteRegs, through a local pointer.
 		const s32 wp = m_write_pos;
 		u32* p = &buffer[wp];
-		p[0] = MTVU_VIF_UNPACK;
+		p[0] = nocopy == 2 ? MTVU_VIF_UNPACK_PTR : nocopy == 1 ? MTVU_VIF_UNPACK_CHECK : MTVU_VIF_UNPACK; // 175 in the app
 		p += 1;
 		// PS5 port (vk-285-99): the VIF state from tag to StructEnd field by field, each read with the width
 		// vifUnpackSetup has just written it (volatile, so the compiler doesn't merge the reads). memcpy read
@@ -1164,7 +1227,17 @@ void VU_Thread::VifUnpack(vifStruct& _vif, VIFregisters& _vifRegs, const u8* dat
 		p += size_u32(sizeof(VIFregistersMTVU));
 		p[0] = size;
 		p += 1;
-		OrbisCopy(p, data, size); // vk-285-98 (OrbisCopy.h)
+		if (with_data)
+		{
+			OrbisCopy(p, data, size); // vk-285-98 (OrbisCopy.h)
+			p += size_u32(size);
+		}
+		if (nocopy) // 175 in the app: where the data is in the game's RAM
+		{
+			const uptr at = reinterpret_cast<uptr>(data);
+			p[0] = static_cast<u32>(at);
+			p[1] = static_cast<u32>(static_cast<u64>(at) >> 32);
+		}
 		m_write_pos = wp + words;
 		// 170 in the app, "VIF1 por adelantado": the ring's next 512 bytes asked for writing now (the 16 MB ring's lines are long out of the
 		// caches, and each write first has to bring its line in), as Gif_Path::CopyGSPacketData does for the GS packets (vk-285-124).

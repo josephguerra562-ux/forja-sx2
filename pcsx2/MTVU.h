@@ -131,7 +131,9 @@ public:
 
 	void ExecuteVU(u32 vu_addr, u32 vif_top, u32 vif_itop, u32 fbrst);
 
-	void VifUnpack(vifStruct& _vif, VIFregisters& _vifRegs, const u8* data, u32 size);
+	// 175 in the app, "VIF sin copia": nocopy 0 copies the data (as always), 1 copies it and adds its address (the check), 2 sends
+	// only the address (the VU thread reads the game's RAM).
+	void VifUnpack(vifStruct& _vif, VIFregisters& _vifRegs, const u8* data, u32 size, int nocopy = 0);
 
 	// 167 in the app, "VIF en tramos": a run of VIF1 codes the VU thread reads itself (Vif_Dma.h). 168: the EE copies the codes in as it
 	// walks them: Begin reserves the room and says where they go, End writes the header and commits. Nothing else between the two.
