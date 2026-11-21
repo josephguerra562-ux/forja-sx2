@@ -19,7 +19,12 @@ cmake -S "$stage/ps4/vm" -B "$build" -G Ninja \
   -DPS4_MESA_BUILD="$mesa" \
   -DPCSX2_VM_JIT="${PCSX2_VM_JIT:-ON}" \
   -DPCSX2_VM_FASTMEM="${PCSX2_VM_FASTMEM:-ON}" \
-  -DPCSX2_VM_MTVU="${PCSX2_VM_MTVU:-ON}"
+  -DPCSX2_VM_MTVU="${PCSX2_VM_MTVU:-ON}" \
+  ${FORJA_CMAKE_LINKER:+-DCMAKE_LINKER="$FORJA_CMAKE_LINKER"} \
+  ${FORJA_LTO:+-DFORJA_LTO="$FORJA_LTO"}
+# Forja SX2 (165 in the app): FORJA_CMAKE_LINKER and FORJA_LTO, when set (only the lab's PC builds set them: compilar.sh -Enlazador),
+# link with another lld (lld 21, which reads clang 21's bitcode, so ThinLTO can come on) and turn ThinLTO on or off. Unset (GitHub's
+# builds) the toolchain's linker and the CMakeLists' default stay as they were.
 cmake --build "$build" --parallel "$jobs"
 cp "$build/vm_boot" "$repo/ps4/vm/build/vm_boot"
 cp "$build/vm_boot_eboot/eboot.bin" "$repo/ps4/vm/build/eboot.bin"
