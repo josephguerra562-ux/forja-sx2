@@ -265,7 +265,8 @@ enum MTVU_EVENT
 	MTVU_VIF_WRITE_ROW,  // Write to Vif row reg
 	MTVU_VIF_UNPACK,     // Execute Vif Unpack
 	MTVU_NULL_PACKET,    // Go back to beginning of buffer
-	MTVU_RESET
+	MTVU_RESET,
+	MTVU_VIF1_TRAMO      // 167 in the app, "VIF en tramos": a run of VIF1 codes (Vif_Dma.h)
 };
 
 // Calls the vif unpack functions from the MTVU thread
@@ -278,6 +279,40 @@ static void MTVU_Unpack(void* data, VIFregisters& vifRegs)
 		dVifUnpack<1>((u8*)data, isFill);
 	else
 		_nVifUnpack(1, (u8*)data, vifRegs.mode, isFill);
+}
+
+// 167 in the app, "VIF en tramos": the VU thread reads a run with the same steps the EE took (ForjaTramoCode), from the registers the run
+// started with; each UNPACK gets the state the normal path would have copied for it (VifUnpack) and unpacks as MTVU_VIF_UNPACK does.
+// STROW/STCOL go to its own MaskRow/MaskCol, in their place among the UNPACKs, as WriteRow/WriteCol did.
+static void ForjaVif1TramoRun(const u32* d, u32 words, ForjaTramoState s, u32 packet, vifStruct& vif, VIFregisters& vifRegs)
+{
+	for (u32 k = 0; k < words;)
+	{
+		ForjaTramoUnpack up;
+		const u32 n = ForjaTramoCode(d, k, packet - k, s, &up, &vif.MaskRow, &vif.MaskCol);
+		if (n == 0)
+			break; // can't be: the EE took the same steps
+		if (up.size)
+		{
+			vif.tag.addr = up.addr;
+			vif.tag.size = up.size;
+			vif.tag.cmd = up.cmd;
+			vif.cmd = static_cast<int>(up.cmd);
+			vif.pass = 1;
+			vif.cl = 0;
+			vif.usn = static_cast<u8>(up.usn);
+			vif.start_aligned = static_cast<u8>(up.start_aligned);
+			*reinterpret_cast<u32*>(&vifRegs.cycle) = s.cycle;
+			vifRegs.mode = s.mode;
+			vifRegs.mask = s.mask;
+			vifRegs.num = up.num;
+			MTVU_Unpack(const_cast<u32*>(&d[k + 1]), vifRegs);
+		}
+		k += n;
+	}
+	*reinterpret_cast<u32*>(&vifRegs.cycle) = s.cycle;
+	vifRegs.mode = s.mode;
+	vifRegs.mask = s.mask;
 }
 
 // Called on Saving/Loading states...
@@ -609,6 +644,20 @@ void VU_Thread::ExecuteRingBuffer()
 					OrbisHist(2, (vif.tag.addr >> 4) & 0x3ff, vif.tag.cmd & 0xff, vifRegs.num, size); // vk-285-80
 					MTVU_Unpack(&buffer[m_read_pos], vifRegs);
 					m_read_pos += size_u32(size);
+					break;
+				}
+				case MTVU_VIF1_TRAMO: // 167 in the app, "VIF en tramos"
+				{
+					const u32 words = Read();
+					ForjaTramoState s;
+					s.cycle = Read();
+					s.mode = Read();
+					s.mask = Read();
+					s.tops = Read();
+					s.base = Read();
+					const u32 packet = Read();
+					ForjaVif1TramoRun(&buffer[m_read_pos], words, s, packet, vif, vifRegs);
+					m_read_pos += words + 1;
 					break;
 				}
 				case MTVU_NULL_PACKET:
@@ -1117,6 +1166,29 @@ void VU_Thread::VifUnpack(vifStruct& _vif, VIFregisters& _vifRegs, const u8* dat
 	CommitWritePos();
 	OrbisDataKick(); // vk-285-90
 	m_orbis_unpacks++;
+}
+
+// 167 in the app, "VIF en tramos": the VIF registers at the run's start, the DMA piece's words left there (each UNPACK's start_aligned),
+// then the codes and the word after them (VifUnpack copies 4 bytes past an UNPACK's data too: the same word for the run's last one).
+void VU_Thread::Vif1Tramo(const u32* data, u32 words, const ForjaTramoState& s, u32 packet, u32 unpacks)
+{
+	const s32 total = 8 + static_cast<s32>(words) + 1;
+	ReserveSpace(total);
+	const s32 wp = m_write_pos;
+	u32* p = &buffer[wp];
+	p[0] = MTVU_VIF1_TRAMO;
+	p[1] = words;
+	p[2] = s.cycle;
+	p[3] = s.mode;
+	p[4] = s.mask;
+	p[5] = s.tops;
+	p[6] = s.base;
+	p[7] = packet;
+	OrbisCopy(p + 8, data, (words + 1) * 4); // vk-285-98 (OrbisCopy.h)
+	m_write_pos = wp + total;
+	CommitWritePos();
+	OrbisDataKick(); // vk-285-90
+	m_orbis_unpacks += unpacks;
 }
 
 void VU_Thread::WriteMicroMem(u32 vu_micro_addr, const void* data, u32 size)

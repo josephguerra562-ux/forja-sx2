@@ -3,9 +3,177 @@
 
 #include "Common.h"
 #include "Vif_Dma.h"
+#include "Gif_Unit.h" // 167 in the app: gifUnit.checkPaths
 #include "Vif_Dynarec.h"
 #include "MTVU.h" // vk-285-84: VU_Thread kick batching
 #include "OrbisEEDiag.h" // vk-285-100
+
+// 167 in the app, "VIF en tramos" (Vif_Dma.h says what it is).
+std::atomic<int> g_forja_vif_tramos_mode{0};
+std::atomic<bool> g_forja_vif_tramos_check_only{false}; // vm-vif-tramos-comprobar: it checks and never goes on by itself
+std::atomic<u64> g_forja_vif_tramos_runs{0}, g_forja_vif_tramos_unpacks{0}, g_forja_vif_tramos_words{0};
+std::atomic<u64> g_forja_vif_tramos_checked{0}, g_forja_vif_tramos_wrong{0};
+// The first wrong one: the prediction and what the normal path sent (data pointer the same, addr, size, cmd, usn, start_aligned, num,
+// cycle, mode, mask). Written once by the EE thread before g_forja_vif_tramos_wrong becomes 1 (release); main.cpp's meter prints it.
+u32 g_forja_vif_tramos_first_wrong[2][10] = {};
+extern std::atomic<int> g_orbis_vif1_exec_early; // Vif_Unpack.cpp
+
+namespace
+{
+	// Mode 1: the UNPACKs the walk predicted for the run the normal path is about to read, in order. Only good inside one
+	// vifTransferLoop (cleared at its start: a stall or the piece's end leaves the rest unread).
+	struct ForjaTramoPrediction
+	{
+		ForjaTramoUnpack up;
+		u32 cycle, mode, mask;
+		const u32* data;
+	};
+	ForjaTramoPrediction s_tramo_pred[256];
+	u32 s_tramo_pred_n = 0, s_tramo_pred_i = 0;
+} // namespace
+
+// Walks a run of VIF1 codes from data (pSize words left in the DMA piece). live: applies the EE's side of each code (as its handler
+// would) and sends the run to the VU thread; else (mode 1) only predicts its UNPACKs. Returns the words the run takes (0: the first
+// code goes the normal way).
+static u32 ForjaVif1Tramo(const u32* data, u32 pSize, bool live)
+{
+	constexpr u32 kMaxWords = 16384;
+	const u32 limit = std::min<u32>(pSize, kMaxWords);
+	ForjaTramoState s;
+	s.cycle = *reinterpret_cast<const u32*>(&vif1Regs.cycle) & 0xffffu;
+	s.mode = vif1Regs.mode;
+	s.mask = vif1Regs.mask;
+	s.tops = vif1Regs.tops;
+	s.base = vif1Regs.base;
+	const ForjaTramoState s0 = s;
+	// A queued VU1 program starts at the UNPACK that takes unpackcalls past exec_after (vifUnpackSetup) or at a NOP (the loop): what
+	// came before it must reach the ring first. Only if it really would start (vifExecQueue's own tests; nothing in a run changes them).
+	bool queued = vif1.queued_program && !(VU0.VI[REG_VPU_STAT].UL & 0x100) && !(vif1.queued_gif_wait && gifUnit.checkPaths(1, 1, 0));
+	const int exec_after = g_orbis_vif1_exec_early.load(std::memory_order_relaxed) ? 0 : 3;
+	int calls = vif1.unpackcalls;
+	u32 k = 0, unpacks = 0, last_code = 0;
+	if (!live)
+		s_tramo_pred_n = s_tramo_pred_i = 0;
+	while (k < limit)
+	{
+		const u32 code = data[k];
+		const u32 cmd = (code >> 24) & 0x7f;
+		if (!live && cmd >= 0x60 && s_tramo_pred_n >= sizeof(s_tramo_pred) / sizeof(s_tramo_pred[0]))
+			break;
+		ForjaTramoUnpack up;
+		// Only an UNPACK or a NOP can stop the run after this call, and neither changes s.
+		const u32 n = ForjaTramoCode(data, k, pSize - k, s, &up, live ? &vif1.MaskRow : nullptr, live ? &vif1.MaskCol : nullptr);
+		if (n == 0 || k + n > limit)
+			break;
+		if (cmd == 0x00)
+		{
+			if (pSize - k > 1 && ((data[k + 1] >> 24) & 0x7f) == 0x6 && (data[k + 1] & 0x1))
+				break; // MSKPATH3 next: the loop stalls at this NOP
+			if (queued)
+			{
+				if (k)
+					break; // the program starts at this NOP: the run so far first
+				queued = false;
+				if (live)
+					vifExecQueue(1);
+			}
+		}
+		else if (up.size)
+		{
+			if (queued && calls + 1 > exec_after)
+			{
+				if (k)
+					break; // the program starts before this UNPACK's data: the run so far first
+				queued = false;
+				if (live)
+					vifExecQueue(1);
+			}
+			calls++;
+			unpacks++;
+			if (live)
+			{
+				// vifUnpackSetup, then nVifUnpack's whole transfer
+				vif1.usn = static_cast<u8>(up.usn);
+				vif1.tag.addr = up.addr;
+				vif1.tag.cmd = up.cmd;
+				vif1.tag.size = 0;
+				vif1.cl = 0;
+				vif1.start_aligned = static_cast<u8>(up.start_aligned);
+			}
+			else
+				s_tramo_pred[s_tramo_pred_n++] = {up, s.cycle, s.mode, s.mask, data + k + 1};
+		}
+		else if (live)
+		{
+			switch (cmd)
+			{
+				case 0x01: *reinterpret_cast<u32*>(&vif1Regs.cycle) = s.cycle; break;
+				case 0x02:
+					vif1Regs.stat.DBF = false;
+					vif1Regs.ofst = code & 0x3ff;
+					vif1Regs.tops = vif1Regs.base;
+					break;
+				case 0x03: vif1Regs.base = code & 0x3ff; break;
+				case 0x04: vif1Regs.itops = code & 0x3ff; break;
+				case 0x05: vif1Regs.mode = s.mode; break;
+				case 0x20:
+					vif1Regs.mask = s.mask;
+					vif1.tag.size = 0;
+					break;
+				case 0x30:
+				case 0x31:
+					vif1.tag.addr = 4;
+					vif1.tag.size = 0;
+					break;
+				default: break;
+			}
+		}
+		last_code = code;
+		k += n;
+	}
+	if (k == 0 || !live)
+		return k;
+	vif1Regs.code = last_code;
+	if (unpacks)
+		vif1Regs.num = 0;
+	vif1.unpackcalls = calls;
+	vu1Thread.Vif1Tramo(data, k, s0, pSize, unpacks);
+	g_forja_vif_tramos_runs.fetch_add(1, std::memory_order_relaxed);
+	g_forja_vif_tramos_unpacks.fetch_add(unpacks, std::memory_order_relaxed);
+	g_forja_vif_tramos_words.fetch_add(k, std::memory_order_relaxed);
+	return k;
+}
+
+void ForjaVif1TramoCheck(const vifStruct& vif, const VIFregisters& regs, const void* data)
+{
+	if (s_tramo_pred_i >= s_tramo_pred_n)
+		return; // an UNPACK no run covered (split between pieces, after a stop): nothing to compare
+	const ForjaTramoPrediction& p = s_tramo_pred[s_tramo_pred_i++];
+	const u32 cycle = *reinterpret_cast<const u32*>(&regs.cycle) & 0xffffu;
+	const bool same = p.data == data && p.up.addr == vif.tag.addr && p.up.size == vif.tag.size && p.up.cmd == vif.tag.cmd &&
+					  p.up.cmd == static_cast<u32>(vif.cmd) && p.up.usn == vif.usn && p.up.start_aligned == vif.start_aligned &&
+					  vif.cl == 0 && vif.pass == 1 && p.up.num == regs.num && p.cycle == cycle && p.mode == regs.mode &&
+					  p.mask == regs.mask;
+	if (same)
+	{
+		const u64 ok = g_forja_vif_tramos_checked.fetch_add(1, std::memory_order_relaxed) + 1;
+		if (ok >= 100000 && !g_forja_vif_tramos_check_only.load(std::memory_order_relaxed) &&
+			g_forja_vif_tramos_wrong.load(std::memory_order_relaxed) == 0)
+			g_forja_vif_tramos_mode.store(2, std::memory_order_relaxed);
+		return;
+	}
+	if (g_forja_vif_tramos_wrong.load(std::memory_order_relaxed) == 0)
+	{
+		const u32 a[10] = {1, p.up.addr, p.up.size, p.up.cmd, p.up.usn, p.up.start_aligned, p.up.num, p.cycle, p.mode, p.mask};
+		const u32 b[10] = {p.data == data ? 1u : 0u, vif.tag.addr, vif.tag.size, vif.tag.cmd, vif.usn, vif.start_aligned, regs.num,
+						   cycle, regs.mode, regs.mask};
+		memcpy(g_forja_vif_tramos_first_wrong[0], a, sizeof(a));
+		memcpy(g_forja_vif_tramos_first_wrong[1], b, sizeof(b));
+	}
+	g_forja_vif_tramos_wrong.fetch_add(1, std::memory_order_release);
+	g_forja_vif_tramos_mode.store(0, std::memory_order_relaxed);
+	s_tramo_pred_n = s_tramo_pred_i = 0;
+}
 
 //------------------------------------------------------------------
 // VifCode Transfer Interpreter (Vif0/Vif1)
@@ -21,8 +189,29 @@ _vifT void vifTransferLoop(u32* &data) {
 
 	vifXRegs.stat.VPS |= VPS_TRANSFERRING;
 	vifXRegs.stat.ER1  = false;
+	if (idx)
+		s_tramo_pred_n = s_tramo_pred_i = 0; // 167 in the app: predictions don't outlive the loop
 	//VIF_LOG("Starting VIF%d loop, pSize = %x, stalled = %x", idx, pSize, vifX.vifstalled.enabled );
 	while (pSize > 0 && !vifX.vifstalled.enabled) {
+
+		// 167 in the app, "VIF en tramos": a run of codes only the VU1 needs goes to the VU thread in one piece (mode 2), or (mode 1) the
+		// walk predicts its UNPACKs for the normal path to compare.
+		if (idx && !vifX.cmd && !vifX.pass && !vifX.irq && THREAD_VU1)
+		{
+			const int tramos = g_forja_vif_tramos_mode.load(std::memory_order_relaxed);
+			if (tramos == 2)
+			{
+				const u32 n = ForjaVif1Tramo(data, pSize, true);
+				if (n)
+				{
+					data += n;
+					pSize -= n;
+					continue;
+				}
+			}
+			else if (tramos == 1 && s_tramo_pred_i == s_tramo_pred_n)
+				ForjaVif1Tramo(data, pSize, false);
+		}
 
 		if(!vifX.cmd) { // Get new VifCode
 

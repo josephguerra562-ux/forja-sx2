@@ -409,6 +409,11 @@ extern std::atomic<u64> g_forja_vu1_flag_risk_progs, g_forja_vu1_flag_missed; //
 extern std::atomic<bool> g_forja_vu1_one_count; // pcsx2/MTVU.cpp (161 in the app)
 extern std::atomic<bool> g_forja_vu1_mac_jump; // pcsx2/MTVU.cpp (162 in the app)
 extern std::atomic<bool> g_forja_vu1_mac_end; // pcsx2/MTVU.cpp (163 in the app)
+extern std::atomic<int> g_forja_vif_tramos_mode; // pcsx2/Vif_Transfer.cpp (167 in the app, "VIF en tramos")
+extern std::atomic<bool> g_forja_vif_tramos_check_only;
+extern std::atomic<u64> g_forja_vif_tramos_runs, g_forja_vif_tramos_unpacks, g_forja_vif_tramos_words;
+extern std::atomic<u64> g_forja_vif_tramos_checked, g_forja_vif_tramos_wrong;
+extern u32 g_forja_vif_tramos_first_wrong[2][10];
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
 extern std::atomic<unsigned> g_forja_vsync_load;
 extern std::atomic<int> g_forja_deinterlace_factory; // compilation 137: pcsx2/VMManager.cpp, the game's factory deinterlace mode
@@ -3438,6 +3443,23 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				exact ? ", vm-vif-turnos-exactos" : "");
 	}
 	{
+		// 167 in the app, "VIF en tramos" ([Forja] VifEnTramos; pcsx2/Vif_Transfer.cpp, MTVU.cpp). 1 starts it checking (the EE predicts
+		// each run's UNPACKs and the normal path compares them; it goes on by itself after 100,000 right and off at the first wrong).
+		// /data/ForjaSX2/vm-vif-tramos-no turns it off, vm-vif-tramos-comprobar only checks, vm-vif-tramos-directo goes on without it.
+		const bool no = access("/data/ForjaSX2/vm-vif-tramos-no", F_OK) == 0;
+		const bool check_only = !no && access("/data/ForjaSX2/vm-vif-tramos-comprobar", F_OK) == 0;
+		const bool direct = !no && !check_only && access("/data/ForjaSX2/vm-vif-tramos-directo", F_OK) == 0;
+		const bool want = !no && (s_profile.vif_tramos == 1 || check_only || direct);
+		g_forja_vif_tramos_checked.store(0, std::memory_order_relaxed);
+		g_forja_vif_tramos_wrong.store(0, std::memory_order_relaxed);
+		g_forja_vif_tramos_check_only.store(check_only, std::memory_order_relaxed);
+		g_forja_vif_tramos_mode.store(want ? (direct ? 2 : 1) : 0, std::memory_order_relaxed);
+		if (want || no || s_profile.vif_tramos_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("VIF in runs (167 in the app): %s (%s)%s%s%s\n", want ? (direct ? "on" : "checking first") : "off",
+				ProfileOriginName(s_profile.vif_tramos_origin), no ? ", vm-vif-tramos-no" : "",
+				check_only ? ", vm-vif-tramos-comprobar" : "", direct ? ", vm-vif-tramos-directo" : "");
+	}
+	{
 		// 152 in the app, "Ahorro del VU1" ([Forja] VU1Ahorro; /data/ForjaSX2/vm-vu1-ahorro-no turns it off). Set before the game's
 		// first VU1 program: the VU thread reads it at every run.
 		// The VU1's map (vm-vu1-mapa): its programs, their blocks and their x86 entries, after ~60 and ~120 s of play, to tell which VU1
@@ -6184,6 +6206,30 @@ void VMHostPoll()
 					static_cast<unsigned long long>(g_forja_vu1_mem_reg_loads.load(std::memory_order_relaxed)),
 					static_cast<unsigned long long>(g_forja_vu1_mem_reg_reuses.load(std::memory_order_relaxed)),
 					static_cast<unsigned long long>(g_forja_vu1_mac_left_out.load(std::memory_order_relaxed)));
+			// 167 in the app, "VIF en tramos": its mode (0 off, 1 checking, 2 on), the runs sent so far and what they carried, and the
+			// check (UNPACKs predicted right, wrong; the first wrong one: prediction / what the normal path sent).
+			{
+				const int tm = g_forja_vif_tramos_mode.load(std::memory_order_relaxed);
+				const u64 wrong = g_forja_vif_tramos_wrong.load(std::memory_order_acquire);
+				if ((tm != 0 || wrong != 0) && vm_state == VMState::Running)
+				{
+					char first[200] = "";
+					if (wrong)
+					{
+						const u32(&w)[2][10] = g_forja_vif_tramos_first_wrong;
+						snprintf(first, sizeof(first),
+							" first_wrong=[same_data=%u addr=%x/%x size=%u/%u cmd=%x/%x usn=%u/%u aligned=%u/%u num=%u/%u cycle=%x/%x mode=%u/%u mask=%x/%x]",
+							w[1][0], w[0][1], w[1][1], w[0][2], w[1][2], w[0][3], w[1][3], w[0][4], w[1][4], w[0][5], w[1][5], w[0][6], w[1][6],
+							w[0][7], w[1][7], w[0][8], w[1][8], w[0][9], w[1][9]);
+					}
+					ProbeLog("VIF in runs: mode=%d runs=%llu unpacks=%llu words=%llu checked=%llu wrong=%llu%s\n", tm,
+						static_cast<unsigned long long>(g_forja_vif_tramos_runs.load(std::memory_order_relaxed)),
+						static_cast<unsigned long long>(g_forja_vif_tramos_unpacks.load(std::memory_order_relaxed)),
+						static_cast<unsigned long long>(g_forja_vif_tramos_words.load(std::memory_order_relaxed)),
+						static_cast<unsigned long long>(g_forja_vif_tramos_checked.load(std::memory_order_relaxed)),
+						static_cast<unsigned long long>(wrong), first);
+				}
+			}
 		}
 		if (OrbisEEDiag::on.load(std::memory_order_relaxed) && interval > 0.0)
 		{

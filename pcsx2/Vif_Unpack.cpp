@@ -419,7 +419,11 @@ _vifT int nVifUnpack(const u8* data)
 				_nVifUnpack(idx, data, vifRegs.mode, isFill);
 		}
 		else
+		{
+			if (g_forja_vif_tramos_mode.load(std::memory_order_relaxed) == 1) // 167 in the app: check the run's prediction
+				ForjaVif1TramoCheck(vif, vifRegs, data);
 			vu1Thread.VifUnpack(vif, vifRegs, (u8*)data, (size + 4) & ~0x3);
+		}
 
 		vif.pass = 0;
 		vif.tag.size = 0;

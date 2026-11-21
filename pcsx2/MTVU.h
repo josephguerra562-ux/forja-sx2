@@ -133,6 +133,9 @@ public:
 
 	void VifUnpack(vifStruct& _vif, VIFregisters& _vifRegs, const u8* data, u32 size);
 
+	// 167 in the app, "VIF en tramos": a run of VIF1 codes the VU thread reads itself (Vif_Dma.h).
+	void Vif1Tramo(const u32* data, u32 words, const ForjaTramoState& s, u32 packet, u32 unpacks);
+
 	// Writes to VU's Micro Memory (size in bytes)
 	void WriteMicroMem(u32 vu_micro_addr, const void* data, u32 size);
 

@@ -122,6 +122,10 @@ namespace ForjaGameProfile
 		// unless the game's profile sets it: God of War II, measured.
 		int vif1_fuse = -1;
 		Origin vif1_fuse_origin = Origin::Global;
+		// 167 in the app: [Forja] VifEnTramos, "VIF en tramos" (pcsx2/Vif_Transfer.cpp, MTVU.cpp): 1 the EE sends the VU thread the runs of
+		// VIF1 codes only the VU1 needs in one piece (it starts checking and goes on by itself). Off unless the profile says.
+		int vif_tramos = -1;
+		Origin vif_tramos_origin = Origin::Global;
 		// 152 in the app: [Forja] VU1Ahorro, "Ahorro del VU1" (pcsx2/MTVU.cpp, microVU_Execute.inl): the VU1's runs without the emitter's
 		// pointers and with the PS5 port's lookup cache, and a microcode upload that changes no byte leaves the programs alone. Off
 		// unless the game's profile turns it on: God of War II.
@@ -356,6 +360,7 @@ namespace ForjaGameProfile
 		read_int("VU1MacEnSaltos", &v.vu1_mac_jump, &v.vu1_mac_jump_origin); // 162 in the app
 		read_int("VU1MacAlFinal", &v.vu1_mac_end, &v.vu1_mac_end_origin); // 163 in the app
 		read_int("VifMenosTurnos", &v.vif1_fuse, &v.vif1_fuse_origin); // 151 in the app
+		read_int("VifEnTramos", &v.vif_tramos, &v.vif_tramos_origin); // 167 in the app
 		read_int("VU1Ahorro", &v.vu1_ahorro, &v.vu1_ahorro_origin); // 152 in the app
 		read_int("VU1BanderasMuertas", &v.vu1_dead_flags, &v.vu1_dead_flags_origin); // 153 in the app
 		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);
@@ -503,6 +508,7 @@ namespace ForjaGameProfile
 		v.vu1_one_count = std::clamp(v.vu1_one_count, -1, 1); // 161 in the app
 		v.vu1_mac_jump = std::clamp(v.vu1_mac_jump, -1, 1); // 162 in the app
 		v.vu1_mac_end = std::clamp(v.vu1_mac_end, -1, 1); // 163 in the app
+		v.vif_tramos = std::clamp(v.vif_tramos, -1, 1); // 167 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"
 			v.crowd_every = v.crowd_every >= 32 ? 32 : v.crowd_every >= 16 ? 16 : v.crowd_every >= 8 ? 8 : v.crowd_every >= 4 ? 4 :
 			                v.crowd_every >= 2 ? 2 : 1; // compilation 88: 16 and 32
