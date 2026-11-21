@@ -185,6 +185,9 @@ std::atomic<int> g_orbis_mtvu_batch{0};
 // 16384 (the whole 16 MB buffer, as before) by default. A shorter lap keeps the lines the EE thread writes
 // in the caches (a 16 MB lap comes back to lines long gone to memory). 256..16384. Needs proper testing.
 std::atomic<u32> g_orbis_mtvu_ring_kb{16384};
+// 169 in the app: nothing ever set it (no EmuCore/Speedhacks/OrbisMTVURingKB is read): the lap was always the whole 16 MB, 8 times the
+// 2 MB L2 the EE, VU1 and GS cores share (nucleos.txt: 1, 2, 3), so every line the EE writes into the ring and the VU thread reads back
+// goes out to memory and returns (~120-250 MB/s in God of War II). ps4/vm/main.cpp now sets it from [Forja] VU1ColaKB.
 extern std::atomic<u64> g_orbis_ee_evtests; // R5900.cpp
 extern std::atomic<u64> g_orbis_ee_vif1ints; // Vif1_Dma.cpp
 // Cumulative counts: event tests, VIF1 DMA interrupts, MTVU packets through the GIF fast path and through

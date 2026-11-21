@@ -414,6 +414,9 @@ extern std::atomic<bool> g_forja_vif_tramos_check_only;
 extern std::atomic<u64> g_forja_vif_tramos_runs, g_forja_vif_tramos_unpacks, g_forja_vif_tramos_words;
 extern std::atomic<u64> g_forja_vif_tramos_checked, g_forja_vif_tramos_wrong;
 extern u32 g_forja_vif_tramos_first_wrong[2][10];
+extern std::atomic<u32> g_orbis_mtvu_ring_kb; // pcsx2/MTVU.cpp (169 in the app, "Cola corta del VU1")
+static bool s_vu1_ring_alternate = false; // 169 in the app: VU1ColaAlterna (the 5 s meter turns the lap)
+static bool s_vu1_ring_logged = false;
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
 extern std::atomic<unsigned> g_forja_vsync_load;
 extern std::atomic<int> g_forja_deinterlace_factory; // compilation 137: pcsx2/VMManager.cpp, the game's factory deinterlace mode
@@ -3460,6 +3463,20 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				check_only ? ", vm-vif-tramos-comprobar" : "", direct ? ", vm-vif-tramos-directo" : "");
 	}
 	{
+		// 169 in the app, "Cola corta del VU1" ([Forja] VU1ColaKB, VU1ColaAlterna; pcsx2/MTVU.cpp). The ring lap the EE writes and the
+		// VU thread reads, in KB: shorter, it stays in the L2 the EE, VU1 and GS cores share; too short, the EE waits for room when the
+		// VU thread falls behind ("EE-VU1 waits: EE_writes_ring_pct"). Taken at the ring's next wrap. /data/ForjaSX2/vm-vu1-cola-larga
+		// keeps the whole 16 MB and no turning.
+		const bool longq = access("/data/ForjaSX2/vm-vu1-cola-larga", F_OK) == 0;
+		const int kb = (!longq && s_profile.vu1_ring_kb > 0) ? s_profile.vu1_ring_kb : 16384;
+		g_orbis_mtvu_ring_kb.store(static_cast<u32>(kb), std::memory_order_relaxed);
+		s_vu1_ring_alternate = !longq && s_profile.vu1_ring_alt == 1;
+		s_vu1_ring_logged = s_vu1_ring_alternate || kb != 16384;
+		if (s_vu1_ring_logged || longq || s_profile.vu1_ring_kb_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("VU1 ring lap (169 in the app): %d KB%s (%s)%s\n", kb, s_vu1_ring_alternate ? ", turning 16384/2048/1024/512 every 20 s" : "",
+				ProfileOriginName(s_profile.vu1_ring_kb_origin), longq ? ", vm-vu1-cola-larga" : "");
+	}
+	{
 		// 152 in the app, "Ahorro del VU1" ([Forja] VU1Ahorro; /data/ForjaSX2/vm-vu1-ahorro-no turns it off). Set before the game's
 		// first VU1 program: the VU thread reads it at every run.
 		// The VU1's map (vm-vu1-mapa): its programs, their blocks and their x86 entries, after ~60 and ~120 s of play, to tell which VU1
@@ -6228,6 +6245,19 @@ void VMHostPoll()
 						static_cast<unsigned long long>(g_forja_vif_tramos_words.load(std::memory_order_relaxed)),
 						static_cast<unsigned long long>(g_forja_vif_tramos_checked.load(std::memory_order_relaxed)),
 						static_cast<unsigned long long>(wrong), first);
+				}
+			}
+			// 169 in the app, "Cola corta del VU1": the lap that ran these 5 s, then (VU1ColaAlterna) the next one: 16384, 2048, 1024,
+			// 512 KB, 20 s each (4 meters), so each size gets turns in the same scenes.
+			if (s_vu1_ring_logged && vm_state == VMState::Running)
+			{
+				ProbeLog("VU1 ring lap: kb=%u\n", g_orbis_mtvu_ring_kb.load(std::memory_order_relaxed));
+				if (s_vu1_ring_alternate)
+				{
+					static const u32 kLaps[4] = {16384, 2048, 1024, 512};
+					static unsigned s_ring_meters = 0;
+					s_ring_meters++;
+					g_orbis_mtvu_ring_kb.store(kLaps[(s_ring_meters / 4) % 4], std::memory_order_relaxed);
 				}
 			}
 		}

@@ -126,6 +126,13 @@ namespace ForjaGameProfile
 		// VIF1 codes only the VU1 needs in one piece (it starts checking and goes on by itself). Off unless the profile says.
 		int vif_tramos = -1;
 		Origin vif_tramos_origin = Origin::Global;
+		// 169 in the app: [Forja] VU1ColaKB, "Cola corta del VU1" (pcsx2/MTVU.cpp, g_orbis_mtvu_ring_kb): the VU thread's ring lap in KB
+		// (256..16384; the whole 16 MB unless the profile says). VU1ColaAlterna = 1 (a test): the lap goes 16384, 2048, 1024, 512 KB,
+		// 20 s each, round and round, and the 5 s meter says which one ran, to compare them in the same scenes.
+		int vu1_ring_kb = -1;
+		Origin vu1_ring_kb_origin = Origin::Global;
+		int vu1_ring_alt = -1;
+		Origin vu1_ring_alt_origin = Origin::Global;
 		// 152 in the app: [Forja] VU1Ahorro, "Ahorro del VU1" (pcsx2/MTVU.cpp, microVU_Execute.inl): the VU1's runs without the emitter's
 		// pointers and with the PS5 port's lookup cache, and a microcode upload that changes no byte leaves the programs alone. Off
 		// unless the game's profile turns it on: God of War II.
@@ -361,6 +368,8 @@ namespace ForjaGameProfile
 		read_int("VU1MacAlFinal", &v.vu1_mac_end, &v.vu1_mac_end_origin); // 163 in the app
 		read_int("VifMenosTurnos", &v.vif1_fuse, &v.vif1_fuse_origin); // 151 in the app
 		read_int("VifEnTramos", &v.vif_tramos, &v.vif_tramos_origin); // 167 in the app
+		read_int("VU1ColaKB", &v.vu1_ring_kb, &v.vu1_ring_kb_origin); // 169 in the app
+		read_int("VU1ColaAlterna", &v.vu1_ring_alt, &v.vu1_ring_alt_origin); // 169 in the app
 		read_int("VU1Ahorro", &v.vu1_ahorro, &v.vu1_ahorro_origin); // 152 in the app
 		read_int("VU1BanderasMuertas", &v.vu1_dead_flags, &v.vu1_dead_flags_origin); // 153 in the app
 		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);
@@ -509,6 +518,8 @@ namespace ForjaGameProfile
 		v.vu1_mac_jump = std::clamp(v.vu1_mac_jump, -1, 1); // 162 in the app
 		v.vu1_mac_end = std::clamp(v.vu1_mac_end, -1, 1); // 163 in the app
 		v.vif_tramos = std::clamp(v.vif_tramos, -1, 1); // 167 in the app
+		v.vu1_ring_kb = v.vu1_ring_kb < 0 ? -1 : std::clamp(v.vu1_ring_kb, 256, 16384); // 169 in the app
+		v.vu1_ring_alt = std::clamp(v.vu1_ring_alt, -1, 1); // 169 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"
 			v.crowd_every = v.crowd_every >= 32 ? 32 : v.crowd_every >= 16 ? 16 : v.crowd_every >= 8 ? 8 : v.crowd_every >= 4 ? 4 :
 			                v.crowd_every >= 2 ? 2 : 1; // compilation 88: 16 and 32
