@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0+
 
 #pragma once
+#include <atomic>
 
 //------------------------------------------------------------------
 // mVUupdateFlags() - Updates status/mac flags
@@ -227,6 +228,57 @@ static void setupFtReg(microVU& mVU, xmm& Ft, xmm& tempFt, int opCase, int clamp
 	}
 }
 
+// 158 in the app, "Tres operandos" ([Forja] VU1TresOperandos, set at the game's start by ps4/vm/main.cpp, defined in pcsx2/MTVU.cpp).
+// Before each FMAC microVU copied Fs to a new xmm, so that the cached Fs stayed as it was, and worked there with two operands
+// ("vmovaps x13, x4; vmulps x13, x13, x12": allocReg(_Fs_, _Fd_) with cloneWrite). With AVX the operation writes a third register
+// ("vmulps x13, x4, x12"). God of War II's hottest VU1 blocks (the 157's map, 2026-11-21): 9 of those copies in 152 instructions,
+// 10 in 261. Only the VU1, the packed forms (the single-lane ones shuffle their lane into place first), ADD/SUB/MUL (MAX/MIN have
+// their own code), a source cached whole and not vf0, and no clamp of Fs or the ACC (the old code clamped them in its own copy; here
+// the clamp would change the cached one). The result is the same: all four lanes of `Fs op Ft`, of which the written ones are kept.
+extern std::atomic<bool> g_forja_vu1_three_op;
+extern std::atomic<u64> g_forja_vu1_three_op_copies;
+static bool ForjaTriWanted(microVU& mVU, int opType, int clampType)
+{
+	return isVU1 && x86Emitter::use_avx && g_forja_vu1_three_op.load(std::memory_order_relaxed) && !_XYZW_SS && !clampE &&
+		   (opType == 0 || opType == 1 || opType == 2 || opType == 5) &&
+		   !((clampType & (cFs | cACC)) && (CHECK_VU_OVERFLOW(mVU.index) || CHECK_VU_SIGN_OVERFLOW(mVU.index)));
+}
+
+// dst = a op b: SSE_PS[opType] without its clamps (ForjaTriWanted leaves the clamping cases out).
+static void ForjaTriOp(int opType, const xmm& dst, const xmm& a, const xmm& b)
+{
+	if (opType == 1)
+		xSUB.PS(dst, a, b);
+	else if (opType == 2)
+		xMUL.PS(dst, a, b);
+	else
+		xADD.PS(dst, a, b);
+}
+
+// A source of a three-operand FMAC: the xmm that caches VF `vf` whole, held as needed until release() (after the operation is
+// emitted), so that the destination's allocation can't take it.
+struct ForjaTri
+{
+	bool on = false, was_needed = false;
+	int id = -1;
+	xmm src;
+	void take(microVU& mVU, int vf)
+	{
+		id = mVU.regAlloc->ForjaTriSource(vf, was_needed);
+		on = id >= 0;
+		if (on)
+		{
+			src = xmm(id);
+			g_forja_vu1_three_op_copies.fetch_add(1, std::memory_order_relaxed);
+		}
+	}
+	void release(microVU& mVU)
+	{
+		if (on)
+			mVU.regAlloc->ForjaTriRelease(id, was_needed);
+	}
+};
+
 // Normal FMAC Opcodes
 static void mVU_FMACa(microVU& mVU, int recPass, int opCase, int opType, bool isACC, microOpcode opEnum, int clampType)
 {
@@ -239,27 +291,45 @@ static void mVU_FMACa(microVU& mVU, int recPass, int opCase, int opType, bool is
 		xmm Fs, Ft, ACC, tempFt;
 		setupFtReg(mVU, Ft, tempFt, opCase, clampType);
 
+		ForjaTri tri; // 158 in the app, "Tres operandos": Fs's cached xmm as the source, not copied first
+		if (ForjaTriWanted(mVU, opType, clampType))
+			tri.take(mVU, _Fs_);
+
 		if (isACC)
 		{
-			Fs = mVU.regAlloc->allocReg(_Fs_, 0, _X_Y_Z_W);
+			if (!tri.on)
+				Fs = mVU.regAlloc->allocReg(_Fs_, 0, _X_Y_Z_W);
+			else if (_X_Y_Z_W != 0xf)
+				Fs = mVU.regAlloc->allocReg(-1, 0, _X_Y_Z_W); // the result, merged into the ACC below
+			else
+				Fs = xEmptyReg; // all four lanes: the operation writes the ACC itself
 			ACC = mVU.regAlloc->allocReg((_X_Y_Z_W == 0xf) ? -1 : 32, 32, 0xf, 0);
 			if (_XYZW_SS2)
 				xPSHUF.D(ACC, ACC, shuffleSS(_X_Y_Z_W));
 		}
 		else
 		{
-			Fs = mVU.regAlloc->allocReg(_Fs_, _Fd_, _X_Y_Z_W);
+			Fs = tri.on ? mVU.regAlloc->allocReg(-1, _Fd_, _X_Y_Z_W) : mVU.regAlloc->allocReg(_Fs_, _Fd_, _X_Y_Z_W);
 		}
 
 		if (clampType & cFt) mVUclamp2(mVU, Ft, xEmptyReg, _X_Y_Z_W);
-		if (clampType & cFs) mVUclamp2(mVU, Fs, xEmptyReg, _X_Y_Z_W);
+		if ((clampType & cFs) && !tri.on) mVUclamp2(mVU, Fs, xEmptyReg, _X_Y_Z_W);
 
-		if (_XYZW_SS) SSE_SS[opType](mVU, Fs, Ft, xEmptyReg, xEmptyReg);
+		if (tri.on)
+		{
+			ForjaTriOp(opType, Fs.IsEmpty() ? ACC : Fs, tri.src, Ft);
+			tri.release(mVU);
+		}
+		else if (_XYZW_SS) SSE_SS[opType](mVU, Fs, Ft, xEmptyReg, xEmptyReg);
 		else          SSE_PS[opType](mVU, Fs, Ft, xEmptyReg, xEmptyReg);
 
 		if (isACC)
 		{
-			if (_XYZW_SS)
+			if (Fs.IsEmpty())
+			{
+				// 158 in the app: the operation wrote the ACC
+			}
+			else if (_XYZW_SS)
 				xMOVSS(ACC, Fs);
 			else
 				mVUmergeRegs(ACC, Fs, _X_Y_Z_W);
@@ -292,16 +362,24 @@ static void mVU_FMACb(microVU& mVU, int recPass, int opCase, int opType, microOp
 		xmm Fs, Ft, ACC, tempFt;
 		setupFtReg(mVU, Ft, tempFt, opCase, clampType);
 
-		Fs = mVU.regAlloc->allocReg(_Fs_, 0, _X_Y_Z_W);
+		ForjaTri tri; // 158 in the app, "Tres operandos": the product from Fs's cached xmm, not copied first
+		if (ForjaTriWanted(mVU, 2, clampType))
+			tri.take(mVU, _Fs_);
+		Fs = tri.on ? mVU.regAlloc->allocReg(-1, 0, _X_Y_Z_W) : mVU.regAlloc->allocReg(_Fs_, 0, _X_Y_Z_W);
 		ACC = mVU.regAlloc->allocReg(32, 32, 0xf, false);
 
 		if (_XYZW_SS2)
 			xPSHUF.D(ACC, ACC, shuffleSS(_X_Y_Z_W));
 
 		if (clampType & cFt) mVUclamp2(mVU, Ft, xEmptyReg, _X_Y_Z_W);
-		if (clampType & cFs) mVUclamp2(mVU, Fs, xEmptyReg, _X_Y_Z_W);
+		if ((clampType & cFs) && !tri.on) mVUclamp2(mVU, Fs, xEmptyReg, _X_Y_Z_W);
 
-		if (_XYZW_SS) SSE_SS[2](mVU, Fs, Ft, xEmptyReg, xEmptyReg);
+		if (tri.on)
+		{
+			ForjaTriOp(2, Fs, tri.src, Ft);
+			tri.release(mVU);
+		}
+		else if (_XYZW_SS) SSE_SS[2](mVU, Fs, Ft, xEmptyReg, xEmptyReg);
 		else          SSE_PS[2](mVU, Fs, Ft, xEmptyReg, xEmptyReg);
 
 		if (_XYZW_SS || _X_Y_Z_W == 0xf)
@@ -315,8 +393,16 @@ static void mVU_FMACb(microVU& mVU, int recPass, int opCase, int opType, microOp
 		else
 		{
 			const xmm& tempACC = mVU.regAlloc->allocReg();
-			xMOVAPS(tempACC, ACC);
-			SSE_PS[opType](mVU, tempACC, Fs, tempFt, xEmptyReg);
+			if (ForjaTriWanted(mVU, opType, clampType))
+			{
+				ForjaTriOp(opType, tempACC, ACC, Fs); // 158 in the app: no copy of the ACC first
+				g_forja_vu1_three_op_copies.fetch_add(1, std::memory_order_relaxed);
+			}
+			else
+			{
+				xMOVAPS(tempACC, ACC);
+				SSE_PS[opType](mVU, tempACC, Fs, tempFt, xEmptyReg);
+			}
 			mVUmergeRegs(ACC, tempACC, _X_Y_Z_W);
 			mVUupdateFlags(mVU, ACC, Fs, tempFt);
 			mVU.regAlloc->clearNeeded(tempACC);
@@ -341,17 +427,26 @@ static void mVU_FMACc(microVU& mVU, int recPass, int opCase, microOpcode opEnum,
 		setupFtReg(mVU, Ft, tempFt, opCase, clampType);
 
 		ACC = mVU.regAlloc->allocReg(32);
-		Fs = mVU.regAlloc->allocReg(_Fs_, _Fd_, _X_Y_Z_W);
+		ForjaTri tri; // 158 in the app, "Tres operandos": the product from Fs's cached xmm, not copied first
+		if (ForjaTriWanted(mVU, 2, clampType))
+			tri.take(mVU, _Fs_);
+		Fs = tri.on ? mVU.regAlloc->allocReg(-1, _Fd_, _X_Y_Z_W) : mVU.regAlloc->allocReg(_Fs_, _Fd_, _X_Y_Z_W);
 
 		if (_XYZW_SS2)
 			xPSHUF.D(ACC, ACC, shuffleSS(_X_Y_Z_W));
 
 		if (clampType & cFt)  mVUclamp2(mVU, Ft,  xEmptyReg, _X_Y_Z_W);
-		if (clampType & cFs)  mVUclamp2(mVU, Fs,  xEmptyReg, _X_Y_Z_W);
+		if ((clampType & cFs) && !tri.on) mVUclamp2(mVU, Fs, xEmptyReg, _X_Y_Z_W);
 		if (clampType & cACC) mVUclamp2(mVU, ACC, xEmptyReg, _X_Y_Z_W);
 
 
-		if (_XYZW_SS) { SSE_SS[2](mVU, Fs, Ft, xEmptyReg, xEmptyReg); SSE_SS[0](mVU, Fs, ACC, tempFt, xEmptyReg); }
+		if (tri.on)
+		{
+			ForjaTriOp(2, Fs, tri.src, Ft);
+			tri.release(mVU);
+			SSE_PS[0](mVU, Fs, ACC, tempFt, xEmptyReg);
+		}
+		else if (_XYZW_SS) { SSE_SS[2](mVU, Fs, Ft, xEmptyReg, xEmptyReg); SSE_SS[0](mVU, Fs, ACC, tempFt, xEmptyReg); }
 		else          { SSE_PS[2](mVU, Fs, Ft, xEmptyReg, xEmptyReg); SSE_PS[0](mVU, Fs, ACC, tempFt, xEmptyReg); }
 
 		if (_XYZW_SS2)
@@ -377,15 +472,28 @@ static void mVU_FMACd(microVU& mVU, int recPass, int opCase, microOpcode opEnum,
 		xmm Fs, Ft, Fd, tempFt;
 		setupFtReg(mVU, Ft, tempFt, opCase, clampType);
 
-		Fs = mVU.regAlloc->allocReg(_Fs_,  0, _X_Y_Z_W);
-		Fd = mVU.regAlloc->allocReg(32, _Fd_, _X_Y_Z_W);
+		// 158 in the app, "Tres operandos": the product from Fs's cached xmm and the difference from the ACC's, neither copied first
+		const bool tri_wanted = ForjaTriWanted(mVU, 2, clampType);
+		ForjaTri tri, acc;
+		if (tri_wanted)
+			tri.take(mVU, _Fs_);
+		Fs = tri.on ? mVU.regAlloc->allocReg(-1, 0, _X_Y_Z_W) : mVU.regAlloc->allocReg(_Fs_,  0, _X_Y_Z_W);
+		if (tri_wanted)
+			acc.take(mVU, 32);
+		Fd = acc.on ? mVU.regAlloc->allocReg(-1, _Fd_, _X_Y_Z_W) : mVU.regAlloc->allocReg(32, _Fd_, _X_Y_Z_W);
 
 		if (clampType & cFt)  mVUclamp2(mVU, Ft, xEmptyReg, _X_Y_Z_W);
-		if (clampType & cFs)  mVUclamp2(mVU, Fs, xEmptyReg, _X_Y_Z_W);
-		if (clampType & cACC) mVUclamp2(mVU, Fd, xEmptyReg, _X_Y_Z_W);
+		if ((clampType & cFs) && !tri.on)  mVUclamp2(mVU, Fs, xEmptyReg, _X_Y_Z_W);
+		if ((clampType & cACC) && !acc.on) mVUclamp2(mVU, Fd, xEmptyReg, _X_Y_Z_W);
 
-		if (_XYZW_SS) { SSE_SS[2](mVU, Fs, Ft, xEmptyReg, xEmptyReg); SSE_SS[1](mVU, Fd, Fs, tempFt, xEmptyReg); }
-		else          { SSE_PS[2](mVU, Fs, Ft, xEmptyReg, xEmptyReg); SSE_PS[1](mVU, Fd, Fs, tempFt, xEmptyReg); }
+		if (tri.on)        ForjaTriOp(2, Fs, tri.src, Ft);
+		else if (_XYZW_SS) SSE_SS[2](mVU, Fs, Ft, xEmptyReg, xEmptyReg);
+		else               SSE_PS[2](mVU, Fs, Ft, xEmptyReg, xEmptyReg);
+		if (acc.on)        ForjaTriOp(1, Fd, acc.src, Fs);
+		else if (_XYZW_SS) SSE_SS[1](mVU, Fd, Fs, tempFt, xEmptyReg);
+		else               SSE_PS[1](mVU, Fd, Fs, tempFt, xEmptyReg);
+		tri.release(mVU);
+		acc.release(mVU);
 
 		mVUupdateFlags(mVU, Fd, Fs, tempFt);
 

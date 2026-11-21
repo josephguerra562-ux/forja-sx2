@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0+
 
 #pragma once
+#include <atomic>
 #include <bitset>
 #include <optional>
 
@@ -368,6 +369,26 @@ __fi std::optional<xAddressVoid> mVUoptimizeConstantAddr(mV, u32 srcreg, s32 off
 
 		return ptr[mVU.regs().Mem + ((addr & 0xFFu) << 4) + offsetSS_];
 	}
+}
+
+// 158 in the app, "Memoria del VU1 en un registro" ([Forja] VU1MemoriaEnRegistro, set at the game's start by ps4/vm/main.cpp, defined
+// in pcsx2/MTVU.cpp). VU memory lives above 4 GB on the PS4, out of reach of a 32-bit displacement, so each LQ/SQ/ILW/ISW loaded its
+// address with a 10-byte movabs (xComplexAddress; God of War II's hot VU1 blocks, the 157's map: up to 9 in one block). Now the first
+// one in a block puts it in a free GPR (microRegAlloc::ForjaMemBase) and the rest of the block reuses it. `index` is the address
+// mVUaddrFix made (gprT1q): it goes in the base field and the GPR in the index field, so that rbp (which the emitter can't use as a
+// base without a displacement) is fine as well. Only the VU1's microprograms, and only where xComplexAddress would need the movabs.
+extern std::atomic<bool> g_forja_vu1_mem_reg;
+extern std::atomic<u64> g_forja_vu1_mem_reg_loads, g_forja_vu1_mem_reg_reuses;
+static xAddressVoid ForjaVUMemAddr(mV, void* ptr, const xAddressReg& index)
+{
+	const sptr text = (sptr)xGetTextPtr();
+	const bool far_away = (sptr)ptr != (s32)(sptr)ptr && !(text && ((sptr)ptr - text) == (s32)((sptr)ptr - text));
+	if (!isVU1 || index.IsEmpty() || !far_away || !g_forja_vu1_mem_reg.load(std::memory_order_relaxed))
+		return xComplexAddress(gprT2q, ptr, index);
+	bool reused = false;
+	const xAddressReg base = mVU.regAlloc->ForjaMemBase(mVU.regs().Mem, reused);
+	(reused ? g_forja_vu1_mem_reg_reuses : g_forja_vu1_mem_reg_loads).fetch_add(1, std::memory_order_relaxed);
+	return xAddressVoid(index, base, 1, (sptr)ptr - (sptr)mVU.regs().Mem);
 }
 
 // PS5 port (vk-285-109): the current instruction's I word, read by the code the I-bit hack compiles

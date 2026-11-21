@@ -41,6 +41,11 @@ std::atomic<int> g_forja_vu1_dead_flags{0};
 // the blocks compiled for a handed-on map and the branches that handed registers on (both counted at compile time).
 std::atomic<bool> g_forja_vu1_keep_regs{false};
 std::atomic<u64> g_forja_vu1_kept_blocks{0}, g_forja_vu1_kept_links{0};
+// 158 in the app, "Tres operandos" ([Forja] VU1TresOperandos, microVU_Upper.inl) and "Memoria del VU1 en un registro"
+// ([Forja] VU1MemoriaEnRegistro, microVU_Misc.inl): read when VU1 code is compiled; the copies left out, and the VU memory addresses
+// that loaded the base into a GPR or reused it (all counted at compile time).
+std::atomic<bool> g_forja_vu1_three_op{false}, g_forja_vu1_mem_reg{false};
+std::atomic<u64> g_forja_vu1_three_op_copies{0}, g_forja_vu1_mem_reg_loads{0}, g_forja_vu1_mem_reg_reuses{0};
 u64 g_forja_mpg_total = 0, g_forja_mpg_same = 0;
 
 #if defined(PCSX2_PS4_VM_BOOT)

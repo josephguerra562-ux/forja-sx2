@@ -651,6 +651,57 @@ public:
 		}
 	}
 
+	// 158 in the app, "Tres operandos" ([Forja] VU1TresOperandos, microVU_Upper.inl's ForjaTri): the xmm that caches VF `vf` (1..32)
+	// whole (not written, or written in all four lanes), the one allocReg's search would find, or -1. It is marked needed, so that the
+	// destination's allocation can't take it, until ForjaTriRelease puts its needed state back (after the operation is emitted).
+	int ForjaTriSource(int vf, bool& was_needed)
+	{
+		if (regAllocCOP2 || vf < 1 || vf > 32)
+			return -1;
+		for (int i = 0; i < xmmTotal; i++)
+		{
+			microMapXMM& m = xmmMap[i];
+			if (m.VFreg == vf && (!m.xyzw || m.xyzw == 0xf))
+			{
+				counter++;
+				was_needed = m.isNeeded;
+				m.isNeeded = true;
+				m.count = counter;
+				return i;
+			}
+		}
+		return -1;
+	}
+	void ForjaTriRelease(int id, bool was_needed) { xmmMap[id].isNeeded = was_needed; }
+
+	// 158 in the app, "Memoria del VU1 en un registro" ([Forja] VU1MemoriaEnRegistro, microVU_Misc.inl's ForjaVUMemAddr): a GPR that
+	// holds `mem` (VU memory) for the rest of the block, loaded once with a movabs. It is cached like a VI under a number no VI uses
+	// (FORJA_MEM_BASE), never dirty: flushes and evictions drop it without a store, and the backups around calls keep it like a VI.
+	static constexpr int FORJA_MEM_BASE = 40;
+	xAddressReg ForjaMemBase(void* mem, bool& reused)
+	{
+		counter++;
+		for (int i = 0; i < gprTotal; i++)
+		{
+			if (gprMap[i].VIreg == FORJA_MEM_BASE)
+			{
+				gprMap[i].count = counter;
+				reused = true;
+				return xAddressReg(i);
+			}
+		}
+		const int x = findFreeGPR(-1);
+		writeBackReg(xRegister32(x), true);
+		xMOV64(xAddressReg(x), (sptr)mem);
+		gprMap[x].VIreg = FORJA_MEM_BASE;
+		gprMap[x].count = counter;
+		gprMap[x].isNeeded = false;
+		gprMap[x].dirty = false;
+		gprMap[x].isZeroExtended = false;
+		reused = false;
+		return xAddressReg(x);
+	}
+
 	void flushCallerSavedRegisters(bool clearNeeded = false)
 	{
 		for (int i = 0; i < xmmTotal; i++)

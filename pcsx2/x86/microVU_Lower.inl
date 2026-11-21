@@ -1182,7 +1182,7 @@ mVUop(mVU_ILW)
 		}
 
 		const xRegister32& regT = mVU.regAlloc->allocGPR(-1, _It_, mVUlow.backupVI);
-		xMOVZX(regT, ptr16[optaddr.has_value() ? optaddr.value() : xComplexAddress(gprT2q, ptr, gprT1q)]);
+		xMOVZX(regT, ptr16[optaddr.has_value() ? optaddr.value() : ForjaVUMemAddr(mVU, ptr, gprT1q)]);
 		mVU.regAlloc->clearNeeded(regT);
 		mVU.profiler.EmitOp(opILW);
 	}
@@ -1208,7 +1208,7 @@ mVUop(mVU_ILWR)
 			mVUaddrFix (mVU, gprT1q, gprT2q);
 
 			const xRegister32& regT = mVU.regAlloc->allocGPR(-1, _It_, mVUlow.backupVI);
-			xMOVZX(regT, ptr16[xComplexAddress(gprT2q, ptr, gprT1q)]);
+			xMOVZX(regT, ptr16[ForjaVUMemAddr(mVU, ptr, gprT1q)]);
 			mVU.regAlloc->clearNeeded(regT);
 		}
 		else
@@ -1271,7 +1271,7 @@ mVUop(mVU_ISW)
 
 		// If regT is dirty, the high bits might not be zero.
 		const xRegister32& regT = mVU.regAlloc->allocGPR(_It_, -1, false, true);
-		const xAddressVoid ptr(optaddr.has_value() ? optaddr.value() : xComplexAddress(gprT2q, mVU.regs().Mem, gprT1q));
+		const xAddressVoid ptr(optaddr.has_value() ? optaddr.value() : ForjaVUMemAddr(mVU, mVU.regs().Mem, gprT1q));
 		if (_X) xMOV(ptr32[ptr], regT);
 		if (_Y) xMOV(ptr32[ptr + 4], regT);
 		if (_Z) xMOV(ptr32[ptr + 8], regT);
@@ -1373,7 +1373,7 @@ mVUop(mVU_LQ)
 		}
 
 		const xmm& Ft = mVU.regAlloc->allocReg(-1, _Ft_, _X_Y_Z_W);
-		mVUloadReg(Ft, optaddr.has_value() ? optaddr.value() : xComplexAddress(gprT2q, mVU.regs().Mem, gprT1q), _X_Y_Z_W);
+		mVUloadReg(Ft, optaddr.has_value() ? optaddr.value() : ForjaVUMemAddr(mVU, mVU.regs().Mem, gprT1q), _X_Y_Z_W);
 		mVU.regAlloc->clearNeeded(Ft);
 		mVU.profiler.EmitOp(opLQ);
 	}
@@ -1412,7 +1412,7 @@ mVUop(mVU_LQD)
 			}
 			else
 			{
-				mVUloadReg(Ft, xComplexAddress(gprT2q, ptr, is), _X_Y_Z_W);
+				mVUloadReg(Ft, ForjaVUMemAddr(mVU, ptr, is), _X_Y_Z_W);
 			}
 			mVU.regAlloc->clearNeeded(Ft);
 		}
@@ -1448,7 +1448,7 @@ mVUop(mVU_LQI)
 				mVUloadReg(Ft, xAddressVoid(gprT2q), _X_Y_Z_W);
 			}
 			else
-				mVUloadReg(Ft, xComplexAddress(gprT2q, ptr, is), _X_Y_Z_W);
+				mVUloadReg(Ft, ForjaVUMemAddr(mVU, ptr, is), _X_Y_Z_W);
 			mVU.regAlloc->clearNeeded(Ft);
 		}
 		mVU.profiler.EmitOp(opLQI);
@@ -1486,7 +1486,7 @@ mVUop(mVU_SQ)
 		}
 
 		const xmm& Fs = mVU.regAlloc->allocReg(_Fs_, _XYZW_PS ? -1 : 0, _X_Y_Z_W);
-		mVUsaveReg(Fs, optptr.has_value() ? optptr.value() : xComplexAddress(gprT2q, mVU.regs().Mem, gprT1q), _X_Y_Z_W, 1);
+		mVUsaveReg(Fs, optptr.has_value() ? optptr.value() : ForjaVUMemAddr(mVU, mVU.regs().Mem, gprT1q), _X_Y_Z_W, 1);
 		mVU.regAlloc->clearNeeded(Fs);
 		mVU.profiler.EmitOp(opSQ);
 	}
@@ -1522,7 +1522,7 @@ mVUop(mVU_SQD)
 			mVUsaveReg(Fs, xAddressVoid(gprT2q), _X_Y_Z_W, 1);
 		}
 		else
-			mVUsaveReg(Fs, xComplexAddress(gprT2q, ptr, it), _X_Y_Z_W, 1);
+			mVUsaveReg(Fs, ForjaVUMemAddr(mVU, ptr, it), _X_Y_Z_W, 1);
 		mVU.regAlloc->clearNeeded(Fs);
 		mVU.profiler.EmitOp(opSQD);
 	}
@@ -1545,7 +1545,7 @@ mVUop(mVU_SQI)
 		}
 		const xmm& Fs = mVU.regAlloc->allocReg(_Fs_, _XYZW_PS ? -1 : 0, _X_Y_Z_W);
 		if (_It_)
-			mVUsaveReg(Fs, xComplexAddress(gprT2q, ptr, gprT1q), _X_Y_Z_W, 1);
+			mVUsaveReg(Fs, ForjaVUMemAddr(mVU, ptr, gprT1q), _X_Y_Z_W, 1);
 		else
 		{
 			// Orbis: ptr lives above 4GB; absolute would truncate.
