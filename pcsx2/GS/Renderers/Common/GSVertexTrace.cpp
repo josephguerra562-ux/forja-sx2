@@ -8,6 +8,7 @@
 #include "common/Console.h"
 
 #include <atomic>
+#include <cstring>
 
 // 171 in the app, "Vértices una vez" ([Forja] GSVerticesUnaVez, set at the game's start by ps4/vm/main.cpp). FindMinMax goes through the
 // draw's index list, so a vertex shared by 3 triangles (a strip made into a list) was read 3 times: 9.3 % of the GS thread in God of War
@@ -23,23 +24,25 @@ u32 g_forja_gs_vt_once_first_wrong[4] = {}; // indices, vertices, which part (1 
 
 namespace
 {
-	alignas(16) u16 s_forja_identity[65536];
-	bool s_forja_identity_ready = false;
+	// 172 in the app: the vertices a draw's indices use, each once, in order. The 171 took 0 .. the highest index, and its check found
+	// a God of War II strip (549 indices, 353 vertices) where that took in vertices no triangle uses: now a bitmap over the buffer says
+	// which ones are used, from the indices themselves.
+	alignas(16) u16 s_forja_used[65536];
+	alignas(16) u32 s_forja_seen[65536 / 32];
 
-	u32 ForjaHighestIndex(const u16* index, int count)
+	u32 ForjaUsedVertices(const u16* index, int count, int v_count)
 	{
-		u32 m0 = 0, m1 = 0, m2 = 0, m3 = 0;
-		int i = 0;
-		for (; i + 4 <= count; i += 4)
+		const u32 words = (static_cast<u32>(v_count) + 31) / 32;
+		std::memset(s_forja_seen, 0, words * sizeof(u32));
+		for (int i = 0; i < count; i++)
+			s_forja_seen[index[i] >> 5] |= 1u << (index[i] & 31);
+		u32 used = 0;
+		for (u32 w = 0; w < words; w++)
 		{
-			m0 = std::max<u32>(m0, index[i]);
-			m1 = std::max<u32>(m1, index[i + 1]);
-			m2 = std::max<u32>(m2, index[i + 2]);
-			m3 = std::max<u32>(m3, index[i + 3]);
+			for (u32 bits = s_forja_seen[w]; bits != 0; bits &= bits - 1)
+				s_forja_used[used++] = static_cast<u16>(w * 32 + static_cast<u32>(__builtin_ctz(bits)));
 		}
-		for (; i < count; i++)
-			m0 = std::max<u32>(m0, index[i]);
-		return std::max(std::max(m0, m1), std::max(m2, m3));
+		return used;
 	}
 
 	bool ForjaSameFloats(const GSVector4& a, const GSVector4& b)
@@ -69,20 +72,16 @@ void GSVertexTrace::Update(const void* vertex, const u16* index, int v_count, in
 	// 171 in the app, "Vértices una vez".
 	bool forja_done = false;
 	const int forja_once = g_forja_gs_vt_once.load(std::memory_order_relaxed);
-	if (forja_once && iip && primclass == GS_TRIANGLE_CLASS && m_state->PRIM->PRIM != GS_TRIANGLEFAN && i_count >= 6)
+	// 172 in the app: only strips (a list's vertices are used once each anyway; fans keep the old way), from the bitmap of used vertices.
+	if (forja_once && iip && primclass == GS_TRIANGLE_CLASS && m_state->PRIM->PRIM == GS_TRIANGLESTRIP && i_count >= 6 &&
+		v_count > 0 && v_count <= 65536)
 	{
-		const u32 unique = ForjaHighestIndex(index, i_count) + 1;
-		if (unique * 3 <= static_cast<u32>(i_count) * 2 && unique <= static_cast<u32>(v_count))
+		const u32 unique = ForjaUsedVertices(index, i_count, v_count);
+		if (unique * 3 <= static_cast<u32>(i_count) * 2)
 		{
-			if (!s_forja_identity_ready)
-			{
-				for (u32 k = 0; k < 65536; k++)
-					s_forja_identity[k] = static_cast<u16>(k);
-				s_forja_identity_ready = true;
-			}
 			if (forja_once == 2)
 			{
-				m_fmm[color][fst][tme][iip][primclass](*this, vertex, s_forja_identity, static_cast<int>(unique));
+				m_fmm[color][fst][tme][iip][primclass](*this, vertex, s_forja_used, static_cast<int>(unique));
 				g_forja_gs_vt_once_draws.fetch_add(1, std::memory_order_relaxed);
 				g_forja_gs_vt_once_saved.fetch_add(static_cast<u32>(i_count) - unique, std::memory_order_relaxed);
 			}
@@ -91,7 +90,7 @@ void GSVertexTrace::Update(const void* vertex, const u16* index, int v_count, in
 				m_fmm[color][fst][tme][iip][primclass](*this, vertex, index, i_count);
 				const Vertex old_min = m_min, old_max = m_max;
 				const u32 old_nan = nan.value;
-				m_fmm[color][fst][tme][iip][primclass](*this, vertex, s_forja_identity, static_cast<int>(unique));
+				m_fmm[color][fst][tme][iip][primclass](*this, vertex, s_forja_used, static_cast<int>(unique));
 				const u32 which = !ForjaSameFloats(old_min.p, m_min.p) || !ForjaSameFloats(old_max.p, m_max.p) ? 1 :
 								  !ForjaSameFloats(old_min.t, m_min.t) || !ForjaSameFloats(old_max.t, m_max.t) ? 2 :
 								  !old_min.c.eq(m_min.c) || !old_max.c.eq(m_max.c)                           ? 3 :
