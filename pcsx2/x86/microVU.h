@@ -59,6 +59,11 @@ struct microProgram
 	std::deque<microRange>* ranges;          // The ranges of the microProgram that have already been recompiled
 	u32 startPC; // Start PC of this program
 	int idx;     // Program index
+	// 160 in the app, "Banderas muertas seguras" (microVU_Flags.inl): whether this program's microcode was scanned, the flags (1 status,
+	// 2 MAC) it reads right after a place only a jump reaches, and the ones a block found read without them (microVU_Misc.inl).
+	u8 forjaFlagScan;
+	u8 forjaFlagRisk;
+	u8 forjaFlagLearned;
 };
 
 typedef std::deque<microProgram*> microProgramList;

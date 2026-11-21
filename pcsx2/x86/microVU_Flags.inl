@@ -357,9 +357,90 @@ __fi void mVUsetupFlags(mV, microFlagCycles& mFC)
 extern std::atomic<int> g_forja_vu1_dead_flags;
 extern std::atomic<bool> g_forja_vu1_keep_regs; // 157 in the app (pcsx2/MTVU.cpp)
 extern std::atomic<u64> g_forja_vu1_kept_blocks, g_forja_vu1_kept_links;
-static __fi int ForjaFlagsKeptAtJump(const microVU& mVU)
+extern std::atomic<u64> g_forja_vu1_flag_risk_progs; // 160 in the app (pcsx2/MTVU.cpp)
+
+// 160 in the app, "Banderas muertas seguras". The 153's map had no reader of a flag across a JR/JALR, but it hadn't seen every program:
+// right after loading a saved state at the Colossus a program read the MAC flag at 0x08f8 and 0x0b98 just after a jump, got a stale
+// one, and the VU1 and the GS ended waiting on each other (the freeze of the 153, 155, 158 and 159; none from the 126 to the 152 in 29
+// loads). So each program's microcode is scanned once, when its first JR/JALR is compiled: the places only a jump reaches (after the
+// delay slot of a B, BAL, JR or JALR: return points and jump tables' targets; after an E-bit; a direct branch's target), and a flag
+// reader (FSxxx, FMxxx) in the 4 instructions from one of them. That program keeps that flag exact at its jumps. In the 156, 157 and
+// 159's maps (some 1,600 programs) none has one, so the hot loops keep the 153's saving.
+static int ForjaFlagReadersAfterJumps(microVU& mVU, const microProgram& prog)
 {
-	return mVU.index ? (7 & ~g_forja_vu1_dead_flags.load(std::memory_order_relaxed)) : 7;
+	const u32* code = reinterpret_cast<const u32*>(mVU.regs().Micro);
+	const int n = static_cast<int>(mVU.microMemSize / 8);
+	std::vector<u8> entry(n, 0);
+	for (int i = 0; i < n; i++)
+	{
+		const u32 lo = code[2 * i], up = code[2 * i + 1];
+		if ((up & (1u << 30)) && i + 2 < n)
+			entry[i + 2] = 1; // after an E-bit: the next routine
+		if (up & (1u << 31))
+			continue; // I-bit: the lower word is a number
+		const u32 op = lo >> 25;
+		const bool jump = op == 0x20 || op == 0x21 || op == 0x24 || op == 0x25; // B, BAL, JR, JALR
+		const bool cond = op == 0x28 || op == 0x29 || (op >= 0x2c && op <= 0x2f); // IBEQ, IBNE, IBLTZ..IBGEZ
+		if (jump && i + 2 < n)
+			entry[i + 2] = 1; // after the delay slot: reached only by a jump
+		if (op == 0x20 || op == 0x21 || cond)
+		{
+			s32 imm = static_cast<s32>(lo & 0x7ff);
+			if (imm & 0x400)
+				imm -= 0x800;
+			entry[((i * 8 + 8 + imm * 8) & static_cast<int>(mVU.microMemSize - 8)) / 8] = 1; // as branchAddr
+		}
+	}
+	int risk = 0, at[3] = {-1, -1, -1};
+	for (int i = 0; i < n && risk != 3; i++)
+	{
+		const u32 lo = code[2 * i], up = code[2 * i + 1];
+		if (up & (1u << 31))
+			continue;
+		const u32 op = lo >> 25;
+		const int bit = (op == 0x18 || op == 0x1a || op == 0x1b) ? 2 : (op >= 0x14 && op <= 0x17) ? 1 : 0; // FMxxx : FSxxx
+		if (!bit || (risk & bit))
+			continue;
+		for (int k = 0; k < 4 && i - k >= 0; k++)
+		{
+			if (entry[i - k])
+			{
+				risk |= bit;
+				at[bit] = i * 8;
+				break;
+			}
+		}
+	}
+	if (risk)
+	{
+		g_forja_vu1_flag_risk_progs.fetch_add(1, std::memory_order_relaxed);
+		ProbeLog("VU1 dead flags (160 in the app): program %d keeps%s%s at its jumps (a reader right after a jump target)\n", prog.idx,
+				 (risk & 1) ? " the status flag" : "", (risk & 2) ? " the MAC flag" : "");
+		if (risk & 2)
+			ProbeLog("  MAC reader at %04x\n", at[2]);
+		if (risk & 1)
+			ProbeLog("  status reader at %04x\n", at[1]);
+	}
+	return risk;
+}
+
+// The flags (1 status, 2 MAC, 4 clip) a JR/JALR asks exact: all three, but for the VU1 the game's dead flags (153) the program can spare.
+static __fi int ForjaFlagsKeptAtJump(microVU& mVU)
+{
+	if (!mVU.index)
+		return 7;
+	const int dead = g_forja_vu1_dead_flags.load(std::memory_order_relaxed);
+	if (!dead)
+		return 7;
+	microProgram* prog = mVU.prog.cur;
+	if (!prog)
+		return 7;
+	if (!prog->forjaFlagScan)
+	{
+		prog->forjaFlagRisk = static_cast<u8>(ForjaFlagReadersAfterJumps(mVU, *prog));
+		prog->forjaFlagScan = 1;
+	}
+	return 7 & ~(dead & ~(prog->forjaFlagRisk | prog->forjaFlagLearned));
 }
 
 // 159 in the app, "Banderas justas": the earliest position where a next block reads the MAC flag (mVUsetFlagInfo's flag pass).

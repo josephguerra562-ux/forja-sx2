@@ -386,6 +386,26 @@ static __fi bool ForjaMacJust(const microVU& mVU)
 {
 	return mVU.index != 0 && g_forja_vu1_mac_just.load(std::memory_order_relaxed);
 }
+
+// 160 in the app, "Banderas muertas seguras": a block of the VU1 reads the status (bit 1) or MAC (bit 2) flag in its first 4
+// instructions without it in its starting state, and it isn't the program's first block. With the 153's dead flags that means a
+// JR/JALR before it left the flag uncomputed (the Colossus' freeze, 2026-11-21: blocks 0x08f8 and 0x0b98 right after loading a saved
+// state, then the VU1 and the GS waiting on each other). The program keeps that flag at its jumps from its next compile on.
+extern std::atomic<int> g_forja_vu1_dead_flags;
+extern std::atomic<u64> g_forja_vu1_flag_missed;
+extern void ProbeLog(const char* format, ...);
+static void ForjaFlagReaderMissed(microVU& mVU, int bit)
+{
+	microProgram* prog = mVU.prog.cur;
+	if (!mVU.index || !prog || !(g_forja_vu1_dead_flags.load(std::memory_order_relaxed) & bit))
+		return;
+	if (((prog->forjaFlagRisk | prog->forjaFlagLearned) & bit) || mVUstartPC * 4 == prog->startPC * 8)
+		return;
+	prog->forjaFlagLearned |= bit;
+	g_forja_vu1_flag_missed.fetch_add(1, std::memory_order_relaxed);
+	ProbeLog("VU1 dead flags (160 in the app): program %d reads the %s flag right after a jump at %04x, which the scan missed: kept "
+			 "at its jumps from now on\n", prog->idx, bit == 2 ? "MAC" : "status", mVUstartPC * 4);
+}
 extern std::atomic<u64> g_forja_vu1_mem_reg_loads, g_forja_vu1_mem_reg_reuses;
 static xAddressVoid ForjaVUMemAddr(mV, void* ptr, const xAddressReg& index)
 {

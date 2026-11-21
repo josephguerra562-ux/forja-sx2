@@ -415,7 +415,10 @@ __ri void mVUanalyzeSflag(mV, int It)
 		if (mVUcount < 4)
 		{
 			if (!(mVUpBlock->pState.needExactMatch & 1)) // The only time this should happen is on the first program block
+			{
 				DevCon.WriteLn(Color_Green, "microVU%d: pState's sFlag Info was expected to be set [%04x]", getIndex, xPC);
+				ForjaFlagReaderMissed(mVU, 1); // 160 in the app
+			}
 		}
 	}
 }
@@ -446,7 +449,10 @@ __ri void mVUanalyzeMflag(mV, int Is, int It)
 		if (mVUcount < 4)
 		{
 			if (!(mVUpBlock->pState.needExactMatch & 2)) // The only time this should happen is on the first program block
+			{
 				DevCon.WriteLn(Color_Green, "microVU%d: pState's mFlag Info was expected to be set [%04x]", getIndex, xPC);
+				ForjaFlagReaderMissed(mVU, 2); // 160 in the app
+			}
 		}
 	}
 }

@@ -405,6 +405,7 @@ extern std::atomic<bool> g_forja_vu1_three_op, g_forja_vu1_mem_reg; // pcsx2/MTV
 extern std::atomic<u64> g_forja_vu1_three_op_copies, g_forja_vu1_mem_reg_loads, g_forja_vu1_mem_reg_reuses;
 extern std::atomic<bool> g_forja_vu1_mac_just; // pcsx2/MTVU.cpp (159 in the app)
 extern std::atomic<u64> g_forja_vu1_mac_left_out;
+extern std::atomic<u64> g_forja_vu1_flag_risk_progs, g_forja_vu1_flag_missed; // pcsx2/MTVU.cpp (160 in the app)
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
 extern std::atomic<unsigned> g_forja_vsync_load;
 extern std::atomic<int> g_forja_deinterlace_factory; // compilation 137: pcsx2/VMManager.cpp, the game's factory deinterlace mode
@@ -6117,6 +6118,11 @@ void VMHostPoll()
 			s_last_mpg = mpg;
 			s_last_mpg_same = mpg_same;
 			// 157 in the app, "Registros entre bloques": blocks compiled for a handed-on map and branches that handed registers on, so far.
+			// 160 in the app, "Banderas muertas seguras": programs that keep a flag at their jumps, and readers the scan missed, so far.
+			if (g_forja_vu1_dead_flags.load(std::memory_order_relaxed) && vm_state == VMState::Running)
+				ProbeLog("VU1 dead flags: programs_keeping_flags=%llu missed_readers=%llu\n",
+					static_cast<unsigned long long>(g_forja_vu1_flag_risk_progs.load(std::memory_order_relaxed)),
+					static_cast<unsigned long long>(g_forja_vu1_flag_missed.load(std::memory_order_relaxed)));
 			if (g_forja_vu1_keep_regs.load(std::memory_order_relaxed) && vm_state == VMState::Running)
 				ProbeLog("VU1 registers between blocks: kept_blocks=%llu handing_branches=%llu\n",
 					static_cast<unsigned long long>(g_forja_vu1_kept_blocks.load(std::memory_order_relaxed)),
