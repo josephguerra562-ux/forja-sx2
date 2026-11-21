@@ -68,6 +68,32 @@ struct microJumpCache
 	void* x86ptrStart;  // Start of code (Entry point for block)
 };
 
+// 157 in the app, "Registros entre bloques" ([Forja] VU1RegistrosEntreBloques; microVU_Branch.inl, ForjaKeep*): the registers a direct
+// branch of the VU1 hands on to the next block: VF in xmm (vf[xmm] = 1..31, 32 ACC; -1 none) and VI in GPRs (vi[gpr] = 1..15; -1 none),
+// with which were written and not stored yet (dirty) and which VI hold a zero-extended value. God of War II (the 156's VU1 map,
+// 2026-11-21, its 60 hottest blocks): loading and storing registers was ~20 % of their x86 (VF 11.4 %, VI 8.4 %), because every block
+// stored its registers at its end and the next one loaded them again.
+struct ForjaRegMap
+{
+	s8 vf[16];
+	s8 vi[16];
+	u16 dirty;
+	u16 vi_dirty;
+	u16 vi_zext;
+	bool operator==(const ForjaRegMap& o) const
+	{
+		return dirty == o.dirty && vi_dirty == o.vi_dirty && vi_zext == o.vi_zext && std::memcmp(vf, o.vf, sizeof(vf)) == 0 &&
+		       std::memcmp(vi, o.vi, sizeof(vi)) == 0;
+	}
+	bool empty() const
+	{
+		for (int i = 0; i < 16; i++)
+			if (vf[i] >= 0 || vi[i] >= 0)
+				return false;
+		return true;
+	}
+};
+
 struct alignas(16) microBlock
 {
 	microRegInfo    pState;      // Detailed State of Pipeline
@@ -500,6 +526,128 @@ public:
 			writeBackReg(xRegister32(i), true);
 			if (clearState)
 				clearGPR(i);
+		}
+	}
+
+	// 157 in the app, "Registros entre bloques": which registers a direct branch can hand on to the next block.
+	// - A VF register (1..31 or the ACC) in an xmm that is whole (not written at all, or written in all four lanes), not needed by an
+	//   instruction, not vf0, the only copy of its VF that was written, and not one of `xmm_excluded` (the temps mVUsetupFlags will use
+	//   after the flush: xmm0 for the MAC flag's shuffle, xmm1 for the clip flag's).
+	// - A VI register (1..15) in a GPR that is always usable for the VU1 (not RTEXTPTR or RFASTMEMBASE, whose use can change), not needed,
+	//   and the only GPR holding that VI.
+	void ForjaPlanKeep(ForjaRegMap& map, u32 xmm_excluded) const
+	{
+		std::memset(map.vf, -1, sizeof(map.vf));
+		std::memset(map.vi, -1, sizeof(map.vi));
+		map.dirty = map.vi_dirty = map.vi_zext = 0;
+		u64 planned = 0;
+		for (int i = 0; i < xmmTotal; i++)
+		{
+			if (xmm_excluded & (1u << i))
+				continue;
+			const microMapXMM& m = xmmMap[i];
+			if (m.isNeeded || m.isZero || m.VFreg < 1 || m.VFreg > 32 || (m.xyzw != 0 && m.xyzw != 0xf))
+				continue;
+			if (planned & (1ull << m.VFreg))
+				continue; // the same VF already handed on in another xmm
+			// Any other copy of this VF that was written (partly or whole) would be written back by the flush and invalidate this one
+			// (writeBackReg), or hold a newer value: then it is not handed on.
+			bool written_elsewhere = false;
+			for (int j = 0; j < xmmTotal; j++)
+			{
+				if (j != i && xmmMap[j].VFreg == m.VFreg && xmmMap[j].xyzw != 0)
+					written_elsewhere = true;
+			}
+			if (written_elsewhere)
+				continue;
+			map.vf[i] = static_cast<s8>(m.VFreg);
+			if (m.xyzw == 0xf)
+				map.dirty |= static_cast<u16>(1u << i);
+			planned |= (1ull << m.VFreg);
+		}
+		u32 vi_planned = 0;
+		for (int i = 0; i < gprTotal && i < 16; i++)
+		{
+			const microMapGPR& g = gprMap[i];
+			if (!g.usable || g.isNeeded || g.VIreg < 1 || g.VIreg > 15 || i == RTEXTPTR.GetId() || i == RFASTMEMBASE.GetId())
+				continue;
+			bool elsewhere = false;
+			for (int j = 0; j < gprTotal; j++)
+			{
+				if (j != i && gprMap[j].VIreg == g.VIreg)
+					elsewhere = true;
+			}
+			if (elsewhere || (vi_planned & (1u << g.VIreg)))
+				continue;
+			map.vi[i] = static_cast<s8>(g.VIreg);
+			if (g.dirty)
+				map.vi_dirty |= static_cast<u16>(1u << i);
+			if (g.isZeroExtended)
+				map.vi_zext |= static_cast<u16>(1u << i);
+			vi_planned |= (1u << g.VIreg);
+		}
+	}
+
+	// The flush of a direct branch that hands `map` on: as flushAll(), except that the registers in `map` are not stored (a dirty one stays
+	// only in its register: the next block, compiled for this map, starts with it - ForjaImport). They stay marked as needed until
+	// ForjaFinishKeep, so that nothing mVUsetupFlags allocates in between (a GPR for the status flag's sort) can take them.
+	void ForjaFlushForKeep(const ForjaRegMap& map)
+	{
+		for (int i = 0; i < xmmTotal; i++)
+		{
+			if (map.vf[i] >= 1)
+				xmmMap[i].isNeeded = true;
+			else
+			{
+				writeBackReg(xmm(i));
+				clearReg(i);
+			}
+		}
+		for (int i = 0; i < gprTotal; i++)
+		{
+			if (i < 16 && map.vi[i] >= 1)
+				gprMap[i].isNeeded = true;
+			else
+			{
+				writeBackReg(xRegister32(i), true);
+				clearGPR(i);
+			}
+		}
+	}
+
+	// After the branch's flag shuffle: the handed-on registers are forgotten here (their values stay in the registers for the next block).
+	void ForjaFinishKeep(const ForjaRegMap& map)
+	{
+		for (int i = 0; i < xmmTotal; i++)
+		{
+			if (map.vf[i] >= 1)
+				clearReg(i);
+		}
+		for (int i = 0; i < gprTotal && i < 16; i++)
+		{
+			if (map.vi[i] >= 1)
+				clearGPR(i);
+		}
+	}
+
+	// A block compiled for `map` starts with those registers cached (dirty ones still to be written back).
+	void ForjaImport(const ForjaRegMap& map)
+	{
+		for (int i = 0; i < xmmTotal; i++)
+		{
+			if (map.vf[i] >= 1)
+				xmmMap[i] = {map.vf[i], ((map.dirty >> i) & 1) ? 0xf : 0, 0, false, false};
+		}
+		for (int i = 0; i < gprTotal && i < 16; i++)
+		{
+			if (map.vi[i] >= 1 && gprMap[i].usable)
+			{
+				gprMap[i].VIreg = map.vi[i];
+				gprMap[i].count = 0;
+				gprMap[i].isNeeded = false;
+				gprMap[i].dirty = ((map.vi_dirty >> i) & 1) != 0;
+				gprMap[i].isZeroExtended = ((map.vi_zext >> i) & 1) != 0;
+			}
 		}
 	}
 

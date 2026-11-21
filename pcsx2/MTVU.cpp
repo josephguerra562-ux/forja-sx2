@@ -37,6 +37,10 @@ std::atomic<u64> g_orbis_vu1_cycles{0}, g_orbis_vu1_runs{0};
 std::atomic<bool> g_forja_vu1_ahorro{false};
 // 153 in the app, "Banderas muertas del VU1" ([Forja] VU1BanderasMuertas): microVU_Flags.inl reads it when it compiles VU1 code.
 std::atomic<int> g_forja_vu1_dead_flags{0};
+// 157 in the app, "Registros entre bloques" ([Forja] VU1RegistrosEntreBloques): microVU_Branch.inl reads it when it compiles VU1 code;
+// the blocks compiled for a handed-on map and the branches that handed registers on (both counted at compile time).
+std::atomic<bool> g_forja_vu1_keep_regs{false};
+std::atomic<u64> g_forja_vu1_kept_blocks{0}, g_forja_vu1_kept_links{0};
 u64 g_forja_mpg_total = 0, g_forja_mpg_same = 0;
 
 #if defined(PCSX2_PS4_VM_BOOT)

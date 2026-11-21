@@ -344,6 +344,8 @@ __fi void mVUsetupFlags(mV, microFlagCycles& mFC)
 // JALR) spent 28 % of its x86 on those flags. The clip flag stays exact. Only for VU1.
 #include <atomic>
 extern std::atomic<int> g_forja_vu1_dead_flags;
+extern std::atomic<bool> g_forja_vu1_keep_regs; // 157 in the app (pcsx2/MTVU.cpp)
+extern std::atomic<u64> g_forja_vu1_kept_blocks, g_forja_vu1_kept_links;
 static __fi int ForjaFlagsKeptAtJump(const microVU& mVU)
 {
 	return mVU.index ? (7 & ~g_forja_vu1_dead_flags.load(std::memory_order_relaxed)) : 7;

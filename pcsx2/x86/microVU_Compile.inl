@@ -536,7 +536,7 @@ __fi void mVUinitConstValues(microVU& mVU)
 }
 
 // Initialize Variables
-__fi void mVUinitFirstPass(microVU& mVU, uptr pState, u8* thisPtr)
+__fi void mVUinitFirstPass(microVU& mVU, uptr pState, u8* thisPtr, const ForjaRegMap* forja_kept = nullptr)
 {
 	mVUstartPC = iPC; // Block Start PC
 	mVUbranch  = 0;   // Branch Type
@@ -553,7 +553,9 @@ __fi void mVUinitFirstPass(microVU& mVU, uptr pState, u8* thisPtr)
 		memcpy((u8*)&mVU.prog.lpState, (u8*)pState, sizeof(microRegInfo));
 	}
 	mVUblock.x86ptrStart = thisPtr;
-	mVUpBlock = mVUblocks[mVUstartPC / 2]->add(mVU, &mVUblock); // Add this block to block manager
+	// 157 in the app: a block compiled for a map goes to the kept list (only a direct branch with that map jumps to it).
+	mVUpBlock = forja_kept ? mVUblocks[mVUstartPC / 2]->addKept(&mVUblock, *forja_kept) :
+	                         mVUblocks[mVUstartPC / 2]->add(mVU, &mVUblock); // Add this block to block manager
 	mVUregs.needExactMatch = (mVUpBlock->pState.blockType) ? 7 : 0; // ToDo: Fix 1-Op block flag linking (MGS2:Demo/Sly Cooper)
 	mVUregs.blockType = 0;
 	mVUregs.viBackUp  = 0;
@@ -711,6 +713,14 @@ static void mvuPreloadRegisters(microVU& mVU, u32 endCount)
 
 static void* mVUcompileBlock(microVU& mVU, u32 startPC, uptr pState)
 {
+	// 157 in the app, "Registros entre bloques": taken at once, before anything here can compile another block.
+	ForjaRegMap forja_import;
+	const bool forja_kept = mVU.forjaImportPending;
+	if (forja_kept)
+	{
+		forja_import = mVU.forjaImport;
+		mVU.forjaImportPending = false;
+	}
 	microFlagCycles mFC;
 	u8* thisPtr = x86Ptr;
 	const u32 endCount = (((microRegInfo*)pState)->blockType) ? 1 : (mVU.microMemSize / 8);
@@ -719,7 +729,14 @@ static void* mVUcompileBlock(microVU& mVU, u32 startPC, uptr pState)
 	iPC = startPC / 4;
 	mVUsetupRange(mVU, startPC, 1); // Setup Program Bounds/Range
 	mVU.regAlloc->reset(false);          // Reset regAlloc
-	mVUinitFirstPass(mVU, pState, thisPtr);
+	mVUinitFirstPass(mVU, pState, thisPtr, forja_kept ? &forja_import : nullptr);
+	if (forja_kept)
+	{
+		// The registers the branch handed on: cached from the start (the early exit of mVUtestCycles writes the dirty ones back with
+		// TDwritebackAll, which keeps them cached for the block; mvuPreloadRegisters skips the ones already there).
+		mVU.regAlloc->ForjaImport(forja_import);
+		g_forja_vu1_kept_blocks.fetch_add(1, std::memory_order_relaxed);
+	}
 	mVUbranch = 0;
 	for (int branch = 0; mVUcount < endCount;)
 	{
@@ -1066,6 +1083,14 @@ void* mVUcompile(microVU& mVU, u32 startPC, uptr pState)
 	} emitter_scope(mVU);
 #endif
 	return mVUcompileBlock(mVU, startPC, pState);
+}
+
+// 157 in the app, "Registros entre bloques": compile startPC for entry with `map`'s registers already in their xmm.
+void* mVUcompileKept(microVU& mVU, u32 startPC, uptr pState, const ForjaRegMap& map)
+{
+	mVU.forjaImport = map;
+	mVU.forjaImportPending = true;
+	return mVUcompile(mVU, startPC, pState);
 }
 
 // Returns the entry point of the block (compiles it if not found)

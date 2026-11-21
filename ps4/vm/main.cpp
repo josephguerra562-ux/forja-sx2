@@ -399,6 +399,8 @@ static bool s_vu1_map_wanted = false; // 152 in the app: /data/ForjaSX2/vm-vu1-m
 static unsigned s_vu1_map_beats = 0;
 extern u64 g_forja_mpg_total, g_forja_mpg_same;
 extern std::atomic<int> g_forja_vu1_dead_flags; // pcsx2/MTVU.cpp (153 in the app, "Banderas muertas del VU1")
+extern std::atomic<bool> g_forja_vu1_keep_regs; // pcsx2/MTVU.cpp (157 in the app, "Registros entre bloques")
+extern std::atomic<u64> g_forja_vu1_kept_blocks, g_forja_vu1_kept_links;
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
 extern std::atomic<unsigned> g_forja_vsync_load;
 extern std::atomic<int> g_forja_deinterlace_factory; // compilation 137: pcsx2/VMManager.cpp, the game's factory deinterlace mode
@@ -3450,6 +3452,14 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		if (on || no || s_profile.vu1_ahorro_origin != ForjaGameProfile::Origin::Global)
 			ProbeLog("VU1 savings (152 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.vu1_ahorro_origin),
 				no ? ", vm-vu1-ahorro-no" : "");
+		// 157 in the app, "Registros entre bloques" ([Forja] VU1RegistrosEntreBloques; /data/ForjaSX2/vm-vu1-regs-no turns it off). Before the
+		// game's first VU1 compile: microVU reads it as it compiles.
+		const bool regs_no = access("/data/ForjaSX2/vm-vu1-regs-no", F_OK) == 0;
+		const bool keep_regs = !regs_no && s_profile.vu1_keep_regs == 1;
+		g_forja_vu1_keep_regs.store(keep_regs, std::memory_order_relaxed);
+		if (keep_regs || regs_no || s_profile.vu1_keep_regs_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("VU1 registers between blocks (157 in the app): %s (%s)%s\n", keep_regs ? "on" : "off",
+				ProfileOriginName(s_profile.vu1_keep_regs_origin), regs_no ? ", vm-vu1-regs-no" : "");
 	}
 	// Compilation 128: on unless the profile says 0 (measured on 2026-11-08: Bully's effect hitches 6 -> 1, Shadow's 14 -> 2).
 	s_effects_ahead_game = s_profile.effects_ahead != 0; // compilation 127
@@ -6080,6 +6090,11 @@ void VMHostPoll()
 					static_cast<double>(mpg_same - s_last_mpg_same) / interval);
 			s_last_mpg = mpg;
 			s_last_mpg_same = mpg_same;
+			// 157 in the app, "Registros entre bloques": blocks compiled for a handed-on map and branches that handed registers on, so far.
+			if (g_forja_vu1_keep_regs.load(std::memory_order_relaxed) && vm_state == VMState::Running)
+				ProbeLog("VU1 registers between blocks: kept_blocks=%llu handing_branches=%llu\n",
+					static_cast<unsigned long long>(g_forja_vu1_kept_blocks.load(std::memory_order_relaxed)),
+					static_cast<unsigned long long>(g_forja_vu1_kept_links.load(std::memory_order_relaxed)));
 		}
 		if (OrbisEEDiag::on.load(std::memory_order_relaxed) && interval > 0.0)
 		{

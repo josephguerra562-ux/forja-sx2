@@ -5,6 +5,7 @@
 
 extern void mVUincCycles(microVU& mVU, int x);
 extern void* mVUcompile(microVU& mVU, u32 startPC, uptr pState);
+extern void* mVUcompileKept(microVU& mVU, u32 startPC, uptr pState, const ForjaRegMap& map); // 157 in the app
 __fi int getLastFlagInst(microRegInfo& pState, int* xFlag, int flagType, int isEbit)
 {
 	if (isEbit)
@@ -274,6 +275,67 @@ void mVUsetupBranch(mV, microFlagCycles& mFC)
 	mVU.p = 0, mVU.q = 0;
 }
 
+// 157 in the app, "Registros entre bloques" ([Forja] VU1RegistrosEntreBloques, set at the game's start by ps4/vm/main.cpp, defined in
+// pcsx2/MTVU.cpp). A direct branch of the VU1 (B/BAL, IBxx) without T/D/M/E bits hands the VF registers it holds whole in xmm and the VI
+// it holds in GPRs on to the next block (microRegAlloc::ForjaPlanKeep): the dirty ones are not stored, and the next block is compiled
+// for that map (a kept block, its own list), so it neither loads them nor finds them stale. JR/JALR, E-bit ends, early exits
+// (TDwritebackAll) and calls write everything back as before. Only the VU1.
+static constexpr int FORJA_KEPT_PER_PC = 6;
+
+static bool ForjaKeepWanted(microVU& mVU)
+{
+	return isVU1 && g_forja_vu1_keep_regs.load(std::memory_order_relaxed) && !mVUup.tBit && !mVUup.dBit && !mVUup.mBit &&
+	       !mVUup.eBit && !mVUlow.badBranch && !mVUlow.evilBranch && !isEvilBlock && mVUregs.blockType == 0;
+}
+
+// The branch may hand `map` on to startPC: its kept block is there, or there is room for one more.
+static bool ForjaKeptRoom(microVU& mVU, u32 startPC, const ForjaRegMap& map, microRegInfo* pState)
+{
+	startPC &= mVU.microMemSize - 8;
+	blockCreate(startPC / 8);
+	microBlockManager* bm = mVUblocks[startPC / 8];
+	return bm->searchKept(mVU, pState, map) != nullptr || bm->getKeptCount() < FORJA_KEPT_PER_PC;
+}
+
+// The xmm temps mVUsetupFlags will use at this branch (xmm0 for the MAC flag's shuffle, xmm1 for the clip flag's): never handed on.
+static u32 ForjaFlagTemps(microVU& mVU)
+{
+	return ((doMFlagInsts && __Mac) ? 1u : 0u) | ((doCFlagInsts && __Clip) ? 2u : 0u);
+}
+
+// mVUsetupBranch for a branch that hands `map` on: the handed-on registers stay marked as needed through the flag shuffle.
+static void ForjaSetupBranchKeep(microVU& mVU, microFlagCycles& mFC, const ForjaRegMap& map)
+{
+	mVU.regAlloc->ForjaFlushForKeep(map);
+	mVUsetupFlags(mVU, mFC);
+	if (mVU.p || mVU.q)
+		xPSHUF.D(xmmPQ, xmmPQ, shufflePQ);
+	mVU.p = 0, mVU.q = 0;
+	mVU.regAlloc->ForjaFinishKeep(map);
+	g_forja_vu1_kept_links.fetch_add(1, std::memory_order_relaxed);
+}
+
+// The kept block's entry (compiled here when missing: once a branch handed dirty registers on, its target has to take them).
+static void* ForjaKeptFetch(microVU& mVU, u32 startPC, uptr pState, const ForjaRegMap& map)
+{
+	startPC &= mVU.microMemSize - 8;
+	blockCreate(startPC / 8);
+	if (microBlock* b = mVUblocks[startPC / 8]->searchKept(mVU, (microRegInfo*)pState, map))
+		return b->x86ptrStart;
+	return mVUcompileKept(mVU, startPC, pState, map);
+}
+
+// normBranchCompile for a branch that hands `map` on.
+static void ForjaBranchCompileKept(microVU& mVU, u32 branchPC, const ForjaRegMap& map)
+{
+	branchPC &= mVU.microMemSize - 8;
+	blockCreate(branchPC / 8);
+	if (microBlock* b = mVUblocks[branchPC / 8]->searchKept(mVU, (microRegInfo*)&mVUregs, map))
+		xJMP(b->x86ptrStart);
+	else
+		mVUcompileKept(mVU, branchPC, (uptr)&mVUregs, map);
+}
+
 void normBranchCompile(microVU& mVU, u32 branchPC)
 {
 	microBlock* pBlock;
@@ -432,13 +494,40 @@ void normBranch(mV, microFlagCycles& mFC)
 	}
 
 	// Normal Branch
+	if (ForjaKeepWanted(mVU)) // 157 in the app
+	{
+		ForjaRegMap keep_map;
+		mVU.regAlloc->ForjaPlanKeep(keep_map, ForjaFlagTemps(mVU));
+		if (!keep_map.empty() && ForjaKeptRoom(mVU, branchAddr(mVU), keep_map, &mVUregs))
+		{
+			ForjaSetupBranchKeep(mVU, mFC, keep_map);
+			ForjaBranchCompileKept(mVU, branchAddr(mVU), keep_map);
+			return;
+		}
+	}
 	mVUsetupBranch(mVU, mFC);
 	normBranchCompile(mVU, branchAddr(mVU));
 }
 
 void condBranch(mV, microFlagCycles& mFC, int JMPcc)
 {
-	mVUsetupBranch(mVU, mFC);
+	// 157 in the app, "Registros entre bloques": only the normal conditional branch (no T/D/M/E bit), and only when both sides - the
+	// not-taken one after the delay slot and the target - can take the map.
+	ForjaRegMap keep_map;
+	bool keep = false;
+	if (ForjaKeepWanted(mVU))
+	{
+		mVU.regAlloc->ForjaPlanKeep(keep_map, ForjaFlagTemps(mVU));
+		if (!keep_map.empty())
+		{
+			const u32 not_taken = ((iPC + 4) * 4) & (mVU.microMemSize - 8);
+			keep = ForjaKeptRoom(mVU, not_taken, keep_map, &mVUregs) && ForjaKeptRoom(mVU, branchAddr(mVU), keep_map, &mVUregs);
+		}
+	}
+	if (keep)
+		ForjaSetupBranchKeep(mVU, mFC, keep_map);
+	else
+		mVUsetupBranch(mVU, mFC);
 
 	if (mVUup.tBit)
 	{
@@ -557,13 +646,17 @@ void condBranch(mV, microFlagCycles& mFC, int JMPcc)
 		microBlock* bBlock;
 		incPC2(1); // Check if Branch Non-Taken Side has already been recompiled
 		blockCreate(iPC / 2);
-		bBlock = mVUblocks[iPC / 2]->search(mVU, (microRegInfo*)&mVUregs);
+		bBlock = keep ? mVUblocks[iPC / 2]->searchKept(mVU, (microRegInfo*)&mVUregs, keep_map) : // 157 in the app
+		                mVUblocks[iPC / 2]->search(mVU, (microRegInfo*)&mVUregs);
 		incPC2(-1);
 		if (bBlock) // Branch non-taken has already been compiled
 		{
 			xJcc(xInvertCond((JccComparisonType)JMPcc), bBlock->x86ptrStart);
 			incPC(-3); // Go back to branch opcode (to get branch imm addr)
-			normBranchCompile(mVU, branchAddr(mVU));
+			if (keep)
+				ForjaBranchCompileKept(mVU, branchAddr(mVU), keep_map);
+			else
+				normBranchCompile(mVU, branchAddr(mVU));
 		}
 		else
 		{
@@ -574,11 +667,15 @@ void condBranch(mV, microFlagCycles& mFC, int JMPcc)
 			memcpy(&regBackup, &mVUregs, sizeof(microRegInfo));
 
 			incPC2(1); // Get PC for branch not-taken
-			mVUcompile(mVU, xPC, (uptr)&mVUregs);
+			if (keep)
+				mVUcompileKept(mVU, xPC, (uptr)&mVUregs, keep_map); // 157 in the app
+			else
+				mVUcompile(mVU, xPC, (uptr)&mVUregs);
 
 			iPC = bPC;
 			incPC(-3); // Go back to branch opcode (to get branch imm addr)
-			uptr jumpAddr = (uptr)mVUblockFetch(mVU, branchAddr(mVU), (uptr)&regBackup);
+			uptr jumpAddr = keep ? (uptr)ForjaKeptFetch(mVU, branchAddr(mVU), (uptr)&regBackup, keep_map) :
+			                       (uptr)mVUblockFetch(mVU, branchAddr(mVU), (uptr)&regBackup);
 			*ajmp = (jumpAddr - ((uptr)ajmp + 4));
 		}
 	}

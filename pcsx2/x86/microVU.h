@@ -30,6 +30,15 @@ struct microBlockLink
 	microBlockLink* next;
 };
 
+// 157 in the app, "Registros entre bloques": a block compiled for entry from a direct branch that hands VF registers on in xmm (its
+// map). Kept apart from the quick and full lists: only a direct branch with the same pipeline state and the same map jumps to it.
+struct ForjaKeptLink
+{
+	microBlock block;
+	ForjaRegMap map;
+	ForjaKeptLink* next;
+};
+
 struct microBlockLinkRef
 {
 	microBlock* pBlock;
@@ -122,6 +131,9 @@ struct microVU
 	u32 totalCycles;  // Total Cycles that mVU is expected to run for
 	s32 cycles;       // Cycles Counter
 	u32 compileDepth; // PS5 port: mVUcompile nesting; the outermost one sets and saves the emitter pointers
+	// 157 in the app, "Registros entre bloques": the map the next mVUcompileBlock starts with (set by mVUcompileKept, taken at once).
+	ForjaRegMap forjaImport;
+	bool forjaImportPending;
 #if defined(ORBIS_VULKAN) || defined(PCSX2_PS4) // 152 in the app: the PS4 too
 	// PS5 port (vk-285-11): mVUexecute's recent program/block lookups (microVU_Execute.inl). A lookup
 	// walks the quick table, the program's block array and the block manager's variants: cold cache
@@ -162,6 +174,8 @@ private:
 	microBlockLink *fBlockList, *fBlockEnd; // Full  Search
 	std::vector<microBlockLinkRef> quickLookup;
 	int qListI, fListI;
+	ForjaKeptLink* kBlockList = nullptr; // 157 in the app
+	int kListI = 0;
 
 public:
 	inline int getFullListCount() const { return fListI; }
@@ -174,6 +188,30 @@ public:
 			f(linkI->block);
 		for (const microBlockLink* linkI = fBlockList; linkI != nullptr; linkI = linkI->next)
 			f(linkI->block);
+		for (const ForjaKeptLink* linkI = kBlockList; linkI != nullptr; linkI = linkI->next) // 157 in the app
+			f(linkI->block);
+	}
+	// 157 in the app, "Registros entre bloques": the kept block of this start PC for this exact pipeline state and map, and adding one.
+	int getKeptCount() const { return kListI; }
+	microBlock* searchKept(microVU& mVU, microRegInfo* pState, const ForjaRegMap& map)
+	{
+		for (ForjaKeptLink* linkI = kBlockList; linkI != nullptr; linkI = linkI->next)
+		{
+			if (linkI->map == map && mVU.compareState(pState, &linkI->block.pState) == 0)
+				return &linkI->block;
+		}
+		return nullptr;
+	}
+	microBlock* addKept(microBlock* pBlock, const ForjaRegMap& map)
+	{
+		ForjaKeptLink* newBlock = (ForjaKeptLink*)_aligned_malloc(sizeof(ForjaKeptLink), 32);
+		std::memcpy(&newBlock->block, pBlock, sizeof(microBlock));
+		newBlock->block.jumpCache = nullptr;
+		newBlock->map = map;
+		newBlock->next = kBlockList;
+		kBlockList = newBlock;
+		kListI++;
+		return &newBlock->block;
 	}
 	microBlockManager()
 	{
@@ -198,6 +236,15 @@ public:
 			linkI = linkI->next;
 			_aligned_free(freeI);
 		}
+		for (ForjaKeptLink* linkI = kBlockList; linkI != nullptr;) // 157 in the app
+		{
+			ForjaKeptLink* freeI = linkI;
+			safe_delete_array(linkI->block.jumpCache);
+			linkI = linkI->next;
+			_aligned_free(freeI);
+		}
+		kBlockList = nullptr;
+		kListI = 0;
 		qListI = fListI = 0;
 		qBlockEnd = qBlockList = nullptr;
 		fBlockEnd = fBlockList = nullptr;
