@@ -4247,7 +4247,12 @@ static struct
 	u64 techo_lifted_until = 0;
 	unsigned techo_at = 0, techo_lifts = 0;
 	unsigned techo_lift_count = 0; // in this game (each lift twice as long; the sixth turns the ceiling off)
+	// 164 in the app: until which vsync lost vsyncs don't lift the ceiling (after a state load, after it comes back down), and the vsync of
+	// the last lift (a minute without one starts the count again).
+	u64 techo_grace_until = 0, techo_last_lift_n = 0;
 } s_si;
+// 164 in the app: a state was loaded (the menu's load, or its undo); the vsync handler starts the ceiling's grace from it.
+static std::atomic<bool> s_forja_techo_load_grace{false};
 
 // 154 in the app: the most Al vuelo may go up to now (48: no ceiling, or lifted).
 static int ForjaSkipTecho()
@@ -4500,10 +4505,23 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 	}
 	// 154 in the app, "Techo del salto" ([Forja] SaltoTecho): 10 of the last 50 vsyncs lost at the ceiling (real slow motion, not the ~1 %
 	// God of War II loses at any skip) lift it for 10 s; then the skip goes back under it.
+	// 164 in the app: the ceiling's grace. The 161-163 at the Colossus (2026-11-21/22) spent most of their time over it, at 28-31
+	// sixteenths, ~36 frames instead of ~42: every state load is a stall (everything translated again) that lost 10 of 50 vsyncs and
+	// lifted it, each lift twice as long (10, 20, 40, 80, 160 s); and each time it came back down the game caught up on the time it had
+	// fallen behind and lost vsyncs again at once. So no lift for 15 s after a state load or 10 s after it comes back, the lift no
+	// longer doubles past 20 s, and a minute without a lift starts the count again.
+	if (s_forja_techo_load_grace.exchange(false, std::memory_order_relaxed))
+		s_si.techo_grace_until = s_si.n + 750;
+
 	if (s_skip_techo16 < 48)
 	{
 		if (s_si.techo_lifted_until != 0 && s_si.n >= s_si.techo_lifted_until)
+		{
 			s_si.techo_lifted_until = 0;
+			s_si.techo_grace_until = std::max(s_si.techo_grace_until, s_si.n + 500); // 164 in the app
+		}
+		if (s_si.techo_lift_count && s_si.n - s_si.techo_last_lift_n > 3000) // 164 in the app: a minute without a lift
+			s_si.techo_lift_count = 0;
 		// Over the ceiling and not lifted (the lift's 10 s ended, or the profile came in after Al vuelo had started): back under it at
 		// once. Never under the game's floor (ForjaSkipInstantSet keeps it), so a floor over the ceiling does not loop here.
 		if (s_si.techo_lifted_until == 0 && s_si.value > std::max(s_skip_techo16, s_skip16_floor))
@@ -4516,16 +4534,17 @@ void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 		}
 		if (s_si.value >= s_skip_techo16)
 			s_si.techo_at++;
-		if (s_si.techo_lifted_until == 0 && s_si.n >= 50 && s_si.value >= s_skip_techo16 &&
+		if (s_si.techo_lifted_until == 0 && s_si.n >= 50 && s_si.value >= s_skip_techo16 && s_si.n >= s_si.techo_grace_until &&
 			s_si.lost_at_n[s_si.n % 64] - s_si.lost_at_n[(s_si.n - 50) % 64] >= 10)
 		{
 			// Each lift in the same game twice as long (10, 20, 40, 80, 160 s); the sixth leaves the game without a ceiling: a place
 			// where the PS4 cannot hold it (at 2x before the flip in its own thread, the GS was full at ~34 frames) would otherwise
 			// come back to slow motion after every lift.
-			const unsigned k = std::min(s_si.techo_lift_count, 4u);
+			const unsigned k = std::min(s_si.techo_lift_count, 1u); // 164 in the app: 10 s, then 20 s at most
 			s_si.techo_lifted_until = s_si.n + (500ull << k);
 			s_si.techo_lifts++;
 			s_si.techo_lift_count++;
+			s_si.techo_last_lift_n = s_si.n; // 164 in the app
 			ProbeLog("Cycle skip ceiling (154 in the app): %d/16 lifted for %u s (%llu of 50 vsyncs lost; lift %u of 6 in this game)\n",
 				s_skip_techo16, 10u << k, static_cast<unsigned long long>(s_si.lost_at_n[s_si.n % 64] - s_si.lost_at_n[(s_si.n - 50) % 64]),
 				s_si.techo_lift_count);
@@ -4661,6 +4680,7 @@ static void UpdateCycleSkipFast(double elapsed)
 		const int start_learned = learned >= 0 ? std::max(floor16, s_skip_keeps_frames ? std::min(learned, 32) : learned) : floor16;
 		s_si.techo_lifted_until = 0; // 154 in the app: and never over the ceiling
 		s_si.techo_lift_count = 0;
+		s_si.techo_grace_until = s_si.techo_last_lift_n = 0; // 164 in the app
 		const int start = std::max(floor16, std::min(start_learned, s_skip_techo16));
 		ForjaSkipInstantSet(start);
 		std::fill(std::begin(s_si.time_at), std::end(s_si.time_at), 0u);
@@ -5512,7 +5532,10 @@ static bool LoadGameState()
 	if (!loaded)
 		s_state_action = PS4GameMenu::STATE_LOAD_FAILED;
 	if (loaded)
+	{
 		ForjaSession::NoteStateLoad(); // compilation 130: the summary's memory growth leaves the load's own jump out
+		s_forja_techo_load_grace.store(true, std::memory_order_relaxed); // 164 in the app: the load's stall doesn't lift the ceiling
+	}
 	ProbeLog("Save state: slot %d %s in %.0f ms (the moment before kept in %.0f ms: %d) %s\n", slot, loaded ? "loaded" : "LOAD FAILED",
 		Common::Timer::ConvertValueToMilliseconds(Common::Timer::GetCurrentValue() - t0), undo_ms, undo ? 1 : 0,
 		loaded ? "" : error.GetDescription().c_str());
@@ -5563,6 +5586,7 @@ static void RevertLoadedState()
 	EndVideoModeForStateChange();
 	Error error;
 	const bool back = VMManager::LoadState(s_state_undo_path.c_str(), &error);
+	s_forja_techo_load_grace.store(true, std::memory_order_relaxed); // 164 in the app
 	unlink(s_state_undo_path.c_str());
 	s_state_action = PS4GameMenu::STATE_LOAD_DAMAGED;
 	ProbeLog("Save state: back to the moment before slot %d: %s %s\n", s_state_check_slot, back ? "done" : "FAILED",
