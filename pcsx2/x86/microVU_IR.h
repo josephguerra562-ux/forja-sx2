@@ -196,6 +196,7 @@ struct microOp
 	bool doXGKICK;       // Do XGKICK transfer on this instruction
 	u32  XGKICKPC;       // The PC in which the XGKick has taken place, so if we break early (before it) we don run it.
 	bool doDivFlag;      // Transfer Div flag to Status Flag on this instruction
+	bool forjaLastFmac;  // 163 in the app, "MAC al final": the block's last flag-setting FMAC (mVUsetFlags), which saves its result
 	int  readQ;          // Q instance for reading
 	int  writeQ;         // Q instance for writing
 	int  readP;          // P instance for reading

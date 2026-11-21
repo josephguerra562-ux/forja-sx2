@@ -115,12 +115,18 @@ __fi void mVUsetFlags(mV, microFlagCycles& mFC, int forja_mac_skip = 0)
 	u32 aCount = 0; // Amount of instructions needed to get valid mac flag instances for block linking
 	//bool writeProtect = false;
 	bool forja_mac_done = false; // 159 in the app
+	bool forja_last_marked = !ForjaMacEnd(mVU); // 163 in the app: mark the block's last flag-setting FMAC
 
 	// Ensure last ~4+ instructions update mac/status flags (if next block's first 4 instructions will read them)
 	for (int i = mVUcount; i > 0; i--, aCount++)
 	{
 		if (sFLAG.doFlag)
 		{
+			if (!forja_last_marked)
+			{
+				mVUinfo.forjaLastFmac = true;
+				forja_last_marked = true;
+			}
 
 			if (__Mac)
 			{

@@ -209,6 +209,33 @@ void mVUendProgram(mV, microFlagCycles* mFC, int isEbit)
 	mVUallocCFLAGa(mVU, gprT2, fClip);
 	xMOV(ptr32[&mVU.regs().VI[REG_MAC_FLAG].UL], gprT1);
 	xMOV(ptr32[&mVU.regs().VI[REG_CLIP_FLAG].UL], gprT2);
+	// 163 in the app, "MAC al final": at an E-bit the MAC flag is the last FMAC's that ran (the one microVU_Upper.inl saved), whether or
+	// not its instance was computed: with the MAC flag dead at jumps (153) the last instance could be an older FMAC's, and the next
+	// program (God of War II's 0x08e0 and 0x0b90 read it in their first instructions) got it stale. Below, the flag instances are
+	// flushed from VI[REG_MAC_FLAG], so the next program starts with this one.
+	if (isEbit && isEbit != 3 && ForjaMacEnd(mVU))
+	{
+		xMOV(gprT2, ptr32[&mVU.forjaLastFmacCtl]);
+		xTEST(gprT2, 0x80000000);
+		xForwardJZ32 nothing_saved;
+		xMOVAPS(xmmT1, ptr128[mVU.forjaLastFmac]);
+		xTEST(gprT2, 0x10000);
+		xForwardJZ8 lanes_in_order;
+		xPSHUF.D(xmmT1, xmmT1, 0x1B); // flip wzyx to xyzw, as mVUupdateFlags does for the MAC flag
+		lanes_in_order.SetTarget();
+		xXOR.PS(xmmT2, xmmT2);
+		xCMPEQ.PS(xmmT2, xmmT1); // all F's where a lane is zero
+		xMOVMSKPS(gprT1, xmmT1); // sign bits
+		xSHL(gprT1, 4);
+		xMOVMSKPS(gprT2, xmmT2); // zero bits
+		xOR(gprT1, gprT2);
+		xMOVZX(gprT2, ptr8[&mVU.forjaLastFmacCtl]); // the written lanes, in both nibbles
+		xAND(gprT1, gprT2);
+		xMOVZX(gprT2, ptr8[reinterpret_cast<u8*>(&mVU.forjaLastFmacCtl) + 1]); // a single-lane op's shift
+		xSHL(gprT1, cl);
+		xMOV(ptr32[&mVU.regs().VI[REG_MAC_FLAG].UL], gprT1);
+		nothing_saved.SetTarget();
+	}
 
 	if (!isEbit || isEbit == 3) // Backup flag instances
 	{

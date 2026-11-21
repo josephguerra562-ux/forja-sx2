@@ -145,6 +145,11 @@ struct microVU
 	bool forjaMacTracking;
 	int forjaMacFirstRead;
 	int forjaMacSkip;
+	// 163 in the app, "MAC al final" (microVU_Upper.inl, microVU_Branch.inl): the result of the last flag-setting FMAC that ran, as the
+	// MAC flag would read it, and how to turn it into the flag (low byte: the written lanes, twice; byte 1: the shift of a single-lane
+	// op; bit 16: lanes still in xyzw order (flip them); bit 31: something saved). It outlives the program, as the VU's MAC flag does.
+	alignas(16) u32 forjaLastFmac[4];
+	u32 forjaLastFmacCtl;
 #if defined(ORBIS_VULKAN) || defined(PCSX2_PS4) // 152 in the app: the PS4 too
 	// PS5 port (vk-285-11): mVUexecute's recent program/block lookups (microVU_Execute.inl). A lookup
 	// walks the quick table, the program's block array and the block manager's variants: cold cache

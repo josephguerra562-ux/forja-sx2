@@ -386,6 +386,12 @@ static __fi bool ForjaMacJust(const microVU& mVU)
 {
 	return mVU.index != 0 && g_forja_vu1_mac_just.load(std::memory_order_relaxed);
 }
+// 163 in the app, "MAC al final" ([Forja] VU1MacAlFinal, set at the game's start by ps4/vm/main.cpp). Only for the VU1.
+extern std::atomic<bool> g_forja_vu1_mac_end;
+static __fi bool ForjaMacEnd(const microVU& mVU)
+{
+	return mVU.index != 0 && g_forja_vu1_mac_end.load(std::memory_order_relaxed);
+}
 
 // 160 in the app, "Banderas muertas seguras": a block of the VU1 reads the status (bit 1) or MAC (bit 2) flag in its first 4
 // instructions without it in its starting state, and it isn't the program's first block. With the 153's dead flags that means a
@@ -405,6 +411,10 @@ static void ForjaFlagReaderMissed(microVU& mVU, int bit)
 	// jump of every program from now on.
 	if (mVUstartPC * 4 == prog->startPC * 8)
 	{
+		// 163 in the app: with "MAC al final" the previous program's MAC flag at its end is its last FMAC's, computed there (the
+		// flag a program reads at its start is right), so nothing to learn.
+		if (bit == 2 && ForjaMacEnd(mVU))
+			return;
 		if (!(g_forja_vu1_dead_flags_learned.fetch_or(bit, std::memory_order_relaxed) & bit))
 		{
 			g_forja_vu1_flag_missed.fetch_add(1, std::memory_order_relaxed);

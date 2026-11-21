@@ -408,6 +408,7 @@ extern std::atomic<u64> g_forja_vu1_mac_left_out;
 extern std::atomic<u64> g_forja_vu1_flag_risk_progs, g_forja_vu1_flag_missed; // pcsx2/MTVU.cpp (160 in the app)
 extern std::atomic<bool> g_forja_vu1_one_count; // pcsx2/MTVU.cpp (161 in the app)
 extern std::atomic<bool> g_forja_vu1_mac_jump; // pcsx2/MTVU.cpp (162 in the app)
+extern std::atomic<bool> g_forja_vu1_mac_end; // pcsx2/MTVU.cpp (163 in the app)
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
 extern std::atomic<unsigned> g_forja_vsync_load;
 extern std::atomic<int> g_forja_deinterlace_factory; // compilation 137: pcsx2/VMManager.cpp, the game's factory deinterlace mode
@@ -3503,6 +3504,13 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		if (mac_jump || macj_no || s_profile.vu1_mac_jump_origin != ForjaGameProfile::Origin::Global)
 			ProbeLog("VU1 just MAC at jumps (162 in the app): %s (%s)%s\n", mac_jump ? "on" : "off",
 				ProfileOriginName(s_profile.vu1_mac_jump_origin), macj_no ? ", vm-vu1-mac-saltos-no" : "");
+		// 163 in the app, "MAC al final" ([Forja] VU1MacAlFinal; /data/ForjaSX2/vm-vu1-mac-final-no turns it off). Before the first compile.
+		const bool mace_no = access("/data/ForjaSX2/vm-vu1-mac-final-no", F_OK) == 0;
+		const bool mac_end = !mace_no && s_profile.vu1_mac_end == 1;
+		g_forja_vu1_mac_end.store(mac_end, std::memory_order_relaxed);
+		if (mac_end || mace_no || s_profile.vu1_mac_end_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("VU1 MAC at the end (163 in the app): %s (%s)%s\n", mac_end ? "on" : "off",
+				ProfileOriginName(s_profile.vu1_mac_end_origin), mace_no ? ", vm-vu1-mac-final-no" : "");
 	}
 	// Compilation 128: on unless the profile says 0 (measured on 2026-11-08: Bully's effect hitches 6 -> 1, Shadow's 14 -> 2).
 	s_effects_ahead_game = s_profile.effects_ahead != 0; // compilation 127

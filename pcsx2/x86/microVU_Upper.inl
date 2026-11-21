@@ -32,6 +32,19 @@ static void mVUupdateFlags(mV, const xmm& reg, const xmm& regT1in = xEmptyReg, c
 	bool regT1b = regT1in.IsEmpty(), regT2b = false;
 	static const u16 flipMask[16] = {0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15};
 
+	// 163 in the app, "MAC al final" ([Forja] VU1MacAlFinal): the block's last flag-setting FMAC saves its result and how its MAC flag
+	// reads it (two stores, instead of the ~11 instructions of computing the flag); the program's end turns the last one saved into the
+	// MAC flag the next program starts with (microVU_Branch.inl, mVUendProgram). The MAC flag isn't sticky: at an E-bit the VU's
+	// MAC flag is its last FMAC's.
+	if (mVUinfo.forjaLastFmac && ForjaMacEnd(mVU))
+	{
+		const bool single = _XYZW_SS && modXYZW;
+		const u32 lanes = single ? 1u : static_cast<u32>(_X_Y_Z_W);
+		const u32 ctl = ((lanes << 4) | lanes) | (static_cast<u32>(single ? ADD_XYZW : 0) << 8) | (single ? 0u : 0x10000u) | 0x80000000u;
+		xMOVAPS(ptr128[mVU.forjaLastFmac], reg);
+		xMOV(ptr32[&mVU.forjaLastFmacCtl], ctl);
+	}
+
 	//SysPrintf("Status = %d; Mac = %d\n", sFLAG.doFlag, mFLAG.doFlag);
 	if (!sFLAG.doFlag && !mFLAG.doFlag)
 		return;
