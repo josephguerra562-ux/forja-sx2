@@ -432,7 +432,10 @@ extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app
 // and goes back to the function before every state save, so a saved state never keeps the animation off.
 extern std::atomic<int> g_forja_vif_nocopy_mode; // pcsx2/MTVU.cpp (175 in the app, "VIF sin copia")
 extern std::atomic<bool> g_forja_vif_nocopy_check_only;
-extern std::atomic<u64> g_forja_vif_nocopy_checked, g_forja_vif_nocopy_wrong, g_forja_vif_nocopy_ptr;
+extern std::atomic<u64> g_forja_vif_nocopy_checked, g_forja_vif_nocopy_wrong, g_forja_vif_nocopy_ptr, g_forja_vif_nocopy_late;
+extern std::atomic<u64> g_forja_vif_nocopy_bytes_ram, g_forja_vif_nocopy_bytes_copied; // pcsx2/Vif_Unpack.cpp (176 in the app)
+extern std::atomic<u16> g_forja_vif_page_good[];
+extern std::atomic<u8> g_forja_vif_page_dynamic[];
 extern u32 g_forja_vif_nocopy_first_wrong[2];
 static bool s_anim_half_on = false;
 static u32 s_anim_half_addr = 0, s_anim_half_fn = 0, s_anim_half_empty = 0;
@@ -3547,9 +3550,16 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		g_forja_vif_nocopy_checked.store(0, std::memory_order_relaxed);
 		g_forja_vif_nocopy_wrong.store(0, std::memory_order_relaxed);
 		g_forja_vif_nocopy_check_only.store(check_only, std::memory_order_relaxed);
-		g_forja_vif_nocopy_mode.store(want ? (direct ? 2 : 1) : 0, std::memory_order_relaxed);
+		// 176 in the app: per page now; 2 learns and uses, 1 (vm-vif-sincopia-comprobar) only learns. vm-vif-sincopia-directo is the same as 2.
+		g_forja_vif_nocopy_late.store(0, std::memory_order_relaxed);
+		for (u32 p = 0; p < (Ps2MemSize::MainRam >> 12); p++)
+		{
+			g_forja_vif_page_good[p].store(0, std::memory_order_relaxed);
+			g_forja_vif_page_dynamic[p].store(0, std::memory_order_relaxed);
+		}
+		g_forja_vif_nocopy_mode.store(want ? (check_only ? 1 : 2) : 0, std::memory_order_relaxed);
 		if (want || no || s_profile.vif_nocopy_origin != ForjaGameProfile::Origin::Global)
-			ProbeLog("VIF without copy (175 in the app): %s (%s)%s%s%s\n", want ? (direct ? "on" : "checking first") : "off",
+			ProbeLog("VIF without copy (175-176 in the app): %s (%s)%s%s%s\n", want ? (check_only ? "learning pages only" : "learning pages and using them") : "off",
 				ProfileOriginName(s_profile.vif_nocopy_origin), no ? ", vm-vif-sincopia-no" : "", check_only ? ", vm-vif-sincopia-comprobar" : "",
 				direct ? ", vm-vif-sincopia-directo" : "");
 	}
@@ -6391,10 +6401,25 @@ void VMHostPoll()
 				const int nm = g_forja_vif_nocopy_mode.load(std::memory_order_relaxed);
 				const u64 nwrong = g_forja_vif_nocopy_wrong.load(std::memory_order_acquire);
 				if ((nm != 0 || nwrong != 0) && vm_state == VMState::Running)
-					ProbeLog("VIF without copy: mode=%d from_ram=%llu checked=%llu wrong=%llu first_wrong=[bytes=%u at=%u]\n", nm,
-						static_cast<unsigned long long>(g_forja_vif_nocopy_ptr.load(std::memory_order_relaxed)),
+				{
+					// 176 in the app: the pages it reads without the copy, the per-frame ones, and the bytes each way so far.
+					u32 safe_pages = 0, dynamic_pages = 0;
+					for (u32 p = 0; p < (Ps2MemSize::MainRam >> 12); p++)
+					{
+						const bool dyn = g_forja_vif_page_dynamic[p].load(std::memory_order_relaxed) != 0;
+						dynamic_pages += dyn ? 1u : 0u;
+						safe_pages += (!dyn && g_forja_vif_page_good[p].load(std::memory_order_relaxed) >= 256) ? 1u : 0u;
+					}
+					const u64 bram = g_forja_vif_nocopy_bytes_ram.load(std::memory_order_relaxed);
+					const u64 bcopy = g_forja_vif_nocopy_bytes_copied.load(std::memory_order_relaxed);
+					ProbeLog("VIF without copy: mode=%d from_ram=%llu checked=%llu wrong=%llu late_wrong=%llu safe_pages=%u per_frame_pages=%u "
+							 "bytes_from_ram_pct=%.1f first_wrong=[bytes=%u at=%u]\n",
+						nm, static_cast<unsigned long long>(g_forja_vif_nocopy_ptr.load(std::memory_order_relaxed)),
 						static_cast<unsigned long long>(g_forja_vif_nocopy_checked.load(std::memory_order_relaxed)),
-						static_cast<unsigned long long>(nwrong), g_forja_vif_nocopy_first_wrong[0], g_forja_vif_nocopy_first_wrong[1]);
+						static_cast<unsigned long long>(nwrong), static_cast<unsigned long long>(g_forja_vif_nocopy_late.load(std::memory_order_relaxed)),
+						safe_pages, dynamic_pages, (bram + bcopy) ? 100.0 * static_cast<double>(bram) / static_cast<double>(bram + bcopy) : 0.0,
+						g_forja_vif_nocopy_first_wrong[0], g_forja_vif_nocopy_first_wrong[1]);
+				}
 			}
 			// 174 in the app, "Animación a medias": the vsyncs it skipped the decoding, the word's changes, and the vsyncs the word held
 			// something else (not this program, or still loading).

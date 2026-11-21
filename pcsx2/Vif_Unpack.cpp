@@ -9,6 +9,9 @@
 #include "MTVU.h"
 #include <atomic>
 extern std::atomic<int> g_forja_vif_nocopy_mode; // MTVU.cpp (175 in the app, "VIF sin copia")
+extern std::atomic<u16> g_forja_vif_page_good[]; // MTVU.cpp (176 in the app)
+extern std::atomic<u8> g_forja_vif_page_dynamic[];
+extern std::atomic<u64> g_forja_vif_nocopy_bytes_ram, g_forja_vif_nocopy_bytes_copied;
 
 // Forja SX2: see Vif_Dynarec.h (set in VMManager::InitializeCPUProviders()).
 bool newVifDynaRec = false;
@@ -424,15 +427,24 @@ _vifT int nVifUnpack(const u8* data)
 		{
 			if (g_forja_vif_tramos_mode.load(std::memory_order_relaxed) == 1) // 167 in the app: check the run's prediction
 				ForjaVif1TramoCheck(vif, vifRegs, data);
-			// 175 in the app, "VIF sin copia": data in the game's main RAM (not the scratchpad, not this file's buffer of a split unpack)
-			// goes as its address in mode 2 (1 in 32 still as a check), as a copy and its address in mode 1.
+			// 175 in the app, "VIF sin copia": data in the game's main RAM (not the scratchpad, not this file's buffer of a split unpack).
+			// 176: per 4 KB page. A page with 256 checks the same and none different goes as its address in mode 2 (1 in 32 still as a
+			// check, marked sampled); any other, as a check (copy and address) that teaches the page.
 			int forja_nocopy = 0;
 			if (const int nc = g_forja_vif_nocopy_mode.load(std::memory_order_relaxed))
 			{
 				if (data != v.buffer && data >= eeMem->Main && data + size + 4 <= eeMem->Main + Ps2MemSize::MainRam)
 				{
+					const u32 p0 = static_cast<u32>((data - eeMem->Main) >> 12);
+					const u32 p1 = static_cast<u32>((data + size + 3 - eeMem->Main) >> 12);
+					bool safe = nc == 2;
+					for (u32 p = p0; safe && p <= p1; p++)
+						safe = !g_forja_vif_page_dynamic[p].load(std::memory_order_relaxed) &&
+							   g_forja_vif_page_good[p].load(std::memory_order_relaxed) >= 256;
 					static u32 s_forja_nocopy_n = 0;
-					forja_nocopy = (nc == 2 && (++s_forja_nocopy_n & 31) != 0) ? 2 : 1;
+					forja_nocopy = !safe ? 1 : (++s_forja_nocopy_n & 31) != 0 ? 2 : 3;
+					std::atomic<u64>& bytes = forja_nocopy == 2 ? g_forja_vif_nocopy_bytes_ram : g_forja_vif_nocopy_bytes_copied;
+					bytes.store(bytes.load(std::memory_order_relaxed) + static_cast<u32>(size), std::memory_order_relaxed);
 				}
 			}
 			vu1Thread.VifUnpack(vif, vifRegs, (u8*)data, (size + 4) & ~0x3, forja_nocopy);
@@ -469,6 +481,8 @@ _vifT int nVifUnpack(const u8* data)
 
 	return ret;
 }
+
+std::atomic<u64> g_forja_vif_nocopy_bytes_ram{0}, g_forja_vif_nocopy_bytes_copied{0}; // 176 in the app (EE thread only writes them)
 
 template int nVifUnpack<0>(const u8* data);
 template int nVifUnpack<1>(const u8* data);
