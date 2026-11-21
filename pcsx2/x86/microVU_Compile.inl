@@ -446,6 +446,13 @@ void mVUdebugPrintBlocks(microVU& mVU, bool isEndPC)
 }
 
 // Test cycles to see if we need to exit-early...
+// 161 in the app, "Ciclos en una sola cuenta" ([Forja] VU1CuentaCiclos, set at the game's start by ps4/vm/main.cpp, defined in
+// pcsx2/MTVU.cpp). Each block started with "mov eax, [cycles]; sub eax, 1; jns" and then "sub [cycles], n": two reads of the counter
+// and four instructions, for a budget (vu1RunCycles, 3,000,000) that only a runaway program reaches. Now "sub [cycles], n; jns": if
+// the block wouldn't fit in what's left it gives its cycles back and leaves before running, as VUSyncHack's check does. God of War
+// II's hottest blocks are ~70 instructions (the 159). Only the VU1, and not with VUSyncHack or FullVU0SyncHack (they keep
+// nextBlockCycles).
+extern std::atomic<bool> g_forja_vu1_one_count;
 void mVUtestCycles(microVU& mVU, microFlagCycles& mFC)
 {
 	iPC = mVUstartPC;
@@ -486,6 +493,20 @@ void mVUtestCycles(microVU& mVU, microFlagCycles& mFC)
 				break;
 		}
 	}
+	if (isVU1 && g_forja_vu1_one_count.load(std::memory_order_relaxed) && !EmuConfig.Gamefixes.VUSyncHack &&
+		!EmuConfig.Gamefixes.FullVU0SyncHack)
+	{
+		// 161 in the app: one read-modify-write of the counter (see above)
+		xSUB(ptr32[&mVU.cycles], mVUcycles);
+		xForwardJNS32 fits;
+		xADD(ptr32[&mVU.cycles], mVUcycles); // the block runs on the next call: its cycles go back
+		xLoadFarAddr(rax, &mVUpBlock->pState);
+		xCALL((void*)mVU.copyPLState);
+		mVUendProgram(mVU, &mFC, 0);
+		fits.SetTarget();
+		return;
+	}
+
 	xMOV(eax, ptr32[&mVU.cycles]);
 	if (EmuConfig.Gamefixes.VUSyncHack)
 		xSUB(eax, mVUcycles); // Running behind, make sure we have time to run the block

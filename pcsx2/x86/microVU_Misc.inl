@@ -393,13 +393,27 @@ static __fi bool ForjaMacJust(const microVU& mVU)
 // state, then the VU1 and the GS waiting on each other). The program keeps that flag at its jumps from its next compile on.
 extern std::atomic<int> g_forja_vu1_dead_flags;
 extern std::atomic<u64> g_forja_vu1_flag_missed;
+extern std::atomic<int> g_forja_vu1_dead_flags_learned; // 161 in the app
 extern void ProbeLog(const char* format, ...);
 static void ForjaFlagReaderMissed(microVU& mVU, int bit)
 {
 	microProgram* prog = mVU.prog.cur;
 	if (!mVU.index || !prog || !(g_forja_vu1_dead_flags.load(std::memory_order_relaxed) & bit))
 		return;
-	if (((prog->forjaFlagRisk | prog->forjaFlagLearned) & bit) || mVUstartPC * 4 == prog->startPC * 8)
+	// 161 in the app: at the program's first block the flag is the previous program's (the 160 at the Colossus: programs 0x08e0 and
+	// 0x0b90 read the MAC flag in their first instructions). No scan of one program can see that, so the flag stays exact at every
+	// jump of every program from now on.
+	if (mVUstartPC * 4 == prog->startPC * 8)
+	{
+		if (!(g_forja_vu1_dead_flags_learned.fetch_or(bit, std::memory_order_relaxed) & bit))
+		{
+			g_forja_vu1_flag_missed.fetch_add(1, std::memory_order_relaxed);
+			ProbeLog("VU1 dead flags (161 in the app): program %d reads the %s flag at its start (the previous program's): kept at "
+			         "every jump from now on\n", prog->idx, bit == 2 ? "MAC" : "status");
+		}
+		return;
+	}
+	if ((prog->forjaFlagRisk | prog->forjaFlagLearned) & bit)
 		return;
 	prog->forjaFlagLearned |= bit;
 	g_forja_vu1_flag_missed.fetch_add(1, std::memory_order_relaxed);

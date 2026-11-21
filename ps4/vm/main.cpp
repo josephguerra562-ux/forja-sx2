@@ -406,6 +406,7 @@ extern std::atomic<u64> g_forja_vu1_three_op_copies, g_forja_vu1_mem_reg_loads, 
 extern std::atomic<bool> g_forja_vu1_mac_just; // pcsx2/MTVU.cpp (159 in the app)
 extern std::atomic<u64> g_forja_vu1_mac_left_out;
 extern std::atomic<u64> g_forja_vu1_flag_risk_progs, g_forja_vu1_flag_missed; // pcsx2/MTVU.cpp (160 in the app)
+extern std::atomic<bool> g_forja_vu1_one_count; // pcsx2/MTVU.cpp (161 in the app)
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
 extern std::atomic<unsigned> g_forja_vsync_load;
 extern std::atomic<int> g_forja_deinterlace_factory; // compilation 137: pcsx2/VMManager.cpp, the game's factory deinterlace mode
@@ -3487,6 +3488,13 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		if (mac_just || just_no || s_profile.vu1_mac_just_origin != ForjaGameProfile::Origin::Global)
 			ProbeLog("VU1 just MAC flags (159 in the app): %s (%s)%s\n", mac_just ? "on" : "off",
 				ProfileOriginName(s_profile.vu1_mac_just_origin), just_no ? ", vm-vu1-banderas-justas-no" : "");
+		// 161 in the app, "Ciclos en una sola cuenta" ([Forja] VU1CuentaCiclos; /data/ForjaSX2/vm-vu1-cuenta-ciclos-no turns it off).
+		const bool count_no = access("/data/ForjaSX2/vm-vu1-cuenta-ciclos-no", F_OK) == 0;
+		const bool one_count = !count_no && s_profile.vu1_one_count == 1;
+		g_forja_vu1_one_count.store(one_count, std::memory_order_relaxed);
+		if (one_count || count_no || s_profile.vu1_one_count_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("VU1 one cycle count (161 in the app): %s (%s)%s\n", one_count ? "on" : "off",
+				ProfileOriginName(s_profile.vu1_one_count_origin), count_no ? ", vm-vu1-cuenta-ciclos-no" : "");
 	}
 	// Compilation 128: on unless the profile says 0 (measured on 2026-11-08: Bully's effect hitches 6 -> 1, Shadow's 14 -> 2).
 	s_effects_ahead_game = s_profile.effects_ahead != 0; // compilation 127

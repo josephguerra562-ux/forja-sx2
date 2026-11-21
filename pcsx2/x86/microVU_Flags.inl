@@ -358,6 +358,7 @@ extern std::atomic<int> g_forja_vu1_dead_flags;
 extern std::atomic<bool> g_forja_vu1_keep_regs; // 157 in the app (pcsx2/MTVU.cpp)
 extern std::atomic<u64> g_forja_vu1_kept_blocks, g_forja_vu1_kept_links;
 extern std::atomic<u64> g_forja_vu1_flag_risk_progs; // 160 in the app (pcsx2/MTVU.cpp)
+extern std::atomic<int> g_forja_vu1_dead_flags_learned; // 161 in the app (pcsx2/MTVU.cpp)
 
 // 160 in the app, "Banderas muertas seguras". The 153's map had no reader of a flag across a JR/JALR, but it hadn't seen every program:
 // right after loading a saved state at the Colossus a program read the MAC flag at 0x08f8 and 0x0b98 just after a jump, got a stale
@@ -429,7 +430,8 @@ static __fi int ForjaFlagsKeptAtJump(microVU& mVU)
 {
 	if (!mVU.index)
 		return 7;
-	const int dead = g_forja_vu1_dead_flags.load(std::memory_order_relaxed);
+	const int dead = g_forja_vu1_dead_flags.load(std::memory_order_relaxed) &
+	                 ~g_forja_vu1_dead_flags_learned.load(std::memory_order_relaxed); // 161 in the app
 	if (!dead)
 		return 7;
 	microProgram* prog = mVU.prog.cur;
