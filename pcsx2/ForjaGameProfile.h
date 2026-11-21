@@ -22,6 +22,9 @@
 #include <string>
 #include <string_view>
 
+// 159 in the app: true in a build made on the lab's PC (ps4/vm/PatchDownload.cpp): the package's own profile comes first.
+extern bool g_forja_build_casa;
+
 namespace ForjaGameProfile
 {
 	// Where a value comes from, shown by the L3+R3 menu.
@@ -98,6 +101,10 @@ namespace ForjaGameProfile
 		Origin vu1_three_op_origin = Origin::Global;
 		int vu1_mem_reg = -1;
 		Origin vu1_mem_reg_origin = Origin::Global;
+		// 159 in the app: [Forja] VU1BanderasJustas, "Banderas justas" (pcsx2/x86/microVU_Flags.inl, microVU_Analyze.inl): 1 the VU1
+		// computes only the MAC flags a read can see (not the last four of each block). Off unless the profile says.
+		int vu1_mac_just = -1;
+		Origin vu1_mac_just_origin = Origin::Global;
 		// 151 in the app: [Forja] VifMenosTurnos, "VIF1 en menos turnos" (pcsx2/R5900.cpp, CPU_INT): the VIF1 DMA's next step, due in fewer
 		// cycles than this, runs in the same pass of the event scan instead of a new event test (PCSX2 does it under 4 cycles). Off (the 4)
 		// unless the game's profile sets it: God of War II, measured.
@@ -205,7 +212,7 @@ namespace ForjaGameProfile
 	{
 		const std::string name = fmt::format("{}.ini", Path::SanitizeFileName(serial));
 		const std::string center = Path::Combine(EmuFolders::DataRoot, "centro/perfiles/" + name);
-		if (FileSystem::FileExists(center.c_str()))
+		if (!g_forja_build_casa && FileSystem::FileExists(center.c_str())) // 159 in the app: not in a build made on the PC
 			return center;
 		return Path::Combine(EmuFolders::Resources, "perfiles/" + name);
 	}
@@ -332,6 +339,7 @@ namespace ForjaGameProfile
 		read_int("VU1RegistrosEntreBloques", &v.vu1_keep_regs, &v.vu1_keep_regs_origin); // 157 in the app
 		read_int("VU1TresOperandos", &v.vu1_three_op, &v.vu1_three_op_origin); // 158 in the app
 		read_int("VU1MemoriaEnRegistro", &v.vu1_mem_reg, &v.vu1_mem_reg_origin); // 158 in the app
+		read_int("VU1BanderasJustas", &v.vu1_mac_just, &v.vu1_mac_just_origin); // 159 in the app
 		read_int("VifMenosTurnos", &v.vif1_fuse, &v.vif1_fuse_origin); // 151 in the app
 		read_int("VU1Ahorro", &v.vu1_ahorro, &v.vu1_ahorro_origin); // 152 in the app
 		read_int("VU1BanderasMuertas", &v.vu1_dead_flags, &v.vu1_dead_flags_origin); // 153 in the app
@@ -476,6 +484,7 @@ namespace ForjaGameProfile
 		v.vu1_keep_regs = std::clamp(v.vu1_keep_regs, -1, 1); // 157 in the app
 		v.vu1_three_op = std::clamp(v.vu1_three_op, -1, 1); // 158 in the app
 		v.vu1_mem_reg = std::clamp(v.vu1_mem_reg, -1, 1); // 158 in the app
+		v.vu1_mac_just = std::clamp(v.vu1_mac_just, -1, 1); // 159 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"
 			v.crowd_every = v.crowd_every >= 32 ? 32 : v.crowd_every >= 16 ? 16 : v.crowd_every >= 8 ? 8 : v.crowd_every >= 4 ? 4 :
 			                v.crowd_every >= 2 ? 2 : 1; // compilation 88: 16 and 32

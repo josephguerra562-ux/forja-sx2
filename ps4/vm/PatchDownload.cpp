@@ -50,6 +50,13 @@ extern void ProbeLog(const char* format, ...);
 #define FORJA_VERSION_MAJOR 1
 #define FORJA_VERSION_MINOR 0
 #endif
+// Forja SX2 (159 in the app): 1 for a build made on the lab's PC (CMakeLists.txt). It goes to the console by FTP, before GitHub has
+// its profiles and patches: the settings center would bring main's older copies back (the 158, 2026-11-21: from the second game on,
+// God of War II ran with the 157's profile). So it fetches no center, and ForjaGameProfile.h and Patch.cpp read the package's first.
+#ifndef FORJA_BUILD_CASA
+#define FORJA_BUILD_CASA 0
+#endif
+bool g_forja_build_casa = FORJA_BUILD_CASA != 0;
 
 namespace
 {
@@ -253,7 +260,13 @@ namespace ForjaPatches
 			else
 				jobs->push_back({Kind::CommunityPatches, std::string(CommunitySource) + name + ".pnach", path});
 		}
-		if (access(CenterOff, F_OK) != 0)
+		static bool s_casa_logged = false; // 159 in the app
+		if (g_forja_build_casa && !s_casa_logged)
+		{
+			s_casa_logged = true;
+			ProbeLog("Settings center: off (a build made on the PC: its package's own profiles and patches)\n");
+		}
+		if (access(CenterOff, F_OK) != 0 && !g_forja_build_casa)
 		{
 			const std::string profile = root + "/centro/perfiles/" + serial + ".ini";
 			const std::string patches = root + "/centro/parches/" + name + "_forja.pnach";

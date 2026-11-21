@@ -134,6 +134,12 @@ struct microVU
 	// 157 in the app, "Registros entre bloques": the map the next mVUcompileBlock starts with (set by mVUcompileKept, taken at once).
 	ForjaRegMap forjaImport;
 	bool forjaImportPending;
+	// 159 in the app, "Banderas justas" (microVU_Flags.inl): while mVUsetFlagInfo's flag pass runs, the earliest position (instructions
+	// after this block's end) where the next blocks read the MAC flag; and, for this block's end, how many of the last 4 MAC instances
+	// no next block can read (0 = compute them all, as before).
+	bool forjaMacTracking;
+	int forjaMacFirstRead;
+	int forjaMacSkip;
 #if defined(ORBIS_VULKAN) || defined(PCSX2_PS4) // 152 in the app: the PS4 too
 	// PS5 port (vk-285-11): mVUexecute's recent program/block lookups (microVU_Execute.inl). A lookup
 	// walks the quick table, the program's block array and the block manager's variants: cold cache

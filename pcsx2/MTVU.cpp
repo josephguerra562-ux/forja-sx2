@@ -45,6 +45,10 @@ std::atomic<u64> g_forja_vu1_kept_blocks{0}, g_forja_vu1_kept_links{0};
 // ([Forja] VU1MemoriaEnRegistro, microVU_Misc.inl): read when VU1 code is compiled; the copies left out, and the VU memory addresses
 // that loaded the base into a GPR or reused it (all counted at compile time).
 std::atomic<bool> g_forja_vu1_three_op{false}, g_forja_vu1_mem_reg{false};
+// 159 in the app, "Banderas justas" ([Forja] VU1BanderasJustas, microVU_Flags.inl and microVU_Analyze.inl): read when VU1 code is
+// compiled; the MAC flag calculations left out (counted at compile time).
+std::atomic<bool> g_forja_vu1_mac_just{false};
+std::atomic<u64> g_forja_vu1_mac_left_out{0};
 std::atomic<u64> g_forja_vu1_three_op_copies{0}, g_forja_vu1_mem_reg_loads{0}, g_forja_vu1_mem_reg_reuses{0};
 u64 g_forja_mpg_total = 0, g_forja_mpg_same = 0;
 

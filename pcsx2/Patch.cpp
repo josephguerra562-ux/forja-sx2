@@ -25,6 +25,8 @@
 #include <algorithm>
 #include <cstring>
 #include <span>
+
+extern bool g_forja_build_casa; // 159 in the app (ps4/vm/PatchDownload.cpp): a build made on the PC reads its package's patches
 #include <sstream>
 #include <type_traits>
 #include <vector>
@@ -359,8 +361,9 @@ std::vector<std::string> Patch::FindPatchFilesOnDisk(const std::string_view seri
 		// Forja SX2 (compilation 44): the settings center's copy (centro/parches, from the project's GitHub) before the
 		// package's, so its groups are the ones used when both have the same name.
 		const std::string center = Path::Combine(EmuFolders::DataRoot, "centro/parches");
-		FileSystem::FindFiles(center.c_str(), GetPnachTemplate(serial, crc, true, true, all_crcs).c_str(),
-			FILESYSTEM_FIND_FILES | FILESYSTEM_FIND_HIDDEN_FILES, &files);
+		if (!g_forja_build_casa) // 159 in the app
+			FileSystem::FindFiles(center.c_str(), GetPnachTemplate(serial, crc, true, true, all_crcs).c_str(),
+				FILESYSTEM_FIND_FILES | FILESYSTEM_FIND_HIDDEN_FILES, &files);
 		for (FILESYSTEM_FIND_DATA& fd : files)
 			ret.push_back(std::move(fd.FileName));
 		const std::string factory = Path::Combine(EmuFolders::Resources, "parches");

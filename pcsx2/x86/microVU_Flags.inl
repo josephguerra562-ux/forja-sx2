@@ -104,11 +104,17 @@ void sortFullFlag(int* fFlag, int* bFlag)
 #define sHackCond (mVUsFlagHack && !sFLAG.doNonSticky)
 
 // Note: Flag handling is 'very' complex, it requires full knowledge of how microVU recs work, so don't touch!
-__fi void mVUsetFlags(mV, microFlagCycles& mFC)
+// 159 in the app, "Banderas justas" ([Forja] VU1BanderasJustas): `forja_mac_skip` (mVUsetFlagInfo, only for the block's own end) is
+// how many of the 4 MAC instances the next blocks hand on can't be read. The next block's slot s holds the latest FMAC issued 4 - s
+// cycles before this block's end, and a read at the next block's instruction p (p cycles or more) sees slot min(p, 3) or a later one:
+// with the first read at p, only the FMACs of the last 3 - p instructions and the one before them are needed. The MAC flag isn't
+// sticky, so the rest don't matter. God of War II (the 157's map): its hottest blocks computed 4 and their next block read 1.
+__fi void mVUsetFlags(mV, microFlagCycles& mFC, int forja_mac_skip = 0)
 {
 	int endPC = iPC;
 	u32 aCount = 0; // Amount of instructions needed to get valid mac flag instances for block linking
 	//bool writeProtect = false;
+	bool forja_mac_done = false; // 159 in the app
 
 	// Ensure last ~4+ instructions update mac/status flags (if next block's first 4 instructions will read them)
 	for (int i = mVUcount; i > 0; i--, aCount++)
@@ -118,7 +124,12 @@ __fi void mVUsetFlags(mV, microFlagCycles& mFC)
 
 			if (__Mac)
 			{
-				mFLAG.doFlag = true;
+				if (!forja_mac_done)
+					mFLAG.doFlag = true;
+				else if (!mFLAG.doFlag)
+					g_forja_vu1_mac_left_out.fetch_add(1, std::memory_order_relaxed);
+				if (static_cast<int>(aCount) >= 3 - forja_mac_skip)
+					forja_mac_done = true; // 159 in the app: with no skip, at aCount 3, where the loop stops anyway
 				//writeProtect = true;
 			}
 
@@ -351,11 +362,18 @@ static __fi int ForjaFlagsKeptAtJump(const microVU& mVU)
 	return mVU.index ? (7 & ~g_forja_vu1_dead_flags.load(std::memory_order_relaxed)) : 7;
 }
 
+// 159 in the app, "Banderas justas": the earliest position where a next block reads the MAC flag (mVUsetFlagInfo's flag pass).
+static __fi void ForjaMacReadAt(microVU& mVU, int pos)
+{
+	if (pos < mVU.forjaMacFirstRead)
+		mVU.forjaMacFirstRead = pos;
+}
+
 #define shortBranch() \
 	{ \
 		if ((branch == 3) || (branch == 4)) /*Branches*/ \
 		{ \
-			_mVUflagPass(mVU, aBranchAddr, sCount + found, found, v); \
+			_mVUflagPass(mVU, aBranchAddr, sCount + found, found, v, pos + 1); \
 			if (branch == 3) /*Non-conditional Branch*/ \
 				break; \
 			branch = 0; \
@@ -363,7 +381,11 @@ static __fi int ForjaFlagsKeptAtJump(const microVU& mVU)
 		else if (branch == 5) /*JR/JARL*/ \
 		{ \
 			if (sCount + found < 4) \
+			{ \
 				mVUregs.needExactMatch |= ForjaFlagsKeptAtJump(mVU); /* 153 in the app */ \
+				if (track && (ForjaFlagsKeptAtJump(mVU) & 2)) \
+					ForjaMacReadAt(mVU, pos + 1); /* 159: unknown code may read it right after the jump */ \
+			} \
 			break; \
 		} \
 		else /*E-Bit End*/ \
@@ -371,15 +393,32 @@ static __fi int ForjaFlagsKeptAtJump(const microVU& mVU)
 	}
 
 // Scan through instructions and check if flags are read (FSxxx, FMxxx, FCxxx opcodes)
-void _mVUflagPass(mV, u32 startPC, u32 sCount, u32 found, std::vector<u32>& v)
+// 159 in the app, "Banderas justas": `pos` is the position of startPC's first instruction after the block whose end is being set up.
+// While mVU.forjaMacTracking is on, each MAC read's position is kept (ForjaMacReadAt), a block is scanned again when a path reaches it
+// earlier than before, and the scan doesn't stop when all three flags are already asked for (a later read can't lower the position,
+// but an earlier path's could).
+void _mVUflagPass(mV, u32 startPC, u32 sCount, u32 found, std::vector<u32>& v, int pos = 0)
 {
-
-	for (u32 i = 0; i < v.size(); i++)
+	const bool track = mVU.forjaMacTracking;
+	if (track)
 	{
-		if (v[i] == startPC)
-			return; // Prevent infinite recursion
+		const u32 key = (startPC & 0xffff) | (static_cast<u32>(pos) << 16);
+		for (u32 i = 0; i < v.size(); i++)
+		{
+			if ((v[i] & 0xffff) == (startPC & 0xffff) && static_cast<int>(v[i] >> 16) <= pos)
+				return; // already scanned from this position or an earlier one
+		}
+		v.push_back(key);
 	}
-	v.push_back(startPC);
+	else
+	{
+		for (u32 i = 0; i < v.size(); i++)
+		{
+			if (v[i] == startPC)
+				return; // Prevent infinite recursion
+		}
+		v.push_back(startPC);
+	}
 
 	int oldPC = iPC;
 	int oldBranch = mVUbranch;
@@ -407,9 +446,18 @@ void _mVUflagPass(mV, u32 startPC, u32 sCount, u32 found, std::vector<u32>& v)
 		}
 		if (!(curI & _Ibit_))
 		{
+			const int mac_before = mVUregs.needExactMatch & 2; // 159 in the app: tell this instruction's MAC read apart
+			if (track)
+				mVUregs.needExactMatch &= ~2;
 			incPC(-1);
 			mVUopL(mVU, 3);
 			incPC(1);
+			if (track)
+			{
+				if (mVUregs.needExactMatch & 2)
+					ForjaMacReadAt(mVU, pos);
+				mVUregs.needExactMatch |= mac_before;
+			}
 		}
 
 		if (branch >= 2)
@@ -429,7 +477,8 @@ void _mVUflagPass(mV, u32 startPC, u32 sCount, u32 found, std::vector<u32>& v)
 			mVUbranch = 0;
 		}
 		incPC(1);
-		if ((mVUregs.needExactMatch & 7) == 7)
+		pos++; // 159 in the app
+		if (!track && (mVUregs.needExactMatch & 7) == 7)
 			break;
 	}
 	iPC = oldPC;
@@ -441,14 +490,24 @@ void _mVUflagPass(mV, u32 startPC, u32 sCount, u32 found, std::vector<u32>& v)
 void mVUflagPass(mV, u32 startPC, u32 sCount = 0, u32 found = 0)
 {
 	std::vector<u32> v;
-	_mVUflagPass(mVU, startPC, sCount, found, v);
+	_mVUflagPass(mVU, startPC, sCount, found, v, 0);
 }
 
 // Checks if the first ~4 instructions of a block will read flags
+// 159 in the app, "Banderas justas": also how many of this block's last MAC instances no next block can read (mVU.forjaMacSkip, used by
+// mVUsetFlags). Only from flag passes that saw every read: not after a JR/JALR to an unknown place, nor when the MAC flag was already
+// asked for before the passes (the block's own type, an E-bit or M-bit), nor when it was asked for without a read the pass saw.
 void mVUsetFlagInfo(mV)
 {
+	mVU.forjaMacSkip = 0;
+	// (Not for a branch in another one's delay slot, whose next instructions don't follow in order.)
+	const bool forja_track = ForjaMacJust(mVU) && !noFlagOpts && !(mVUregs.needExactMatch & 2) && !mVUlow.evilBranch && !mVUlow.badBranch;
+	bool forja_unknown = false;
+	mVU.forjaMacTracking = forja_track;
+	mVU.forjaMacFirstRead = 99;
 	if (noFlagOpts)
 	{
+		mVU.forjaMacTracking = false;
 		mVUregs.needExactMatch = 0x7;
 		mVUregs.flagInfo = 0x0;
 		return;
@@ -480,6 +539,7 @@ void mVUsetFlagInfo(mV)
 		if (!doConstProp || !mVUlow.constJump.isValid)
 		{
 			mVUregs.needExactMatch |= ForjaFlagsKeptAtJump(mVU); // 153 in the app: 0x7 unless the game's dead flags
+			forja_unknown = true; // 159 in the app
 		}
 		else
 		{
@@ -487,4 +547,7 @@ void mVUsetFlagInfo(mV)
 		}
 		mVUregs.needExactMatch &= 0x7;
 	}
+	mVU.forjaMacTracking = false;
+	if (forja_track && !forja_unknown && (mVUregs.needExactMatch & 2) && mVU.forjaMacFirstRead < 99)
+		mVU.forjaMacSkip = std::min(mVU.forjaMacFirstRead, 3);
 }

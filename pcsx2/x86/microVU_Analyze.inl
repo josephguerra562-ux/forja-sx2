@@ -382,7 +382,14 @@ __ri void flagSet(mV, bool setMacFlag)
 		if (sFLAG.doFlag && (j >= 3))
 		{
 			if (setMacFlag)
-				mFLAG.doFlag = 1;
+			{
+				// 159 in the app, "Banderas justas" ([Forja] VU1BanderasJustas): the MAC flag isn't sticky, so a read sees only the
+				// latest FMAC that has finished, the first one found here; the older three stay for the status flag's sticky bits.
+				if (calcOPS == 0 || !ForjaMacJust(mVU))
+					mFLAG.doFlag = 1;
+				else if (!mFLAG.doFlag)
+					g_forja_vu1_mac_left_out.fetch_add(1, std::memory_order_relaxed);
+			}
 			sFLAG.doNonSticky = 1;
 			calcOPS++;
 		}

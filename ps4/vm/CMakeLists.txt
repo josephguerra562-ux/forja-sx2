@@ -364,6 +364,15 @@ set(FORJA_BUILD_NUMBER "$ENV{GITHUB_RUN_NUMBER}")
 if(NOT FORJA_BUILD_NUMBER MATCHES "^[0-9]+$")
   set(FORJA_BUILD_NUMBER 0)
 endif()
+# Forja SX2 (159 in the app): a build made on the lab's PC (herramientas/compilar_en_la_pc/compilar.sh sets FORJA_COMPILACION_CASA=1)
+# goes to the console by FTP with profiles and patches newer than GitHub's main, so it doesn't fetch the settings center and reads
+# its package's own copies first (PatchDownload.cpp, ForjaGameProfile.h, Patch.cpp). GitHub's builds never set it.
+if("$ENV{FORJA_COMPILACION_CASA}" STREQUAL "1")
+  set(FORJA_BUILD_CASA 1)
+  message(STATUS "Forja SX2: a build made on the PC (the package's own profiles and patches, no settings center)")
+else()
+  set(FORJA_BUILD_CASA 0)
+endif()
 # Forja SX2: the public version (VERSION at the repository's root, "1.01"), shown in the library as "Versión 1.01 (38)". The
 # stable releases are named after it (Forja SX2 v1.00); the run number still tells the builds of one version apart.
 file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/../../VERSION" FORJA_VERSION LIMIT_COUNT 1)
@@ -388,7 +397,7 @@ else()
 endif()
 set_source_files_properties(ForjaReport.cpp PROPERTIES COMPILE_DEFINITIONS "FORJA_REPORT_HEX=\"${FORJA_REPORT_HEX}\"")
 set_source_files_properties(main.cpp GameMenu.cpp PatchDownload.cpp PROPERTIES COMPILE_DEFINITIONS
-  "FORJA_BUILD_NUMBER=${FORJA_BUILD_NUMBER};FORJA_VERSION_MAJOR=${FORJA_VERSION_MAJOR};FORJA_VERSION_MINOR=${FORJA_VERSION_MINOR};FORJA_LTO_ON=${FORJA_LTO_ON}")
+  "FORJA_BUILD_NUMBER=${FORJA_BUILD_NUMBER};FORJA_VERSION_MAJOR=${FORJA_VERSION_MAJOR};FORJA_VERSION_MINOR=${FORJA_VERSION_MINOR};FORJA_LTO_ON=${FORJA_LTO_ON};FORJA_BUILD_CASA=${FORJA_BUILD_CASA}")
 ps4_link_mesa(vm_boot)
 target_link_libraries(vm_boot PRIVATE glslang glslang-default-resource-limits ryml ps4_audio_resampler ps4_chd
   png jpeg webp z ${PCSX2_ROOT}/ps4/deps/prefix/lib/libzstd.a ${PCSX2_ROOT}/ps4/deps/prefix/lib/liblz4.a

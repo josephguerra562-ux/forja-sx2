@@ -558,6 +558,8 @@ __fi void mVUinitFirstPass(microVU& mVU, uptr pState, u8* thisPtr, const ForjaRe
 	                         mVUblocks[mVUstartPC / 2]->add(mVU, &mVUblock); // Add this block to block manager
 	mVUregs.needExactMatch = (mVUpBlock->pState.blockType) ? 7 : 0; // ToDo: Fix 1-Op block flag linking (MGS2:Demo/Sly Cooper)
 	mVUregs.blockType = 0;
+	mVU.forjaMacSkip = 0; // 159 in the app: set again by mVUsetFlagInfo at the block's branch
+	mVU.forjaMacTracking = false;
 	mVUregs.viBackUp  = 0;
 	mVUregs.flagInfo  = 0;
 	mVUsFlagHack = CHECK_VU_FLAGHACK;
@@ -893,7 +895,7 @@ static void* mVUcompileBlock(microVU& mVU, u32 startPC, uptr pState)
 	// Fix up vi15 const info for propagation through blocks
 	mVUregs.vi15 = (doConstProp && mVUconstReg[15].isValid) ? (u16)mVUconstReg[15].regValue : 0;
 	mVUregs.vi15v = (doConstProp && mVUconstReg[15].isValid) ? 1 : 0;
-	mVUsetFlags(mVU, mFC);           // Sets Up Flag instances
+	mVUsetFlags(mVU, mFC, mVU.forjaMacSkip); // Sets Up Flag instances (159 in the app: only the MAC instances a next block reads)
 	mVUoptimizePipeState(mVU);       // Optimize the End Pipeline State for nicer Block Linking
 	mVUdebugPrintBlocks(mVU, false); // Prints Start/End PC of blocks executed, for debugging...
 	mVUtestCycles(mVU, mFC);         // Update VU Cycles and Exit Early if Necessary

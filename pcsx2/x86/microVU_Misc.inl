@@ -378,6 +378,14 @@ __fi std::optional<xAddressVoid> mVUoptimizeConstantAddr(mV, u32 srcreg, s32 off
 // mVUaddrFix made (gprT1q): it goes in the base field and the GPR in the index field, so that rbp (which the emitter can't use as a
 // base without a displacement) is fine as well. Only the VU1's microprograms, and only where xComplexAddress would need the movabs.
 extern std::atomic<bool> g_forja_vu1_mem_reg;
+// 159 in the app, "Banderas justas" ([Forja] VU1BanderasJustas, set at the game's start by ps4/vm/main.cpp): microVU_Flags.inl and
+// microVU_Analyze.inl. Only for the VU1.
+extern std::atomic<bool> g_forja_vu1_mac_just;
+extern std::atomic<u64> g_forja_vu1_mac_left_out;
+static __fi bool ForjaMacJust(const microVU& mVU)
+{
+	return mVU.index != 0 && g_forja_vu1_mac_just.load(std::memory_order_relaxed);
+}
 extern std::atomic<u64> g_forja_vu1_mem_reg_loads, g_forja_vu1_mem_reg_reuses;
 static xAddressVoid ForjaVUMemAddr(mV, void* ptr, const xAddressReg& index)
 {

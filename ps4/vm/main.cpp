@@ -403,6 +403,8 @@ extern std::atomic<bool> g_forja_vu1_keep_regs; // pcsx2/MTVU.cpp (157 in the ap
 extern std::atomic<u64> g_forja_vu1_kept_blocks, g_forja_vu1_kept_links;
 extern std::atomic<bool> g_forja_vu1_three_op, g_forja_vu1_mem_reg; // pcsx2/MTVU.cpp (158 in the app)
 extern std::atomic<u64> g_forja_vu1_three_op_copies, g_forja_vu1_mem_reg_loads, g_forja_vu1_mem_reg_reuses;
+extern std::atomic<bool> g_forja_vu1_mac_just; // pcsx2/MTVU.cpp (159 in the app)
+extern std::atomic<u64> g_forja_vu1_mac_left_out;
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
 extern std::atomic<unsigned> g_forja_vsync_load;
 extern std::atomic<int> g_forja_deinterlace_factory; // compilation 137: pcsx2/VMManager.cpp, the game's factory deinterlace mode
@@ -3476,6 +3478,14 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		if (mem_reg || memreg_no || s_profile.vu1_mem_reg_origin != ForjaGameProfile::Origin::Global)
 			ProbeLog("VU1 memory register (158 in the app): %s (%s)%s\n", mem_reg ? "on" : "off",
 				ProfileOriginName(s_profile.vu1_mem_reg_origin), memreg_no ? ", vm-vu1-memreg-no" : "");
+		// 159 in the app, "Banderas justas" ([Forja] VU1BanderasJustas; /data/ForjaSX2/vm-vu1-banderas-justas-no turns it off). Before the
+		// game's first VU1 compile.
+		const bool just_no = access("/data/ForjaSX2/vm-vu1-banderas-justas-no", F_OK) == 0;
+		const bool mac_just = !just_no && s_profile.vu1_mac_just == 1;
+		g_forja_vu1_mac_just.store(mac_just, std::memory_order_relaxed);
+		if (mac_just || just_no || s_profile.vu1_mac_just_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("VU1 just MAC flags (159 in the app): %s (%s)%s\n", mac_just ? "on" : "off",
+				ProfileOriginName(s_profile.vu1_mac_just_origin), just_no ? ", vm-vu1-banderas-justas-no" : "");
 	}
 	// Compilation 128: on unless the profile says 0 (measured on 2026-11-08: Bully's effect hitches 6 -> 1, Shadow's 14 -> 2).
 	s_effects_ahead_game = s_profile.effects_ahead != 0; // compilation 127
@@ -6112,12 +6122,14 @@ void VMHostPoll()
 					static_cast<unsigned long long>(g_forja_vu1_kept_blocks.load(std::memory_order_relaxed)),
 					static_cast<unsigned long long>(g_forja_vu1_kept_links.load(std::memory_order_relaxed)));
 			// 158 in the app: the copies "Tres operandos" left out, and the VU memory addresses that loaded the base or reused it, so far.
-			if ((g_forja_vu1_three_op.load(std::memory_order_relaxed) || g_forja_vu1_mem_reg.load(std::memory_order_relaxed)) &&
+			if ((g_forja_vu1_three_op.load(std::memory_order_relaxed) || g_forja_vu1_mem_reg.load(std::memory_order_relaxed) ||
+				    g_forja_vu1_mac_just.load(std::memory_order_relaxed)) &&
 				vm_state == VMState::Running)
-				ProbeLog("VU1 compile savings: copies_left_out=%llu mem_base_loads=%llu mem_base_reuses=%llu\n",
+				ProbeLog("VU1 compile savings: copies_left_out=%llu mem_base_loads=%llu mem_base_reuses=%llu mac_flags_left_out=%llu\n",
 					static_cast<unsigned long long>(g_forja_vu1_three_op_copies.load(std::memory_order_relaxed)),
 					static_cast<unsigned long long>(g_forja_vu1_mem_reg_loads.load(std::memory_order_relaxed)),
-					static_cast<unsigned long long>(g_forja_vu1_mem_reg_reuses.load(std::memory_order_relaxed)));
+					static_cast<unsigned long long>(g_forja_vu1_mem_reg_reuses.load(std::memory_order_relaxed)),
+					static_cast<unsigned long long>(g_forja_vu1_mac_left_out.load(std::memory_order_relaxed)));
 		}
 		if (OrbisEEDiag::on.load(std::memory_order_relaxed) && interval > 0.0)
 		{
