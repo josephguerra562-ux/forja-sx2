@@ -145,6 +145,11 @@ namespace ForjaGameProfile
 		// the profile says.
 		int ee_lzcnt = -1;
 		Origin ee_lzcnt_origin = Origin::Global;
+		// 174 in the app: "Animación a medias" ([Forja] AnimMediasDir, AnimMediasFuncion, AnimMediasVacia; decimal EE addresses; ps4/vm/
+		// main.cpp): at every vsync the word at AnimMediasDir (an entry of one of the game's function tables) goes between AnimMediasFuncion
+		// and AnimMediasVacia (an empty function of the game), so that function runs one vsync out of two. Off unless all three are set.
+		int anim_half_addr = -1, anim_half_fn = -1, anim_half_empty = -1;
+		Origin anim_half_origin = Origin::Global;
 		// 152 in the app: [Forja] VU1Ahorro, "Ahorro del VU1" (pcsx2/MTVU.cpp, microVU_Execute.inl): the VU1's runs without the emitter's
 		// pointers and with the PS5 port's lookup cache, and a microcode upload that changes no byte leaves the programs alone. Off
 		// unless the game's profile turns it on: God of War II.
@@ -385,6 +390,9 @@ namespace ForjaGameProfile
 		read_int("VifAdelanto", &v.vif_adelanto, &v.vif_adelanto_origin); // 170 in the app
 		read_int("GSVerticesUnaVez", &v.gs_vt_once, &v.gs_vt_once_origin); // 171 in the app
 		read_int("EEPlzcwRapido", &v.ee_lzcnt, &v.ee_lzcnt_origin); // 173 in the app
+		read_int("AnimMediasDir", &v.anim_half_addr, &v.anim_half_origin); // 174 in the app
+		read_int("AnimMediasFuncion", &v.anim_half_fn, &v.anim_half_origin);
+		read_int("AnimMediasVacia", &v.anim_half_empty, &v.anim_half_origin);
 		read_int("VU1Ahorro", &v.vu1_ahorro, &v.vu1_ahorro_origin); // 152 in the app
 		read_int("VU1BanderasMuertas", &v.vu1_dead_flags, &v.vu1_dead_flags_origin); // 153 in the app
 		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);

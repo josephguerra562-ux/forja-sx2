@@ -422,6 +422,45 @@ extern std::atomic<bool> g_forja_gs_vt_once_check_only;
 extern std::atomic<u64> g_forja_gs_vt_once_checked, g_forja_gs_vt_once_wrong, g_forja_gs_vt_once_draws, g_forja_gs_vt_once_saved;
 extern u32 g_forja_gs_vt_once_first_wrong[4];
 extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app, "PLZCW rápido")
+// 174 in the app, "Animación a medias" ([Forja] AnimMediasDir/AnimMediasFuncion/AnimMediasVacia). God of War II's map (the 171-173,
+// herramientas/mapa_ee.py): the EE's busiest code in the Colossus is decoding animations (0x112380, ~13 %: each bone channel's keys for
+// the current time). It is a virtual function: the scene's update walks its tree of objects and calls each one's slot 132; for the
+// animation controllers that slot (the word at 0x2f57dc of their class's table) is 0x112380, and no code calls it any other way. At
+// every vsync this puts that word to the game's own empty function (0x27b310, used by 79 entries of its tables) or back, by turns:
+// the controllers decode one vsync out of two (their pose stays the last one in between). Only data changes: the recompiled code
+// reads the word at each call. The word is only touched while it holds one of the two (anything else: not this program, left alone),
+// and goes back to the function before every state save, so a saved state never keeps the animation off.
+static bool s_anim_half_on = false;
+static u32 s_anim_half_addr = 0, s_anim_half_fn = 0, s_anim_half_empty = 0;
+static unsigned s_anim_half_n = 0;
+static u64 s_anim_half_swaps = 0, s_anim_half_foreign = 0, s_anim_half_skipped = 0;
+
+static void ForjaAnimHalfVsync()
+{
+	if (!s_anim_half_on)
+		return;
+	const u32 now = memRead32(s_anim_half_addr);
+	if (now != s_anim_half_fn && now != s_anim_half_empty)
+	{
+		s_anim_half_foreign++;
+		return;
+	}
+	const bool skip = (++s_anim_half_n & 1) != 0;
+	const u32 want = skip ? s_anim_half_empty : s_anim_half_fn;
+	if (now != want)
+	{
+		memWrite32(s_anim_half_addr, want);
+		s_anim_half_swaps++;
+	}
+	s_anim_half_skipped += skip ? 1u : 0u;
+}
+
+// Before a state save (the VM paused): the table's word back to the function.
+static void ForjaAnimHalfRestore()
+{
+	if (s_anim_half_on && memRead32(s_anim_half_addr) == s_anim_half_empty)
+		memWrite32(s_anim_half_addr, s_anim_half_fn);
+}
 static bool s_vu1_ring_alternate = false; // 169 in the app: VU1ColaAlterna (the 5 s meter turns the lap)
 static bool s_vu1_ring_logged = false;
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
@@ -3494,6 +3533,22 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				no ? ", vm-vif-adelanto-no" : "");
 	}
 	{
+		// 174 in the app, "Animación a medias" ([Forja] AnimMediasDir/AnimMediasFuncion/AnimMediasVacia). /data/ForjaSX2/vm-anim-completa
+		// turns it off.
+		const bool full = access("/data/ForjaSX2/vm-anim-completa", F_OK) == 0;
+		const bool set = s_profile.anim_half_addr > 0 && s_profile.anim_half_fn > 0 && s_profile.anim_half_empty > 0;
+		s_anim_half_on = set && !full;
+		s_anim_half_addr = set ? static_cast<u32>(s_profile.anim_half_addr) : 0;
+		s_anim_half_fn = set ? static_cast<u32>(s_profile.anim_half_fn) : 0;
+		s_anim_half_empty = set ? static_cast<u32>(s_profile.anim_half_empty) : 0;
+		s_anim_half_n = 0;
+		s_anim_half_swaps = s_anim_half_foreign = s_anim_half_skipped = 0;
+		if (set || full)
+			ProbeLog("Animation at half rate (174 in the app): %s, table word %08x: %08x / empty %08x (%s)%s\n", s_anim_half_on ? "on" : "off",
+				s_anim_half_addr, s_anim_half_fn, s_anim_half_empty, ProfileOriginName(s_profile.anim_half_origin),
+				full ? ", vm-anim-completa" : "");
+	}
+	{
 		// 173 in the app, "PLZCW rápido" ([Forja] EEPlzcwRapido; pcsx2/x86/iMMI.cpp): before the EE's first block is compiled.
 		// /data/ForjaSX2/vm-ee-plzcw-viejo keeps the old code.
 		const bool old = access("/data/ForjaSX2/vm-ee-plzcw-viejo", F_OK) == 0;
@@ -4504,6 +4559,7 @@ extern std::atomic<unsigned> g_forja_vsync_debt;
 
 void ForjaSkipInstantVsync(double work_ms, double budget_ms)
 {
+	ForjaAnimHalfVsync(); // 174 in the app
 	if (budget_ms < 1.0)
 		return;
 	const double u_now = work_ms / budget_ms;
@@ -5568,6 +5624,7 @@ static void SaveGameState()
 	bool failed = false;
 	std::string failure;
 	const auto t0 = Common::Timer::GetCurrentValue();
+	ForjaAnimHalfRestore(); // 174 in the app
 	VMManager::SaveStateToSlot(slot, false, [&failed, &failure](const std::string& error) {
 		failed = true;
 		failure = error;
@@ -5603,6 +5660,7 @@ static bool LoadGameState()
 	s_state_undo_path = Path::Combine(EmuFolders::Savestates,
 		fmt::format("{} ({:08X}).deshacer.p2s", VMManager::GetDiscSerial(), VMManager::GetDiscCRC()));
 	bool undo = true;
+	ForjaAnimHalfRestore(); // 174 in the app
 	VMManager::SaveState(s_state_undo_path.c_str(), false, false, [&undo](const std::string& why) {
 		undo = false;
 		ProbeLog("Save state: the moment before the load could not be kept (%s)\n", why.c_str());
@@ -6307,6 +6365,11 @@ void VMHostPoll()
 				ProbeLog("VIF1 tags per second: refe=%.0f cnt=%.0f next=%.0f ref=%.0f refs=%.0f call=%.0f ret=%.0f end=%.0f\n", r[0], r[1], r[2],
 					r[3], r[4], r[5], r[6], r[7]);
 			}
+			// 174 in the app, "Animación a medias": the vsyncs it skipped the decoding, the word's changes, and the vsyncs the word held
+			// something else (not this program, or still loading).
+			if (s_anim_half_on && vm_state == VMState::Running)
+				ProbeLog("Animation at half rate: skipped_vsyncs=%llu swaps=%llu foreign=%llu\n", static_cast<unsigned long long>(s_anim_half_skipped),
+					static_cast<unsigned long long>(s_anim_half_swaps), static_cast<unsigned long long>(s_anim_half_foreign));
 			// 171 in the app, "Vértices una vez": its mode, the draws read once and the vertex reads left out so far, and the check.
 			{
 				const int vo = g_forja_gs_vt_once.load(std::memory_order_relaxed);
