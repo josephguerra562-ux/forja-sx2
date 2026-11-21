@@ -85,6 +85,9 @@ static void* ForjaEePcMeterThread(void*)
 {
 	PS4ThreadAffinity::PinCurrentThreadToHelpers("ee pc");
 	const bool with_code = access("/data/ForjaSX2/vm-ee-pc-codigo", F_OK) == 0;
+	// 171 in the app: /data/ForjaSX2/vm-ee-pc-todo also logs every bucket with 2 samples or more in each window ("EE guest PC all:", up to
+	// 96), so a whole session maps where the game's code spends the EE (God of War II's is flat: its busiest block ~1-2 %).
+	const bool with_all = access("/data/ForjaSX2/vm-ee-pc-todo", F_OK) == 0;
 	struct Bucket
 	{
 		u32 pc;
@@ -136,6 +139,16 @@ static void* ForjaEePcMeterThread(void*)
 			for (u32 i = 0; i < kShown && buckets[i].count != 0 && size > 0 && size < static_cast<int>(sizeof(line)) - 20; i++)
 				size += std::snprintf(line + size, sizeof(line) - size, "%s%08x:%u", i ? "," : "", buckets[i].pc, buckets[i].count);
 			ProbeLog("%s\n", line);
+			if (with_all) // 171 in the app
+			{
+				constexpr u32 kAll = 96;
+				std::partial_sort(std::begin(buckets), std::begin(buckets) + kAll, std::end(buckets), [](const Bucket& a, const Bucket& b) { return a.count > b.count; });
+				char all[1400];
+				int used = std::snprintf(all, sizeof(all), "EE guest PC all:");
+				for (u32 i = 0; i < kAll && buckets[i].count >= 2 && used > 0 && used < static_cast<int>(sizeof(all)) - 20; i++)
+					used += std::snprintf(all + used, sizeof(all) - used, " %08x:%u", buckets[i].pc, buckets[i].count);
+				ProbeLog("%s\n", all);
+			}
 			if (with_code && eeMem)
 			{
 				for (u32 i = 0; i < 3 && buckets[i].count != 0; i++)
