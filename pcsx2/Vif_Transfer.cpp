@@ -4,6 +4,7 @@
 #include "Common.h"
 #include "Vif_Dma.h"
 #include "Gif_Unit.h" // 167 in the app: gifUnit.checkPaths
+#include "OrbisCopy.h" // 168 in the app
 #include "Vif_Dynarec.h"
 #include "MTVU.h" // vk-285-84: VU_Thread kick batching
 #include "OrbisEEDiag.h" // vk-285-100
@@ -37,7 +38,9 @@ namespace
 // code goes the normal way).
 static u32 ForjaVif1Tramo(const u32* data, u32 pSize, bool live)
 {
-	constexpr u32 kMaxWords = 16384;
+	// 168 in the app: room for the run is reserved before the walk (Vif1TramoBegin), so not too much: 4096 words (the 167 took up to 16384;
+	// GoW's runs are ~90 words).
+	constexpr u32 kMaxWords = 4096;
 	const u32 limit = std::min<u32>(pSize, kMaxWords);
 	ForjaTramoState s;
 	s.cycle = *reinterpret_cast<const u32*>(&vif1Regs.cycle) & 0xffffu;
@@ -52,6 +55,12 @@ static u32 ForjaVif1Tramo(const u32* data, u32 pSize, bool live)
 	const int exec_after = g_orbis_vif1_exec_early.load(std::memory_order_relaxed) ? 0 : 3;
 	int calls = vif1.unpackcalls;
 	u32 k = 0, unpacks = 0, last_code = 0;
+	// 168 in the app: the run goes into the ring as the walk goes (each UNPACK's code and data copied as it's passed). The 167 walked
+	// first, reading only the code words, ~240 bytes apart and not in the caches: a wait for memory per UNPACK (ForjaVif1Tramo 7.8 % of
+	// the EE in the Colossus), and then copied it all again. Copying as it goes streams the data as VifUnpack did, and the next code is
+	// the word right after what was just copied: already in the cache.
+	u32* out = nullptr;
+	u32 copied = 0;
 	if (!live)
 		s_tramo_pred_n = s_tramo_pred_i = 0;
 	while (k < limit)
@@ -128,8 +137,17 @@ static u32 ForjaVif1Tramo(const u32* data, u32 pSize, bool live)
 				default: break;
 			}
 		}
+		// 168 in the app: the ring's room once this run has its first code (a queued program this code starts went to the ring first,
+		// above); nothing else writes to the ring until Vif1TramoEnd.
+		if (live && !out)
+			out = vu1Thread.Vif1TramoBegin(limit);
 		last_code = code;
 		k += n;
+		if (live && up.size)
+		{
+			OrbisCopy(out + copied, data + copied, (k - copied) * 4);
+			copied = k;
+		}
 	}
 	if (k == 0 || !live)
 		return k;
@@ -137,7 +155,9 @@ static u32 ForjaVif1Tramo(const u32* data, u32 pSize, bool live)
 	if (unpacks)
 		vif1Regs.num = 0;
 	vif1.unpackcalls = calls;
-	vu1Thread.Vif1Tramo(data, k, s0, pSize, unpacks);
+	if (k > copied)
+		OrbisCopy(out + copied, data + copied, (k - copied) * 4);
+	vu1Thread.Vif1TramoEnd(k, s0, pSize, unpacks, data[k]); // 168 in the app
 	g_forja_vif_tramos_runs.fetch_add(1, std::memory_order_relaxed);
 	g_forja_vif_tramos_unpacks.fetch_add(unpacks, std::memory_order_relaxed);
 	g_forja_vif_tramos_words.fetch_add(k, std::memory_order_relaxed);

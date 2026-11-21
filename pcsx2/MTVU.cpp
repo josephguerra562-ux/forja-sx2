@@ -1170,10 +1170,16 @@ void VU_Thread::VifUnpack(vifStruct& _vif, VIFregisters& _vifRegs, const u8* dat
 
 // 167 in the app, "VIF en tramos": the VIF registers at the run's start, the DMA piece's words left there (each UNPACK's start_aligned),
 // then the codes and the word after them (VifUnpack copies 4 bytes past an UNPACK's data too: the same word for the run's last one).
-void VU_Thread::Vif1Tramo(const u32* data, u32 words, const ForjaTramoState& s, u32 packet, u32 unpacks)
+// 168 in the app: the EE copies the codes in while it walks them (Vif_Transfer.cpp): Begin reserves room for the longest run and returns
+// where its codes go (after the 8 header words); End writes the header and the word after the codes, then commits.
+u32* VU_Thread::Vif1TramoBegin(u32 max_words)
 {
-	const s32 total = 8 + static_cast<s32>(words) + 1;
-	ReserveSpace(total);
+	ReserveSpace(8 + static_cast<s32>(max_words) + 1);
+	return &buffer[m_write_pos + 8];
+}
+
+void VU_Thread::Vif1TramoEnd(u32 words, const ForjaTramoState& s, u32 packet, u32 unpacks, u32 next_word)
+{
 	const s32 wp = m_write_pos;
 	u32* p = &buffer[wp];
 	p[0] = MTVU_VIF1_TRAMO;
@@ -1184,8 +1190,8 @@ void VU_Thread::Vif1Tramo(const u32* data, u32 words, const ForjaTramoState& s, 
 	p[5] = s.tops;
 	p[6] = s.base;
 	p[7] = packet;
-	OrbisCopy(p + 8, data, (words + 1) * 4); // vk-285-98 (OrbisCopy.h)
-	m_write_pos = wp + total;
+	p[8 + words] = next_word;
+	m_write_pos = wp + 8 + static_cast<s32>(words) + 1;
 	CommitWritePos();
 	OrbisDataKick(); // vk-285-90
 	m_orbis_unpacks += unpacks;
