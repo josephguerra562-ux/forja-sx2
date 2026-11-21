@@ -133,6 +133,10 @@ namespace ForjaGameProfile
 		Origin vu1_ring_kb_origin = Origin::Global;
 		int vu1_ring_alt = -1;
 		Origin vu1_ring_alt_origin = Origin::Global;
+		// 170 in the app: [Forja] VifAdelanto, "VIF1 por adelantado" (pcsx2/Vif1_Dma.cpp, MTVU.cpp): 1 asks memory early for the whole VIF1
+		// packet the next pass reads and for the VU ring's next lines. Off unless the profile says.
+		int vif_adelanto = -1;
+		Origin vif_adelanto_origin = Origin::Global;
 		// 152 in the app: [Forja] VU1Ahorro, "Ahorro del VU1" (pcsx2/MTVU.cpp, microVU_Execute.inl): the VU1's runs without the emitter's
 		// pointers and with the PS5 port's lookup cache, and a microcode upload that changes no byte leaves the programs alone. Off
 		// unless the game's profile turns it on: God of War II.
@@ -370,6 +374,7 @@ namespace ForjaGameProfile
 		read_int("VifEnTramos", &v.vif_tramos, &v.vif_tramos_origin); // 167 in the app
 		read_int("VU1ColaKB", &v.vu1_ring_kb, &v.vu1_ring_kb_origin); // 169 in the app
 		read_int("VU1ColaAlterna", &v.vu1_ring_alt, &v.vu1_ring_alt_origin); // 169 in the app
+		read_int("VifAdelanto", &v.vif_adelanto, &v.vif_adelanto_origin); // 170 in the app
 		read_int("VU1Ahorro", &v.vu1_ahorro, &v.vu1_ahorro_origin); // 152 in the app
 		read_int("VU1BanderasMuertas", &v.vu1_dead_flags, &v.vu1_dead_flags_origin); // 153 in the app
 		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);
@@ -520,6 +525,7 @@ namespace ForjaGameProfile
 		v.vif_tramos = std::clamp(v.vif_tramos, -1, 1); // 167 in the app
 		v.vu1_ring_kb = v.vu1_ring_kb < 0 ? -1 : std::clamp(v.vu1_ring_kb, 256, 16384); // 169 in the app
 		v.vu1_ring_alt = std::clamp(v.vu1_ring_alt, -1, 1); // 169 in the app
+		v.vif_adelanto = std::clamp(v.vif_adelanto, -1, 1); // 170 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"
 			v.crowd_every = v.crowd_every >= 32 ? 32 : v.crowd_every >= 16 ? 16 : v.crowd_every >= 8 ? 8 : v.crowd_every >= 4 ? 4 :
 			                v.crowd_every >= 2 ? 2 : 1; // compilation 88: 16 and 32

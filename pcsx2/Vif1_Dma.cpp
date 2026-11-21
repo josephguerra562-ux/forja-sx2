@@ -16,6 +16,12 @@ u32 g_vif1Cycles = 0;
 // PS5 port (vk-285-99): VIF1 DMA tags read, by ID (REFE, CNT, NEXT, REF, REFS, CALL, RET, END), for the
 // [eestat] line: the chains' shape decides how far ahead their tags and data can be prefetched.
 u64 g_orbis_vif1_tag_ids[8] = {};
+// 170 in the app, "VIF1 por adelantado" ([Forja] VifAdelanto, set at the game's start by ps4/vm/main.cpp). With the VU1 on its own thread
+// the EE's VIF1 work is mostly moving the data (the 167-168 showed it: reading each packet from the game's RAM, out of the caches, and
+// writing it into the VU ring). A packet's data is read at the vif1Interrupt after its tag's, and the PS5 port asked memory for its
+// first 128 bytes then; God of War II's packets are ~500 bytes (~250,000 a second). Now all of it, up to 2 KB, so it's on its way
+// during the EE code in between. Asking early changes nothing but when the lines arrive.
+std::atomic<bool> g_forja_vif_adelanto{false};
 
 __fi void vif1FLUSH()
 {
@@ -238,6 +244,12 @@ __fi void vif1SetupTransfer()
 		OrbisPrefetchDma(vif1ch.madr);
 		if (vif1ch.qwc > 4)
 			OrbisPrefetchDma(vif1ch.madr + 64);
+		if (g_forja_vif_adelanto.load(std::memory_order_relaxed)) // 170 in the app: the rest of the packet, up to 2 KB
+		{
+			const u32 bytes = std::min<u32>(vif1ch.qwc << 4, 2048);
+			for (u32 off = 128; off < bytes; off += 64)
+				OrbisPrefetchDma(vif1ch.madr + off);
+		}
 	}
 	if (!vif1.done)
 	{

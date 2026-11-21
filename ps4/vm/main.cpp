@@ -415,6 +415,8 @@ extern std::atomic<u64> g_forja_vif_tramos_runs, g_forja_vif_tramos_unpacks, g_f
 extern std::atomic<u64> g_forja_vif_tramos_checked, g_forja_vif_tramos_wrong;
 extern u32 g_forja_vif_tramos_first_wrong[2][10];
 extern std::atomic<u32> g_orbis_mtvu_ring_kb; // pcsx2/MTVU.cpp (169 in the app, "Cola corta del VU1")
+extern std::atomic<bool> g_forja_vif_adelanto; // pcsx2/Vif1_Dma.cpp (170 in the app, "VIF1 por adelantado")
+extern u64 g_orbis_vif1_tag_ids[8]; // pcsx2/Vif1_Dma.cpp (the VIF1 DMA tags read, per ID)
 static bool s_vu1_ring_alternate = false; // 169 in the app: VU1ColaAlterna (the 5 s meter turns the lap)
 static bool s_vu1_ring_logged = false;
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
@@ -3477,6 +3479,16 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				ProfileOriginName(s_profile.vu1_ring_kb_origin), longq ? ", vm-vu1-cola-larga" : "");
 	}
 	{
+		// 170 in the app, "VIF1 por adelantado" ([Forja] VifAdelanto; pcsx2/Vif1_Dma.cpp, MTVU.cpp): the whole VIF1 packet and the VU
+		// ring's next lines asked from memory early. /data/ForjaSX2/vm-vif-adelanto-no turns it off.
+		const bool no = access("/data/ForjaSX2/vm-vif-adelanto-no", F_OK) == 0;
+		const bool on = !no && s_profile.vif_adelanto == 1;
+		g_forja_vif_adelanto.store(on, std::memory_order_relaxed);
+		if (on || no || s_profile.vif_adelanto_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("VIF1 early (170 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.vif_adelanto_origin),
+				no ? ", vm-vif-adelanto-no" : "");
+	}
+	{
 		// 152 in the app, "Ahorro del VU1" ([Forja] VU1Ahorro; /data/ForjaSX2/vm-vu1-ahorro-no turns it off). Set before the game's
 		// first VU1 program: the VU thread reads it at every run.
 		// The VU1's map (vm-vu1-mapa): its programs, their blocks and their x86 entries, after ~60 and ~120 s of play, to tell which VU1
@@ -6249,6 +6261,20 @@ void VMHostPoll()
 			}
 			// 169 in the app, "Cola corta del VU1": the lap that ran these 5 s, then (VU1ColaAlterna) the next one: 16384, 2048, 1024,
 			// 512 KB, 20 s each (4 meters), so each size gets turns in the same scenes.
+			// 170 in the app: the VIF1 DMA tags read per second, per kind (which ones a game's chains use, and how many steps they make).
+			if (g_forja_vif_adelanto.load(std::memory_order_relaxed) && vm_state == VMState::Running && interval > 0.0)
+			{
+				static u64 s_tags[8] = {};
+				double r[8];
+				for (int i = 0; i < 8; i++)
+				{
+					const u64 now = g_orbis_vif1_tag_ids[i];
+					r[i] = static_cast<double>(now - s_tags[i]) / interval;
+					s_tags[i] = now;
+				}
+				ProbeLog("VIF1 tags per second: refe=%.0f cnt=%.0f next=%.0f ref=%.0f refs=%.0f call=%.0f ret=%.0f end=%.0f\n", r[0], r[1], r[2],
+					r[3], r[4], r[5], r[6], r[7]);
+			}
 			if (s_vu1_ring_logged && vm_state == VMState::Running)
 			{
 				ProbeLog("VU1 ring lap: kb=%u\n", g_orbis_mtvu_ring_kb.load(std::memory_order_relaxed));
