@@ -56,6 +56,8 @@ std::atomic<u64> g_forja_vu1_flag_risk_progs{0}, g_forja_vu1_flag_missed{0};
 std::atomic<int> g_forja_vu1_dead_flags_learned{0};
 // 161 in the app, "Ciclos en una sola cuenta" ([Forja] VU1CuentaCiclos, microVU_Compile.inl): read when VU1 code is compiled.
 std::atomic<bool> g_forja_vu1_one_count{false};
+// 162 in the app, "MAC justa en los saltos" ([Forja] VU1MacEnSaltos, microVU_Flags.inl): read when VU1 code is compiled.
+std::atomic<bool> g_forja_vu1_mac_jump{false};
 std::atomic<u64> g_forja_vu1_three_op_copies{0}, g_forja_vu1_mem_reg_loads{0}, g_forja_vu1_mem_reg_reuses{0};
 u64 g_forja_mpg_total = 0, g_forja_mpg_same = 0;
 

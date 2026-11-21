@@ -452,6 +452,24 @@ static __fi void ForjaMacReadAt(microVU& mVU, int pos)
 		mVU.forjaMacFirstRead = pos;
 }
 
+// 162 in the app, "MAC justa en los saltos" ([Forja] VU1MacEnSaltos, set at the game's start by ps4/vm/main.cpp, defined in
+// pcsx2/MTVU.cpp). The 161 kept the MAC flag exact at every JR/JALR (God of War II: the Colossus freeze came from programs 0x08e0
+// and 0x0b90 reading the MAC flag the previous program left), so each block before one computed its last 4 MAC instances: the VU1
+// ~10 % dearer and the game's frame from ~43 to ~37. After an unknown jump only two kinds of reader can follow: one in the same
+// program right after the jump's target (the 160's scan flags those programs: their 4 instances stay), or the next program's, which
+// comes after this program's end, at least two instructions on (the E-bit instruction and its delay slot). So the next blocks read
+// no earlier than two instructions after the target (a block that ends with the jump: from the instance of its last 2 instructions'
+// FMACs and the one before), or three after the delay slot (a jump met in a direct branch's flag pass). Only with "Banderas justas"
+// (159), which turns those positions into fewer instances.
+extern std::atomic<bool> g_forja_vu1_mac_jump;
+static __fi bool ForjaMacOnlyNextProgram(microVU& mVU)
+{
+	if (!mVU.index || !g_forja_vu1_mac_jump.load(std::memory_order_relaxed))
+		return false;
+	const microProgram* prog = mVU.prog.cur;
+	return prog && prog->forjaFlagScan && !((prog->forjaFlagRisk | prog->forjaFlagLearned) & 2);
+}
+
 #define shortBranch() \
 	{ \
 		if ((branch == 3) || (branch == 4)) /*Branches*/ \
@@ -467,7 +485,7 @@ static __fi void ForjaMacReadAt(microVU& mVU, int pos)
 			{ \
 				mVUregs.needExactMatch |= ForjaFlagsKeptAtJump(mVU); /* 153 in the app */ \
 				if (track && (ForjaFlagsKeptAtJump(mVU) & 2)) \
-					ForjaMacReadAt(mVU, pos + 1); /* 159: unknown code may read it right after the jump */ \
+					ForjaMacReadAt(mVU, pos + (ForjaMacOnlyNextProgram(mVU) ? 3 : 1)); /* 159: unknown code may read it after the jump; 162: the next program's, 3 on */ \
 			} \
 			break; \
 		} \
@@ -622,7 +640,10 @@ void mVUsetFlagInfo(mV)
 		if (!doConstProp || !mVUlow.constJump.isValid)
 		{
 			mVUregs.needExactMatch |= ForjaFlagsKeptAtJump(mVU); // 153 in the app: 0x7 unless the game's dead flags
-			forja_unknown = true; // 159 in the app
+			if (forja_track && (mVUregs.needExactMatch & 2) && ForjaMacOnlyNextProgram(mVU))
+				ForjaMacReadAt(mVU, 2); // 162 in the app: the next program's read, 2 instructions after the target at least
+			else
+				forja_unknown = true; // 159 in the app
 		}
 		else
 		{
