@@ -421,6 +421,7 @@ extern std::atomic<int> g_forja_gs_vt_once; // pcsx2/GS/Renderers/Common/GSVerte
 extern std::atomic<bool> g_forja_gs_vt_once_check_only;
 extern std::atomic<u64> g_forja_gs_vt_once_checked, g_forja_gs_vt_once_wrong, g_forja_gs_vt_once_draws, g_forja_gs_vt_once_saved;
 extern u32 g_forja_gs_vt_once_first_wrong[4];
+extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app, "PLZCW rápido")
 static bool s_vu1_ring_alternate = false; // 169 in the app: VU1ColaAlterna (the 5 s meter turns the lap)
 static bool s_vu1_ring_logged = false;
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
@@ -3491,6 +3492,16 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		if (on || no || s_profile.vif_adelanto_origin != ForjaGameProfile::Origin::Global)
 			ProbeLog("VIF1 early (170 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.vif_adelanto_origin),
 				no ? ", vm-vif-adelanto-no" : "");
+	}
+	{
+		// 173 in the app, "PLZCW rápido" ([Forja] EEPlzcwRapido; pcsx2/x86/iMMI.cpp): before the EE's first block is compiled.
+		// /data/ForjaSX2/vm-ee-plzcw-viejo keeps the old code.
+		const bool old = access("/data/ForjaSX2/vm-ee-plzcw-viejo", F_OK) == 0;
+		const bool on = !old && s_profile.ee_lzcnt == 1;
+		g_forja_ee_lzcnt.store(on, std::memory_order_relaxed);
+		if (on || old || s_profile.ee_lzcnt_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("EE PLZCW with LZCNT (173 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.ee_lzcnt_origin),
+				old ? ", vm-ee-plzcw-viejo" : "");
 	}
 	{
 		// 171 in the app, "Vértices una vez" ([Forja] GSVerticesUnaVez; GSVertexTrace.cpp). 1 starts checking (both ways on each draw, the

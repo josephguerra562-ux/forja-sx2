@@ -24,23 +24,29 @@ u32 g_forja_gs_vt_once_first_wrong[4] = {}; // indices, vertices, which part (1 
 
 namespace
 {
-	// 172 in the app: the vertices a draw's indices use, each once, in order. The 171 took 0 .. the highest index, and its check found
-	// a God of War II strip (549 indices, 353 vertices) where that took in vertices no triangle uses: now a bitmap over the buffer says
-	// which ones are used, from the indices themselves.
+	// 172 in the app: the vertices a draw's indices use, each once. The 171 took 0 .. the highest index, and its check found a God of War II
+	// strip (549 indices, 353 vertices) where that took in vertices no triangle uses. 173: a strip's triangles come from VertexKick as
+	// 3 consecutive slots, each one slot on from the last, or right after the last one's slots when skipped triangles were copied over;
+	// so a triangle's new vertices are the ones above the highest of the triangles before it. Only vertices the indices name go in, and
+	// the 172's bitmap (~2.7 % of the GS: a read-modify-write per index, the same word three times in a row) is gone. A vertex this left
+	// out could only change a minimum or maximum the check would see.
 	alignas(16) u16 s_forja_used[65536];
-	alignas(16) u32 s_forja_seen[65536 / 32];
 
 	u32 ForjaUsedVertices(const u16* index, int count, int v_count)
 	{
-		const u32 words = (static_cast<u32>(v_count) + 31) / 32;
-		std::memset(s_forja_seen, 0, words * sizeof(u32));
-		for (int i = 0; i < count; i++)
-			s_forja_seen[index[i] >> 5] |= 1u << (index[i] & 31);
+		(void)v_count;
+		int highest = -1;
 		u32 used = 0;
-		for (u32 w = 0; w < words; w++)
+		for (int i = 0; i + 2 < count; i += 3)
 		{
-			for (u32 bits = s_forja_seen[w]; bits != 0; bits &= bits - 1)
-				s_forja_used[used++] = static_cast<u16>(w * 32 + static_cast<u32>(__builtin_ctz(bits)));
+			const int x = index[i], y = index[i + 1], z = index[i + 2];
+			if (x > highest)
+				s_forja_used[used++] = static_cast<u16>(x);
+			if (y > highest)
+				s_forja_used[used++] = static_cast<u16>(y);
+			if (z > highest)
+				s_forja_used[used++] = static_cast<u16>(z);
+			highest = std::max(highest, std::max(x, std::max(y, z)));
 		}
 		return used;
 	}

@@ -141,6 +141,10 @@ namespace ForjaGameProfile
 		// maximum read each vertex once (it starts checking and goes on by itself). Off unless the profile says.
 		int gs_vt_once = -1;
 		Origin gs_vt_once_origin = Origin::Global;
+		// 173 in the app: [Forja] EEPlzcwRapido, "PLZCW rápido" (pcsx2/x86/iMMI.cpp): 1 the EE's PLZCW with LZCNT and no branches. Off unless
+		// the profile says.
+		int ee_lzcnt = -1;
+		Origin ee_lzcnt_origin = Origin::Global;
 		// 152 in the app: [Forja] VU1Ahorro, "Ahorro del VU1" (pcsx2/MTVU.cpp, microVU_Execute.inl): the VU1's runs without the emitter's
 		// pointers and with the PS5 port's lookup cache, and a microcode upload that changes no byte leaves the programs alone. Off
 		// unless the game's profile turns it on: God of War II.
@@ -380,6 +384,7 @@ namespace ForjaGameProfile
 		read_int("VU1ColaAlterna", &v.vu1_ring_alt, &v.vu1_ring_alt_origin); // 169 in the app
 		read_int("VifAdelanto", &v.vif_adelanto, &v.vif_adelanto_origin); // 170 in the app
 		read_int("GSVerticesUnaVez", &v.gs_vt_once, &v.gs_vt_once_origin); // 171 in the app
+		read_int("EEPlzcwRapido", &v.ee_lzcnt, &v.ee_lzcnt_origin); // 173 in the app
 		read_int("VU1Ahorro", &v.vu1_ahorro, &v.vu1_ahorro_origin); // 152 in the app
 		read_int("VU1BanderasMuertas", &v.vu1_dead_flags, &v.vu1_dead_flags_origin); // 153 in the app
 		read_int("PublicoCada", &v.crowd_every, &v.crowd_every_origin);
@@ -532,6 +537,7 @@ namespace ForjaGameProfile
 		v.vu1_ring_alt = std::clamp(v.vu1_ring_alt, -1, 1); // 169 in the app
 		v.vif_adelanto = std::clamp(v.vif_adelanto, -1, 1); // 170 in the app
 		v.gs_vt_once = std::clamp(v.gs_vt_once, -1, 1); // 171 in the app
+		v.ee_lzcnt = std::clamp(v.ee_lzcnt, -1, 1); // 173 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"
 			v.crowd_every = v.crowd_every >= 32 ? 32 : v.crowd_every >= 16 ? 16 : v.crowd_every >= 8 ? 8 : v.crowd_every >= 4 ? 4 :
 			                v.crowd_every >= 2 ? 2 : 1; // compilation 88: 16 and 32

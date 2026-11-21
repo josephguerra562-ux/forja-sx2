@@ -6,6 +6,15 @@
 #include "iR5900.h"
 #include "common/BitUtils.h"
 
+#include <atomic>
+
+// 173 in the app, "PLZCW rápido" ([Forja] EEPlzcwRapido, set at the game's start by ps4/vm/main.cpp; read when a block is compiled).
+// God of War II's animation decoding (the EE's busiest code in the Colossus, ~13 %) finds each set bit of a mask with PLZCW in its
+// tightest loops; the recompiler did each word with a sign test, a NOT, a BSR and a zero test (two branches a word). The count of
+// leading bits equal to the sign, without the sign bit itself, is lzcnt(x ^ (x >> 31)) - 1 (x = 0 or -1: lzcnt(0) = 32, so 31, as
+// BSR's zero case gave), with no branches; the PS4's Jaguar has LZCNT (ABM). Same values for every input (tested on the PC).
+std::atomic<bool> g_forja_ee_lzcnt{false};
+
 using namespace x86Emitter;
 
 namespace Interp = R5900::Interpreter::OpcodeImpl::MMI;
@@ -111,19 +120,37 @@ void recPLZCW()
 
 	// --- first word ---
 
-	xMOV(ecx, 31);
-	xTEST(eax, eax); // TEST sets the sign flag accordingly.
-	u8* label_notSigned = JNS8(0);
-	xNOT(eax);
-	x86SetJ8(label_notSigned);
+	// 173 in the app: eax in, eax out (ecx as a temporary, as the old way used it).
+	const bool forja_lzcnt = g_forja_ee_lzcnt.load(std::memory_order_relaxed);
+	const auto forja_plzcw = []() {
+		xMOV(ecx, eax);
+		xSAR(ecx, 31);
+		xXOR(eax, ecx);
+		xWrite8(0xF3); // LZCNT eax, eax is BSR's encoding with an F3 prefix
+		xBSR(eax, eax);
+		xDEC(eax);
+	};
+	if (forja_lzcnt)
+	{
+		forja_plzcw();
+		xMOV(ptr[&cpuRegs.GPR.r[_Rd_].UL[0]], eax);
+	}
+	else
+	{
+		xMOV(ecx, 31);
+		xTEST(eax, eax); // TEST sets the sign flag accordingly.
+		u8* label_notSigned = JNS8(0);
+		xNOT(eax);
+		x86SetJ8(label_notSigned);
 
-	xBSR(eax, eax);
-	u8* label_Zeroed = JZ8(0); // If BSR sets the ZF, eax is "trash"
-	xSUB(ecx, eax);
-	xDEC(ecx); // PS2 doesn't count the first bit
+		xBSR(eax, eax);
+		u8* label_Zeroed = JZ8(0); // If BSR sets the ZF, eax is "trash"
+		xSUB(ecx, eax);
+		xDEC(ecx); // PS2 doesn't count the first bit
 
-	x86SetJ8(label_Zeroed);
-	xMOV(ptr[&cpuRegs.GPR.r[_Rd_].UL[0]], ecx);
+		x86SetJ8(label_Zeroed);
+		xMOV(ptr[&cpuRegs.GPR.r[_Rd_].UL[0]], ecx);
+	}
 
 	// second word
 
@@ -141,19 +168,27 @@ void recPLZCW()
 		xMOV(eax, ptr[&cpuRegs.GPR.r[_Rs_].UL[1]]);
 	}
 
-	xMOV(ecx, 31);
-	xTEST(eax, eax); // TEST sets the sign flag accordingly.
-	label_notSigned = JNS8(0);
-	xNOT(eax);
-	x86SetJ8(label_notSigned);
+	if (forja_lzcnt) // 173 in the app
+	{
+		forja_plzcw();
+		xMOV(ptr[&cpuRegs.GPR.r[_Rd_].UL[1]], eax);
+	}
+	else
+	{
+		xMOV(ecx, 31);
+		xTEST(eax, eax); // TEST sets the sign flag accordingly.
+		u8* label_notSigned = JNS8(0);
+		xNOT(eax);
+		x86SetJ8(label_notSigned);
 
-	xBSR(eax, eax);
-	label_Zeroed = JZ8(0); // If BSR sets the ZF, eax is "trash"
-	xSUB(ecx, eax);
-	xDEC(ecx); // PS2 doesn't count the first bit
+		xBSR(eax, eax);
+		u8* label_Zeroed = JZ8(0); // If BSR sets the ZF, eax is "trash"
+		xSUB(ecx, eax);
+		xDEC(ecx); // PS2 doesn't count the first bit
 
-	x86SetJ8(label_Zeroed);
-	xMOV(ptr[&cpuRegs.GPR.r[_Rd_].UL[1]], ecx);
+		x86SetJ8(label_Zeroed);
+		xMOV(ptr[&cpuRegs.GPR.r[_Rd_].UL[1]], ecx);
+	}
 
 	GPR_DEL_CONST(_Rd_);
 }
