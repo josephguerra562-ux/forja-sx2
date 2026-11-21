@@ -417,6 +417,10 @@ extern u32 g_forja_vif_tramos_first_wrong[2][10];
 extern std::atomic<u32> g_orbis_mtvu_ring_kb; // pcsx2/MTVU.cpp (169 in the app, "Cola corta del VU1")
 extern std::atomic<bool> g_forja_vif_adelanto; // pcsx2/Vif1_Dma.cpp (170 in the app, "VIF1 por adelantado")
 extern u64 g_orbis_vif1_tag_ids[8]; // pcsx2/Vif1_Dma.cpp (the VIF1 DMA tags read, per ID)
+extern std::atomic<int> g_forja_gs_vt_once; // pcsx2/GS/Renderers/Common/GSVertexTrace.cpp (171 in the app, "Vértices una vez")
+extern std::atomic<bool> g_forja_gs_vt_once_check_only;
+extern std::atomic<u64> g_forja_gs_vt_once_checked, g_forja_gs_vt_once_wrong, g_forja_gs_vt_once_draws, g_forja_gs_vt_once_saved;
+extern u32 g_forja_gs_vt_once_first_wrong[4];
 static bool s_vu1_ring_alternate = false; // 169 in the app: VU1ColaAlterna (the 5 s meter turns the lap)
 static bool s_vu1_ring_logged = false;
 extern std::atomic<bool> g_forja_fg_margin; // pcsx2/GS/Renderers/Vulkan/GSDeviceVK.cpp (compilation 136)
@@ -3489,6 +3493,23 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				no ? ", vm-vif-adelanto-no" : "");
 	}
 	{
+		// 171 in the app, "Vértices una vez" ([Forja] GSVerticesUnaVez; GSVertexTrace.cpp). 1 starts checking (both ways on each draw, the
+		// old one kept; on by itself after 20,000 draws the same, off at the first different). /data/ForjaSX2/vm-gs-vertices-no turns it
+		// off, vm-gs-vertices-comprobar only checks, vm-gs-vertices-directo goes on without checking.
+		const bool no = access("/data/ForjaSX2/vm-gs-vertices-no", F_OK) == 0;
+		const bool check_only = !no && access("/data/ForjaSX2/vm-gs-vertices-comprobar", F_OK) == 0;
+		const bool direct = !no && !check_only && access("/data/ForjaSX2/vm-gs-vertices-directo", F_OK) == 0;
+		const bool want = !no && (s_profile.gs_vt_once == 1 || check_only || direct);
+		g_forja_gs_vt_once_checked.store(0, std::memory_order_relaxed);
+		g_forja_gs_vt_once_wrong.store(0, std::memory_order_relaxed);
+		g_forja_gs_vt_once_check_only.store(check_only, std::memory_order_relaxed);
+		g_forja_gs_vt_once.store(want ? (direct ? 2 : 1) : 0, std::memory_order_relaxed);
+		if (want || no || s_profile.gs_vt_once_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("GS vertices once (171 in the app): %s (%s)%s%s%s\n", want ? (direct ? "on" : "checking first") : "off",
+				ProfileOriginName(s_profile.gs_vt_once_origin), no ? ", vm-gs-vertices-no" : "", check_only ? ", vm-gs-vertices-comprobar" : "",
+				direct ? ", vm-gs-vertices-directo" : "");
+	}
+	{
 		// 152 in the app, "Ahorro del VU1" ([Forja] VU1Ahorro; /data/ForjaSX2/vm-vu1-ahorro-no turns it off). Set before the game's
 		// first VU1 program: the VU thread reads it at every run.
 		// The VU1's map (vm-vu1-mapa): its programs, their blocks and their x86 entries, after ~60 and ~120 s of play, to tell which VU1
@@ -6274,6 +6295,18 @@ void VMHostPoll()
 				}
 				ProbeLog("VIF1 tags per second: refe=%.0f cnt=%.0f next=%.0f ref=%.0f refs=%.0f call=%.0f ret=%.0f end=%.0f\n", r[0], r[1], r[2],
 					r[3], r[4], r[5], r[6], r[7]);
+			}
+			// 171 in the app, "Vértices una vez": its mode, the draws read once and the vertex reads left out so far, and the check.
+			{
+				const int vo = g_forja_gs_vt_once.load(std::memory_order_relaxed);
+				const u64 vwrong = g_forja_gs_vt_once_wrong.load(std::memory_order_acquire);
+				if ((vo != 0 || vwrong != 0) && vm_state == VMState::Running)
+					ProbeLog("GS vertices once: mode=%d draws=%llu reads_left_out=%llu checked=%llu wrong=%llu first_wrong=[indices=%u vertices=%u part=%u prim=%u]\n",
+						vo, static_cast<unsigned long long>(g_forja_gs_vt_once_draws.load(std::memory_order_relaxed)),
+						static_cast<unsigned long long>(g_forja_gs_vt_once_saved.load(std::memory_order_relaxed)),
+						static_cast<unsigned long long>(g_forja_gs_vt_once_checked.load(std::memory_order_relaxed)),
+						static_cast<unsigned long long>(vwrong), g_forja_gs_vt_once_first_wrong[0], g_forja_gs_vt_once_first_wrong[1],
+						g_forja_gs_vt_once_first_wrong[2], g_forja_gs_vt_once_first_wrong[3]);
 			}
 			if (s_vu1_ring_logged && vm_state == VMState::Running)
 			{
