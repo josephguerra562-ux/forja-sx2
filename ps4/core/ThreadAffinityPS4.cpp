@@ -12,6 +12,12 @@
 #include <strings.h>
 #include <unistd.h>
 
+// 177 in the app: these lines went to stdout with printf, from each thread as it starts (the EE, VU1, GS, audio and helper threads
+// all start within a moment). The PS4's libc doesn't lock its FILEs for threads it didn't create, and two at once broke stdout's
+// buffer: God of War II's start on the 176 (2026-11-22) died in memcpy into a null stdout buffer from the "helper ee pc" line.
+// ProbeLog is the boot log's own queue (main.cpp), safe from any thread.
+extern void ProbeLog(const char* format, ...);
+
 // OpenOrbis's public header declares these without parameters. Use the ABI
 // verified by DolphinPS4 until the SDK declaration is corrected.
 extern "C" void* scePthreadSelf();
@@ -103,7 +109,7 @@ namespace PS4ThreadAffinity
 			p = end;
 			if (core < 0 || core > 6)
 			{
-				std::printf("PS4 thread affinity: %s ignores %s=%ld (cores 0-6 only)\n", source, role, core);
+				ProbeLog("PS4 thread affinity: %s ignores %s=%ld (cores 0-6 only)\n", source, role, core);
 				continue;
 			}
 			std::strcpy(out[count].role, role);
@@ -170,7 +176,7 @@ namespace PS4ThreadAffinity
 		{
 			const int result = scePthreadSetprio(scePthreadSelf(), prio);
 			t_priority_raised = true;
-			std::printf("PS4 thread priority: %s prio=%d sce_result=0x%x\n", role, prio, result);
+			ProbeLog("PS4 thread priority: %s prio=%d sce_result=0x%x\n", role, prio, result);
 			std::fflush(stdout);
 		}
 		else if (t_priority_raised)
@@ -178,7 +184,7 @@ namespace PS4ThreadAffinity
 			// A game whose plan has no PRIORIDAD=1 after one that had it: back to the default.
 			const int result = scePthreadSetprio(scePthreadSelf(), DEFAULT_PRIORITY);
 			t_priority_raised = false;
-			std::printf("PS4 thread priority: %s back to prio=%d sce_result=0x%x\n", role, DEFAULT_PRIORITY, result);
+			ProbeLog("PS4 thread priority: %s back to prio=%d sce_result=0x%x\n", role, DEFAULT_PRIORITY, result);
 			std::fflush(stdout);
 		}
 	}
@@ -188,7 +194,7 @@ namespace PS4ThreadAffinity
 		t_pinned_generation = s_plan_generation.load(std::memory_order_acquire);
 		if (!IsEnabled())
 		{
-			std::printf("PS4 thread affinity: %s left to scheduler (disabled by marker)\n", role);
+			ProbeLog("PS4 thread affinity: %s left to scheduler (disabled by marker)\n", role);
 			std::fflush(stdout);
 			return;
 		}
@@ -199,7 +205,7 @@ namespace PS4ThreadAffinity
 		const unsigned long long mask = 1ULL << core;
 		const int result = scePthreadSetaffinity(scePthreadSelf(), mask);
 		// (AI-assisted) Core placement needs proper testing across base/Pro consoles.
-		std::printf("PS4 thread affinity: %s core=%d%s%s mask=0x%llx sce_result=0x%x\n", role, core,
+		ProbeLog("PS4 thread affinity: %s core=%d%s%s mask=0x%llx sce_result=0x%x\n", role, core,
 			core != requested ? " " : "", core != requested ? PlanSource() : "", mask, result);
 		std::fflush(stdout);
 		// Forja SX2: the three emulation workers into the sampling profiler (it holds four threads), once per thread.
@@ -213,7 +219,7 @@ namespace PS4ThreadAffinity
 			ps4_sampler_set_cpu_mask(helper >= 0 ? (1ULL << helper) : 0x3ULL);
 			ps4_sampler_register_thread(role);
 			ps4_sampler_start();
-			std::printf("PS4 sampler: %s registered\n", role);
+			ProbeLog("PS4 sampler: %s registered\n", role);
 			std::fflush(stdout);
 		}
 	}
@@ -227,7 +233,7 @@ namespace PS4ThreadAffinity
 		const int single = ResolveCore("AYUDANTES", -1);
 		const unsigned long long mask = single >= 0 ? (1ULL << single) : 0x3ULL;
 		const int result = scePthreadSetaffinity(scePthreadSelf(), mask);
-		std::printf("PS4 thread affinity: helper %s mask=0x%llx sce_result=0x%x\n", role, mask, result);
+		ProbeLog("PS4 thread affinity: helper %s mask=0x%llx sce_result=0x%x\n", role, mask, result);
 		std::fflush(stdout);
 	}
 
@@ -251,7 +257,7 @@ namespace PS4ThreadAffinity
 			return;
 		const int core = cores[index % count];
 		const int result = scePthreadSetaffinity(scePthreadSelf(), 1ULL << core);
-		std::printf("PS4 thread affinity: software draw %d core=%d sce_result=0x%x\n", index, core, result);
+		ProbeLog("PS4 thread affinity: software draw %d core=%d sce_result=0x%x\n", index, core, result);
 		std::fflush(stdout);
 	}
 
@@ -275,7 +281,7 @@ namespace PS4ThreadAffinity
 				return -1;
 		}
 		const int result = scePthreadSetaffinity(scePthreadSelf(), 1ULL << core);
-		std::printf("PS4 thread affinity: GS recorder core=%d sce_result=0x%x\n", core, result);
+		ProbeLog("PS4 thread affinity: GS recorder core=%d sce_result=0x%x\n", core, result);
 		std::fflush(stdout);
 		return core;
 	}
@@ -298,7 +304,7 @@ namespace PS4ThreadAffinity
 		}
 		if (changed)
 			s_plan_generation.fetch_add(1, std::memory_order_acq_rel);
-		std::printf("PS4 thread affinity: game plan %s%s%s\n", use ? "\"" : "", use ? plan : "none (nucleos.txt)", use ? "\"" : "");
+		ProbeLog("PS4 thread affinity: game plan %s%s%s\n", use ? "\"" : "", use ? plan : "none (nucleos.txt)", use ? "\"" : "");
 		std::fflush(stdout);
 	}
 
