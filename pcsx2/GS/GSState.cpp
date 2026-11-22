@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0+
 
 #include "GS/GSState.h"
+#include <atomic> // 178 in the app
 #include "GS/GSDump.h"
 #include "GS/GSGL.h"
 #include "GS/GSPerfMon.h"
@@ -1391,6 +1392,11 @@ static inline void ForjaNoteDrawSplit(u32 dirty)
 // registers, [5] half a primitive.
 u32 g_forja_pal_cuts = 0, g_forja_pal_join_cuts = 0, g_forja_pal_blocked[6] = {}, g_forja_pal_runs[5] = {};
 static u32 s_forja_pal_examples = 0;
+// 178 in the app, "Detalle de los cortes" (/data/ForjaSX2/vm-gs-cortes-detalle; ps4/vm/main.cpp re-arms it every 30 s): the next
+// palette cuts, each with both draws' texture, target, depth buffer, blending and test, to tell whether the draws a palette load cuts
+// could go together. Shadow of the Colossus' heavy view (the 177, 2026-11-22): ~3,300 draws a frame, 88 % cut by a palette, most "another
+// context" (the next draw's palette loaded through the other context: the CLUT is one for both, so the pending draw must go first).
+std::atomic<u32> g_forja_pal_detail{0};
 extern void ProbeLog(const char* format, ...); // ps4/core/ProbeLoggerPS4.cpp (compilation 139: the examples)
 u64 g_forja_pal_draws = 0, g_forja_pal_saved = 0, g_forja_pal_saved16 = 0;
 static bool s_forja_pal_join = false; // the draw this palette cut flushes could have gone on
@@ -1774,6 +1780,21 @@ void GSState::ApplyTEX0(GIFRegTEX0& TEX0)
 				why = 4; // another register cuts the draw anyway
 			else if (m_vertex->tail != m_vertex->next)
 				why = 5; // half a primitive sent
+			if (g_forja_pal_detail.load(std::memory_order_relaxed) > 0) // 178 in the app
+			{
+				g_forja_pal_detail.fetch_sub(1, std::memory_order_relaxed);
+				const GSDrawingContext& pc = m_prev_env.CTXT[m_prev_env.PRIM.CTXT];
+				const GSDrawingContext& nc = m_env.CTXT[i];
+				ProbeLog("GS cut detail (178): why %d, context %u -> %d, pending %u indices prim %u; pending TEX0 %016llx FRAME %016llx ZBUF %016llx "
+						 "ALPHA %016llx TEST %016llx CLAMP %016llx; new TEX0 %016llx FRAME %016llx ZBUF %016llx ALPHA %016llx TEST %016llx CLAMP %016llx\n",
+					why, static_cast<unsigned>(m_prev_env.PRIM.CTXT), i, m_index->tail, static_cast<unsigned>(m_prev_env.PRIM.PRIM),
+					static_cast<unsigned long long>(pending.U64), static_cast<unsigned long long>(pc.FRAME.U64),
+					static_cast<unsigned long long>(pc.ZBUF.U64), static_cast<unsigned long long>(pc.ALPHA.U64),
+					static_cast<unsigned long long>(pc.TEST.U64), static_cast<unsigned long long>(pc.CLAMP.U64),
+					static_cast<unsigned long long>(TEX0.U64), static_cast<unsigned long long>(nc.FRAME.U64),
+					static_cast<unsigned long long>(nc.ZBUF.U64), static_cast<unsigned long long>(nc.ALPHA.U64),
+					static_cast<unsigned long long>(nc.TEST.U64), static_cast<unsigned long long>(nc.CLAMP.U64));
+			}
 			if (s_forja_pal_examples < 6)
 			{
 				s_forja_pal_examples++;

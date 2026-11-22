@@ -437,6 +437,8 @@ extern std::atomic<u64> g_forja_vif_nocopy_bytes_ram, g_forja_vif_nocopy_bytes_c
 extern std::atomic<u16> g_forja_vif_page_good[];
 extern std::atomic<u8> g_forja_vif_page_dynamic[];
 extern u32 g_forja_vif_nocopy_first_wrong[2];
+extern std::atomic<u32> g_forja_pal_detail; // pcsx2/GS/GSState.cpp (178 in the app, "Detalle de los cortes")
+static bool s_gs_cut_detail = false;
 static bool s_anim_half_on = false;
 static u32 s_anim_half_addr = 0, s_anim_half_fn = 0, s_anim_half_empty = 0;
 static unsigned s_anim_half_n = 0;
@@ -3539,6 +3541,11 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 			ProbeLog("VIF1 early (170 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.vif_adelanto_origin),
 				no ? ", vm-vif-adelanto-no" : "");
 	}
+	// 178 in the app, "Detalle de los cortes": /data/ForjaSX2/vm-gs-cortes-detalle, read at the game's start; the 5 s meter re-arms it.
+	s_gs_cut_detail = access("/data/ForjaSX2/vm-gs-cortes-detalle", F_OK) == 0;
+	g_forja_pal_detail.store(0, std::memory_order_relaxed);
+	if (s_gs_cut_detail)
+		ProbeLog("GS cut detail (178 in the app): on, the next 12 palette cuts every 30 s (vm-gs-cortes-detalle)\n");
 	{
 		// 175 in the app, "VIF sin copia" ([Forja] VifSinCopia; pcsx2/MTVU.cpp). 1 starts checking (the copy against the game's RAM when
 		// the VU thread would read it; on by itself after 200,000 the same, off at the first different). /data/ForjaSX2/vm-vif-sincopia-no
@@ -6395,6 +6402,13 @@ void VMHostPoll()
 				}
 				ProbeLog("VIF1 tags per second: refe=%.0f cnt=%.0f next=%.0f ref=%.0f refs=%.0f call=%.0f ret=%.0f end=%.0f\n", r[0], r[1], r[2],
 					r[3], r[4], r[5], r[6], r[7]);
+			}
+			// 178 in the app, "Detalle de los cortes": every 30 s (6 meters), the next 12 palette cuts.
+			if (s_gs_cut_detail && vm_state == VMState::Running)
+			{
+				static unsigned s_cut_meters = 0;
+				if (++s_cut_meters % 6 == 0)
+					g_forja_pal_detail.store(12, std::memory_order_relaxed);
 			}
 			// 175 in the app, "VIF sin copia": its mode, the unpacks read from the game's RAM, and the check (the first different: bytes, where).
 			{
