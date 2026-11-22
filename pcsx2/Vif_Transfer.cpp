@@ -7,6 +7,7 @@
 #include "OrbisCopy.h" // 168 in the app
 #include "Vif_Dynarec.h"
 #include "MTVU.h" // vk-285-84: VU_Thread kick batching
+#include "MTGS.h" // 196 in the app: MTGS::ForjaWake
 #include "OrbisEEDiag.h" // vk-285-100
 
 // 167 in the app, "VIF en tramos" (Vif_Dma.h says what it is).
@@ -406,6 +407,7 @@ namespace ForjaVifT
 	std::atomic<u32> g_mtvu_gif_pending{0};
 	std::atomic<u32> g_stopped{0};
 	std::atomic<u64> g_pieces_thread{0}, g_pieces_inline{0}, g_stops{0}, g_drains{0}, g_full_waits{0}, g_stalls_left{0};
+	std::atomic<u64> g_inline_why[4] = {}, g_breaks_through{0}, g_discards{0}, g_long_waits{0}; // 196 in the app
 	static constexpr u32 kCap = 1u << 20; // words (4 MB)
 	static constexpr u32 kWrap = 0xffffffffu;
 	static u32* s_q = nullptr;
@@ -526,8 +528,15 @@ namespace ForjaVifT
 	// The EE's share of what the thread did: the MTVU GIF transfer after its programs, and the cycle skip's cycles.
 	void ApplyPending()
 	{
-		if (g_mtvu_gif_pending.load(std::memory_order_relaxed) && g_mtvu_gif_pending.exchange(0, std::memory_order_acq_rel))
-			gifUnit.TransferGSPacketData(GIF_TRANS_MTVU, NULL, 0);
+		if (t_on_thread)
+			return;
+		// 196 in the app: one MTVU GIF transfer per VU1 program the thread started, as ExecuteVU does on the EE. Each tells the GS thread
+		// to take one PATH1 packet from the VU thread's queue; the 195 sent one per event, so the GS thread took them late (the missing
+		// horse and rider, the white screen), the VU thread's packet queue filled (65,536 packets, ~2 frames of Shadow) and the VU
+		// thread, the VIF thread and the EE all waited for each other (the hang).
+		if (g_mtvu_gif_pending.load(std::memory_order_relaxed))
+			for (u32 n = g_mtvu_gif_pending.exchange(0, std::memory_order_acq_rel); n; n--)
+				gifUnit.TransferGSPacketData(GIF_TRANS_MTVU, NULL, 0);
 		if (g_skip_cycles.load(std::memory_order_relaxed))
 		{
 			const u64 sk = g_skip_cycles.exchange(0, std::memory_order_acq_rel);
@@ -543,6 +552,7 @@ namespace ForjaVifT
 			return !g_stopped.load(std::memory_order_acquire);
 		t_in_drain++;
 		vif1Regs.stat.DBF = s_dbf; // the thread's DBF, for the EE's run
+		ApplyPending(); // 196 in the app: the thread's programs before the EE's codes (their PATH1 before this DIRECT's PATH2)
 		if (vif1.vifstalled.enabled)
 		{
 			if (vif1.waitforvu && (VU0.VI[REG_VPU_STAT].UL & 0x500))
@@ -555,20 +565,30 @@ namespace ForjaVifT
 			vif1Regs.stat.VEW = false;
 		}
 		bool done = true;
-		if (s_stop_left > 0)
+		while (s_stop_left > 0)
 		{
 			u32* data = &s_q[s_stop_pos];
 			vif1.vifpacketsize = s_stop_left;
 			vifTransferLoop<1>(data);
 			const u32 left = vif1.vifpacketsize;
-			if (left > 0)
+			s_stop_pos += s_stop_left - left;
+			s_stop_left = left;
+			if (left == 0)
+				break;
+			// 196 in the app: a timing break (after a DIRECT, before MSKPATH3...) only gives the DMA a turn, and here the DMA already ran
+			// ahead: go on. A real wait (the GIF busy: VGW; the VU1: waitforvu; an interrupt) waits for the EE's next event.
+			if (vif1.vifstalled.enabled && vif1.vifstalled.value == VIF_TIMING_BREAK && !vif1Regs.stat.VGW && !vif1.waitforvu && !vif1.irq)
 			{
-				s_stop_pos += s_stop_left - left;
-				s_stop_left = left;
-				g_stalls_left.fetch_add(1, std::memory_order_relaxed);
-				done = false;
+				vif1.vifstalled.enabled = false;
+				g_breaks_through.fetch_add(1, std::memory_order_relaxed);
+				continue;
 			}
+			g_stalls_left.fetch_add(1, std::memory_order_relaxed);
+			done = false;
+			break;
 		}
+		if (done && vif1.vifstalled.enabled && vif1.vifstalled.value == VIF_TIMING_BREAK && !vif1Regs.stat.VGW && !vif1.waitforvu && !vif1.irq)
+			vif1.vifstalled.enabled = false; // 196: a break at the piece's end, the same
 		if (done)
 		{
 			if (vif1.irq)
@@ -590,6 +610,8 @@ namespace ForjaVifT
 		t_in_drain++;
 		g_drains.fetch_add(1, std::memory_order_relaxed);
 		u32 spins = 0;
+		u64 t0 = 0;
+		bool warned = false;
 		for (;;)
 		{
 			if (g_stopped.load(std::memory_order_acquire))
@@ -604,7 +626,23 @@ namespace ForjaVifT
 			if (s_tail.load(std::memory_order_acquire) == s_head.load(std::memory_order_relaxed) && !s_busy.load(std::memory_order_acquire))
 				break;
 			if (++spins == 1)
+			{
 				g_full_waits.fetch_add(1, std::memory_order_relaxed);
+				t0 = __builtin_ia32_rdtsc();
+			}
+			// 196 in the app: the VU1 programs the thread starts while the EE waits get their GS turn now, or the VU thread can wait for
+			// room in its packet queue, the VIF thread for room in the VU1's ring, and the EE for the VIF thread.
+			ApplyPending();
+			if ((spins & 0x3fff) == 0)
+				MTGS::ForjaWake(); // and the GS thread hears of it
+			if (!warned && (spins & 0xffff) == 0 && __builtin_ia32_rdtsc() - t0 > 4000000000ull)
+			{
+				warned = true;
+				g_long_waits.fetch_add(1, std::memory_order_relaxed);
+				Console.Error("VIF thread (196 in the app): the EE has waited over 2 s for it: head=%u tail=%u busy=%d stopped=%u stop_left=%u",
+					s_head.load(std::memory_order_relaxed), s_tail.load(std::memory_order_relaxed), s_busy.load(std::memory_order_relaxed) ? 1 : 0,
+					g_stopped.load(std::memory_order_relaxed), s_stop_left);
+			}
 			__builtin_ia32_pause();
 		}
 		ApplyPending();
@@ -621,9 +659,29 @@ namespace ForjaVifT
 	{
 		if (std::this_thread::get_id() != s_ee_tid)
 			return;
+		ApplyPending(); // 196 in the app: before the EE runs a hard code
 		if (g_stopped.load(std::memory_order_relaxed))
 			ServiceStop();
-		ApplyPending();
+	}
+
+	void Discard()
+	{
+		if (t_on_thread || t_in_drain || !s_started.load(std::memory_order_relaxed) || std::this_thread::get_id() != s_ee_tid)
+			return;
+		FullDrain();
+		if (!g_stopped.load(std::memory_order_acquire))
+			return;
+		// The thread waits on g_stopped and reads s_tail only after it clears: what's left goes.
+		s_tail.store(s_head.load(std::memory_order_relaxed), std::memory_order_release);
+		s_stop_left = 0;
+		if (!s_ee_owns_dbf)
+		{
+			vif1Regs.stat.DBF = s_dbf;
+			s_ee_owns_dbf = true;
+		}
+		vif1.vifstalled.enabled = false;
+		g_discards.fetch_add(1, std::memory_order_relaxed);
+		g_stopped.store(0, std::memory_order_release);
 	}
 
 	static bool Push(const u32* data, u32 n)
@@ -689,6 +747,7 @@ _vifT static __fi bool vifTransfer(u32 *data, int size, bool TTE) {
 				return true;
 			}
 		}
+		ForjaVifT::g_inline_why[!vif1ch.chcr.STR ? 0 : vifX.irqoffset.enabled ? 1 : vifX.vifstalled.enabled ? 2 : 3].fetch_add(1, std::memory_order_relaxed);
 		ForjaVifT::FullDrain(); // anything else goes the usual way, after the queue
 		ForjaVifT::g_pieces_inline.fetch_add(1, std::memory_order_relaxed);
 	}

@@ -27,7 +27,7 @@ void vif0Reset()
 void vif1Reset()
 {
 #if defined(PCSX2_PS4)
-	ForjaVifT::FullDrain(); // 195 in the app
+	ForjaVifT::Discard(); // 196 in the app (195: drained only)
 #endif
 	/* Reset the whole VIF, meaning the internal pcsx2 vars, and all the registers */
 	std::memset(&vif1, 0, sizeof(vif1));
@@ -54,7 +54,10 @@ bool SaveStateBase::vif0Freeze()
 bool SaveStateBase::vif1Freeze()
 {
 #if defined(PCSX2_PS4)
-	ForjaVifT::FullDrain(); // 195 in the app: the state as the EE sees it
+	if (IsLoading())
+		ForjaVifT::Discard(); // 196 in the app: the state is replaced
+	else
+		ForjaVifT::FullDrain(); // 195 in the app: the state as the EE sees it
 #endif
 	if (!FreezeTag("VIF1dma"))
 		return false;

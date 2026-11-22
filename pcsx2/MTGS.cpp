@@ -971,6 +971,12 @@ void MTGS::SetEvent()
 	s_CopyDataTally = 0;
 }
 
+void MTGS::ForjaWake() // 196 in the app (MTGS.h)
+{
+	if (s_CopyDataTally != 0)
+		SetEvent();
+}
+
 u8* MTGS::GetDataPacketPtr()
 {
 	return (u8*)&RingBuffer[s_packet_writepos & RingBufferMask];

@@ -533,6 +533,20 @@ __fi void vif1Interrupt()
 		return;
 	}
 
+#if defined(PCSX2_PS4)
+	// 196 in the app: the DMA doesn't end while the VIF thread has its pieces (the game would see the VIF1 done with codes left);
+	// if one waits on the GIF, try again later, as the stall below does.
+	if (ForjaVifT::Pending())
+	{
+		ForjaVifT::FullDrain();
+		if (ForjaVifT::Pending())
+		{
+			CPU_INT(DMAC_VIF1, 128);
+			CPU_SET_DMASTALL(DMAC_VIF1, true);
+			return;
+		}
+	}
+#endif
 	if (vif1.vifstalled.enabled && vif1.done)
 	{
 		DevCon.WriteLn("VIF1 looping on stall at end\n");

@@ -377,6 +377,13 @@ bool SaveStateBase::mtvuFreeze()
 	if (!FreezeTag("MTVU"))
 		return false;
 
+#if defined(PCSX2_PS4)
+	// 196 in the app: nothing from the VIF thread goes into the VU1's ring while it's saved or reset
+	if (IsLoading())
+		ForjaVifT::Discard();
+	else
+		ForjaVifT::FullDrain();
+#endif
 	pxAssert(vu1Thread.IsDone());
 	if (!IsSaving())
 	{
@@ -1174,7 +1181,7 @@ void VU_Thread::ForjaExecuteVUFromVifThread(u32 vu_addr, u32 vif_top, u32 vif_it
 	}
 	CommitWritePos();
 	KickAfterWrite();
-	ForjaVifT::g_mtvu_gif_pending.store(1, std::memory_order_release);
+	ForjaVifT::g_mtvu_gif_pending.fetch_add(1, std::memory_order_release); // 196 in the app: one per program (the 195 kept a flag)
 	const int skip_fine = g_forja_skip16.load(std::memory_order_relaxed);
 	const u32 cycle_skip16 = skip_fine >= 0 ? static_cast<u32>(skip_fine) :
 	                                          (EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters) * 4u;

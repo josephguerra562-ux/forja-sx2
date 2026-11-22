@@ -6375,6 +6375,21 @@ void VMHostPoll()
 						(now[3] - s_vt[3]) / interval, (now[4] - s_vt[4]) / interval, (now[5] - s_vt[5]) / interval);
 				std::copy(std::begin(now), std::end(now), s_vt);
 			}
+			// 196 in the app: why pieces stayed on the EE (the DMA not running, an interrupt offset, a stall, the queue full), the timing
+			// breaks the EE went through, and, since the start, the queues dropped (reset, state load) and the EE's waits of over ~2 s.
+			{
+				static u64 s_vw[5] = {};
+				const u64 now[5] = {ForjaVifT::g_inline_why[0].load(std::memory_order_relaxed), ForjaVifT::g_inline_why[1].load(std::memory_order_relaxed),
+					ForjaVifT::g_inline_why[2].load(std::memory_order_relaxed), ForjaVifT::g_inline_why[3].load(std::memory_order_relaxed),
+					ForjaVifT::g_breaks_through.load(std::memory_order_relaxed)};
+				if (ForjaVifT::g_mode.load(std::memory_order_relaxed) && interval > 0.0 && vm_state == VMState::Running)
+					ProbeLog("VIF thread (196): on_the_ee_because not_running=%.0f irq_offset=%.0f stalled=%.0f queue_full=%.0f breaks_gone_through=%.0f "
+						"(per second) dropped_queues=%llu long_waits=%llu\n", (now[0] - s_vw[0]) / interval, (now[1] - s_vw[1]) / interval,
+						(now[2] - s_vw[2]) / interval, (now[3] - s_vw[3]) / interval, (now[4] - s_vw[4]) / interval,
+						(unsigned long long)ForjaVifT::g_discards.load(std::memory_order_relaxed),
+						(unsigned long long)ForjaVifT::g_long_waits.load(std::memory_order_relaxed));
+				std::copy(std::begin(now), std::end(now), s_vw);
+			}
 			// 193 in the app, "VIF en su hilo" step 2: the VIF1 pieces a second without and with a hard code, their codes, the share of the
 			// EE's time each took (TSC ticks against the TSC's own rate over the interval), the codes before the first hard one, and the
 			// hard codes by kind.

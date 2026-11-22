@@ -14,12 +14,17 @@ namespace ForjaVifT
 	extern std::atomic<u32> g_mtvu_gif_pending;
 	extern std::atomic<u32> g_stopped;
 	extern std::atomic<u64> g_pieces_thread, g_pieces_inline, g_stops, g_drains, g_full_waits, g_stalls_left;
+	// 196 in the app: why a piece stayed on the EE (0 the DMA not running, 1 an interrupt offset, 2 a stall, 3 the queue full), the
+	// timing breaks the EE went through, the queues dropped on a reset or a state load, and the EE's waits of over ~2 s.
+	extern std::atomic<u64> g_inline_why[4], g_breaks_through, g_discards, g_long_waits;
 	bool IsHardForThread(const u32* data, u32 pSize);
 	bool On();
 	bool Pending();
 	void FullDrain();
 	void EventHook();
 	void ApplyPending();
+	// 196 in the app: on a reset or a state load, the queue as far as it goes and then dropped (the state is replaced).
+	void Discard();
 	// The VIF thread keeps its own DBF (VIF1_STAT's double-buffer flag, which MSCAL/MSCNT/OFFSET change): vif1Regs.stat stays the EE's, so
 	// the two never write that word at once. Handed over at the EE's sync points.
 	bool DbfGet();

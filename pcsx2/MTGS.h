@@ -56,6 +56,9 @@ namespace MTGS
 
 	/// Waits for the GS to empty out the entire ring buffer contents.
 	void WaitGS(bool syncRegs = true, bool weakWait = false, bool isMTVU = false);
+	// Forja SX2 (196 in the app, "VIF en su hilo"): EE thread; wakes the GS thread if anything was queued since it last was (the EE
+	// waiting for the VIF thread sends it PATH1 turns that it must take for the VU thread to go on).
+	void ForjaWake();
 	// (AI-assisted) Timed variant for hang diagnosis. Returns false on timeout.
 	// Needs proper testing - does not replace the infinite WaitGS in steady state.
 	bool TimedWaitGS(u32 timeout_ms, bool syncRegs = false, bool weakWait = false, bool isMTVU = false);
