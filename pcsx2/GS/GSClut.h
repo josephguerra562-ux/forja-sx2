@@ -123,6 +123,31 @@ public:
 	//void Read(const GIFRegTEX0& TEX0);
 	void Read32(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA);
 	void GetAlphaMinMax32(int& amin, int& amax);
+#if defined(PCSX2_PS4)
+	// 183 in the app, "A/B en un dibujo": a slot's CLUT kept aside and put back (the table with its mirror, the last load and the base
+	// addresses; Read32 expands it again).
+	struct ForjaSaved
+	{
+		alignas(32) u16 clut[1024];
+		WriteState write;
+		u32 cbp[2];
+	};
+	void ForjaSave(ForjaSaved& s) const
+	{
+		std::memcpy(s.clut, m_clut, sizeof(s.clut));
+		s.write = m_write;
+		s.cbp[0] = m_CBP[0];
+		s.cbp[1] = m_CBP[1];
+	}
+	void ForjaRestore(const ForjaSaved& s)
+	{
+		std::memcpy(m_clut, s.clut, sizeof(s.clut));
+		m_write = s.write;
+		m_CBP[0] = s.cbp[0];
+		m_CBP[1] = s.cbp[1];
+		m_read.dirty = true;
+	}
+#endif
 
 	u32 operator[](size_t i) const { return m_buff32[i]; }
 

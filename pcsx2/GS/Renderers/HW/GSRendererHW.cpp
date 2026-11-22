@@ -3476,6 +3476,11 @@ ORBIS_M2(0);
 				m_last_rt->UpdateValidity(valid_area);
 
 				OrbisDecalFixVerts(); // vk-285-118
+#if defined(PCSX2_PS4)
+				if (m_forja_ab_capture) // 183 in the app: not for the joined draw
+					m_forja_ab_bad[m_forja_ab_pass] = true;
+				else
+#endif
 				g_gs_device->RenderHW(m_conf);
 
 				if (GSConfig.DumpGSData)
@@ -10170,6 +10175,16 @@ __ri void GSRendererHW::DrawPrims(GSTextureCache::Target* rt, GSTextureCache::Ta
 	}
 
 	OrbisDecalFixVerts(); // vk-285-118
+#if defined(PCSX2_PS4)
+	if (m_forja_ab_capture) // 183 in the app: kept for the joined draw
+	{
+		if (!m_channel_shuffle_width)
+			ForjaAbCaptureNow();
+		else
+			m_forja_ab_bad[m_forja_ab_pass] = true;
+	}
+	else
+#endif
 	if (!m_channel_shuffle_width)
 		g_gs_device->RenderHW(m_conf);
 	else
@@ -11711,6 +11726,11 @@ void GSRendererHW::EndHLEHardwareDraw(bool force_copy_on_hazard /* = false */)
 	                      (!GSDevice::IsDualSourceBlendFactor(config.blend.src_factor) &&
 	                       !GSDevice::IsDualSourceBlendFactor(config.blend.dst_factor));
 
+#if defined(PCSX2_PS4)
+	if (m_forja_ab_capture) // 183 in the app: not for the joined draw
+		m_forja_ab_bad[m_forja_ab_pass] = true;
+	else
+#endif
 	g_gs_device->RenderHW(m_conf);
 
 	if (copy)
@@ -11731,3 +11751,149 @@ bool GSRendererHW::IsCoverageAlphaSupported()
 {
 	return IsCoverageAlpha() && IsRTWritten() && g_gs_device->Features().aa1;
 }
+
+#if defined(PCSX2_PS4)
+// ---------------------------------------------------------------------------------------------------------------------------------
+// 183 in the app, "A/B en un dibujo" (GSState::ForjaAbFlush). Each slot's draw is prepared by the usual Draw() with RenderHW kept
+// here instead; when the two configurations are the same but for the texture, ForjaAbSubmit sends one draw with both textures, the
+// vertices each pass prepared, and the indices in the order the game sent them. Any difference: the pieces are drawn one by one.
+u32 g_forja_ab_diff_offset[8] = {}; // where the first differing byte was, the first few times (the meter writes them)
+u32 g_forja_ab_diff_n = 0;
+
+void GSRendererHW::ForjaAbCaptureBegin(u32 pass)
+{
+	m_forja_ab_capture = true;
+	m_forja_ab_pass = pass;
+	m_forja_ab_got[pass] = 0;
+	m_forja_ab_bad[pass] = false;
+}
+
+bool GSRendererHW::ForjaAbCaptureEnd(u32 pass)
+{
+	m_forja_ab_capture = false;
+	return m_forja_ab_got[pass] == 1 && !m_forja_ab_bad[pass];
+}
+
+void GSRendererHW::ForjaAbCaptureNow()
+{
+	const u32 p = m_forja_ab_pass;
+	if (m_forja_ab_got[p]++ != 0 || g_gs_device->IsDSInRTActive() || m_conf.vs.expand != GSHWDrawConfig::VSExpand::None ||
+		m_conf.topology != GSHWDrawConfig::Topology::Triangle || m_conf.indices_per_prim != 3 || m_conf.alpha_second_pass.enable ||
+		m_conf.blend_multi_pass.enable || m_conf.require_full_barrier || m_conf.drawlist || !m_conf.tex || m_conf.ps.ab || m_conf.vs.ab)
+	{
+		m_forja_ab_bad[p] = true;
+		return;
+	}
+	m_forja_ab_conf[p] = m_conf;
+	m_forja_ab_v[p].assign(m_conf.verts, m_conf.verts + m_conf.nverts);
+	m_forja_ab_i[p].assign(m_conf.indices, m_conf.indices + m_conf.nindices);
+}
+
+bool GSRendererHW::ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total)
+{
+	GSHWDrawConfig& a = m_forja_ab_conf[0];
+	const GSHWDrawConfig& b = m_forja_ab_conf[1];
+	auto note = [](u32 offset) {
+		if (g_forja_ab_diff_n < 8)
+			g_forja_ab_diff_offset[g_forja_ab_diff_n++] = offset;
+		return false;
+	};
+	// Level of detail: one texture may have mipmaps and the other not. The shader then takes the one with them, and the other
+	// samples its only level (its LOD parameters zero when the LOD is computed by hand).
+	const bool lod_a = a.ps.automatic_lod || a.ps.manual_lod;
+	const bool lod_b = b.ps.automatic_lod || b.ps.manual_lod;
+	GSHWDrawConfig::PSSelector ps = a.ps;
+	bool zero_lod[2] = {false, false};
+	if (a.ps.automatic_lod != b.ps.automatic_lod || a.ps.manual_lod != b.ps.manual_lod)
+	{
+		if (lod_a && lod_b)
+			return note(0xFFFF0001u);
+		const GSHWDrawConfig& with = lod_a ? a : b;
+		const GSHWDrawConfig& without = lod_a ? b : a;
+		ps.automatic_lod = with.ps.automatic_lod;
+		ps.manual_lod = with.ps.manual_lod;
+		if (ps.automatic_lod && without.sampler.IsMinFilterLinear() != without.sampler.IsMagFilterLinear())
+			return note(0xFFFF0002u);
+		zero_lod[lod_a ? 1 : 0] = ps.manual_lod;
+	}
+	// Everything else must be the same.
+	GSHWDrawConfig bn = b;
+	bn.tex = a.tex;
+	bn.pal = a.pal;
+	bn.sampler = a.sampler;
+	bn.verts = a.verts;
+	bn.indices = a.indices;
+	bn.nverts = a.nverts;
+	bn.nindices = a.nindices;
+	bn.drawarea = a.drawarea;
+	bn.scissor = a.scissor;
+	bn.samplearea = a.samplearea;
+	bn.ps.automatic_lod = a.ps.automatic_lod;
+	bn.ps.manual_lod = a.ps.manual_lod;
+	bn.cb_vs.texture_scale = a.cb_vs.texture_scale;
+	bn.cb_vs.texture_offset = a.cb_vs.texture_offset;
+	bn.cb_ps.WH = a.cb_ps.WH;
+	bn.cb_ps.HalfTexel = a.cb_ps.HalfTexel;
+	bn.cb_ps.MinMax = a.cb_ps.MinMax;
+	bn.cb_ps.LODParams = a.cb_ps.LODParams;
+	bn.cb_ps.STRange = a.cb_ps.STRange;
+	bn.cb_ps.STScale = a.cb_ps.STScale;
+	bn.cb_ps.TCOffsetHack = a.cb_ps.TCOffsetHack;
+	const u8* pa = reinterpret_cast<const u8*>(&a);
+	const u8* pb = reinterpret_cast<const u8*>(&bn);
+	for (u32 k = 0; k < sizeof(GSHWDrawConfig); k++)
+	{
+		if (pa[k] != pb[k])
+			return note(k);
+	}
+	const u32 na = a.nverts, nb = b.nverts;
+	if (na + nb > 65535)
+		return note(0xFFFF0003u);
+	// The vertices: slot A's prepared copy, then slot B's; the indices in the order of the segments.
+	m_forja_ab_jv.resize(na + nb);
+	std::copy(m_forja_ab_v[0].begin(), m_forja_ab_v[0].end(), m_forja_ab_jv.begin());
+	std::copy(m_forja_ab_v[1].begin(), m_forja_ab_v[1].end(), m_forja_ab_jv.begin() + na);
+	m_forja_ab_ji.resize(total);
+	u32 cur[2] = {0, 0};
+	u32 out = 0;
+	for (u32 k = 0; k < nsegs; k++)
+	{
+		const u32 len = ((k + 1 < nsegs) ? segs[k + 1].start : total) - segs[k].start;
+		const u32 s = segs[k].slot;
+		const u16 base = s ? static_cast<u16>(na) : 0;
+		if (cur[s] + len > m_forja_ab_i[s].size() || out + len > total)
+			return note(0xFFFF0004u);
+		for (u32 j = 0; j < len; j++)
+			m_forja_ab_ji[out++] = static_cast<u16>(m_forja_ab_i[s][cur[s]++] + base);
+	}
+	if (out != total || cur[0] != m_forja_ab_i[0].size() || cur[1] != m_forja_ab_i[1].size())
+		return note(0xFFFF0005u);
+
+	GSHWDrawConfig c = a;
+	c.ps = ps;
+	c.ps.ab = 1;
+	c.vs.ab = 1;
+	c.tex2 = b.tex;
+	c.pal2 = b.pal;
+	c.sampler2 = b.sampler;
+	c.cb_vs.texture_scale2 = b.cb_vs.texture_scale;
+	c.cb_vs.texture_offset2 = b.cb_vs.texture_offset;
+	c.cb_ps.WH2 = b.cb_ps.WH;
+	c.cb_ps.HalfTexel2 = b.cb_ps.HalfTexel;
+	c.cb_ps.MinMax2 = b.cb_ps.MinMax;
+	c.cb_ps.LODParams2 = zero_lod[1] ? GSVector4::zero() : b.cb_ps.LODParams;
+	c.cb_ps.STRange2 = b.cb_ps.STRange;
+	c.cb_ps.STScale2 = b.cb_ps.STScale;
+	c.cb_ps.TCOffsetHack2 = b.cb_ps.TCOffsetHack;
+	if (zero_lod[0])
+		c.cb_ps.LODParams = GSVector4::zero();
+	c.verts = m_forja_ab_jv.data();
+	c.nverts = na + nb;
+	c.indices = m_forja_ab_ji.data();
+	c.nindices = total;
+	c.drawarea = a.drawarea.runion(b.drawarea);
+	c.scissor = a.scissor.runion(b.scissor);
+	g_gs_device->RenderHW(c);
+	return true;
+}
+#endif

@@ -699,7 +699,7 @@ struct alignas(16) GSHWDrawConfig
 				u8 iip : 1;
 				u8 point_size : 1;		///< Set when points need to be expanded without VS expanding.
 				VSExpand expand : 3;
-				u8 _free : 1;
+				u8 ab : 1; // 183 in the app, "A/B en un dibujo": each vertex's texture scale from its slot (FOG bit 8)
 			};
 			u8 key;
 		};
@@ -811,6 +811,9 @@ struct alignas(16) GSHWDrawConfig
 				// ROVs
 				u32 rov_color : 1;
 				PS_ROV_DEPTH rov_depth : 2;
+
+				// 183 in the app, "A/B en un dibujo": two textures, each triangle samples its slot's (Texture2/Palette2 and the *2 constants)
+				u32 ab : 1;
 			};
 
 			struct
@@ -1049,6 +1052,8 @@ struct alignas(16) GSHWDrawConfig
 		GSVector2 point_size;
 		u32 max_depth;
 		float line_aa1_width;
+		GSVector2 texture_scale2; // 183 in the app, "A/B en un dibujo": slot B's
+		GSVector2 texture_offset2;
 		__fi VSConstantBuffer()
 		{
 			memset(static_cast<void*>(this), 0, sizeof(*this));
@@ -1142,6 +1147,15 @@ struct alignas(16) GSHWDrawConfig
 		float _pad0;
 		float _pad1;
 		float _pad2;
+
+		// 183 in the app, "A/B en un dibujo": slot B's texture constants (tfx.glsl reads them when PS_AB)
+		GSVector4 WH2;
+		GSVector4 HalfTexel2;
+		GSVector4 MinMax2;
+		GSVector4 LODParams2;
+		GSVector4 STRange2;
+		GSVector2 STScale2;
+		GSVector2 TCOffsetHack2;
 
 		__fi PSConstantBuffer()
 		{
@@ -1255,6 +1269,8 @@ struct alignas(16) GSHWDrawConfig
 	GSTexture* ds;         ///< Depth stencil
 	GSTexture* tex;        ///< Source texture
 	GSTexture* pal;        ///< Palette texture
+	GSTexture* tex2;       ///< 183 in the app, "A/B en un dibujo": slot B's texture (ps.ab)
+	GSTexture* pal2;       ///< and its palette
 	const GSVertex* verts; ///< Vertices to draw
 	const u16* indices;    ///< Indices to draw
 	u32 nverts;            ///< Number of vertices
@@ -1272,6 +1288,7 @@ struct alignas(16) GSHWDrawConfig
 
 	BlendState blend;
 	SamplerSelector sampler;
+	SamplerSelector sampler2; // 183 in the app: slot B's sampler (ps.ab)
 	ColorMaskSelector colormask;
 	DepthStencilSelector depth;
 

@@ -390,6 +390,23 @@ public:
 	void Move() override;
 	void Draw() override;
 	bool ForjaLeaveOutEarly() override; // Forja 1.06
+#if defined(PCSX2_PS4)
+	// 183 in the app, "A/B en un dibujo" (GSState::ForjaAbFlush): each slot's draw configuration kept instead of sent, then one draw.
+	bool m_forja_ab_capture = false;
+	u32 m_forja_ab_pass = 0;
+	u32 m_forja_ab_got[2] = {};
+	bool m_forja_ab_bad[2] = {};
+	GSHWDrawConfig m_forja_ab_conf[2];
+	std::vector<GSVertex> m_forja_ab_v[2];
+	std::vector<u16> m_forja_ab_i[2];
+	std::vector<GSVertex> m_forja_ab_jv;
+	std::vector<u16> m_forja_ab_ji;
+	void ForjaAbCaptureNow();
+	bool ForjaAbCanCapture() override { return true; }
+	void ForjaAbCaptureBegin(u32 pass) override;
+	bool ForjaAbCaptureEnd(u32 pass) override;
+	bool ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total) override;
+#endif
 
 	void PurgeTextureCache(bool sources, bool targets, bool hash_cache) override;
 	void ReadbackTextureCache() override;

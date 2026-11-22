@@ -6309,6 +6309,7 @@ void GSDeviceVK::ClearSamplerCache()
 	m_linear_sampler = GetSampler(GSHWDrawConfig::SamplerSelector::Linear());
 	m_utility_sampler = m_point_sampler;
 	m_tfx_sampler = m_point_sampler;
+	m_tfx_sampler2 = m_point_sampler; // 183 in the app
 }
 
 static void AddMacro(std::stringstream& ss, const char* name, int value)
@@ -6582,6 +6583,8 @@ bool GSDeviceVK::CreatePipelineLayouts()
 		1, VK_SHADER_STAGE_FRAGMENT_BIT);
 	dslb.AddBinding(TFX_TEXTURE_RT_ROV, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 	dslb.AddBinding(TFX_TEXTURE_DEPTH_ROV, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+	dslb.AddBinding(TFX_TEXTURE_TEXTURE2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT); // 183 in the app
+	dslb.AddBinding(TFX_TEXTURE_PALETTE2, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 	if ((m_tfx_texture_ds_layout = dslb.Create(dev)) == VK_NULL_HANDLE)
 		return false;
 	Vulkan::SetObjectName(dev, m_tfx_texture_ds_layout, "TFX texture descriptor layout");
@@ -7683,6 +7686,7 @@ VkShaderModule GSDeviceVK::GetTFXVertexShader(GSHWDrawConfig::VSSelector sel)
 	AddMacro(ss, "VS_IIP", sel.iip);
 	AddMacro(ss, "VS_POINT_SIZE", sel.point_size);
 	AddMacro(ss, "VS_EXPAND", static_cast<int>(sel.expand));
+	AddMacro(ss, "VS_AB", sel.ab); // 183 in the app
 	AddMacro(ss, "VS_PROVOKING_VERTEX_LAST", static_cast<int>(m_features.provoking_vertex_last));
 	ss << m_tfx_source;
 
@@ -7765,6 +7769,7 @@ VkShaderModule GSDeviceVK::GetTFXFragmentShader(const GSHWDrawConfig::PSSelector
 	AddMacro(ss, "PS_ANISOTROPIC_FILTERING", sel.sw_aniso);
 	AddMacro(ss, "PS_ROV_COLOR", sel.rov_color);
 	AddMacro(ss, "PS_ROV_DEPTH", static_cast<u32>(sel.rov_depth));
+	AddMacro(ss, "PS_AB", sel.ab); // 183 in the app
 	ss << m_tfx_source;
 
 	VkShaderModule mod = g_vulkan_shader_cache->GetFragmentShader(ss.str());
@@ -8251,6 +8256,8 @@ void GSDeviceVK::InitializeState()
 
 	m_tfx_sampler_sel = GSHWDrawConfig::SamplerSelector::Point().key;
 	m_tfx_sampler = m_point_sampler;
+	m_tfx_sampler_sel2 = GSHWDrawConfig::SamplerSelector::Point().key; // 183 in the app
+	m_tfx_sampler2 = m_point_sampler;
 
 	InvalidateCachedState();
 	SetInitialState(m_current_command_buffer);
@@ -8558,7 +8565,7 @@ void GSDeviceVK::PSSetShaderResource(int i, GSTexture* sr, bool check_state, Res
 		return;
 
 	m_tfx_textures[i] = vkTex;
-	m_dirty_flags |= (DIRTY_FLAG_TFX_TEXTURE_0 << i);
+	m_dirty_flags |= TfxTextureDirtyFlag(i);
 }
 
 void GSDeviceVK::PSSetSampler(GSHWDrawConfig::SamplerSelector sel)
@@ -8569,6 +8576,17 @@ void GSDeviceVK::PSSetSampler(GSHWDrawConfig::SamplerSelector sel)
 	m_tfx_sampler_sel = sel.key;
 	m_tfx_sampler = GetSampler(sel);
 	m_dirty_flags |= DIRTY_FLAG_TFX_TEXTURE_0;
+}
+
+// 183 in the app, "A/B en un dibujo": slot B's sampler (combined with Texture2).
+void GSDeviceVK::PSSetSampler2(GSHWDrawConfig::SamplerSelector sel)
+{
+	if (m_tfx_sampler_sel2 == sel.key)
+		return;
+
+	m_tfx_sampler_sel2 = sel.key;
+	m_tfx_sampler2 = GetSampler(sel);
+	m_dirty_flags |= DIRTY_FLAG_TFX_TEXTURE_TEX2;
 }
 
 void GSDeviceVK::SetUtilityTexture(GSTexture* tex, VkSampler sampler)
@@ -8606,7 +8624,7 @@ void GSDeviceVK::UnbindTexture(GSTextureVK* tex)
 		if (m_tfx_textures[i] == tex)
 		{
 			m_tfx_textures[i] = m_null_texture.get();
-			m_dirty_flags |= (DIRTY_FLAG_TFX_TEXTURE_0 << i);
+			m_dirty_flags |= TfxTextureDirtyFlag(i);
 		}
 	}
 	if (m_utility_texture == tex)
@@ -8897,6 +8915,16 @@ bool GSDeviceVK::ApplyTFXState(bool already_execed)
 			dsub.AddImageDescriptorWrite(VK_NULL_HANDLE, TFX_TEXTURE_PALETTE,
 				m_tfx_textures[TFX_TEXTURE_PALETTE]->GetView(), m_tfx_textures[TFX_TEXTURE_PALETTE]->GetVkLayout());
 		}
+		if (flags & DIRTY_FLAG_TFX_TEXTURE_TEX2) // 183 in the app, "A/B en un dibujo"
+		{
+			dsub.AddCombinedImageSamplerDescriptorWrite(VK_NULL_HANDLE, TFX_TEXTURE_TEXTURE2,
+				m_tfx_textures[TFX_TEXTURE_TEXTURE2]->GetView(), m_tfx_sampler2, m_tfx_textures[TFX_TEXTURE_TEXTURE2]->GetVkLayout());
+		}
+		if (flags & DIRTY_FLAG_TFX_TEXTURE_PALETTE2)
+		{
+			dsub.AddImageDescriptorWrite(VK_NULL_HANDLE, TFX_TEXTURE_PALETTE2,
+				m_tfx_textures[TFX_TEXTURE_PALETTE2]->GetView(), m_tfx_textures[TFX_TEXTURE_PALETTE2]->GetVkLayout());
+		}
 		if (flags & DIRTY_FLAG_TFX_TEXTURE_RT)
 		{
 			if (m_features.texture_barrier && !UseFeedbackLoopLayout())
@@ -9177,6 +9205,13 @@ void GSDeviceVK::RenderHW(GSHWDrawConfig& config)
 	}
 	if (config.pal)
 		PSSetShaderResource(TFX_TEXTURE_PALETTE, config.pal, true);
+	if (config.ps.ab) // 183 in the app, "A/B en un dibujo": slot B's texture, sampler and palette
+	{
+		PSSetShaderResource(TFX_TEXTURE_TEXTURE2, config.tex2, true);
+		PSSetSampler2(config.sampler2);
+		if (config.pal2)
+			PSSetShaderResource(TFX_TEXTURE_PALETTE2, config.pal2, true);
+	}
 
 	if (config.blend.constant_enable)
 		SetBlendConstants(config.blend.constant);

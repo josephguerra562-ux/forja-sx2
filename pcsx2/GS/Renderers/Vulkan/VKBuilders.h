@@ -226,7 +226,7 @@ namespace Vulkan
 		enum : u32
 		{
 			MAX_WRITES = 16,
-			MAX_IMAGE_INFOS = 8,
+			MAX_IMAGE_INFOS = 16, // Forja 183: the TFX set has 9 textures ("A/B en un dibujo"); with 8, all dirty at once overflowed
 			MAX_BUFFER_INFOS = 4,
 			MAX_VIEWS = 4,
 		};

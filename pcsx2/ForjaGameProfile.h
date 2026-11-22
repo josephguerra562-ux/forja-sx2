@@ -141,6 +141,10 @@ namespace ForjaGameProfile
 		// maximum read each vertex once (it starts checking and goes on by itself). Off unless the profile says.
 		int gs_vt_once = -1;
 		Origin gs_vt_once_origin = Origin::Global;
+		// 183 in the app: [Forja] GSDibujoAB, "A/B en un dibujo" (pcsx2/GS/GSState.cpp): 1 joins and draws the pieces back one by one (a
+		// check), 2 one draw with both textures when the two configurations match. Off unless the profile says.
+		int gs_ab = -1;
+		Origin gs_ab_origin = Origin::Global;
 		// 173 in the app: [Forja] EEPlzcwRapido, "PLZCW rápido" (pcsx2/x86/iMMI.cpp): 1 the EE's PLZCW with LZCNT and no branches. Off unless
 		// the profile says.
 		int ee_lzcnt = -1;
@@ -393,6 +397,7 @@ namespace ForjaGameProfile
 		read_int("VU1ColaAlterna", &v.vu1_ring_alt, &v.vu1_ring_alt_origin); // 169 in the app
 		read_int("VifAdelanto", &v.vif_adelanto, &v.vif_adelanto_origin); // 170 in the app
 		read_int("GSVerticesUnaVez", &v.gs_vt_once, &v.gs_vt_once_origin); // 171 in the app
+		read_int("GSDibujoAB", &v.gs_ab, &v.gs_ab_origin); // 183 in the app
 		read_int("EEPlzcwRapido", &v.ee_lzcnt, &v.ee_lzcnt_origin); // 173 in the app
 		read_int("AnimMediasDir", &v.anim_half_addr, &v.anim_half_origin); // 174 in the app
 		read_int("AnimMediasFuncion", &v.anim_half_fn, &v.anim_half_origin);
@@ -550,6 +555,7 @@ namespace ForjaGameProfile
 		v.vu1_ring_alt = std::clamp(v.vu1_ring_alt, -1, 1); // 169 in the app
 		v.vif_adelanto = std::clamp(v.vif_adelanto, -1, 1); // 170 in the app
 		v.gs_vt_once = std::clamp(v.gs_vt_once, -1, 1); // 171 in the app
+		v.gs_ab = std::clamp(v.gs_ab, -1, 2); // 183 in the app
 		v.ee_lzcnt = std::clamp(v.ee_lzcnt, -1, 1); // 173 in the app
 		v.vif_nocopy = std::clamp(v.vif_nocopy, -1, 1); // 175 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"

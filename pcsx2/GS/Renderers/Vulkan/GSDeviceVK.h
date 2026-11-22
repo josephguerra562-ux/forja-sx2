@@ -448,6 +448,8 @@ public:
 		TFX_TEXTURE_DEPTH,
 		TFX_TEXTURE_RT_ROV,
 		TFX_TEXTURE_DEPTH_ROV,
+		TFX_TEXTURE_TEXTURE2, // 183 in the app, "A/B en un dibujo": slot B's texture
+		TFX_TEXTURE_PALETTE2, // and its palette
 
 		NUM_TFX_TEXTURES
 	};
@@ -723,6 +725,7 @@ public:
 	void PSSetROVs(GSTexture* rt, GSTexture* ds, bool write_rt, bool write_ds);
 	void PSSetShaderResource(int i, GSTexture* sr, bool check_state, ResourceType type = ResourceType::SRV);
 	void PSSetSampler(GSHWDrawConfig::SamplerSelector sel);
+	void PSSetSampler2(GSHWDrawConfig::SamplerSelector sel); // 183 in the app
 
 	void OMSetRenderTargets(GSTexture* rt, GSTexture* ds, const GSVector4i& scissor,
 		FeedbackLoopFlag feedback_loop = FeedbackLoopFlag_None, const GSVector2i& viewport_size = {});
@@ -801,6 +804,8 @@ private:
 		DIRTY_FLAG_VS_CONSTANT_BUFFER = (1 << 15),
 		DIRTY_FLAG_PS_CONSTANT_BUFFER = (1 << 16),
 		DIRTY_FLAG_VS_PUSH_CONSTANTS = (1 << 17),
+		DIRTY_FLAG_TFX_TEXTURE_TEX2 = (1 << 18), // 183 in the app (bits 7-17 were taken)
+		DIRTY_FLAG_TFX_TEXTURE_PALETTE2 = (1 << 19),
 
 		DIRTY_FLAG_TFX_TEXTURE_TEX = (DIRTY_FLAG_TFX_TEXTURE_0 << 0),
 		DIRTY_FLAG_TFX_TEXTURE_PALETTE = (DIRTY_FLAG_TFX_TEXTURE_0 << 1),
@@ -813,7 +818,7 @@ private:
 		DIRTY_FLAG_TFX_TEXTURES = DIRTY_FLAG_TFX_TEXTURE_TEX | DIRTY_FLAG_TFX_TEXTURE_PALETTE |
 		                          DIRTY_FLAG_TFX_TEXTURE_RT | DIRTY_FLAG_TFX_TEXTURE_PRIMID |
 		                          DIRTY_FLAG_TFX_TEXTURE_DEPTH | DIRTY_FLAG_TFX_TEXTURE_RT_ROV |
-		                          DIRTY_FLAG_TFX_TEXTURE_DEPTH_ROV,
+		                          DIRTY_FLAG_TFX_TEXTURE_DEPTH_ROV | DIRTY_FLAG_TFX_TEXTURE_TEX2 | DIRTY_FLAG_TFX_TEXTURE_PALETTE2,
 
 		DIRTY_BASE_STATE = DIRTY_FLAG_INDEX_BUFFER | DIRTY_FLAG_PIPELINE | DIRTY_FLAG_VIEWPORT | DIRTY_FLAG_SCISSOR |
 		                   DIRTY_FLAG_BLEND_CONSTANTS | DIRTY_FLAG_LINE_WIDTH,
@@ -822,6 +827,12 @@ private:
 		DIRTY_CONSTANT_BUFFER_STATE = DIRTY_FLAG_VS_CONSTANT_BUFFER | DIRTY_FLAG_PS_CONSTANT_BUFFER | DIRTY_FLAG_VS_PUSH_CONSTANTS,
 		ALL_DIRTY_STATE = DIRTY_BASE_STATE | DIRTY_TFX_STATE | DIRTY_UTILITY_STATE | DIRTY_CONSTANT_BUFFER_STATE,
 	};
+
+	// 183 in the app: a TFX texture slot's dirty flag (0-6 follow DIRTY_FLAG_TFX_TEXTURE_0, 7-8 are bits 18-19).
+	static constexpr u32 TfxTextureDirtyFlag(u32 i)
+	{
+		return (i < TFX_TEXTURE_TEXTURE2) ? (DIRTY_FLAG_TFX_TEXTURE_0 << i) : (DIRTY_FLAG_TFX_TEXTURE_TEX2 << (i - TFX_TEXTURE_TEXTURE2));
+	}
 
 	enum class PipelineLayout
 	{
@@ -881,6 +892,8 @@ private:
 
 	std::array<GSTextureVK*, NUM_TFX_TEXTURES> m_tfx_textures{};
 	VkSampler m_tfx_sampler = VK_NULL_HANDLE;
+	VkSampler m_tfx_sampler2 = VK_NULL_HANDLE; // 183 in the app, "A/B en un dibujo"
+	u32 m_tfx_sampler_sel2 = 0;
 	u32 m_tfx_sampler_sel = 0;
 	VkDescriptorSet m_tfx_ubo_descriptor_set = VK_NULL_HANDLE;
 	VkDescriptorSet m_tfx_texture_descriptor_set = VK_NULL_HANDLE;

@@ -200,6 +200,9 @@ void GSState::Reset(bool hardware_reset)
 	m_vertex->next = 0;
 	m_index->tail = 0;
 	m_scanmask_used = 0;
+#if defined(PCSX2_PS4)
+	ForjaAbReset();
+#endif
 	m_texflush_flag = false;
 	m_channel_shuffle = false;
 	m_dirty_gs_regs = 0;
@@ -1414,6 +1417,11 @@ u64 g_forja_ab_joinable = 0, g_forja_ab_runs = 0;
 u64 g_forja_ab_joinable_sc = 0, g_forja_ab_broken = 0, g_forja_ab_block[12] = {}, g_forja_ab_len[6] = {};
 u64 g_forja_draws_total = 0;
 static u64 s_forja_ab_mark = ~0ull, s_forja_ab_draws = 0;
+// 183 in the app, "A/B en un dibujo": 0 off, 1 the joined draw always drawn back in its pieces (a check that the joining is right),
+// 2 one draw when the two configurations match. ps4/vm/main.cpp sets it from the profile ([Forja] GSDibujoAB) and the escapes.
+std::atomic<int> g_forja_gs_ab{0};
+u64 g_forja_ab_switches = 0, g_forja_ab_flushes = 0, g_forja_ab_one_draws = 0, g_forja_ab_one_segs = 0, g_forja_ab_replays = 0,
+	g_forja_ab_replay_segs = 0, g_forja_ab_capture_fail = 0, g_forja_ab_mismatch = 0;
 static u64 s_forja_ab_tex[2] = {};
 static u32 s_forja_ab_ctx[2] = {};
 static bool s_forja_ab_two = false;
@@ -1458,6 +1466,10 @@ static inline void ForjaPalRunFlush(bool joinable)
 
 __inline void GSState::CheckFlushes()
 {
+#if defined(PCSX2_PS4)
+	if (m_forja_ab.expect && ForjaAbSwitch()) // 183 in the app, "A/B en un dibujo"
+		return;
+#endif
 	if (m_dirty_gs_regs && m_index->tail > 0)
 	{
 		if (TestDrawChanged())
@@ -1913,6 +1925,10 @@ void GSState::ApplyTEX0(GIFRegTEX0& TEX0)
 				g_forja_pal_blocked[why]++;
 		}
 #endif
+#if defined(PCSX2_PS4)
+		const bool forja_ab_join = ForjaAbJoinCut(i, TEX0); // 183 in the app, "A/B en un dibujo"
+		if (!forja_ab_join)
+#endif
 		for (int b = 0; b < m_used_buffers_idx; b++)
 		{
 			GSDrawingEnvironment& buffered_env = (m_current_buffer_idx == b) ? m_prev_env : m_env_buffers[b].m_env;
@@ -1975,6 +1991,9 @@ void GSState::ApplyTEX0(GIFRegTEX0& TEX0)
 		}
 
 		m_mem.m_clut.Write(m_env.CTXT[i].TEX0, m_env.TEXCLUT);
+#if defined(PCSX2_PS4)
+		ForjaAbAfterClutWrite(); // 183 in the app: the other slot's palette, kept
+#endif
 	}
 
 	u64 mask = 0x1fffffffffull; // TBP0 TBW PSM TW TH TCC TFX
@@ -2510,6 +2529,10 @@ void GSState::GIFRegHandlerTRXDIR(const GIFReg* RESTRICT r)
 	GL_REG("TRXDIR = 0x%x_%x", r->U32[1], r->U32[0]);
 
 	FlushWrite();
+#if defined(PCSX2_PS4)
+	if (m_forja_ab.used) // 183 in the app: a transfer could change a slot's texture or palette while the joined draw waits
+		Flush(GSFlushReason::GSTRANSFER);
+#endif
 
 	m_env.TRXDIR = r->TRXDIR;
 
@@ -2766,6 +2789,306 @@ u32 g_forja_early_left_out = 0;
 static u32 s_forja_trace_number = 0;
 #endif
 
+#if defined(PCSX2_PS4)
+// ---------------------------------------------------------------------------------------------------------------------------------
+// 183 in the app, "A/B en un dibujo" (informes/AB_EN_UN_DIBUJO_PLAN_2026-11-22.md).
+// Shadow of the Colossus' heavy view: ~37,400 draws a second, almost all of 1-7 triangles taking turns between two T4 textures, one
+// per context, each loading its own palette (CLD = 1). The CLUT is one for both contexts, so each load used to flush the pending draw.
+// Here the draw goes on through those loads and switches ("slots" A and B), and FlushPrim prepares it once per slot.
+
+void GSState::ForjaAbScratch::Reserve(u32 nv, u32 ni, u32 nmap)
+{
+	if (nv > vcap)
+	{
+		_aligned_free(v);
+		_aligned_free(vc);
+		vcap = std::max(nv, vcap * 2);
+		v = static_cast<GSVertex*>(_aligned_malloc(sizeof(GSVertex) * vcap, 32));
+		vc = static_cast<GSVertex*>(_aligned_malloc(sizeof(GSVertex) * vcap, 32));
+		_aligned_free(orig);
+		orig = static_cast<u32*>(_aligned_malloc(sizeof(u32) * vcap, 32));
+	}
+	if (ni > icap)
+	{
+		_aligned_free(i);
+		icap = std::max(ni, icap * 2);
+		i = static_cast<u16*>(_aligned_malloc(sizeof(u16) * icap, 32));
+	}
+	if (nmap > mapcap)
+	{
+		_aligned_free(map);
+		mapcap = std::max(nmap, mapcap * 2);
+		map = static_cast<u16*>(_aligned_malloc(sizeof(u16) * mapcap, 32));
+		std::memset(map, 0xff, sizeof(u16) * mapcap);
+	}
+}
+
+// What both slots must share: where and how they draw.
+static bool ForjaAbSameDraw(const GSDrawingContext& a, const GSDrawingContext& b)
+{
+	return a.FRAME.U64 == b.FRAME.U64 && a.ZBUF.U64 == b.ZBUF.U64 && a.TEST.U64 == b.TEST.U64 && a.ALPHA.U64 == b.ALPHA.U64 &&
+		   a.FBA.U64 == b.FBA.U64 && a.CLAMP.U64 == b.CLAMP.U64 && a.XYOFFSET.U64 == b.XYOFFSET.U64 && a.SCISSOR.U64 == b.SCISSOR.U64;
+}
+
+// A slot's context, unchanged since its first piece (TEX0 without the CLD bits).
+static bool ForjaAbSameSlot(const GSDrawingContext& a, const GSDrawingContext& b)
+{
+	constexpr u64 kNoCld = (1ull << 61) - 1;
+	return ForjaAbSameDraw(a, b) && ((a.TEX0.U64 ^ b.TEX0.U64) & kNoCld) == 0 && a.TEX1.U64 == b.TEX1.U64 &&
+		   a.MIPTBP1.U64 == b.MIPTBP1.U64 && a.MIPTBP2.U64 == b.MIPTBP2.U64;
+}
+
+void GSState::ForjaAbReset()
+{
+	m_forja_ab.used = false;
+	m_forja_ab.expect = false;
+	m_forja_ab.has_b = false;
+	m_forja_ab.slot = 0;
+	m_forja_ab.segs.clear();
+	m_forja_ab_tag = 0;
+}
+
+// A palette load for the other context while a draw waits (ApplyTEX0, before the flush): true to go on instead of flushing.
+bool GSState::ForjaAbJoinCut(int i, const GIFRegTEX0& TEX0)
+{
+	if (g_forja_gs_ab.load(std::memory_order_relaxed) == 0 || m_index->tail == 0 || GSConfig.UserHacks_DrawBuffering ||
+		m_used_buffers_idx != 1 || GSConfig.UserHacks_GPUTargetCLUTMode != GSGPUTargetCLUTMode::Disabled)
+		return false;
+	const u32 a = m_prev_env.PRIM.CTXT;
+	if (static_cast<u32>(i) == a || !m_prev_env.PRIM.TME || m_prev_env.PRIM.FGE || (m_index->tail % 3) != 0 ||
+		GSUtil::GetPrimClass(m_prev_env.PRIM.PRIM) != GS_PRIM_CLASS::GS_TRIANGLE_CLASS)
+		return false;
+	const GSDrawingContext& pc = m_prev_env.CTXT[a];
+	const GSDrawingContext& nc = m_env.CTXT[i];
+	if ((TEX0.PSM != PSMT4 && TEX0.PSM != PSMT8) || pc.TEX0.PSM != TEX0.PSM || TEX0.CSM != 0 || pc.TEX0.CSM != 0 ||
+		(pc.TEX0.CPSM & 0xa) != (TEX0.CPSM & 0xa) || !ForjaAbSameDraw(pc, nc))
+		return false;
+	constexpr u64 kNoCld = (1ull << 61) - 1;
+	GIFRegTEX0 stored = TEX0;
+	stored.CPSM &= 0xa; // as ApplyTEX0 stores it
+	const u64 t = stored.U64 & kNoCld;
+	ForjaAbState& ab = m_forja_ab;
+	if (ab.expect)
+		return false; // two loads without a switch between them
+	if (ab.used)
+	{
+		if (ab.ctx[ab.slot] != a)
+			return false;
+		const u32 other = ab.slot ^ 1;
+		if (ab.has_b ? (ab.tex[other] != t || ab.ctx[other] != static_cast<u32>(i)) : other != 1)
+			return false;
+		if (ab.segs.size() >= 4096)
+			return false;
+	}
+	else
+	{
+		if (!m_forja_ab_clut)
+			m_forja_ab_clut = static_cast<GSClut::ForjaSaved*>(_aligned_malloc(sizeof(GSClut::ForjaSaved) * 3, 32));
+		if (!m_forja_ab_clut)
+			return false;
+		ab.used = true;
+		ab.has_b = false;
+		ab.slot = 0;
+		ab.ctx[0] = a;
+		ab.tex[0] = pc.TEX0.U64 & kNoCld;
+		ab.prim[0] = m_prev_env.PRIM;
+		ab.env[0] = pc;
+		m_mem.m_clut.ForjaSave(m_forja_ab_clut[0]); // the pending draw's palette, before the load overwrites it
+		ab.clut_ok[0] = true;
+		ab.clut_ok[1] = false;
+		ab.segs.clear();
+		ab.segs.push_back({0, 0});
+	}
+	ab.expect = true;
+	ab.expect_slot = ab.slot ^ 1;
+	ab.expect_ctx = static_cast<u32>(i);
+	ab.expect_tex = t;
+	return true;
+}
+
+// Right after the CLUT load that ForjaAbJoinCut let through: the other slot's palette, kept the first time.
+void GSState::ForjaAbAfterClutWrite()
+{
+	ForjaAbState& ab = m_forja_ab;
+	if (ab.expect && !ab.clut_ok[ab.expect_slot])
+	{
+		m_mem.m_clut.ForjaSave(m_forja_ab_clut[ab.expect_slot]);
+		ab.clut_ok[ab.expect_slot] = true;
+	}
+}
+
+// CheckFlushes, the first vertex after a joined palette load: true when the draw goes on in the other slot (no flush).
+bool GSState::ForjaAbSwitch()
+{
+	ForjaAbState& ab = m_forja_ab;
+	ab.expect = false;
+	if (m_index->tail == 0)
+		return false;
+	const u32 ctx = m_env.PRIM.CTXT;
+	if (ctx != ab.expect_ctx)
+	{
+		// The game drew on in the same context after loading the other slot's palette: the pending draw goes now with its own
+		// palette, and what comes next starts a new draw with the loaded one.
+		Flush(GSFlushReason::CLUTCHANGE);
+		return false;
+	}
+	constexpr u32 kGlobal = (1u << DIRTY_REG_COLCLAMP) | (1u << DIRTY_REG_DIMX) | (1u << DIRTY_REG_DTHE) | (1u << DIRTY_REG_FOGCOL) |
+							(1u << DIRTY_REG_PABE) | (1u << DIRTY_REG_SCANMSK) | (1u << DIRTY_REG_TEXA);
+	if ((m_dirty_gs_regs & kGlobal) != 0 || ((m_env.PRIM.U32[0] ^ ab.prim[0].U32[0]) & PRIM_REG_MASK & ~(1u << 9)) != 0)
+		return false;
+	constexpr u64 kNoCld = (1ull << 61) - 1;
+	const GSDrawingContext& nc = m_env.CTXT[ctx];
+	const u32 s = ab.expect_slot;
+	if ((nc.TEX0.U64 & kNoCld) != ab.expect_tex || !ab.clut_ok[s])
+		return false;
+	if (s == 1 && !ab.has_b)
+	{
+		if (!ForjaAbSameDraw(ab.env[0], nc))
+			return false;
+		ab.env[1] = nc;
+		ab.tex[1] = ab.expect_tex;
+		ab.ctx[1] = ctx;
+		ab.prim[1] = m_env.PRIM;
+		ab.has_b = true;
+	}
+	else if (!ForjaAbSameSlot(ab.env[s], nc))
+		return false;
+	ab.segs.push_back({m_index->tail, s});
+	ab.slot = s;
+	m_forja_ab_tag = s ? 0x100u : 0u;
+	// Vertices of the new strip already sent (with ADC) took the old mark.
+	for (u32 k = m_vertex->head; k < m_vertex->tail; k++)
+		m_vertex->buff[k].FOG = (m_vertex->buff[k].FOG & ~0x100u) | m_forja_ab_tag;
+	// The pending draw's environment follows the slot, as when a draw starts (VertexKick): the dirty checks then watch this context.
+	std::memcpy(&m_prev_env, &m_env, 88);
+	std::memcpy(&m_prev_env.CTXT[ctx], &m_env.CTXT[ctx], 96);
+	std::memcpy(&m_prev_env.CTXT[ctx].offset, &m_env.CTXT[ctx].offset, sizeof(m_env.CTXT[ctx].offset));
+	std::memcpy(&m_prev_env.CTXT[ctx].scissor, &m_env.CTXT[ctx].scissor, sizeof(m_env.CTXT[ctx].scissor));
+	m_dirty_gs_regs = 0;
+	m_backed_up_ctx = ctx;
+	g_forja_ab_switches++;
+	return true;
+}
+
+// A slot's context and palette for its piece (FlushPrim runs with m_draw_env and PRIM on m_prev_env).
+void GSState::ForjaAbSetSlot(u32 s)
+{
+	const ForjaAbState& ab = m_forja_ab;
+	const u32 ctx = ab.ctx[s];
+	m_prev_env.PRIM = ab.prim[s];
+	m_prev_env.CTXT[ctx] = ab.env[s];
+	UpdateContext();
+	m_mem.m_clut.ForjaRestore(m_forja_ab_clut[s]);
+}
+
+// Copies the indices of one slot's segments (slot >= 0) or of one segment (seg >= 0) into the scratch buffers, with their own copy of
+// the vertices they use (renumbered from 0). Returns the number of indices; the vertices are m_forja_ab_scratch's count.
+u32 GSState::ForjaAbCompact(const GSVertexBuff& vb, const GSIndexBuff& ib, u32 total, int slot, int seg)
+{
+	ForjaAbScratch& sc = m_forja_ab_scratch;
+	const ForjaAbState& ab = m_forja_ab;
+	const u32 nsegs = static_cast<u32>(ab.segs.size());
+	sc.Reserve(total * 2 + 16, total + 16, std::max(vb.tail, vb.next) + 16);
+	u32 ni = 0, nv = 0;
+	for (u32 k = 0; k < nsegs; k++)
+	{
+		if ((slot >= 0 && ab.segs[k].slot != static_cast<u32>(slot)) || (seg >= 0 && k != static_cast<u32>(seg)))
+			continue;
+		const u32 begin = ab.segs[k].start;
+		const u32 end = (k + 1 < nsegs) ? ab.segs[k + 1].start : total;
+		for (u32 j = begin; j < end; j++)
+		{
+			const u32 idx = ib.buff[j];
+			u16& m = sc.map[idx];
+			if (m == 0xffff)
+			{
+				m = static_cast<u16>(nv);
+				sc.v[nv] = vb.buff[idx];
+				sc.orig[nv] = idx;
+				nv++;
+			}
+			sc.i[ni++] = m;
+		}
+	}
+	for (u32 k = 0; k < nv; k++)
+		sc.map[sc.orig[k]] = 0xffff;
+	m_forja_ab_scratch_nv = nv;
+	return ni;
+}
+
+template <typename F>
+void GSState::ForjaAbFlush(F&& draw_now)
+{
+	ForjaAbState& ab = m_forja_ab;
+	GSVertexBuff& vb = *m_vertex;
+	GSIndexBuff& ib = *m_index;
+	const GSVertexBuff vb_keep = vb;
+	const GSIndexBuff ib_keep = ib;
+	const GIFRegPRIM prim_keep = m_prev_env.PRIM;
+	const GSDrawingContext ctx_keep[2] = {m_prev_env.CTXT[0], m_prev_env.CTXT[1]};
+	m_mem.m_clut.ForjaSave(m_forja_ab_clut[2]);
+	g_forja_ab_flushes++;
+	const u32 nsegs = static_cast<u32>(ab.segs.size());
+	const u32 total = ib_keep.tail;
+	const int mode = g_forja_gs_ab.load(std::memory_order_relaxed);
+
+	// One piece: its own vertex and index buffers (whatever Draw changes in place stays in the copy, as when each piece was its own
+	// draw), then the usual drawing.
+	auto run = [&](u32 slot, u32 ni) {
+		ForjaAbSetSlot(slot);
+		vb.buff = m_forja_ab_scratch.v;
+		vb.buff_copy = m_forja_ab_scratch.vc;
+		vb.head = vb.tail = vb.next = m_forja_ab_scratch_nv;
+		ib.buff = m_forja_ab_scratch.i;
+		ib.tail = ni;
+		draw_now();
+		vb = vb_keep;
+		ib = ib_keep;
+	};
+
+	bool done = false;
+	if (mode == 2 && ab.has_b && nsegs >= 2 && ForjaAbCanCapture())
+	{
+		bool ok = true;
+		for (u32 pass = 0; pass < 2 && ok; pass++)
+		{
+			const u32 ni = ForjaAbCompact(vb_keep, ib_keep, total, static_cast<int>(pass), -1);
+			ForjaAbCaptureBegin(pass);
+			run(pass, ni);
+			ok = ForjaAbCaptureEnd(pass);
+		}
+		if (!ok)
+			g_forja_ab_capture_fail++;
+		else if (ForjaAbSubmit(ab.segs.data(), nsegs, total))
+		{
+			done = true;
+			g_forja_ab_one_draws++;
+			g_forja_ab_one_segs += nsegs;
+		}
+		else
+			g_forja_ab_mismatch++;
+	}
+	if (!done)
+	{
+		for (u32 k = 0; k < nsegs; k++)
+		{
+			const u32 ni = ForjaAbCompact(vb_keep, ib_keep, total, -1, static_cast<int>(k));
+			if (ni > 0)
+				run(ab.segs[k].slot, ni);
+		}
+		g_forja_ab_replays++;
+		g_forja_ab_replay_segs += nsegs;
+	}
+
+	m_prev_env.PRIM = prim_keep;
+	m_prev_env.CTXT[0] = ctx_keep[0];
+	m_prev_env.CTXT[1] = ctx_keep[1];
+	UpdateContext();
+	m_mem.m_clut.ForjaRestore(m_forja_ab_clut[2]);
+	ForjaAbReset();
+}
+#endif
+
 void GSState::FlushPrim()
 {
 	if (m_index->tail > 0)
@@ -2842,6 +3165,7 @@ void GSState::FlushPrim()
 		}
 #endif
 		// Update scissor, it may have been modified by a previous draw
+		auto forja_draw_now = [&]() { // 183 in the app: "A/B en un dibujo" runs this once per piece
 		m_env.CTXT[PRIM->CTXT].UpdateScissor();
 		// Skip draw if Z test is enabled, but set to fail all pixels.
 		const bool ztst_never = (m_context->TEST.ZTE && m_context->TEST.ZTST == ZTST_NEVER);
@@ -2930,6 +3254,13 @@ void GSState::FlushPrim()
 
 		if (!skip_draw)
 			Draw();
+		};
+#if defined(PCSX2_PS4)
+		if (m_forja_ab.used)
+			ForjaAbFlush(forja_draw_now);
+		else
+#endif
+			forja_draw_now();
 
 		g_perfmon.Put(GSPerfMon::Draw, 1);
 		g_perfmon.Put(GSPerfMon::Prim, idx_buff.tail / GSUtil::GetVertexCount(PRIM->PRIM));
@@ -6165,6 +6496,10 @@ __forceinline void GSState::VertexKick(u32 skip)
 
 	tailptr[0] = new_v0;
 	tailptr[1] = new_v1;
+#if defined(PCSX2_PS4)
+	if (m_forja_ab_tag) // 183 in the app: slot B's vertices
+		vtx_buff.buff[tail].FOG |= m_forja_ab_tag;
+#endif
 
 	// We maintain the X/Y coordinates for the last 4 vertices, as well as the head for triangle fans, so we can compute
 	// the min/max, and cull degenerate triangles, which saves draws in some cases. Why 4? Mod 4 is cheaper than Mod 3.

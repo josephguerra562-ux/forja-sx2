@@ -502,6 +502,61 @@ public:
 	virtual void Draw() = 0;
 	// Forja 1.06: true to leave the draw out before its vertex trace (GSRendererHW: Saltar cuadros and the huellas' rules).
 	virtual bool ForjaLeaveOutEarly() { return false; }
+#if defined(PCSX2_PS4)
+	// 183 in the app, "A/B en un dibujo" (informes/AB_EN_UN_DIBUJO_PLAN_2026-11-22.md): one draw goes on through the palette loads and
+	// context switches of two textures that take turns, one per context ("slots" A and B). FlushPrim then prepares it twice (each slot
+	// with its own context, palette and copy of its vertices) and, when both configurations match but for the texture, sends one draw
+	// with both textures; otherwise it draws the pieces one by one, as before.
+	struct ForjaAbSeg
+	{
+		u32 start; // the segment's first index
+		u32 slot;
+	};
+	struct ForjaAbState
+	{
+		bool used = false; // the pending draw joined: its palette may no longer be the loaded one
+		bool expect = false; // the other slot's palette was just loaded: its context should come next
+		bool has_b = false;
+		u32 slot = 0;
+		u32 expect_slot = 0;
+		u32 expect_ctx = 0;
+		u64 expect_tex = 0;
+		u32 ctx[2] = {};
+		u64 tex[2] = {}; // TEX0 without its CLD bits
+		GIFRegPRIM prim[2] = {};
+		GSDrawingContext env[2];
+		bool clut_ok[2] = {};
+		std::vector<ForjaAbSeg> segs;
+	};
+	struct ForjaAbScratch
+	{
+		GSVertex* v = nullptr;
+		GSVertex* vc = nullptr;
+		u16* i = nullptr;
+		u16* map = nullptr;
+		u32* orig = nullptr;
+		u32 vcap = 0, icap = 0, mapcap = 0;
+		void Reserve(u32 nv, u32 ni, u32 nmap);
+	};
+	ForjaAbState m_forja_ab;
+	ForjaAbScratch m_forja_ab_scratch;
+	u32 m_forja_ab_scratch_nv = 0;
+	GSClut::ForjaSaved* m_forja_ab_clut = nullptr; // [3]: slot A, slot B, and the loaded one while flushing
+	u32 m_forja_ab_tag = 0; // ORed into each vertex's FOG (bit 8: slot B; the shaders read the fog from bits 0-7)
+	bool ForjaAbJoinCut(int i, const GIFRegTEX0& TEX0);
+	void ForjaAbAfterClutWrite();
+	bool ForjaAbSwitch();
+	void ForjaAbReset();
+	void ForjaAbSetSlot(u32 slot);
+	u32 ForjaAbCompact(const GSVertexBuff& vb, const GSIndexBuff& ib, u32 total, int slot, int seg);
+	template <typename F>
+	void ForjaAbFlush(F&& draw_now);
+	// The renderer: capture (keep the draw's configuration instead of sending it) and the joined draw.
+	virtual bool ForjaAbCanCapture() { return false; }
+	virtual void ForjaAbCaptureBegin(u32 pass) {}
+	virtual bool ForjaAbCaptureEnd(u32 pass) { return false; }
+	virtual bool ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total) { return false; }
+#endif
 	virtual void PurgeTextureCache(bool sources, bool targets, bool hash_cache);
 	virtual void ReadbackTextureCache();
 	virtual void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, const GSVector4i& r) {}

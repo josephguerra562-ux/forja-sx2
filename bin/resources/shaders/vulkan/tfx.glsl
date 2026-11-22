@@ -16,6 +16,10 @@
 #define VS_EXPAND_TRIANGLE_AA1 5
 #endif
 
+#if VS_AB // 183 in the app, "A/B en un dibujo": the block's names become slot A's; the plain names are set per vertex in main
+#define TextureScale TextureScaleA
+#define TextureOffset TextureOffsetA
+#endif
 layout(std140, set = 0, binding = 0) uniform cb0
 {
 	vec2 VertexScale;
@@ -25,7 +29,15 @@ layout(std140, set = 0, binding = 0) uniform cb0
 	vec2 PointSize;
 	uint MaxDepth;
 	float LineAA1Width;
+	vec2 TextureScale2; // 183 in the app: slot B's
+	vec2 TextureOffset2;
 };
+#if VS_AB
+#undef TextureScale
+#undef TextureOffset
+vec2 TextureScale;
+vec2 TextureOffset;
+#endif
 
 layout(location = 0) out VSOutput
 {
@@ -40,6 +52,7 @@ layout(location = 0) out VSOutput
 
 	float inv_cov; // We use the inverse to make it simpler to interpolate.
 	flat uint interior; // 1 for triangle interior; 0 for edge;
+	flat uint ab; // 183 in the app, "A/B en un dibujo": the triangle's slot
 } vsOut;
 
 #if VS_EXPAND == VS_EXPAND_NONE
@@ -54,6 +67,15 @@ layout(location = 6) in vec4 a_f;
 
 void main()
 {
+	#if VS_AB // 183 in the app: slot B's vertices carry FOG bit 8 (the fog itself is bits 0-7, a_f.r)
+		const bool forja_ab = a_f.g > 0.0f;
+		TextureScale = forja_ab ? TextureScale2 : TextureScaleA;
+		TextureOffset = forja_ab ? TextureOffset2 : TextureOffsetA;
+		vsOut.ab = forja_ab ? 1u : 0u;
+	#else
+		vsOut.ab = 0u;
+	#endif
+
 	// Clamp to max depth, gs doesn't wrap
 	uint z = min(a_z, MaxDepth);
 
@@ -458,6 +480,7 @@ void main()
 	vsOut.t = vtx.t;
 	vsOut.ti = vtx.ti;
 	vsOut.c = vtx.c;
+	vsOut.ab = 0u; // 183 in the app (no joined draws with expansion)
 }
 
 #endif // VS_EXPAND
@@ -597,6 +620,15 @@ void main()
 
 #define NEEDS_TEX (PS_TFX != 4)
 
+#if PS_AB // 183 in the app, "A/B en un dibujo": the block's names become slot A's; the plain names are set in main
+#define WH WH_A
+#define HalfTexel HalfTexel_A
+#define MinMax MinMax_A
+#define LODParams LODParams_A
+#define STRange STRange_A
+#define STScale STScale_A
+#define TC_OffsetHack TC_OffsetHack_A
+#endif
 layout(std140, set = 0, binding = 1) uniform cb1
 {
 	vec3 FogColor;
@@ -623,7 +655,30 @@ layout(std140, set = 0, binding = 1) uniform cb1
 	float _pad2_cb1;
 	float _pad3_cb1;
 	float _pad4_cb1;
+	vec4 WH2; // 183 in the app: slot B's texture constants
+	vec4 HalfTexel2;
+	vec4 MinMax2;
+	vec4 LODParams2;
+	vec4 STRange2;
+	vec2 STScale2;
+	vec2 TC_OffsetHack2;
 };
+#if PS_AB
+#undef WH
+#undef HalfTexel
+#undef MinMax
+#undef LODParams
+#undef STRange
+#undef STScale
+#undef TC_OffsetHack
+vec4 WH;
+vec4 HalfTexel;
+vec4 MinMax;
+vec4 LODParams;
+vec4 STRange;
+vec2 STScale;
+vec2 TC_OffsetHack;
+#endif
 
 layout(location = 0) in VSOutput
 {
@@ -636,6 +691,7 @@ layout(location = 0) in VSOutput
 	#endif
 	float inv_cov; // We use the inverse to make it simpler to interpolate.
 	flat uint interior; // 1 for triangle interior; 0 for edge;
+	flat uint ab; // 183 in the app, "A/B en un dibujo": the triangle's slot
 } vsIn;
 
 #if PS_RETURN_COLOR
@@ -664,6 +720,14 @@ layout(location = 0) in VSOutput
 #if NEEDS_TEX
 layout(set = 1, binding = 0) uniform sampler2D Texture;
 layout(set = 1, binding = 1) uniform texture2D Palette;
+#if PS_AB // 183 in the app, "A/B en un dibujo": slot B's texture and palette; FORJA_TEX picks by the triangle's slot (the same in the
+// whole triangle, so also in each 2x2 quad: sampling with derivatives inside the choice is fine)
+layout(set = 1, binding = 7) uniform sampler2D Texture2;
+layout(set = 1, binding = 8) uniform texture2D Palette2;
+#define FORJA_TEX(a, b) ((vsIn.ab != 0u) ? (b) : (a))
+#else
+#define FORJA_TEX(a, b) (a)
+#endif
 #endif
 
 #if PS_FEEDBACK_LOOP_IS_NEEDED_RT || PS_FEEDBACK_LOOP_IS_NEEDED_DEPTH
@@ -732,7 +796,7 @@ vec4 sample_c_af(vec2 uv, float uv_w)
 	// Below taken from https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm#7.18.11%20LOD%20Calculations
 	// And https://registry.khronos.org/OpenGL/extensions/EXT/EXT_texture_filter_anisotropic.txt
 	// With guidance from https://pema.dev/2025/05/09/mipmaps-too-much-detail/ 
-	vec2 sz = textureSize(Texture, 0);
+	vec2 sz = FORJA_TEX(textureSize(Texture, 0), textureSize(Texture2, 0));
 	vec2 dX = dFdx(uv) * sz;
 	vec2 dY = dFdy(uv) * sz;
 
@@ -831,7 +895,7 @@ vec4 sample_c_af(vec2 uv, float uv_w)
 
 	vec4 colour;
 	if (aniso_ratio == 1.0f)
-		colour = textureLod(Texture, uv, lod);
+		colour = FORJA_TEX(textureLod(Texture, uv, lod), textureLod(Texture2, uv, lod));
 	else
 	{
 		vec4 num = vec4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -840,7 +904,7 @@ vec4 sample_c_af(vec2 uv, float uv_w)
 		{
 			vec2 d = -aniso_line + (0.5f + i) * segment;	
 			vec2 uv_sample = uv + d;
-			vec4 sample_colour = textureLod(Texture, uv_sample, lod);
+			vec4 sample_colour = FORJA_TEX(textureLod(Texture, uv_sample, lod), textureLod(Texture2, uv_sample, lod));
 			num += sample_colour;
 		}
 
@@ -855,7 +919,7 @@ vec4 sample_c(vec2 uv)
 #if PS_TEX_IS_FB
 	return sample_from_rt();
 #elif PS_REGION_RECT
-	return texelFetch(Texture, ivec2(uv), 0);
+	return FORJA_TEX(texelFetch(Texture, ivec2(uv), 0), texelFetch(Texture2, ivec2(uv), 0));
 #else
 
 #if !PS_ADJS && !PS_ADJT
@@ -876,18 +940,18 @@ vec4 sample_c(vec2 uv)
 #if PS_ANISOTROPIC_FILTERING > 1
 	return sample_c_af(uv, vsIn.t.w);
 #elif PS_AUTOMATIC_LOD == 1
-	return texture(Texture, uv);
+	return FORJA_TEX(texture(Texture, uv), texture(Texture2, uv));
 #elif PS_MANUAL_LOD == 1
-	return textureLod(Texture, uv, manual_lod(vsIn.t.w));
+	return FORJA_TEX(textureLod(Texture, uv, manual_lod(vsIn.t.w)), textureLod(Texture2, uv, manual_lod(vsIn.t.w)));
 #else
-	return textureLod(Texture, uv, 0); // No lod
+	return FORJA_TEX(textureLod(Texture, uv, 0), textureLod(Texture2, uv, 0)); // No lod
 #endif
 #endif
 }
 
 vec4 sample_p(uint idx)
 {
-	return texelFetch(Palette, ivec2(int(idx), 0), 0);
+	return FORJA_TEX(texelFetch(Palette, ivec2(int(idx), 0), 0), texelFetch(Palette2, ivec2(int(idx), 0), 0));
 }
 
 vec4 sample_p_norm(float u)
@@ -1035,7 +1099,7 @@ uint fetch_raw_depth(ivec2 xy)
 #if PS_TEX_IS_FB
 	vec4 col = sample_from_rt();
 #else
-	vec4 col = texelFetch(Texture, xy, 0);
+	vec4 col = FORJA_TEX(texelFetch(Texture, xy, 0), texelFetch(Texture2, xy, 0));
 #endif
 	return uint(col.r * exp2(32.0f));
 }
@@ -1045,7 +1109,7 @@ vec4 fetch_raw_color(ivec2 xy)
 #if PS_TEX_IS_FB
 	return sample_from_rt();
 #else
-	return texelFetch(Texture, xy, 0);
+	return FORJA_TEX(texelFetch(Texture, xy, 0), texelFetch(Texture2, xy, 0));
 #endif
 }
 
@@ -1054,7 +1118,7 @@ vec4 fetch_c(ivec2 uv)
 #if PS_TEX_IS_FB
 	return sample_from_rt();
 #else
-	return texelFetch(Texture, uv, 0);
+	return FORJA_TEX(texelFetch(Texture, uv, 0), texelFetch(Texture2, uv, 0));
 #endif
 }
 
@@ -1119,7 +1183,7 @@ vec4 sample_depth(vec2 st, ivec2 pos)
 		uint depth = fetch_raw_depth(pos);
 
 		// Convert msb based on the palette
-		t = texelFetch(Palette, ivec2((depth >> 8u) & 0xFFu, 0), 0) * 255.0f;
+		t = FORJA_TEX(texelFetch(Palette, ivec2((depth >> 8u) & 0xFFu, 0), 0), texelFetch(Palette2, ivec2((depth >> 8u) & 0xFFu, 0), 0)) * 255.0f;
 	}
 	#elif (PS_URBAN_CHAOS_HLE == 1)
 	{
@@ -1133,7 +1197,7 @@ vec4 sample_depth(vec2 st, ivec2 pos)
 		uint depth = fetch_raw_depth(pos);
 
 		// Convert lsb based on the palette
-		t = texelFetch(Palette, ivec2(depth & 0xFFu, 0), 0) * 255.0f;
+		t = FORJA_TEX(texelFetch(Palette, ivec2(depth & 0xFFu, 0), 0), texelFetch(Palette2, ivec2(depth & 0xFFu, 0), 0)) * 255.0f;
 
 		// Msb is easier
 		float green = float(((depth >> 8u) & 0xFFu) * 36.0f);
@@ -1726,6 +1790,28 @@ layout(early_fragment_tests) in;
 
 void main()
 {
+#if PS_AB // 183 in the app, "A/B en un dibujo": this triangle's texture constants
+	if (vsIn.ab != 0u)
+	{
+		WH = WH2;
+		HalfTexel = HalfTexel2;
+		MinMax = MinMax2;
+		LODParams = LODParams2;
+		STRange = STRange2;
+		STScale = STScale2;
+		TC_OffsetHack = TC_OffsetHack2;
+	}
+	else
+	{
+		WH = WH_A;
+		HalfTexel = HalfTexel_A;
+		MinMax = MinMax_A;
+		LODParams = LODParams_A;
+		STRange = STRange_A;
+		STScale = STScale_A;
+		TC_OffsetHack = TC_OffsetHack_A;
+	}
+#endif
 	float input_z = gl_FragCoord.z;
 
 	// Must floor before depth testing.

@@ -421,6 +421,10 @@ extern std::atomic<int> g_forja_gs_vt_once; // pcsx2/GS/Renderers/Common/GSVerte
 extern std::atomic<bool> g_forja_gs_vt_once_check_only;
 extern std::atomic<u64> g_forja_gs_vt_once_checked, g_forja_gs_vt_once_wrong, g_forja_gs_vt_once_draws, g_forja_gs_vt_once_saved;
 extern u32 g_forja_gs_vt_once_first_wrong[4];
+extern std::atomic<int> g_forja_gs_ab; // pcsx2/GS/GSState.cpp (183 in the app, "A/B en un dibujo")
+extern u64 g_forja_ab_switches, g_forja_ab_flushes, g_forja_ab_one_draws, g_forja_ab_one_segs, g_forja_ab_replays, g_forja_ab_replay_segs,
+	g_forja_ab_capture_fail, g_forja_ab_mismatch;
+extern u32 g_forja_ab_diff_offset[8], g_forja_ab_diff_n; // pcsx2/GS/Renderers/HW/GSRendererHW.cpp (183)
 extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app, "PLZCW rápido")
 // 174 in the app, "Animación a medias" ([Forja] AnimMediasDir/AnimMediasFuncion/AnimMediasVacia). God of War II's map (the 171-173,
 // herramientas/mapa_ee.py): the EE's busiest code in the Colossus is decoding animations (0x112380, ~13 %: each bone channel's keys for
@@ -3599,6 +3603,17 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				old ? ", vm-ee-plzcw-viejo" : "");
 	}
 	{
+		// 183 in the app, "A/B en un dibujo" ([Forja] GSDibujoAB; pcsx2/GS/GSState.cpp, informes/AB_EN_UN_DIBUJO_PLAN_2026-11-22.md).
+		// /data/ForjaSX2/vm-gs-ab-no turns it off; vm-gs-ab-ensayo only joins and draws the pieces back one by one (the check).
+		const bool no = access("/data/ForjaSX2/vm-gs-ab-no", F_OK) == 0;
+		const bool trial = !no && access("/data/ForjaSX2/vm-gs-ab-ensayo", F_OK) == 0;
+		const int mode = no ? 0 : (trial ? 1 : std::max(0, s_profile.gs_ab));
+		g_forja_gs_ab.store(mode, std::memory_order_relaxed);
+		if (mode != 0 || no || s_profile.gs_ab_origin != ForjaGameProfile::Origin::Global)
+			ProbeLog("GS A/B in one draw (183 in the app): mode %d (%s)%s%s\n", mode, ProfileOriginName(s_profile.gs_ab_origin),
+				no ? ", vm-gs-ab-no" : "", trial ? ", vm-gs-ab-ensayo" : "");
+	}
+	{
 		// 171 in the app, "Vértices una vez" ([Forja] GSVerticesUnaVez; GSVertexTrace.cpp). 1 starts checking (both ways on each draw, the
 		// old one kept; on by itself after 20,000 draws the same, off at the first different). /data/ForjaSX2/vm-gs-vertices-no turns it
 		// off, vm-gs-vertices-comprobar only checks, vm-gs-vertices-directo goes on without checking.
@@ -6481,6 +6496,28 @@ void VMHostPoll()
 			if (s_anim_half_on && vm_state == VMState::Running)
 				ProbeLog("Animation at half rate: skipped_vsyncs=%llu swaps=%llu foreign=%llu\n", static_cast<unsigned long long>(s_anim_half_skipped),
 					static_cast<unsigned long long>(s_anim_half_swaps), static_cast<unsigned long long>(s_anim_half_foreign));
+			// 183 in the app, "A/B en un dibujo": switches between the slots, joined draws flushed, those sent as one draw (and their
+			// pieces), those drawn back piece by piece, why (a pass that couldn't be kept, the configurations differing), and where the
+			// first differences were (bytes of GSHWDrawConfig; 0xFFFF000x = LOD both ways, filters, too many vertices, index counts).
+			{
+				static u64 s_ab[8] = {};
+				const u64 now[8] = {g_forja_ab_switches, g_forja_ab_flushes, g_forja_ab_one_draws, g_forja_ab_one_segs, g_forja_ab_replays,
+					g_forja_ab_replay_segs, g_forja_ab_capture_fail, g_forja_ab_mismatch};
+				const int abm = g_forja_gs_ab.load(std::memory_order_relaxed);
+				if (abm != 0 && vm_state == VMState::Running && interval > 0.0)
+				{
+					double d[8];
+					for (int k = 0; k < 8; k++)
+						d[k] = static_cast<double>(now[k] - s_ab[k]) / interval;
+					ProbeLog("GS A/B draw (183): mode=%d switches_per_second=%.0f joined_per_second=%.0f one_draw_per_second=%.0f (pieces %.0f) "
+						"piece_by_piece_per_second=%.0f (pieces %.0f) capture_fail=%.0f mismatch=%.0f first_diffs=%x,%x,%x,%x,%x,%x,%x,%x\n",
+						abm, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], g_forja_ab_diff_offset[0], g_forja_ab_diff_offset[1],
+						g_forja_ab_diff_offset[2], g_forja_ab_diff_offset[3], g_forja_ab_diff_offset[4], g_forja_ab_diff_offset[5],
+						g_forja_ab_diff_offset[6], g_forja_ab_diff_offset[7]);
+				}
+				for (int k = 0; k < 8; k++)
+					s_ab[k] = now[k];
+			}
 			// 171 in the app, "Vértices una vez": its mode, the draws read once and the vertex reads left out so far, and the check.
 			{
 				const int vo = g_forja_gs_vt_once.load(std::memory_order_relaxed);
