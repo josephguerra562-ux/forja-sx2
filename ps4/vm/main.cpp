@@ -435,6 +435,7 @@ extern u64 g_forja_ab_alpha_retries, g_forja_ab_alpha_retry_ok; // GSState.cpp (
 extern u64 g_forja_ab_skipped; // GSState.cpp (189)
 extern u64 g_forja_vifm_pieces[2], g_forja_vifm_codes[2], g_forja_vifm_ticks[2], g_forja_vifm_hardcodes, g_forja_vifm_prefix,
 	g_forja_vifm_hard_by[8]; // pcsx2/Vif_Transfer.cpp (193, "VIF en su hilo" step 2)
+extern bool g_forja_vifm_on; // pcsx2/Vif_Transfer.cpp (202 in the app: the 193's meter only with vm-vif-medidor)
 extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app, "PLZCW rápido")
 // 174 in the app, "Animación a medias" ([Forja] AnimMediasDir/AnimMediasFuncion/AnimMediasVacia). God of War II's map (the 171-173,
 // herramientas/mapa_ee.py): the EE's busiest code in the Colossus is decoding animations (0x112380, ~13 %: each bone channel's keys for
@@ -3613,6 +3614,11 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				old ? ", vm-ee-plzcw-viejo" : "");
 	}
 	{
+		// 202 in the app: the 193's meter of VIF1 pieces (two TSC reads a piece and a jump table a code: ~2-5 % of the EE in Shadow of the
+		// Colossus) only with /data/ForjaSX2/vm-vif-medidor.
+		g_forja_vifm_on = access("/data/ForjaSX2/vm-vif-medidor", F_OK) == 0;
+		if (g_forja_vifm_on)
+			ProbeLog("VIF1 pieces meter (193 in the app): on (vm-vif-medidor)\n");
 		// 195 in the app, "VIF en su hilo" ([Forja] VifHilo; informes/VIF_HILO_PROPIO_PLAN_2026-11-22.md). /data/ForjaSX2/vm-vif-hilo-no
 		// turns it off.
 		{

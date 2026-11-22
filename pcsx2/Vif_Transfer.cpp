@@ -39,6 +39,10 @@ namespace PS4ThreadAffinity { int PinCurrentThreadToVif(); } // ps4/core/ThreadA
 // codes, the EE's time (TSC ticks), and in the hard pieces the codes before the first hard one (another thread could take those).
 u64 g_forja_vifm_pieces[2] = {}, g_forja_vifm_codes[2] = {}, g_forja_vifm_ticks[2] = {}, g_forja_vifm_hardcodes = 0, g_forja_vifm_prefix = 0;
 u64 g_forja_vifm_hard_by[8] = {}; // 0 DIRECT, 1 DIRECTHL, 2 FLUSH, 3 FLUSHA, 4 MSCALF, 5 MARK, 6 MSKPATH3, 7 interrupt bit
+// 202 in the app: the meter only with /data/ForjaSX2/vm-vif-medidor (ps4/vm/main.cpp). Its two TSC reads a piece were 2.4 % of the EE in
+// Shadow of the Colossus' heavy view (~530,000 pieces a second; the 201's samples: both hot spots of VIF1transfer were its rdtsc), and its
+// sorting of every code a jump table more per code.
+bool g_forja_vifm_on = false;
 static u32 s_forja_vifm_codes = 0, s_forja_vifm_first_hard = 0;
 static bool s_forja_vifm_hard = false;
 #endif
@@ -231,8 +235,16 @@ _vifT void vifTransferLoop(u32* &data) {
 
 	int ret = 0;
 
+	// 202 in the app: what can't change during the loop, read once instead of at every code (Shadow of the Colossus' heavy view: ~2.8
+	// million VIF1 codes a second; the 201's samples had ~5 % of the EE in these checks: "VIF en tramos"' five loads, the VIF thread's
+	// thread-local mark, the 193's meter, the fast codes' switch and the 150's counters).
+	const int tramos = (idx && THREAD_VU1) ? g_forja_vif_tramos_mode.load(std::memory_order_relaxed) : 0;
+	const bool vif_fast = g_orbis_vif_fast.load(std::memory_order_relaxed) != 0;
+	const bool diag = idx && OrbisEEDiag::on.load(std::memory_order_relaxed);
 #if defined(PCSX2_PS4)
-	if (!(idx && ForjaVifT::t_on_thread)) // 195 in the app: vif1Regs.stat is the EE's
+	const bool on_thread = idx && ForjaVifT::t_on_thread;
+	const bool meter = idx && !on_thread && g_forja_vifm_on;
+	if (!on_thread) // 195 in the app: vif1Regs.stat is the EE's
 #endif
 	{
 		vifXRegs.stat.VPS |= VPS_TRANSFERRING;
@@ -245,9 +257,8 @@ _vifT void vifTransferLoop(u32* &data) {
 
 		// 167 in the app, "VIF en tramos": a run of codes only the VU1 needs goes to the VU thread in one piece (mode 2), or (mode 1) the
 		// walk predicts its UNPACKs for the normal path to compare.
-		if (idx && !vifX.cmd && !vifX.pass && !vifX.irq && THREAD_VU1)
+		if (tramos && !vifX.cmd && !vifX.pass && !vifX.irq) // 202 in the app: the mode read once
 		{
-			const int tramos = g_forja_vif_tramos_mode.load(std::memory_order_relaxed);
 			if (tramos == 2)
 			{
 				const u32 n = ForjaVif1Tramo(data, pSize, true);
@@ -266,7 +277,7 @@ _vifT void vifTransferLoop(u32* &data) {
 		// 197 in the app: a DIRECT/DIRECTHL the EE started (often in a DMA tag's two words) goes on into the next piece, and its data goes
 		// to the GIF, which is the EE's. The 196 closed here: the VIF thread fed the GIF while the EE ran it (Gif_Unit::Execute found
 		// GIF_STAT.APATH at 0 in the middle of a packet). The check below only saw new codes.
-		if (idx && ForjaVifT::t_on_thread && vifX.cmd && ((vifX.cmd & 0x7f) == 0x50 || (vifX.cmd & 0x7f) == 0x51))
+		if (on_thread && vifX.cmd && ((vifX.cmd & 0x7f) == 0x50 || (vifX.cmd & 0x7f) == 0x51))
 		{
 			ForjaVifT::t_hit_hard = true;
 			ForjaVifT::g_direct_left.fetch_add(1, std::memory_order_relaxed);
@@ -276,7 +287,7 @@ _vifT void vifTransferLoop(u32* &data) {
 		if(!vifX.cmd) { // Get new VifCode
 #if defined(PCSX2_PS4)
 			// 195 in the app, "VIF en su hilo": the VIF thread leaves a hard code (and all after it in the piece) to the EE.
-			if (idx && ForjaVifT::t_on_thread && ForjaVifT::IsHardForThread(data, pSize))
+			if (on_thread && ForjaVifT::IsHardForThread(data, pSize))
 			{
 				ForjaVifT::t_hit_hard = true;
 				break;
@@ -294,7 +305,7 @@ _vifT void vifTransferLoop(u32* &data) {
 			vifXRegs.code = data[0];
 			vifX.cmd	  = data[0] >> 24;
 #if defined(PCSX2_PS4)
-			if (idx && !ForjaVifT::t_on_thread) // 193 in the app: the piece's codes and its first hard one (EE only)
+			if (meter) // 193 in the app: the piece's codes and its first hard one (EE only; 202: with vm-vif-medidor)
 			{
 				const u32 c = vifX.cmd & 0x7f;
 				const int hb = (vifX.cmd & 0x80) ? 7 : c == 0x50 ? 0 : c == 0x51 ? 1 : c == 0x11 ? 2 : c == 0x13 ? 3 : c == 0x15 ? 4 : c == 0x07 ? 5 :
@@ -310,7 +321,7 @@ _vifT void vifTransferLoop(u32* &data) {
 				s_forja_vifm_codes++;
 			}
 #endif
-			if (idx)
+			if (diag) // 202 in the app: read once
 				ORBIS_EEDIAG(OrbisEEDiag::vif1_codes[vifX.cmd & 0x7f]++; OrbisEEDiag::vif1_irq_codes += vifX.cmd >> 7); // vk-285-100; 150
 
 
@@ -343,7 +354,7 @@ _vifT void vifTransferLoop(u32* &data) {
 		// view, per second: STMOD 1.54M, STCYCL 0.43M, BASE and OFFSET 0.18M each (of 11.6M VIF1 codes,
 		// vk-285-101's [vifcodes]). IRQ-bit forms (cmd | 0x80) still take the table. flags/vifslow turns
 		// these off, live. Needs proper testing.
-		if (vifX.pass == 0 && vifX.cmd <= 0x05 && g_orbis_vif_fast.load(std::memory_order_relaxed))
+		if (vifX.pass == 0 && vifX.cmd <= 0x05 && vif_fast) // 202 in the app: read once
 		{
 			bool done = true;
 			switch (vifX.cmd)
@@ -860,7 +871,8 @@ _vifT static __fi bool vifTransfer(u32 *data, int size, bool TTE) {
 	vifX.vifpacketsize = size;
 #if defined(PCSX2_PS4)
 	u64 forja_vifm_t0 = 0;
-	if (idx) // 193 in the app
+	const bool forja_vifm = idx && g_forja_vifm_on; // 202 in the app
+	if (forja_vifm) // 193 in the app
 	{
 		forja_vifm_t0 = __builtin_ia32_rdtsc();
 		s_forja_vifm_codes = 0;
@@ -869,7 +881,7 @@ _vifT static __fi bool vifTransfer(u32 *data, int size, bool TTE) {
 #endif
 	vifTransferLoop<idx>(data);
 #if defined(PCSX2_PS4)
-	if (idx)
+	if (forja_vifm)
 	{
 		const int h = s_forja_vifm_hard ? 1 : 0;
 		g_forja_vifm_pieces[h]++;
