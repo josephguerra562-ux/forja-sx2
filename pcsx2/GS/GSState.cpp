@@ -1423,6 +1423,7 @@ std::atomic<int> g_forja_gs_ab{0};
 u64 g_forja_ab_switches = 0, g_forja_ab_flushes = 0, g_forja_ab_one_draws = 0, g_forja_ab_one_segs = 0, g_forja_ab_replays = 0,
 	g_forja_ab_replay_segs = 0, g_forja_ab_capture_fail = 0, g_forja_ab_mismatch = 0;
 u64 g_forja_ab_alpha_retries = 0, g_forja_ab_alpha_retry_ok = 0; // 188: second tries with the union of the alpha ranges
+u64 g_forja_ab_skipped = 0; // 189: runs drawn piece by piece without trying, their pair having failed lately
 static u64 s_forja_ab_tex[2] = {};
 static u32 s_forja_ab_ctx[2] = {};
 static bool s_forja_ab_two = false;
@@ -3091,7 +3092,25 @@ void GSState::ForjaAbFlush(F&& draw_now)
 	};
 
 	bool done = false;
-	if (mode >= 2 && ab.has_b && nsegs >= 2 && ForjaAbCanCapture())
+	// 189: a pair of textures (with their PRIMs) that couldn't be joined isn't tried again for the next 15 runs: a failed try costs
+	// two extra preparations on top of drawing the pieces (the 188's test: the heavy view lost more than it gained while most failed).
+	struct ForjaAbSkip
+	{
+		u64 key;
+		u8 skip;
+	};
+	static ForjaAbSkip s_skip[256] = {};
+	const u64 pair_key = (ab.tex[0] * 0x9E3779B97F4A7C15ull) ^ (ab.tex[1] + 0x632BE59BD9B4E019ull) ^
+						 (static_cast<u64>(ab.prim[0].U32[0] & 0x7ff) << 40) ^ (static_cast<u64>(ab.prim[1].U32[0] & 0x7ff) << 52);
+	ForjaAbSkip& sk = s_skip[(pair_key ^ (pair_key >> 29) ^ (pair_key >> 47)) & 255];
+	bool skip_try = false;
+	if (sk.key == pair_key && sk.skip > 0)
+	{
+		sk.skip--;
+		skip_try = true;
+		g_forja_ab_skipped++;
+	}
+	if (mode >= 2 && ab.has_b && nsegs >= 2 && !skip_try && ForjaAbCanCapture())
 	{
 		m_forja_ab_both_iip = ab.prim[0].IIP && ab.prim[1].IIP;
 		// Both passes captured; ovr: with the union of the slots' texture alpha (188).
@@ -3139,6 +3158,8 @@ void GSState::ForjaAbFlush(F&& draw_now)
 			g_forja_ab_one_draws++;
 			g_forja_ab_one_segs += nsegs;
 		}
+		sk.key = pair_key; // 189
+		sk.skip = done ? 0 : 15;
 	}
 	if (!done)
 	{
