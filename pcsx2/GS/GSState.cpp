@@ -1397,6 +1397,19 @@ static u32 s_forja_pal_examples = 0;
 // could go together. Shadow of the Colossus' heavy view (the 177, 2026-11-22): ~3,300 draws a frame, 88 % cut by a palette, most "another
 // context" (the next draw's palette loaded through the other context: the CLUT is one for both, so the pending draw must go first).
 std::atomic<u32> g_forja_pal_detail{0};
+// 180 in the app, "A/B en un dibujo", first step: only counting, nothing drawn changes. Shadow of the Colossus' heavy view (the 178's
+// details, 2026-11-22): draws of 1-7 triangles that take turns between two T4 textures, one per context, with FRAME, ZBUF, ALPHA, TEST and
+// CLAMP the same; each one loads its own palette (CLD = 1) over the other's, so the pending draw has to go. A draw with both textures
+// bound (and a mark per triangle) could take the whole run. The count: a palette cut is "joinable" when the new TEX0 is for the other
+// context, every register a draw reads from its context is the same in both (FRAME, ZBUF, TEST, ALPHA, CLAMP, TEX1, FBA, SCISSOR,
+// XYOFFSET), the texture is T4/T8, and it is one of the run's two (A, or B the first time another shows up: TEX0 without its CLD bits,
+// the palette's address, format and offset included; the palettes' memory can't change inside a run: a GS write flushes and ends it).
+// Any other flush in between ends the run.
+u64 g_forja_ab_joinable = 0, g_forja_ab_runs = 0;
+static u64 s_forja_flushes = 0, s_forja_ab_mark = ~0ull;
+static u64 s_forja_ab_tex[2] = {};
+static u32 s_forja_ab_ctx[2] = {};
+static bool s_forja_ab_two = false;
 extern void ProbeLog(const char* format, ...); // ps4/core/ProbeLoggerPS4.cpp (compilation 139: the examples)
 u64 g_forja_pal_draws = 0, g_forja_pal_saved = 0, g_forja_pal_saved16 = 0;
 static bool s_forja_pal_join = false; // the draw this palette cut flushes could have gone on
@@ -1780,6 +1793,46 @@ void GSState::ApplyTEX0(GIFRegTEX0& TEX0)
 				why = 4; // another register cuts the draw anyway
 			else if (m_vertex->tail != m_vertex->next)
 				why = 5; // half a primitive sent
+			// 180 in the app, "A/B en un dibujo" (counting only).
+			{
+				constexpr u64 kNoCld = (1ull << 61) - 1;
+				const u32 a = m_prev_env.PRIM.CTXT;
+				if (s_forja_ab_mark + 1 != s_forja_flushes) // another flush since the last joinable cut: a new run starts with this draw
+				{
+					s_forja_ab_tex[0] = pending.U64 & kNoCld;
+					s_forja_ab_ctx[0] = a;
+					s_forja_ab_two = false;
+					g_forja_ab_runs++;
+				}
+				const GSDrawingContext& pc = m_prev_env.CTXT[a];
+				const GSDrawingContext& nc = m_env.CTXT[i];
+				bool joinable = why == 0 && (TEX0.PSM == PSMT4 || TEX0.PSM == PSMT8) && pc.FRAME.U64 == nc.FRAME.U64 &&
+								pc.ZBUF.U64 == nc.ZBUF.U64 && pc.TEST.U64 == nc.TEST.U64 && pc.ALPHA.U64 == nc.ALPHA.U64 &&
+								pc.CLAMP.U64 == nc.CLAMP.U64 && pc.TEX1.U64 == nc.TEX1.U64 && pc.FBA.U64 == nc.FBA.U64 &&
+								pc.SCISSOR.U64 == nc.SCISSOR.U64 && pc.XYOFFSET.U64 == nc.XYOFFSET.U64;
+				if (joinable)
+				{
+					const u64 t = TEX0.U64 & kNoCld;
+					const u32 b = static_cast<u32>(i);
+					if (t == s_forja_ab_tex[0] && b == s_forja_ab_ctx[0])
+						joinable = true;
+					else if (s_forja_ab_two)
+						joinable = t == s_forja_ab_tex[1] && b == s_forja_ab_ctx[1];
+					else
+					{
+						s_forja_ab_tex[1] = t;
+						s_forja_ab_ctx[1] = b;
+						s_forja_ab_two = true;
+					}
+				}
+				if (joinable)
+				{
+					g_forja_ab_joinable++;
+					s_forja_ab_mark = s_forja_flushes; // the flush this cut makes below is the only one allowed before the next cut
+				}
+				else
+					s_forja_ab_mark = ~0ull - 1;
+			}
 			if (g_forja_pal_detail.load(std::memory_order_relaxed) > 0) // 178 in the app
 			{
 				g_forja_pal_detail.fetch_sub(1, std::memory_order_relaxed);
@@ -2477,6 +2530,9 @@ void GSState::FlushDraw(GSFlushReason reason)
 
 	if (m_index->tail > 0)
 	{
+#if defined(PCSX2_PS4)
+		s_forja_flushes++; // 180 in the app: "A/B en un dibujo" tells its runs apart by the flushes between them
+#endif
 		// Unless Vsync really needs the pending draw, don't do it when VSync happens as it can really screw up our heuristics when looking ahead.
 		if (reason == VSYNC)
 		{

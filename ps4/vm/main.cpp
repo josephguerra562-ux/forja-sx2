@@ -438,6 +438,7 @@ extern std::atomic<u16> g_forja_vif_page_good[];
 extern std::atomic<u8> g_forja_vif_page_dynamic[];
 extern u32 g_forja_vif_nocopy_first_wrong[2];
 extern std::atomic<u32> g_forja_pal_detail; // pcsx2/GS/GSState.cpp (178 in the app, "Detalle de los cortes")
+extern u64 g_forja_ab_joinable, g_forja_ab_runs, g_forja_pal_draws; // pcsx2/GS/GSState.cpp (180 in the app, "A/B en un dibujo")
 static bool s_gs_cut_detail = false;
 static bool s_anim_half_on = false;
 static u32 s_anim_half_addr = 0, s_anim_half_fn = 0, s_anim_half_empty = 0;
@@ -6402,6 +6403,20 @@ void VMHostPoll()
 				}
 				ProbeLog("VIF1 tags per second: refe=%.0f cnt=%.0f next=%.0f ref=%.0f refs=%.0f call=%.0f ret=%.0f end=%.0f\n", r[0], r[1], r[2],
 					r[3], r[4], r[5], r[6], r[7]);
+			}
+			// 180 in the app, "A/B en un dibujo" (counting only): draws a second, the palette cuts a run of two textures could skip, and
+			// the draws there would be with them joined (written whenever something was joinable).
+			if (vm_state == VMState::Running && interval > 0.0)
+			{
+				static u64 s_ab_draws = 0, s_ab_join = 0, s_ab_runs = 0;
+				const u64 draws = g_forja_pal_draws, join = g_forja_ab_joinable, runs = g_forja_ab_runs;
+				const double d = static_cast<double>(draws - s_ab_draws) / interval, j = static_cast<double>(join - s_ab_join) / interval;
+				if (join != s_ab_join)
+					ProbeLog("GS A/B joins (180): draws_per_second=%.0f joinable_per_second=%.0f draws_after=%.0f (%.1fx fewer) runs_per_second=%.0f\n",
+						d, j, d - j, (d - j) > 0.0 ? d / (d - j) : 0.0, static_cast<double>(runs - s_ab_runs) / interval);
+				s_ab_draws = draws;
+				s_ab_join = join;
+				s_ab_runs = runs;
 			}
 			// 178 in the app, "Detalle de los cortes": every 30 s (6 meters), the next 12 palette cuts.
 			if (s_gs_cut_detail && vm_state == VMState::Running)
