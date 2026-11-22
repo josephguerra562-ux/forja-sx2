@@ -2863,7 +2863,9 @@ bool GSState::ForjaAbJoinCut(int i, const GIFRegTEX0& TEX0)
 		(m_mem.m_clut.IsInvalid() & 2)) // a draw wrote over the palette's memory: PCSX2 flushes then whatever the draw
 		return false;
 	const u32 a = m_prev_env.PRIM.CTXT;
-	if (static_cast<u32>(i) == a || !m_prev_env.PRIM.TME || m_prev_env.PRIM.FGE || (m_index->tail % 3) != 0 ||
+	// (186: fog allowed. The vertex trace reads FOG whole, slot B's mark included, but the renderer only looks at the fog range for
+	// untextured clears; the shaders take the fog from bits 0-7.)
+	if (static_cast<u32>(i) == a || !m_prev_env.PRIM.TME || (m_index->tail % 3) != 0 ||
 		GSUtil::GetPrimClass(m_prev_env.PRIM.PRIM) != GS_PRIM_CLASS::GS_TRIANGLE_CLASS)
 		return false;
 	const GSDrawingContext& pc = m_prev_env.CTXT[a];
@@ -2972,7 +2974,8 @@ bool GSState::ForjaAbSwitch()
 	// back in a slot, its PRIM exactly as it was.
 	if (s == 1 && !ab.has_b)
 	{
-		if (GSUtil::GetPrimClass(m_env.PRIM.PRIM) != GS_PRIM_CLASS::GS_TRIANGLE_CLASS || !m_env.PRIM.TME || m_env.PRIM.FGE)
+		// 186: with or without fog (the 185's test: every switch refused for that, A without fog and B with it).
+		if (GSUtil::GetPrimClass(m_env.PRIM.PRIM) != GS_PRIM_CLASS::GS_TRIANGLE_CLASS || !m_env.PRIM.TME)
 			return fail(3);
 	}
 	else if (((m_env.PRIM.U32[0] ^ ab.prim[s].U32[0]) & PRIM_REG_MASK) != 0)

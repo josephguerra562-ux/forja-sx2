@@ -652,7 +652,7 @@ layout(std140, set = 0, binding = 1) uniform cb1
 	float _pad0_cb1;
 	float _pad1_cb1;
 	float LineCovScale;
-	float _pad2_cb1;
+	float AbFog; // 186 in the app: which slots have fog (bit 0 A, bit 1 B)
 	float _pad3_cb1;
 	float _pad4_cb1;
 	vec4 WH2; // 183 in the app: slot B's texture constants
@@ -1449,6 +1449,10 @@ bool atst(vec4 C)
 vec4 fog(vec4 c, float f)
 {
 	#if PS_FOG
+		#if PS_AB // 186 in the app: one slot may draw without fog (FGE off is not the same as F = 255 here: F/256)
+			if ((uint(AbFog) & (1u << vsIn.ab)) == 0u)
+				return c;
+		#endif
 		c.rgb = trunc(mix(FogColor, c.rgb, (f * 255.0f) / 256.0f));
 	#endif
 

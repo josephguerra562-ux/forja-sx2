@@ -11834,6 +11834,11 @@ bool GSRendererHW::ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total)
 	bn.samplearea = a.samplearea;
 	bn.ps.automatic_lod = a.ps.automatic_lod;
 	bn.ps.manual_lod = a.ps.manual_lod;
+	// 186: fog in one slot only (Shadow: A without, B with). The shader then fogs only the slot that has it (AbFog); the fog colour
+	// comes from the one with fog (the other pass may have left an old one).
+	bn.ps.fog = a.ps.fog;
+	if (a.ps.fog != b.ps.fog)
+		bn.cb_ps.FogColor_AREF = a.cb_ps.FogColor_AREF.blend32<8>(b.cb_ps.FogColor_AREF);
 	bn.cb_vs.texture_scale = a.cb_vs.texture_scale;
 	bn.cb_vs.texture_offset = a.cb_vs.texture_offset;
 	bn.cb_ps.WH = a.cb_ps.WH;
@@ -11876,6 +11881,10 @@ bool GSRendererHW::ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total)
 	GSHWDrawConfig c = a;
 	c.ps = ps;
 	c.ps.ab = 1;
+	c.ps.fog = a.ps.fog || b.ps.fog;
+	c.cb_ps.AbFog = static_cast<float>((a.ps.fog ? 1 : 0) | (b.ps.fog ? 2 : 0));
+	if (!a.ps.fog && b.ps.fog)
+		c.cb_ps.FogColor_AREF = b.cb_ps.FogColor_AREF.blend32<8>(a.cb_ps.FogColor_AREF); // B's colour, A's AREF
 	c.vs.ab = 1;
 	c.tex2 = b.tex;
 	c.pal2 = b.pal;

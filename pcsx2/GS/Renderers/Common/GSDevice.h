@@ -1144,7 +1144,7 @@ struct alignas(16) GSHWDrawConfig
 
 		GSVector4 ScaleFactor;
 		float LineCovScale;
-		float _pad0;
+		float AbFog; // 186 in the app, "A/B en un dibujo": which slots have fog (bit 0 A, bit 1 B; only read when PS_AB)
 		float _pad1;
 		float _pad2;
 
