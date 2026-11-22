@@ -439,6 +439,7 @@ extern std::atomic<u8> g_forja_vif_page_dynamic[];
 extern u32 g_forja_vif_nocopy_first_wrong[2];
 extern std::atomic<u32> g_forja_pal_detail; // pcsx2/GS/GSState.cpp (178 in the app, "Detalle de los cortes")
 extern u64 g_forja_ab_joinable, g_forja_ab_runs, g_forja_pal_draws; // pcsx2/GS/GSState.cpp (180 in the app, "A/B en un dibujo")
+extern u64 g_forja_ab_joinable_sc, g_forja_ab_broken, g_forja_ab_block[12], g_forja_ab_len[6], g_forja_draws_total; // the same (181)
 static bool s_gs_cut_detail = false;
 static bool s_anim_half_on = false;
 static u32 s_anim_half_addr = 0, s_anim_half_fn = 0, s_anim_half_empty = 0;
@@ -6406,17 +6407,42 @@ void VMHostPoll()
 			}
 			// 180 in the app, "A/B en un dibujo" (counting only): draws a second, the palette cuts a run of two textures could skip, and
 			// the draws there would be with them joined (written whenever something was joinable).
+			// 181: draws a second from every flush (the 180 took a counter the 139 meter resets), the scissor-only joins, why the other
+			// cuts can't join, runs broken by another flush, and the runs' lengths.
 			if (vm_state == VMState::Running && interval > 0.0)
 			{
-				static u64 s_ab_draws = 0, s_ab_join = 0, s_ab_runs = 0;
-				const u64 draws = g_forja_pal_draws, join = g_forja_ab_joinable, runs = g_forja_ab_runs;
+				static u64 s_ab_draws = 0, s_ab_join = 0, s_ab_runs = 0, s_ab_sc = 0, s_ab_broken = 0, s_ab_block[12] = {}, s_ab_len[6] = {};
+				const u64 draws = g_forja_draws_total, join = g_forja_ab_joinable, runs = g_forja_ab_runs, sc = g_forja_ab_joinable_sc;
 				const double d = static_cast<double>(draws - s_ab_draws) / interval, j = static_cast<double>(join - s_ab_join) / interval;
-				if (join != s_ab_join)
-					ProbeLog("GS A/B joins (180): draws_per_second=%.0f joinable_per_second=%.0f draws_after=%.0f (%.1fx fewer) runs_per_second=%.0f\n",
-						d, j, d - j, (d - j) > 0.0 ? d / (d - j) : 0.0, static_cast<double>(runs - s_ab_runs) / interval);
+				const double js = static_cast<double>(sc - s_ab_sc) / interval;
+				if (join != s_ab_join || sc != s_ab_sc)
+				{
+					double bl[12], ln[6];
+					for (int k = 0; k < 12; k++)
+					{
+						const u64 v = g_forja_ab_block[k];
+						bl[k] = static_cast<double>(v - s_ab_block[k]) / interval;
+						s_ab_block[k] = v;
+					}
+					for (int k = 0; k < 6; k++)
+					{
+						const u64 v = g_forja_ab_len[k];
+						ln[k] = static_cast<double>(v - s_ab_len[k]) / interval;
+						s_ab_len[k] = v;
+					}
+					ProbeLog("GS A/B joins (181): draws_per_second=%.0f joinable_per_second=%.0f scissor_only_per_second=%.0f draws_after_exact=%.0f "
+							 "draws_after_with_scissor=%.0f (%.2fx fewer) runs_per_second=%.0f broken_per_second=%.0f\n",
+						d, j, js, d - j, d - j - js, (d - j - js) > 0.0 ? d / (d - j - js) : 0.0,
+						static_cast<double>(runs - s_ab_runs) / interval, static_cast<double>(g_forja_ab_broken - s_ab_broken) / interval);
+					ProbeLog("GS A/B blocks (181): joinable=%.0f not_other_context=%.0f format=%.0f frame_or_zbuf=%.0f test=%.0f alpha_or_fba=%.0f clamp=%.0f "
+							 "tex1=%.0f xyoffset=%.0f third_texture=%.0f scissor_only=%.0f; runs of 1/2/3-4/5-8/9-16/17+ draws a second: %.0f %.0f %.0f %.0f %.0f %.0f\n",
+						bl[0], bl[1], bl[2], bl[3], bl[4], bl[5], bl[6], bl[7], bl[8], bl[9], bl[11], ln[0], ln[1], ln[2], ln[3], ln[4], ln[5]);
+				}
 				s_ab_draws = draws;
 				s_ab_join = join;
 				s_ab_runs = runs;
+				s_ab_sc = sc;
+				s_ab_broken = g_forja_ab_broken;
 			}
 			// 178 in the app, "Detalle de los cortes": every 30 s (6 meters), the next 12 palette cuts.
 			if (s_gs_cut_detail && vm_state == VMState::Running)

@@ -1406,7 +1406,14 @@ std::atomic<u32> g_forja_pal_detail{0};
 // the palette's address, format and offset included; the palettes' memory can't change inside a run: a GS write flushes and ends it).
 // Any other flush in between ends the run.
 u64 g_forja_ab_joinable = 0, g_forja_ab_runs = 0;
-static u64 s_forja_flushes = 0, s_forja_ab_mark = ~0ull;
+// 181 in the app, the count's second version (the 180 found ~3,200 joinable cuts a second of ~30,000, though 125 of the 216 cuts in its
+// details looked joinable): why each palette cut can't join (g_forja_ab_block[reason]), the cuts that would join if the scissor were
+// done per pixel (two scissor rectangles in the shader: g_forja_ab_joinable_sc), runs broken by another flush, and how long the runs are
+// (draws in a run: 1, 2, 3-4, 5-8, 9-16, 17+). A run goes on through exact joins and scissor-only ones. g_forja_draws_total counts
+// every draw (a flush with something pending), for the meter's draws a second.
+u64 g_forja_ab_joinable_sc = 0, g_forja_ab_broken = 0, g_forja_ab_block[12] = {}, g_forja_ab_len[6] = {};
+u64 g_forja_draws_total = 0;
+static u64 s_forja_ab_mark = ~0ull, s_forja_ab_draws = 0;
 static u64 s_forja_ab_tex[2] = {};
 static u32 s_forja_ab_ctx[2] = {};
 static bool s_forja_ab_two = false;
@@ -1797,8 +1804,16 @@ void GSState::ApplyTEX0(GIFRegTEX0& TEX0)
 			{
 				constexpr u64 kNoCld = (1ull << 61) - 1;
 				const u32 a = m_prev_env.PRIM.CTXT;
-				if (s_forja_ab_mark + 1 != s_forja_flushes) // another flush since the last joinable cut: a new run starts with this draw
+				if (s_forja_ab_mark + 1 != g_forja_draws_total) // another flush since the last joinable cut: a new run starts with this draw
 				{
+					if (s_forja_ab_mark < ~0ull - 1) // 181: the last cut was joinable, so something else flushed in between
+						g_forja_ab_broken++;
+					if (s_forja_ab_draws > 0) // 181: how long the run that ends was
+					{
+						const u64 n = s_forja_ab_draws;
+						g_forja_ab_len[n <= 1 ? 0 : n == 2 ? 1 : n <= 4 ? 2 : n <= 8 ? 3 : n <= 16 ? 4 : 5]++;
+					}
+					s_forja_ab_draws = 1;
 					s_forja_ab_tex[0] = pending.U64 & kNoCld;
 					s_forja_ab_ctx[0] = a;
 					s_forja_ab_two = false;
@@ -1806,18 +1821,32 @@ void GSState::ApplyTEX0(GIFRegTEX0& TEX0)
 				}
 				const GSDrawingContext& pc = m_prev_env.CTXT[a];
 				const GSDrawingContext& nc = m_env.CTXT[i];
-				bool joinable = why == 0 && (TEX0.PSM == PSMT4 || TEX0.PSM == PSMT8) && pc.FRAME.U64 == nc.FRAME.U64 &&
-								pc.ZBUF.U64 == nc.ZBUF.U64 && pc.TEST.U64 == nc.TEST.U64 && pc.ALPHA.U64 == nc.ALPHA.U64 &&
-								pc.CLAMP.U64 == nc.CLAMP.U64 && pc.TEX1.U64 == nc.TEX1.U64 && pc.FBA.U64 == nc.FBA.U64 &&
-								pc.SCISSOR.U64 == nc.SCISSOR.U64 && pc.XYOFFSET.U64 == nc.XYOFFSET.U64;
-				if (joinable)
+				// 181: the first reason found, in this order; 11 = joinable but for the scissor; 0 = joinable as it is.
+				int block = 0;
+				if (why != 0)
+					block = 1; // not "another context" (the same context: another address, size or format)
+				else if (TEX0.PSM != PSMT4 && TEX0.PSM != PSMT8)
+					block = 2;
+				else if (pc.FRAME.U64 != nc.FRAME.U64 || pc.ZBUF.U64 != nc.ZBUF.U64)
+					block = 3;
+				else if (pc.TEST.U64 != nc.TEST.U64)
+					block = 4;
+				else if (pc.ALPHA.U64 != nc.ALPHA.U64 || pc.FBA.U64 != nc.FBA.U64)
+					block = 5;
+				else if (pc.CLAMP.U64 != nc.CLAMP.U64)
+					block = 6;
+				else if (pc.TEX1.U64 != nc.TEX1.U64)
+					block = 7;
+				else if (pc.XYOFFSET.U64 != nc.XYOFFSET.U64)
+					block = 8;
+				if (block == 0)
 				{
 					const u64 t = TEX0.U64 & kNoCld;
 					const u32 b = static_cast<u32>(i);
 					if (t == s_forja_ab_tex[0] && b == s_forja_ab_ctx[0])
-						joinable = true;
+						block = 0;
 					else if (s_forja_ab_two)
-						joinable = t == s_forja_ab_tex[1] && b == s_forja_ab_ctx[1];
+						block = (t == s_forja_ab_tex[1] && b == s_forja_ab_ctx[1]) ? 0 : 9; // a third texture in the run
 					else
 					{
 						s_forja_ab_tex[1] = t;
@@ -1825,10 +1854,17 @@ void GSState::ApplyTEX0(GIFRegTEX0& TEX0)
 						s_forja_ab_two = true;
 					}
 				}
-				if (joinable)
+				if (block == 0 && pc.SCISSOR.U64 != nc.SCISSOR.U64)
+					block = 11;
+				g_forja_ab_block[block]++;
+				if (block == 0 || block == 11)
 				{
-					g_forja_ab_joinable++;
-					s_forja_ab_mark = s_forja_flushes; // the flush this cut makes below is the only one allowed before the next cut
+					if (block == 0)
+						g_forja_ab_joinable++;
+					else
+						g_forja_ab_joinable_sc++;
+					s_forja_ab_draws++;
+					s_forja_ab_mark = g_forja_draws_total; // the flush this cut makes below is the only one allowed before the next cut
 				}
 				else
 					s_forja_ab_mark = ~0ull - 1;
@@ -1847,6 +1883,12 @@ void GSState::ApplyTEX0(GIFRegTEX0& TEX0)
 					static_cast<unsigned long long>(TEX0.U64), static_cast<unsigned long long>(nc.FRAME.U64),
 					static_cast<unsigned long long>(nc.ZBUF.U64), static_cast<unsigned long long>(nc.ALPHA.U64),
 					static_cast<unsigned long long>(nc.TEST.U64), static_cast<unsigned long long>(nc.CLAMP.U64));
+				ProbeLog("GS cut detail+ (181): pending SCISSOR %016llx XYOFFSET %016llx TEX1 %016llx FBA %llx; new SCISSOR %016llx XYOFFSET %016llx "
+						 "TEX1 %016llx FBA %llx\n",
+					static_cast<unsigned long long>(pc.SCISSOR.U64), static_cast<unsigned long long>(pc.XYOFFSET.U64),
+					static_cast<unsigned long long>(pc.TEX1.U64), static_cast<unsigned long long>(pc.FBA.U64),
+					static_cast<unsigned long long>(nc.SCISSOR.U64), static_cast<unsigned long long>(nc.XYOFFSET.U64),
+					static_cast<unsigned long long>(nc.TEX1.U64), static_cast<unsigned long long>(nc.FBA.U64));
 			}
 			if (s_forja_pal_examples < 6)
 			{
@@ -2531,7 +2573,7 @@ void GSState::FlushDraw(GSFlushReason reason)
 	if (m_index->tail > 0)
 	{
 #if defined(PCSX2_PS4)
-		s_forja_flushes++; // 180 in the app: "A/B en un dibujo" tells its runs apart by the flushes between them
+		g_forja_draws_total++; // 180 in the app: "A/B en un dibujo" tells its runs apart by the flushes between them
 #endif
 		// Unless Vsync really needs the pending draw, don't do it when VSync happens as it can really screw up our heuristics when looking ahead.
 		if (reason == VSYNC)
