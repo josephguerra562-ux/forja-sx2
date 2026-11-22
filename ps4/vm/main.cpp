@@ -6430,12 +6430,12 @@ void VMHostPoll()
 						ln[k] = static_cast<double>(v - s_ab_len[k]) / interval;
 						s_ab_len[k] = v;
 					}
-					ProbeLog("GS A/B joins (181): draws_per_second=%.0f joinable_per_second=%.0f scissor_only_per_second=%.0f draws_after_exact=%.0f "
-							 "draws_after_with_scissor=%.0f (%.2fx fewer) runs_per_second=%.0f broken_per_second=%.0f\n",
-						d, j, js, d - j, d - j - js, (d - j - js) > 0.0 ? d / (d - j - js) : 0.0,
+					ProbeLog("GS A/B joins (182): draws_per_second=%.0f joinable_per_second=%.0f scissor_only_per_second=%.0f draws_after_exact=%.0f "
+							 "draws_after_with_scissor=%.0f draws_after_with_tex1=%.0f (%.2fx fewer) runs_per_second=%.0f broken_per_second=%.0f\n",
+						d, j, js, d - j, d - j - js, d - j - js - bl[7], (d - j - js - bl[7]) > 0.0 ? d / (d - j - js - bl[7]) : 0.0,
 						static_cast<double>(runs - s_ab_runs) / interval, static_cast<double>(g_forja_ab_broken - s_ab_broken) / interval);
-					ProbeLog("GS A/B blocks (181): joinable=%.0f not_other_context=%.0f format=%.0f frame_or_zbuf=%.0f test=%.0f alpha_or_fba=%.0f clamp=%.0f "
-							 "tex1=%.0f xyoffset=%.0f third_texture=%.0f scissor_only=%.0f; runs of 1/2/3-4/5-8/9-16/17+ draws a second: %.0f %.0f %.0f %.0f %.0f %.0f\n",
+					ProbeLog("GS A/B blocks (182): joinable=%.0f not_other_context=%.0f format=%.0f frame_or_zbuf=%.0f test=%.0f alpha_or_fba=%.0f clamp=%.0f "
+							 "tex1_only=%.0f xyoffset=%.0f third_texture=%.0f scissor_only=%.0f; runs of 1/2/3-4/5-8/9-16/17+ draws a second: %.0f %.0f %.0f %.0f %.0f %.0f\n",
 						bl[0], bl[1], bl[2], bl[3], bl[4], bl[5], bl[6], bl[7], bl[8], bl[9], bl[11], ln[0], ln[1], ln[2], ln[3], ln[4], ln[5]);
 				}
 				s_ab_draws = draws;

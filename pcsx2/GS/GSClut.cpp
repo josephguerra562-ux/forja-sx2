@@ -392,7 +392,13 @@ void GSClut::Read32(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA)
 					else
 						ReadCLUT_T32_I4(clut, m_buff32);
 
+#if !defined(PCSX2_PS4)
 					ExpandCLUT64_T32_I8(m_buff32, (u64*)m_buff64); // sw renderer does not need m_buff64 anymore
+#else
+					// 182 in the app, "Paleta sin tabla vieja": nothing reads m_buff64 any more (the texture decoders take m_buff32, and the
+					// 64-bit expand helpers that took it have no callers), so its 2 KB aren't rebuilt at every palette change (Shadow of the
+					// Colossus: ~30,000 a second).
+#endif
 					break;
 			}
 		}
@@ -411,7 +417,13 @@ void GSClut::Read32(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA)
 					clut += TEX0.CSA << 4;
 					// TODO: merge these functions
 					Expand16(clut, m_buff32, 16, TEXA);
+#if !defined(PCSX2_PS4)
 					ExpandCLUT64_T32_I8(m_buff32, (u64*)m_buff64); // sw renderer does not need m_buff64 anymore
+#else
+					// 182 in the app, "Paleta sin tabla vieja": nothing reads m_buff64 any more (the texture decoders take m_buff32, and the
+					// 64-bit expand helpers that took it have no callers), so its 2 KB aren't rebuilt at every palette change (Shadow of the
+					// Colossus: ~30,000 a second).
+#endif
 					break;
 			}
 		}

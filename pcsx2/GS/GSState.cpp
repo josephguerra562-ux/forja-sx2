@@ -1835,8 +1835,6 @@ void GSState::ApplyTEX0(GIFRegTEX0& TEX0)
 					block = 5;
 				else if (pc.CLAMP.U64 != nc.CLAMP.U64)
 					block = 6;
-				else if (pc.TEX1.U64 != nc.TEX1.U64)
-					block = 7;
 				else if (pc.XYOFFSET.U64 != nc.XYOFFSET.U64)
 					block = 8;
 				if (block == 0)
@@ -1854,14 +1852,19 @@ void GSState::ApplyTEX0(GIFRegTEX0& TEX0)
 						s_forja_ab_two = true;
 					}
 				}
-				if (block == 0 && pc.SCISSOR.U64 != nc.SCISSOR.U64)
+				// 182 in the app: TEX1 checked last too (the 181: one texture of the pair has mipmaps (MXL 3) and the other none, so TEX1
+				// differs in ~24,000 of ~33,000 cuts a second); 7 = joinable but for TEX1 (each texture would keep its own in the shader).
+				// Runs go on through 0, 7 and 11: the lengths are those of the full design.
+				if (block == 0 && pc.TEX1.U64 != nc.TEX1.U64)
+					block = 7;
+				else if (block == 0 && pc.SCISSOR.U64 != nc.SCISSOR.U64)
 					block = 11;
 				g_forja_ab_block[block]++;
-				if (block == 0 || block == 11)
+				if (block == 0 || block == 7 || block == 11)
 				{
 					if (block == 0)
 						g_forja_ab_joinable++;
-					else
+					else if (block == 11)
 						g_forja_ab_joinable_sc++;
 					s_forja_ab_draws++;
 					s_forja_ab_mark = g_forja_draws_total; // the flush this cut makes below is the only one allowed before the next cut
