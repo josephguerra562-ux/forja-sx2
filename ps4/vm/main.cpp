@@ -415,6 +415,7 @@ extern std::atomic<u64> g_forja_vif_tramos_runs, g_forja_vif_tramos_unpacks, g_f
 extern std::atomic<u64> g_forja_vif_tramos_checked, g_forja_vif_tramos_wrong;
 extern u32 g_forja_vif_tramos_first_wrong[2][10];
 extern std::atomic<u32> g_orbis_mtvu_ring_kb; // pcsx2/MTVU.cpp (169 in the app, "Cola corta del VU1")
+extern std::atomic<int> g_orbis_mtvu_batch; // pcsx2/MTVU.cpp (194 in the app, "Aviso al VU1 por pedazo")
 extern std::atomic<bool> g_forja_vif_adelanto; // pcsx2/Vif1_Dma.cpp (170 in the app, "VIF1 por adelantado")
 extern u64 g_orbis_vif1_tag_ids[8]; // pcsx2/Vif1_Dma.cpp (the VIF1 DMA tags read, per ID)
 extern std::atomic<int> g_forja_gs_vt_once; // pcsx2/GS/Renderers/Common/GSVertexTrace.cpp (171 in the app, "Vértices una vez")
@@ -3611,6 +3612,17 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				old ? ", vm-ee-plzcw-viejo" : "");
 	}
 	{
+		// 194 in the app, "Aviso al VU1 por pedazo" ([Forja] VU1AvisoPorPedazo): the EE tells the VU thread once per VIF1 piece (the PS5
+		// port's kick batching, vk-285-84; WaitVU and the other waits flush a deferred kick first). Shadow of the Colossus' heavy view sends
+		// the VU thread over a million packets a second in ~440,000 pieces (the 193). /data/ForjaSX2/vm-vu1-aviso-cada-paquete turns it off.
+		{
+			const bool every = access("/data/ForjaSX2/vm-vu1-aviso-cada-paquete", F_OK) == 0;
+			const bool on = !every && s_profile.mtvu_batch == 1;
+			g_orbis_mtvu_batch.store(on ? 1 : 0, std::memory_order_relaxed);
+			if (on || every || s_profile.mtvu_batch_origin != ForjaGameProfile::Origin::Global)
+				ProbeLog("VU1 kick per piece (194 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.mtvu_batch_origin),
+					every ? ", vm-vu1-aviso-cada-paquete" : "");
+		}
 		// 183 in the app, "A/B en un dibujo" ([Forja] GSDibujoAB; pcsx2/GS/GSState.cpp, informes/AB_EN_UN_DIBUJO_PLAN_2026-11-22.md).
 		// /data/ForjaSX2/vm-gs-ab-no turns it off; vm-gs-ab-ensayo only joins and draws the pieces back one by one (the check).
 		const bool no = access("/data/ForjaSX2/vm-gs-ab-no", F_OK) == 0;
