@@ -436,6 +436,7 @@ extern u64 g_forja_ab_skipped; // GSState.cpp (189)
 extern u64 g_forja_vifm_pieces[2], g_forja_vifm_codes[2], g_forja_vifm_ticks[2], g_forja_vifm_hardcodes, g_forja_vifm_prefix,
 	g_forja_vifm_hard_by[8]; // pcsx2/Vif_Transfer.cpp (193, "VIF en su hilo" step 2)
 extern bool g_forja_vifm_on; // pcsx2/Vif_Transfer.cpp (202 in the app: the 193's meter only with vm-vif-medidor)
+extern std::atomic<u64> g_forja_upk_whole; // pcsx2/Vif_Transfer.cpp (203 in the app: UNPACKs taken whole)
 extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app, "PLZCW rápido")
 // 174 in the app, "Animación a medias" ([Forja] AnimMediasDir/AnimMediasFuncion/AnimMediasVacia). God of War II's map (the 171-173,
 // herramientas/mapa_ee.py): the EE's busiest code in the Colossus is decoding animations (0x112380, ~13 %: each bone channel's keys for
@@ -6397,6 +6398,14 @@ void VMHostPoll()
 						(unsigned long long)ForjaVifT::g_discards.load(std::memory_order_relaxed),
 						(unsigned long long)ForjaVifT::g_long_waits.load(std::memory_order_relaxed));
 				std::copy(std::begin(now), std::end(now), s_vw);
+			}
+			// 203 in the app: UNPACKs taken whole in one go a second (the rest: split across pieces, or the path off).
+			{
+				static u64 s_upk = 0;
+				const u64 upk = g_forja_upk_whole.load(std::memory_order_relaxed);
+				if (upk != s_upk && interval > 0.0 && vm_state == VMState::Running)
+					ProbeLog("VIF1 whole UNPACKs (203): per_second=%.0f\n", static_cast<double>(upk - s_upk) / interval);
+				s_upk = upk;
 			}
 			// 198 in the app: the EE's waits for the VIF thread by where they came from (share of the EE's time: TSC ticks against the TSC's
 			// own rate over the interval), and the thread's sleeps a second.

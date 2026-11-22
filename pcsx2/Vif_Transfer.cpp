@@ -19,6 +19,8 @@ std::atomic<u64> g_forja_vif_tramos_checked{0}, g_forja_vif_tramos_wrong{0};
 // cycle, mode, mask). Written once by the EE thread before g_forja_vif_tramos_wrong becomes 1 (release); main.cpp's meter prints it.
 u32 g_forja_vif_tramos_first_wrong[2][10] = {};
 extern std::atomic<int> g_orbis_vif1_exec_early; // Vif_Unpack.cpp
+extern std::atomic<int> g_forja_vif_nocopy_mode; // MTVU.cpp (175 in the app, "VIF sin copia"; 203: the whole-UNPACK path needs it off)
+std::atomic<u64> g_forja_upk_whole{0}; // 203 in the app: UNPACKs taken whole in one go (ps4/vm/main.cpp's meter)
 #if defined(PCSX2_PS4)
 #include <thread>
 #include <unistd.h>
@@ -241,6 +243,11 @@ _vifT void vifTransferLoop(u32* &data) {
 	const int tramos = (idx && THREAD_VU1) ? g_forja_vif_tramos_mode.load(std::memory_order_relaxed) : 0;
 	const bool vif_fast = g_orbis_vif_fast.load(std::memory_order_relaxed) != 0;
 	const bool diag = idx && OrbisEEDiag::on.load(std::memory_order_relaxed);
+	// 203 in the app: an UNPACK whose data is all in this piece, set up and sent to the VU thread's ring in one go, as pass 1 and pass 2
+	// would (vifUnpackSetup, then nVifUnpack's whole-transfer branch): no second trip round this loop, no two indirect calls through
+	// the handler table, none of nVifUnpack's checks for what can't happen here. Only on the VU thread's ring (MTVU), with "VIF en
+	// tramos" and "VIF sin copia" off and no split UNPACK pending; flags/vifslow (the fast codes' switch) turns it off with them.
+	const bool upk_whole = idx && THREAD_VU1 && vif_fast && tramos == 0 && g_forja_vif_nocopy_mode.load(std::memory_order_relaxed) == 0;
 #if defined(PCSX2_PS4)
 	const bool on_thread = idx && ForjaVifT::t_on_thread;
 	const bool meter = idx && !on_thread && g_forja_vifm_on;
@@ -401,6 +408,26 @@ _vifT void vifTransferLoop(u32* &data) {
 			}
 		}
 
+		if (upk_whole && vifX.cmd >= 0x60 && vifX.cmd < 0x80 && vifX.pass == 0) // 203 in the app (no interrupt bit)
+		{
+			vifUnpackSetup<idx>(data); // pass 1: the code word
+			data += 1;
+			pSize -= 1;
+			const u32 words = vifX.tag.size;
+			if (words <= pSize && nVif[idx].bSize == 0 && !vifX.vifstalled.enabled) // the loop checks a stall before pass 2 too
+			{
+				// nVifUnpack's whole transfer on the VU thread: the data and the word after it (4 bytes more, as there).
+				vu1Thread.VifUnpack(vifX, vifXRegs, reinterpret_cast<const u8*>(data), (words << 2) + 4, 0);
+				vifX.pass = 0;
+				vifX.tag.size = 0;
+				vifX.cmd = 0;
+				vifXRegs.num = 0;
+				data += words;
+				pSize -= words;
+				g_forja_upk_whole.store(g_forja_upk_whole.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+			}
+			continue; // a split one: pass 2 the usual way, next time round
+		}
 		ret = vifCmdHandler[idx][vifX.cmd & 0x7f](vifX.pass, data);
 		data   += ret;
 		pSize  -= ret;
