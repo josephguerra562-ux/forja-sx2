@@ -60,15 +60,33 @@ namespace
 	u32 s_forja_iop_idle_next = 0;
 	u32 s_forja_iop_poll_next = 4;
 
+	// 204 in the app: the loop's words straight from the IOP's RAM, all at once (iopMemRead32 went through the memory map for each
+	// word), and the slot that matched last time first. This runs at nearly every event the IOP is behind at: Shadow of the Colossus'
+	// heavy view, ~380,000 events a second; the 203's samples had ForjaIopMaySleep at 1.3 % of the EE and iopMemRead32 at 0.8 %.
+	u32 s_forja_iop_idle_last = 0;
+
 	bool ForjaIopIdleAt(u32 pc)
 	{
-		for (const ForjaIopIdleLoop& loop : s_forja_iop_idle)
+		for (u32 n = 0; n < std::size(s_forja_iop_idle); n++)
 		{
+			const u32 at = (s_forja_iop_idle_last + n) % std::size(s_forja_iop_idle);
+			const ForjaIopIdleLoop& loop = s_forja_iop_idle[at];
 			if (loop.words == 0 || loop.pc != pc)
 				continue;
-			for (u32 i = 0; i < loop.words; i++)
-				if (iopMemRead32(pc + i * 4) != loop.code[i])
+			s_forja_iop_idle_last = at; // one slot per address (ForjaNoteIopIdleLoop/ForjaNoteIopPollLoop reuse it)
+			const u32 phys = pc & 0x1fffffff;
+			const u32 ram = Ps2MemSize::ExposedIopRam;
+			if (phys < 0x00800000 && (phys & (ram - 1)) + loop.words * 4 <= ram) // the RAM and its mirrors (IopMem.cpp's map)
+			{
+				if (std::memcmp(&iopMem->Main[phys & (ram - 1)], loop.code, loop.words * 4) != 0)
 					return false;
+			}
+			else
+			{
+				for (u32 i = 0; i < loop.words; i++)
+					if (iopMemRead32(pc + i * 4) != loop.code[i])
+						return false;
+			}
 			if (loop.poll && !g_forja_iop_sleep_poll)
 				return false;
 			for (u32 i = 0; loop.poll && i < loop.bases; i++)
