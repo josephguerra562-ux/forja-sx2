@@ -17,6 +17,9 @@ namespace ForjaVifT
 	// 196 in the app: why a piece stayed on the EE (0 the DMA not running, 1 an interrupt offset, 2 a stall, 3 the queue full), the
 	// timing breaks the EE went through, the queues dropped on a reset or a state load, and the EE's waits of over ~2 s.
 	extern std::atomic<u64> g_inline_why[4], g_breaks_through, g_discards, g_long_waits;
+	// 197 in the app: pieces the thread left whole to the EE because a DIRECT/DIRECTHL was half done, and pieces that went to the thread
+	// with an interrupt offset (a DMA tag's two words with TTE).
+	extern std::atomic<u64> g_direct_left, g_offset_pieces;
 	bool IsHardForThread(const u32* data, u32 pSize);
 	bool On();
 	bool Pending();

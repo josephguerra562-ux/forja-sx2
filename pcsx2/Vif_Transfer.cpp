@@ -261,6 +261,17 @@ _vifT void vifTransferLoop(u32* &data) {
 				ForjaVif1Tramo(data, pSize, false);
 		}
 
+#if defined(PCSX2_PS4)
+		// 197 in the app: a DIRECT/DIRECTHL the EE started (often in a DMA tag's two words) goes on into the next piece, and its data goes
+		// to the GIF, which is the EE's. The 196 closed here: the VIF thread fed the GIF while the EE ran it (Gif_Unit::Execute found
+		// GIF_STAT.APATH at 0 in the middle of a packet). The check below only saw new codes.
+		if (idx && ForjaVifT::t_on_thread && vifX.cmd && ((vifX.cmd & 0x7f) == 0x50 || (vifX.cmd & 0x7f) == 0x51))
+		{
+			ForjaVifT::t_hit_hard = true;
+			ForjaVifT::g_direct_left.fetch_add(1, std::memory_order_relaxed);
+			break;
+		}
+#endif
 		if(!vifX.cmd) { // Get new VifCode
 #if defined(PCSX2_PS4)
 			// 195 in the app, "VIF en su hilo": the VIF thread leaves a hard code (and all after it in the piece) to the EE.
@@ -408,6 +419,7 @@ namespace ForjaVifT
 	std::atomic<u32> g_stopped{0};
 	std::atomic<u64> g_pieces_thread{0}, g_pieces_inline{0}, g_stops{0}, g_drains{0}, g_full_waits{0}, g_stalls_left{0};
 	std::atomic<u64> g_inline_why[4] = {}, g_breaks_through{0}, g_discards{0}, g_long_waits{0}; // 196 in the app
+	std::atomic<u64> g_direct_left{0}, g_offset_pieces{0}; // 197 in the app
 	static constexpr u32 kCap = 1u << 20; // words (4 MB)
 	static constexpr u32 kWrap = 0xffffffffu;
 	static u32* s_q = nullptr;
@@ -721,7 +733,7 @@ _vifT static __fi bool vifTransfer(u32 *data, int size, bool TTE) {
 	if (idx && ForjaVifT::On())
 	{
 		ForjaVifT::EventHook();
-		if (vif1ch.chcr.STR && !vifX.irqoffset.enabled && size > 0 && !vifX.vifstalled.enabled)
+		if (vif1ch.chcr.STR && size > 0 && !vifX.vifstalled.enabled) // 197 in the app: with an interrupt offset too
 		{
 			bool pushed = ForjaVifT::Push(data, static_cast<u32>(size));
 			if (!pushed)
@@ -731,23 +743,32 @@ _vifT static __fi bool vifTransfer(u32 *data, int size, bool TTE) {
 			}
 			if (pushed)
 			{
-				int transferred = size;
+				// 197 in the app: vifTransfer's usual end for a piece that went across whole, its interrupt offset included (with TTE a DMA
+				// tag's two words come with the offset at 2; the 196 left every one of those on the EE, ~13,000 a second, each a wait).
+				const bool had_offset = vifX.irqoffset.enabled;
+				if (had_offset)
+					ForjaVifT::g_offset_pieces.fetch_add(1, std::memory_order_relaxed);
+				int transferred = (had_offset ? (int)vifX.irqoffset.value : 0) + size;
 				g_vif1Cycles += std::max(1, (int)((transferred * BIAS) >> 2));
-				vifX.irqoffset.value = 0;
-				vifX.irqoffset.enabled = false;
+				vifX.irqoffset.value = transferred % 4;
 				if (!TTE)
 				{
 					transferred = std::min((int)vifXch.qwc, transferred >> 2);
 					vifXch.madr += (transferred << 4);
 					vifXch.qwc -= transferred;
 					hwDmacSrcTadrInc(vifXch);
+					vifX.irqoffset.enabled = false;
 					if (!vifXch.qwc)
 						vifX.inprogress &= ~0x1;
+					else if (vifX.irqoffset.value != 0)
+						vifX.irqoffset.enabled = true;
 				}
+				else
+					vifX.irqoffset.enabled = vifX.irqoffset.value != 0;
 				return true;
 			}
 		}
-		ForjaVifT::g_inline_why[!vif1ch.chcr.STR ? 0 : vifX.irqoffset.enabled ? 1 : vifX.vifstalled.enabled ? 2 : 3].fetch_add(1, std::memory_order_relaxed);
+		ForjaVifT::g_inline_why[!vif1ch.chcr.STR ? 0 : size <= 0 ? 1 : vifX.vifstalled.enabled ? 2 : 3].fetch_add(1, std::memory_order_relaxed);
 		ForjaVifT::FullDrain(); // anything else goes the usual way, after the queue
 		ForjaVifT::g_pieces_inline.fetch_add(1, std::memory_order_relaxed);
 	}
