@@ -426,6 +426,8 @@ extern u64 g_forja_ab_switches, g_forja_ab_flushes, g_forja_ab_one_draws, g_forj
 	g_forja_ab_capture_fail, g_forja_ab_mismatch;
 extern u32 g_forja_ab_diff_offset[8], g_forja_ab_diff_n; // pcsx2/GS/Renderers/HW/GSRendererHW.cpp (183)
 extern u64 g_forja_ab_switch_fail[8]; // pcsx2/GS/GSState.cpp (185)
+extern u32 g_forja_ab_diff_bytes[1024], g_forja_ab_conf_size; // pcsx2/GS/Renderers/HW/GSRendererHW.cpp (187)
+extern u64 g_forja_ab_capfail[16];
 extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app, "PLZCW rápido")
 // 174 in the app, "Animación a medias" ([Forja] AnimMediasDir/AnimMediasFuncion/AnimMediasVacia). God of War II's map (the 171-173,
 // herramientas/mapa_ee.py): the EE's busiest code in the Colossus is decoding animations (0x112380, ~13 %: each bone channel's keys for
@@ -6522,6 +6524,35 @@ void VMHostPoll()
 						static_cast<unsigned long long>(g_forja_ab_switch_fail[2]), static_cast<unsigned long long>(g_forja_ab_switch_fail[3]),
 						static_cast<unsigned long long>(g_forja_ab_switch_fail[4]), static_cast<unsigned long long>(g_forja_ab_switch_fail[5]),
 						static_cast<unsigned long long>(g_forja_ab_switch_fail[6]), static_cast<unsigned long long>(g_forja_ab_switch_fail[7]));
+					// 187: why the captures failed so far (0 twice, 1 depth as target, 2 expansion, 3 not triangles, 4 second alpha pass,
+					// 5 multi-pass blend, 6 full barrier, 7 draw list, 8 no texture, 9 already A/B, 10 one barrier, 11 reads the target,
+					// 12 destination alpha, 13 left out, 14 sent elsewhere), and the 12 configuration bytes that differed most often.
+					{
+						char cf[256];
+						int n = 0;
+						for (int k = 0; k < 15 && n < static_cast<int>(sizeof(cf)) - 24; k++)
+							n += std::snprintf(cf + n, sizeof(cf) - n, "%s%llu", k ? "," : "", static_cast<unsigned long long>(g_forja_ab_capfail[k]));
+						u32 top[12] = {}, idx[12] = {};
+						const u32 sz = std::min<u32>(g_forja_ab_conf_size, 1024);
+						for (u32 k = 0; k < sz; k++)
+						{
+							u32 v = g_forja_ab_diff_bytes[k], i = k;
+							for (int t = 0; t < 12 && v; t++)
+							{
+								if (v > top[t])
+								{
+									std::swap(v, top[t]);
+									std::swap(i, idx[t]);
+								}
+							}
+						}
+						char db[256];
+						int m = 0;
+						for (int t = 0; t < 12 && top[t] && m < static_cast<int>(sizeof(db)) - 24; t++)
+							m += std::snprintf(db + m, sizeof(db) - m, "%s%x:%u", t ? "," : "", idx[t], top[t]);
+						db[m] = 0;
+						ProbeLog("GS A/B captures and differences (187): capture_fail_why=%s differing_bytes=%s\n", cf, m ? db : "-");
+					}
 				}
 				for (int k = 0; k < 8; k++)
 					s_ab[k] = now[k];

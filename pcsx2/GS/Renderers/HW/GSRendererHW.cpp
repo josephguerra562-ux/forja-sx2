@@ -11759,9 +11759,15 @@ bool GSRendererHW::IsCoverageAlphaSupported()
 // vertices each pass prepared, and the indices in the order the game sent them. Any difference: the pieces are drawn one by one.
 u32 g_forja_ab_diff_offset[8] = {}; // where the first differing byte was, the first few times (the meter writes them)
 u32 g_forja_ab_diff_n = 0;
+// 187 in the app: every differing byte of GSHWDrawConfig, counted (the 186's test: blend_multi_pass at 0xe5, the PS selector's
+// byte 9 at 0xa1), and why each capture failed (the first condition that held).
+u32 g_forja_ab_diff_bytes[1024] = {};
+u32 g_forja_ab_conf_size = sizeof(GSHWDrawConfig);
+u64 g_forja_ab_capfail[16] = {};
 
 void GSRendererHW::ForjaAbCaptureBegin(u32 pass)
 {
+	// 187: a pass Draw() left out (13) or sent elsewhere (14) is counted in ForjaAbCaptureEnd.
 	m_forja_ab_capture = true;
 	m_forja_ab_pass = pass;
 	m_forja_ab_got[pass] = 0;
@@ -11771,20 +11777,34 @@ void GSRendererHW::ForjaAbCaptureBegin(u32 pass)
 bool GSRendererHW::ForjaAbCaptureEnd(u32 pass)
 {
 	m_forja_ab_capture = false;
+	if (m_forja_ab_got[pass] == 0)
+		g_forja_ab_capfail[m_forja_ab_bad[pass] ? 14 : 13]++;
 	return m_forja_ab_got[pass] == 1 && !m_forja_ab_bad[pass];
 }
 
 void GSRendererHW::ForjaAbCaptureNow()
 {
 	const u32 p = m_forja_ab_pass;
-	if (m_forja_ab_got[p]++ != 0 || g_gs_device->IsDSInRTActive() || m_conf.vs.expand != GSHWDrawConfig::VSExpand::None ||
-		m_conf.topology != GSHWDrawConfig::Topology::Triangle || m_conf.indices_per_prim != 3 || m_conf.alpha_second_pass.enable ||
-		m_conf.blend_multi_pass.enable || m_conf.require_full_barrier || m_conf.drawlist || !m_conf.tex || m_conf.ps.ab || m_conf.vs.ab ||
-		// Reading the render target (blending by hand, a barrier) or the destination alpha test: each small draw saw the ones before
-		// it, and one draw of overlapping triangles wouldn't. Those go piece by piece.
-		m_conf.require_one_barrier || m_conf.IsFeedbackLoopRT(m_conf.ps) ||
-		m_conf.destination_alpha != GSHWDrawConfig::DestinationAlphaMode::Off)
+	// The first condition that holds (187: counted, 0 a second capture in the same pass ... 13 the destination alpha test).
+	// Reading the render target (blending by hand, a barrier) or the destination alpha test: each small draw saw the ones before it,
+	// and one draw of overlapping triangles wouldn't. Those go piece by piece.
+	int why = -1;
+	if (m_forja_ab_got[p]++ != 0) why = 0;
+	else if (g_gs_device->IsDSInRTActive()) why = 1;
+	else if (m_conf.vs.expand != GSHWDrawConfig::VSExpand::None) why = 2;
+	else if (m_conf.topology != GSHWDrawConfig::Topology::Triangle || m_conf.indices_per_prim != 3) why = 3;
+	else if (m_conf.alpha_second_pass.enable) why = 4;
+	else if (m_conf.blend_multi_pass.enable) why = 5;
+	else if (m_conf.require_full_barrier) why = 6;
+	else if (m_conf.drawlist) why = 7;
+	else if (!m_conf.tex) why = 8;
+	else if (m_conf.ps.ab || m_conf.vs.ab) why = 9;
+	else if (m_conf.require_one_barrier) why = 10;
+	else if (m_conf.IsFeedbackLoopRT(m_conf.ps)) why = 11;
+	else if (m_conf.destination_alpha != GSHWDrawConfig::DestinationAlphaMode::Off) why = 12;
+	if (why >= 0)
 	{
+		g_forja_ab_capfail[why]++;
 		m_forja_ab_bad[p] = true;
 		return;
 	}
@@ -11848,13 +11868,24 @@ bool GSRendererHW::ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total)
 	bn.cb_ps.STRange = a.cb_ps.STRange;
 	bn.cb_ps.STScale = a.cb_ps.STScale;
 	bn.cb_ps.TCOffsetHack = a.cb_ps.TCOffsetHack;
+	// 187: the second multi-pass blend only counts when it's on (its other bits followed each texture's alpha in the 186's test).
+	if (!a.blend_multi_pass.enable && !b.blend_multi_pass.enable)
+		bn.blend_multi_pass = a.blend_multi_pass;
 	const u8* pa = reinterpret_cast<const u8*>(&a);
 	const u8* pb = reinterpret_cast<const u8*>(&bn);
+	u32 first = ~0u;
 	for (u32 k = 0; k < sizeof(GSHWDrawConfig); k++)
 	{
 		if (pa[k] != pb[k])
-			return note(k);
+		{
+			if (first == ~0u)
+				first = k;
+			if (k < 1024)
+				g_forja_ab_diff_bytes[k]++;
+		}
 	}
+	if (first != ~0u)
+		return note(first);
 	const u32 na = a.nverts, nb = b.nverts;
 	if (na + nb > 65535)
 		return note(0xFFFF0003u);
