@@ -2852,7 +2852,8 @@ void GSState::ForjaAbReset()
 bool GSState::ForjaAbJoinCut(int i, const GIFRegTEX0& TEX0)
 {
 	if (g_forja_gs_ab.load(std::memory_order_relaxed) == 0 || m_index->tail == 0 || GSConfig.UserHacks_DrawBuffering ||
-		m_used_buffers_idx != 1 || GSConfig.UserHacks_GPUTargetCLUTMode != GSGPUTargetCLUTMode::Disabled)
+		m_used_buffers_idx != 1 || GSConfig.UserHacks_GPUTargetCLUTMode != GSGPUTargetCLUTMode::Disabled ||
+		(m_mem.m_clut.IsInvalid() & 2)) // a draw wrote over the palette's memory: PCSX2 flushes then whatever the draw
 		return false;
 	const u32 a = m_prev_env.PRIM.CTXT;
 	if (static_cast<u32>(i) == a || !m_prev_env.PRIM.TME || m_prev_env.PRIM.FGE || (m_index->tail % 3) != 0 ||
@@ -3257,7 +3258,11 @@ void GSState::FlushPrim()
 		};
 #if defined(PCSX2_PS4)
 		if (m_forja_ab.used)
+		{
 			ForjaAbFlush(forja_draw_now);
+			buff[0].FOG &= ~0x100u; // the strip's last vertices, kept for the next draw: without slot B's mark
+			buff[1].FOG &= ~0x100u;
+		}
 		else
 #endif
 			forja_draw_now();

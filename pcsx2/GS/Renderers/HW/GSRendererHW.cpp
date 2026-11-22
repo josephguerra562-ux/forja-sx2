@@ -11779,7 +11779,11 @@ void GSRendererHW::ForjaAbCaptureNow()
 	const u32 p = m_forja_ab_pass;
 	if (m_forja_ab_got[p]++ != 0 || g_gs_device->IsDSInRTActive() || m_conf.vs.expand != GSHWDrawConfig::VSExpand::None ||
 		m_conf.topology != GSHWDrawConfig::Topology::Triangle || m_conf.indices_per_prim != 3 || m_conf.alpha_second_pass.enable ||
-		m_conf.blend_multi_pass.enable || m_conf.require_full_barrier || m_conf.drawlist || !m_conf.tex || m_conf.ps.ab || m_conf.vs.ab)
+		m_conf.blend_multi_pass.enable || m_conf.require_full_barrier || m_conf.drawlist || !m_conf.tex || m_conf.ps.ab || m_conf.vs.ab ||
+		// Reading the render target (blending by hand, a barrier) or the destination alpha test: each small draw saw the ones before
+		// it, and one draw of overlapping triangles wouldn't. Those go piece by piece.
+		m_conf.require_one_barrier || m_conf.IsFeedbackLoopRT(m_conf.ps) ||
+		m_conf.destination_alpha != GSHWDrawConfig::DestinationAlphaMode::Off)
 	{
 		m_forja_ab_bad[p] = true;
 		return;
