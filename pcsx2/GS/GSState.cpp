@@ -7162,21 +7162,6 @@ void GSState::CalcAlphaMinMax(const int tex_alpha_min, const int tex_alpha_max)
 				default:
 					ASSUME(0);
 			}
-#if defined(PCSX2_PS4)
-			// 188 in the app, "A/B en un dibujo": each slot's texture alpha (first try), then both slots with the union of the two
-			// (second try): a wider range only leads to more careful choices, right for both textures.
-			if (m_forja_ab_alpha_rec)
-			{
-				m_forja_ab_talpha[m_forja_ab_alpha_pass][0] = a.y;
-				m_forja_ab_talpha[m_forja_ab_alpha_pass][1] = a.w;
-				m_forja_ab_talpha_ok[m_forja_ab_alpha_pass] = true;
-			}
-			if (m_forja_ab_alpha_ovr)
-			{
-				a.y = m_forja_ab_ovr[0];
-				a.w = m_forja_ab_ovr[1];
-			}
-#endif
 
 			switch (context->TEX0.TFX)
 			{
@@ -7212,6 +7197,22 @@ void GSState::CalcAlphaMinMax(const int tex_alpha_min, const int tex_alpha_max)
 		max = a.z;
 	}
 
+#if defined(PCSX2_PS4)
+	// 188/189 in the app, "A/B en un dibujo": each slot's final alpha range (texture and vertex colours: the 188's test showed the
+	// texture's alone isn't enough) on the first try, then both slots with the union on the second: a wider range only leads to
+	// more careful choices, right for both.
+	if (m_forja_ab_alpha_rec)
+	{
+		m_forja_ab_talpha[m_forja_ab_alpha_pass][0] = min;
+		m_forja_ab_talpha[m_forja_ab_alpha_pass][1] = max;
+		m_forja_ab_talpha_ok[m_forja_ab_alpha_pass] = true;
+	}
+	if (m_forja_ab_alpha_ovr)
+	{
+		min = m_forja_ab_ovr[0];
+		max = m_forja_ab_ovr[1];
+	}
+#endif
 	m_vt.m_alpha.min = min;
 	m_vt.m_alpha.max = max;
 	m_vt.m_alpha.depth_min = min;

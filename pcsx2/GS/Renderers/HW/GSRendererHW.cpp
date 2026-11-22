@@ -11831,8 +11831,11 @@ bool GSRendererHW::ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total)
 	};
 	// Level of detail: one texture may have mipmaps and the other not. The shader then takes the one with them, and the other
 	// samples its only level (its LOD parameters zero when the LOD is computed by hand).
-	const bool lod_a = a.ps.automatic_lod || a.ps.manual_lod;
-	const bool lod_b = b.ps.automatic_lod || b.ps.manual_lod;
+	// 189: automatic LOD on a texture clamped to its base level (lodclamp: no mipmaps given or made) samples level 0 with the
+	// magnification filter, as textureLod(..., 0) does: no LOD at all. PCSX2 asks for it on every triangle draw without manual
+	// trilinear (for anisotropic filtering), so the texture without mipmaps had it (the 188's test: "LOD both ways" 148,358 times).
+	const bool lod_a = a.ps.manual_lod || (a.ps.automatic_lod && !a.sampler.lodclamp);
+	const bool lod_b = b.ps.manual_lod || (b.ps.automatic_lod && !b.sampler.lodclamp);
 	GSHWDrawConfig::PSSelector ps = a.ps;
 	bool zero_lod[2] = {false, false};
 	if (a.ps.automatic_lod != b.ps.automatic_lod || a.ps.manual_lod != b.ps.manual_lod)
@@ -11843,7 +11846,7 @@ bool GSRendererHW::ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total)
 		const GSHWDrawConfig& without = lod_a ? b : a;
 		ps.automatic_lod = with.ps.automatic_lod;
 		ps.manual_lod = with.ps.manual_lod;
-		if (ps.automatic_lod && without.sampler.IsMinFilterLinear() != without.sampler.IsMagFilterLinear())
+		if (ps.automatic_lod && !without.sampler.lodclamp && without.sampler.IsMinFilterLinear() != without.sampler.IsMagFilterLinear())
 			return note(0xFFFF0002u, 2);
 		zero_lod[lod_a ? 1 : 0] = ps.manual_lod;
 	}
