@@ -142,7 +142,8 @@ namespace ForjaGameProfile
 		int gs_vt_once = -1;
 		Origin gs_vt_once_origin = Origin::Global;
 		// 183 in the app: [Forja] GSDibujoAB, "A/B en un dibujo" (pcsx2/GS/GSState.cpp): 1 joins and draws the pieces back one by one (a
-		// check), 2 one draw with both textures when the two configurations match. Off unless the profile says.
+		// check), 2 one draw with both textures when the two configurations match (3: also with the second alpha pass).
+		// 190: 2 for every game unless the profile says (ps4/vm/main.cpp).
 		int gs_ab = -1;
 		Origin gs_ab_origin = Origin::Global;
 		// 173 in the app: [Forja] EEPlzcwRapido, "PLZCW rápido" (pcsx2/x86/iMMI.cpp): 1 the EE's PLZCW with LZCNT and no branches. Off unless

@@ -3613,7 +3613,9 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		// /data/ForjaSX2/vm-gs-ab-no turns it off; vm-gs-ab-ensayo only joins and draws the pieces back one by one (the check).
 		const bool no = access("/data/ForjaSX2/vm-gs-ab-no", F_OK) == 0;
 		const bool trial = !no && access("/data/ForjaSX2/vm-gs-ab-ensayo", F_OK) == 0;
-		const int mode = no ? 0 : (trial ? 1 : std::max(0, s_profile.gs_ab));
+		// 190: on for every game (mode 2, exact: the second alpha pass draws piece by piece), the profile can say otherwise (Shadow
+		// of the Colossus 3); confirmed in Shadow's heavy view with the 189 (10-12 -> 14-16 frames, the picture right).
+		const int mode = no ? 0 : (trial ? 1 : (s_profile.gs_ab < 0 ? 2 : s_profile.gs_ab));
 		g_forja_gs_ab.store(mode, std::memory_order_relaxed);
 		if (mode != 0 || no || s_profile.gs_ab_origin != ForjaGameProfile::Origin::Global)
 			ProbeLog("GS A/B in one draw (183 in the app): mode %d (%s)%s%s\n", mode, ProfileOriginName(s_profile.gs_ab_origin),

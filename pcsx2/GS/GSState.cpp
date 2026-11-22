@@ -2843,6 +2843,24 @@ static bool ForjaAbSameSlot(const GSDrawingContext& a, const GSDrawingContext& b
 		   a.MIPTBP2.U64 == b.MIPTBP2.U64;
 }
 
+// 189/190 in the app: pairs of textures whose joined draw failed lately (the order of the two doesn't matter).
+struct ForjaAbSkipEntry
+{
+	u64 key;
+	u8 skip;
+};
+static ForjaAbSkipEntry s_forja_ab_skip[256] = {};
+static u64 ForjaAbPairKey(u64 t0, u64 t1)
+{
+	const u64 lo = std::min(t0, t1), hi = std::max(t0, t1);
+	return (lo * 0x9E3779B97F4A7C15ull) ^ (hi + 0x632BE59BD9B4E019ull) ^ (hi >> 17);
+}
+static ForjaAbSkipEntry& ForjaAbSkipSlot(u64 key)
+{
+	return s_forja_ab_skip[(key ^ (key >> 29) ^ (key >> 47)) & 255];
+}
+extern u64 g_forja_ab_skipped;
+
 // 185 in the app: why a switch wasn't taken (the meter writes it) and the first few cases in full.
 u64 g_forja_ab_switch_fail[8] = {}; // 0 nothing pending, 1 another context, 2 a global register, 3 PRIM, 4 TEX0, 5 palette, 6 shared, 7 slot
 static u32 s_forja_ab_fail_examples = 0;
@@ -2894,6 +2912,15 @@ bool GSState::ForjaAbJoinCut(int i, const GIFRegTEX0& TEX0)
 	}
 	else
 	{
+		// 190: a pair of textures that couldn't be joined lately isn't joined at all for its next 15 runs (drawn as before, no
+		// cost: in the other games, where A/B is now on too, a pair that never joins mustn't pay for trying).
+		ForjaAbSkipEntry& sk = ForjaAbSkipSlot(ForjaAbPairKey(pc.TEX0.U64 & kNoCld, t));
+		if (sk.key == ForjaAbPairKey(pc.TEX0.U64 & kNoCld, t) && sk.skip > 0)
+		{
+			sk.skip--;
+			g_forja_ab_skipped++;
+			return false;
+		}
 		if (!m_forja_ab_clut)
 			m_forja_ab_clut = static_cast<GSClut::ForjaSaved*>(_aligned_malloc(sizeof(GSClut::ForjaSaved) * 3, 32));
 		if (!m_forja_ab_clut)
@@ -3094,23 +3121,10 @@ void GSState::ForjaAbFlush(F&& draw_now)
 	bool done = false;
 	// 189: a pair of textures (with their PRIMs) that couldn't be joined isn't tried again for the next 15 runs: a failed try costs
 	// two extra preparations on top of drawing the pieces (the 188's test: the heavy view lost more than it gained while most failed).
-	struct ForjaAbSkip
-	{
-		u64 key;
-		u8 skip;
-	};
-	static ForjaAbSkip s_skip[256] = {};
-	const u64 pair_key = (ab.tex[0] * 0x9E3779B97F4A7C15ull) ^ (ab.tex[1] + 0x632BE59BD9B4E019ull) ^
-						 (static_cast<u64>(ab.prim[0].U32[0] & 0x7ff) << 40) ^ (static_cast<u64>(ab.prim[1].U32[0] & 0x7ff) << 52);
-	ForjaAbSkip& sk = s_skip[(pair_key ^ (pair_key >> 29) ^ (pair_key >> 47)) & 255];
-	bool skip_try = false;
-	if (sk.key == pair_key && sk.skip > 0)
-	{
-		sk.skip--;
-		skip_try = true;
-		g_forja_ab_skipped++;
-	}
-	if (mode >= 2 && ab.has_b && nsegs >= 2 && !skip_try && ForjaAbCanCapture())
+	// (190: the pair's result goes to the table ForjaAbJoinCut reads; a pair that failed isn't joined at all for its next 15 runs.)
+	const u64 pair_key = ForjaAbPairKey(ab.tex[0], ab.tex[1]);
+	ForjaAbSkipEntry& sk = ForjaAbSkipSlot(pair_key);
+	if (mode >= 2 && ab.has_b && nsegs >= 2 && ForjaAbCanCapture())
 	{
 		m_forja_ab_both_iip = ab.prim[0].IIP && ab.prim[1].IIP;
 		// Both passes captured; ovr: with the union of the slots' texture alpha (188).
