@@ -422,6 +422,7 @@ namespace ForjaVifT
 	std::atomic<u64> g_inline_why[4] = {}, g_breaks_through{0}, g_discards{0}, g_long_waits{0}; // 196 in the app
 	std::atomic<u64> g_direct_left{0}, g_offset_pieces{0}; // 197 in the app
 	std::atomic<u64> g_wait_ticks[10] = {}, g_wait_n[10] = {}, g_sleeps{0}; // 198 in the app
+	std::atomic<u64> g_thread_busy_ticks{0}, g_mtvu_polls{0}; // 199 in the app
 	static constexpr u32 kCap = 1u << 20; // words (4 MB)
 	static constexpr u32 kWrap = 0xffffffffu;
 	static u32* s_q = nullptr;
@@ -506,6 +507,7 @@ namespace ForjaVifT
 				continue;
 			}
 			s_busy.store(true, std::memory_order_relaxed);
+			const u64 busy_t0 = __builtin_ia32_rdtsc(); // 199 in the app
 			u32* data = &s_q[tail + 1];
 			t_hit_hard = false;
 			vif1.vifpacketsize = n;
@@ -517,12 +519,14 @@ namespace ForjaVifT
 				s_stop_left = left;
 				s_stop_next = tail + 1 + n;
 				g_stops.fetch_add(1, std::memory_order_relaxed);
+				g_thread_busy_ticks.fetch_add(__builtin_ia32_rdtsc() - busy_t0, std::memory_order_relaxed);
 				s_busy.store(false, std::memory_order_relaxed);
 				g_stopped.store(1, std::memory_order_release);
 				continue;
 			}
 			vifExecQueue(1);
 			g_pieces_thread.fetch_add(1, std::memory_order_relaxed);
+			g_thread_busy_ticks.fetch_add(__builtin_ia32_rdtsc() - busy_t0, std::memory_order_relaxed);
 			s_tail.store(tail + 1 + n, std::memory_order_release);
 			s_busy.store(false, std::memory_order_release);
 		}
@@ -565,8 +569,11 @@ namespace ForjaVifT
 		// horse and rider, the white screen), the VU thread's packet queue filled (65,536 packets, ~2 frames of Shadow) and the VU
 		// thread, the VIF thread and the EE all waited for each other (the hang).
 		if (g_mtvu_gif_pending.load(std::memory_order_relaxed))
+		{
 			for (u32 n = g_mtvu_gif_pending.exchange(0, std::memory_order_acq_rel); n; n--)
 				gifUnit.TransferGSPacketData(GIF_TRANS_MTVU, NULL, 0);
+			vu1Thread.Get_MTVUChanges(); // 199 in the app: as ExecuteVU does after its GS turn
+		}
 		if (g_skip_cycles.load(std::memory_order_relaxed))
 		{
 			const u64 sk = g_skip_cycles.exchange(0, std::memory_order_acq_rel);
@@ -722,6 +729,41 @@ namespace ForjaVifT
 		s_wake->NotifyOfWork(); // 198 in the app
 	}
 
+	static bool Push(const u32* data, u32 n);
+
+	// 199 in the app: the queue is full: wait for room for this piece (the 195-198 waited for the whole queue to empty: 14.6 % of the
+	// EE in the 198). Stops are taken and the GS gets its turns meanwhile. False: the piece goes the usual way (after a full drain).
+	static bool PushWaiting(const u32* data, u32 n)
+	{
+		const u64 t0 = __builtin_ia32_rdtsc();
+		bool ok = false;
+		for (u32 spins = 1;; spins++)
+		{
+			if (g_stopped.load(std::memory_order_acquire) && !ServiceStop())
+				break; // a real wait (the GIF, the VU1): the old way below
+			ApplyPending();
+			if (Push(data, n))
+			{
+				ok = true;
+				break;
+			}
+			if (s_tail.load(std::memory_order_acquire) == s_head.load(std::memory_order_relaxed) && !s_busy.load(std::memory_order_acquire) &&
+				!g_stopped.load(std::memory_order_acquire))
+				break; // empty and still no room: never, but not a hang
+			if ((spins & 0x3fff) == 0)
+				MTGS::ForjaWake();
+			__builtin_ia32_pause();
+		}
+		g_wait_ticks[8].fetch_add(__builtin_ia32_rdtsc() - t0, std::memory_order_relaxed);
+		g_wait_n[8].fetch_add(1, std::memory_order_relaxed);
+		if (!ok)
+		{
+			FullDrain(8);
+			ok = Push(data, n);
+		}
+		return ok;
+	}
+
 	static bool Push(const u32* data, u32 n)
 	{
 		u32 head = s_head.load(std::memory_order_relaxed);
@@ -764,10 +806,7 @@ _vifT static __fi bool vifTransfer(u32 *data, int size, bool TTE) {
 		{
 			bool pushed = ForjaVifT::Push(data, static_cast<u32>(size));
 			if (!pushed)
-			{
-				ForjaVifT::FullDrain();
-				pushed = ForjaVifT::Push(data, static_cast<u32>(size));
-			}
+				pushed = ForjaVifT::PushWaiting(data, static_cast<u32>(size)); // 199 in the app (was a full drain)
 			if (pushed)
 			{
 				// 197 in the app: vifTransfer's usual end for a piece that went across whole, its interrupt offset included (with TTE a DMA

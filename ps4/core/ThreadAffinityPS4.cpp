@@ -310,6 +310,13 @@ namespace PS4ThreadAffinity
 		}
 		const int result = scePthreadSetaffinity(scePthreadSelf(), 1ULL << core);
 		ProbeLog("PS4 thread affinity: VIF core=%d prio=%d (sce_result 0x%x) sce_result=0x%x\n", core, HELPER_PRIORITY, prio_result, result);
+		// 199 in the app: the sampling profiler's fourth thread (EE, VU1, GS and this one), with vm-sampler.
+		if (access("/data/ForjaSX2/vm-sampler", F_OK) == 0)
+		{
+			ps4_sampler_register_thread("VIF");
+			ps4_sampler_start();
+			ProbeLog("PS4 sampler: VIF registered\n");
+		}
 		return core;
 	}
 

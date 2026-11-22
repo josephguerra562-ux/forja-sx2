@@ -439,6 +439,18 @@ __fi void _cpuEventTest_Shared()
 #if defined(PCSX2_PS4)
 	if (ForjaVifT::g_stopped.load(std::memory_order_relaxed) | ForjaVifT::g_mtvu_gif_pending.load(std::memory_order_relaxed)) // 195 in the app
 		ForjaVifT::EventHook();
+	// 199 in the app: the VU thread's flags (GS FINISH/SIGNAL/LABEL, VU1 end and T bit) at every event while the VIF thread starts the
+	// VU1's programs. ExecuteVU took them twice per program on the EE; with the programs on the VIF thread almost nothing took them,
+	// and the game waited for its FINISH: the 198 ran at full speed with the EE half idle and 10 refreshes a frame (6 FPS).
+	if (ForjaVifT::g_mode.load(std::memory_order_relaxed) && THREAD_VU1)
+	{
+		const u32 flags = vu1Thread.mtvuInterrupts.load(std::memory_order_relaxed);
+		if (flags && (flags != VU_Thread::InterruptFlagVUEBit || (VU0.VI[REG_VPU_STAT].UL & 0xFF00)))
+		{
+			ForjaVifT::g_mtvu_polls.fetch_add(1, std::memory_order_relaxed);
+			vu1Thread.Get_MTVUChanges();
+		}
+	}
 #endif
 #if defined(PCSX2_PS4_VM_BOOT)
 	PS4EEEventProfile::EventScope event_profile(&cpuRegs.pc);

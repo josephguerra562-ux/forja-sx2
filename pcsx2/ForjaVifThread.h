@@ -22,6 +22,9 @@ namespace ForjaVifT
 	extern std::atomic<u64> g_direct_left, g_offset_pieces;
 	// 198 in the app: the EE's TSC ticks waiting for the thread, and how many waits, by site (above); the thread's sleeps.
 	extern std::atomic<u64> g_wait_ticks[10], g_wait_n[10], g_sleeps;
+	// 199 in the app: the thread's TSC ticks at work (a piece from its start to its end or its stop), and the EE's polls of the VU
+	// thread's flags that found something (GS FINISH/SIGNAL/LABEL, VU1 end or T bit).
+	extern std::atomic<u64> g_thread_busy_ticks, g_mtvu_polls;
 	bool IsHardForThread(const u32* data, u32 pSize);
 	bool On();
 	bool Pending();

@@ -6395,12 +6395,14 @@ void VMHostPoll()
 			// 198 in the app: the EE's waits for the VIF thread by where they came from (share of the EE's time: TSC ticks against the TSC's
 			// own rate over the interval), and the thread's sleeps a second.
 			{
-				static u64 s_wt[11] = {}, s_wtsc = 0;
+				static u64 s_wt[13] = {}, s_wtsc = 0;
 				const u64 tsc = __builtin_ia32_rdtsc();
-				u64 now[11];
+				u64 now[13];
 				for (int k = 0; k < 10; k++)
 					now[k] = ForjaVifT::g_wait_ticks[k].load(std::memory_order_relaxed);
 				now[10] = ForjaVifT::g_sleeps.load(std::memory_order_relaxed);
+				now[11] = ForjaVifT::g_thread_busy_ticks.load(std::memory_order_relaxed); // 199 in the app
+				now[12] = ForjaVifT::g_mtvu_polls.load(std::memory_order_relaxed);
 				if (s_wtsc && tsc > s_wtsc && ForjaVifT::g_mode.load(std::memory_order_relaxed) && interval > 0.0 && vm_state == VMState::Running)
 				{
 					const double t = static_cast<double>(tsc - s_wtsc);
@@ -6410,6 +6412,8 @@ void VMHostPoll()
 					ProbeLog("VIF thread (198): ee_wait_pct reg_read=%.1f reg_write=%.1f gif_dma=%.1f vif1_dma=%.1f fifo=%.1f state=%.1f vu_ring=%.1f "
 						"wait_vu=%.1f vif_transfer=%.1f other=%.1f thread_sleeps_per_second=%.0f\n", p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8],
 						p[9], static_cast<double>(now[10] - s_wt[10]) / interval);
+					ProbeLog("VIF thread (199): thread_busy_pct=%.1f vu_flag_polls_per_second=%.0f\n",
+						100.0 * static_cast<double>(now[11] - s_wt[11]) / t, static_cast<double>(now[12] - s_wt[12]) / interval);
 				}
 				std::copy(std::begin(now), std::end(now), s_wt);
 				s_wtsc = tsc;
