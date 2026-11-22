@@ -2906,9 +2906,12 @@ void VMManager::InitializeCPUProviders()
 
 #if !defined(PCSX2_PS4_VM_BOOT) || defined(PCSX2_PS4_VM_BOOT_JIT)
 #if defined(PCSX2_PS4_VM_BOOT_JIT)
-	// Forja SX2: the VIF unpack recompiler (Vif_Dynarec.h), on with a marker while it is tested.
-	newVifDynaRec = access("/data/ForjaSX2/vm-vif-rapido", F_OK) == 0;
-	printf("Forja SX2: VIF unpack recompiler %s\n", newVifDynaRec ? "ON (vm-vif-rapido)" : "off");
+	// Forja SX2: the VIF unpack recompiler (Vif_Dynarec.h). Compilation 205 (2026-11-22): on for every game. It was on only with the
+	// marker vm-vif-rapido while it was tested, and Joseph's console has had that marker since compilation 77 (2026-10-23): a month of
+	// every build and game measured with it, with no fault (God of War II: part of 51 -> 61 %; the lab's notes already called it "the
+	// normal"), while everyone else ran the slower unpacks. /data/ForjaSX2/vm-vif-lento turns it off.
+	newVifDynaRec = access("/data/ForjaSX2/vm-vif-lento", F_OK) != 0;
+	printf("Forja SX2: VIF unpack recompiler %s\n", newVifDynaRec ? "ON (205: for every game)" : "off (vm-vif-lento)");
 	fflush(stdout);
 #endif
 	VifUnpackSSE_Init();
