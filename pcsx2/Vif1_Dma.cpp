@@ -533,20 +533,6 @@ __fi void vif1Interrupt()
 		return;
 	}
 
-#if defined(PCSX2_PS4)
-	// 196 in the app: the DMA doesn't end while the VIF thread has its pieces (the game would see the VIF1 done with codes left);
-	// if one waits on the GIF, try again later, as the stall below does.
-	if (ForjaVifT::Pending())
-	{
-		ForjaVifT::FullDrain();
-		if (ForjaVifT::Pending())
-		{
-			CPU_INT(DMAC_VIF1, 128);
-			CPU_SET_DMASTALL(DMAC_VIF1, true);
-			return;
-		}
-	}
-#endif
 	if (vif1.vifstalled.enabled && vif1.done)
 	{
 		DevCon.WriteLn("VIF1 looping on stall at end\n");
@@ -573,7 +559,13 @@ __fi void vif1Interrupt()
 	vif1ch.chcr.STR = false;
 	vif1.vifstalled.enabled = false;
 	vif1.irqoffset.enabled = false;
+#if defined(PCSX2_PS4)
+	// 198 in the app: the DMA ends once its data is in the VIF thread's queue (the 196 waited for the thread here: most of the EE's 14 %
+	// of waits in the 197). While the thread has work, its queued program is its own (it runs it at the end of each piece).
+	if (vif1.queued_program && !ForjaVifT::Pending())
+#else
 	if (vif1.queued_program)
+#endif
 		vifExecQueue(1);
 	g_vif1Cycles = 0;
 	VIF_LOG("VIF1 DMA End");
@@ -586,7 +578,10 @@ __fi void vif1Interrupt()
 void dmaVIF1()
 {
 #if defined(PCSX2_PS4)
-	ForjaVifT::FullDrain(); // 195 in the app
+	// 198 in the app: only a transfer to memory (the GS's download) or in MFIFO mode waits for the VIF thread; from memory the queue
+	// keeps the order (the 195-197 waited here for every VIF1 DMA).
+	if (!vif1ch.chcr.DIR || dmacRegs.ctrl.MFD == MFD_VIF1)
+		ForjaVifT::FullDrain(3); // 195 in the app
 #endif
 	VIF_LOG("dmaVIF1 chcr = %lx, madr = %lx, qwc  = %lx\n"
 			"        tadr = %lx, asr0 = %lx, asr1 = %lx",

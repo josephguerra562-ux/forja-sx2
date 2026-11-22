@@ -290,16 +290,26 @@ namespace PS4ThreadAffinity
 	{
 		if (!IsEnabled())
 			return -1;
-		ApplyPriority("VIF", WORKER_PRIORITY);
+		// 198 in the app: the lowest priority always (not only with PRIORIDAD=1), and the core the GS recorder picks (the first one no
+		// worker and no helper has: core 0 with the usual plan, ~3 % busy). The 195-197 put it on the helpers' core above their
+		// priority: the disc reader, the log writer and the GS flip waited for it (the 197's hang). VIF=<core> in nucleos.txt still rules.
+		const int prio_result = scePthreadSetprio(scePthreadSelf(), HELPER_PRIORITY);
 		int core = ResolveCore("VIF", -1);
 		if (core < 0 || core > 6)
 		{
-			core = ResolveCore("AYUDANTES", 4);
-			if (core < 0 || core > 5)
-				core = 4;
+			const int ee = ResolveCore("EE", 2), vu1 = ResolveCore("VU1", 3), gs = ResolveCore("GS", 4), audio = ResolveCore("Audio", 5);
+			const int helpers = ResolveCore("AYUDANTES", -1);
+			core = -1;
+			for (int c = 0; c < 6 && core < 0; c++)
+			{
+				if (c != ee && c != vu1 && c != gs && c != audio && c != helpers)
+					core = c;
+			}
+			if (core < 0)
+				core = (helpers >= 0 && helpers <= 5) ? helpers : 4;
 		}
 		const int result = scePthreadSetaffinity(scePthreadSelf(), 1ULL << core);
-		ProbeLog("PS4 thread affinity: VIF core=%d sce_result=0x%x\n", core, result);
+		ProbeLog("PS4 thread affinity: VIF core=%d prio=%d (sce_result 0x%x) sce_result=0x%x\n", core, HELPER_PRIORITY, prio_result, result);
 		return core;
 	}
 

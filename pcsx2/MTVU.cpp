@@ -382,7 +382,7 @@ bool SaveStateBase::mtvuFreeze()
 	if (IsLoading())
 		ForjaVifT::Discard();
 	else
-		ForjaVifT::FullDrain();
+		ForjaVifT::FullDrain(5);
 #endif
 	pxAssert(vu1Thread.IsDone());
 	if (!IsSaving())
@@ -877,7 +877,7 @@ void VU_Thread::ReserveSpace(s32 size)
 {
 #if defined(PCSX2_PS4)
 	if (!ForjaVifT::OnThread() && ForjaVifT::Pending()) // 195 in the app: the EE writes the ring only after the VIF thread's queue
-		ForjaVifT::FullDrain();
+		ForjaVifT::FullDrain(6);
 #endif
 	pxAssert(m_write_pos < buffer_size);
 	pxAssert(size < buffer_size);
@@ -1151,7 +1151,7 @@ void VU_Thread::WaitVU()
 	MTVU_LOG("MTVU - WaitVU!");
 #if defined(PCSX2_PS4)
 	if (!ForjaVifT::OnThread() && ForjaVifT::Pending()) // 195 in the app: the VU1 isn't done while the VIF thread has work queued
-		ForjaVifT::FullDrain();
+		ForjaVifT::FullDrain(7);
 #endif
 	FlushKick(); // vk-285-84: WaitForEmpty takes a spinning or sleeping thread as done
 	const unsigned long long t0 = __builtin_ia32_rdtsc(); // eerec-281

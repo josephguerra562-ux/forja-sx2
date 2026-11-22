@@ -23,6 +23,7 @@ extern std::atomic<int> g_orbis_vif1_exec_early; // Vif_Unpack.cpp
 #include <thread>
 #include <unistd.h>
 #include "ForjaVifThread.h"
+#include "common/Threading.h" // 198 in the app: Threading::WorkSema
 namespace ForjaVifT
 {
 	static thread_local bool t_on_thread = false; // 195 in the app (ForjaVifThread.h: OnThread)
@@ -420,6 +421,7 @@ namespace ForjaVifT
 	std::atomic<u64> g_pieces_thread{0}, g_pieces_inline{0}, g_stops{0}, g_drains{0}, g_full_waits{0}, g_stalls_left{0};
 	std::atomic<u64> g_inline_why[4] = {}, g_breaks_through{0}, g_discards{0}, g_long_waits{0}; // 196 in the app
 	std::atomic<u64> g_direct_left{0}, g_offset_pieces{0}; // 197 in the app
+	std::atomic<u64> g_wait_ticks[10] = {}, g_wait_n[10] = {}, g_sleeps{0}; // 198 in the app
 	static constexpr u32 kCap = 1u << 20; // words (4 MB)
 	static constexpr u32 kWrap = 0xffffffffu;
 	static u32* s_q = nullptr;
@@ -430,6 +432,10 @@ namespace ForjaVifT
 	static bool s_dbf = false; // the thread's DBF while it owns the VIF1's state
 	static bool s_ee_owns_dbf = true; // after a drain the EE's vif1Regs.stat.DBF is the one; the next push hands it over
 	static std::thread::id s_ee_tid;
+	// 198 in the app: the thread sleeps here when it has nothing to do or waits for the EE (the 195-197 spun: on the helpers' core, at a
+	// higher priority than the disc reader, the log writer and the GS flip, it kept them off the core; the EE waited for the disc and
+	// the thread for the EE: the 197's hang, its log cut short and its 17 ms flips). The EE wakes it after each piece and each stop.
+	static Threading::WorkSema* s_wake = nullptr;
 	bool DbfGet() { return t_on_thread ? s_dbf : vif1Regs.stat.DBF; }
 	void DbfSet(bool v)
 	{
@@ -468,17 +474,28 @@ namespace ForjaVifT
 		{
 			if (g_stopped.load(std::memory_order_acquire))
 			{
-				__builtin_ia32_pause();
+				if (++idle < 1024) // the EE usually takes a stop at its next event, a few microseconds away
+				{
+					__builtin_ia32_pause();
+					continue;
+				}
+				idle = 0;
+				g_sleeps.fetch_add(1, std::memory_order_relaxed);
+				s_wake->WaitForWork(); // 198 in the app
 				continue;
 			}
 			const u32 tail = s_tail.load(std::memory_order_relaxed);
 			const u32 head = s_head.load(std::memory_order_acquire);
 			if (tail == head)
 			{
-				if (++idle > 4000)
-					usleep(20);
-				else
+				if (++idle < 1024)
+				{
 					__builtin_ia32_pause();
+					continue;
+				}
+				idle = 0;
+				g_sleeps.fetch_add(1, std::memory_order_relaxed);
+				s_wake->WaitForWork(); // 198 in the app (the 195-197: usleep(20) after 4000 spins)
 				continue;
 			}
 			idle = 0;
@@ -524,6 +541,7 @@ namespace ForjaVifT
 				return false;
 			}
 			s_ee_tid = std::this_thread::get_id();
+			s_wake = new Threading::WorkSema(); // 198 in the app
 			s_started.store(true, std::memory_order_release);
 			std::thread(ThreadMain).detach();
 		}
@@ -609,13 +627,14 @@ namespace ForjaVifT
 			s_dbf = vif1Regs.stat.DBF; // back to the thread
 			s_tail.store(s_stop_next, std::memory_order_release);
 			g_stopped.store(0, std::memory_order_release);
+			s_wake->NotifyOfWork(); // 198 in the app
 		}
 		t_in_drain--;
 		return done;
 	}
 
 	// EE: until the queue is empty (or a hard code can't go on yet: then as far as it can).
-	void FullDrain()
+	void FullDrain(int site)
 	{
 		if (t_on_thread || t_in_drain || !s_started.load(std::memory_order_relaxed) || std::this_thread::get_id() != s_ee_tid)
 			return;
@@ -657,6 +676,12 @@ namespace ForjaVifT
 			}
 			__builtin_ia32_pause();
 		}
+		if (spins) // 198 in the app: the meter of the EE's waits
+		{
+			const int k = (site >= 0 && site < 10) ? site : 9;
+			g_wait_ticks[k].fetch_add(__builtin_ia32_rdtsc() - t0, std::memory_order_relaxed);
+			g_wait_n[k].fetch_add(1, std::memory_order_relaxed);
+		}
 		ApplyPending();
 		if (!g_stopped.load(std::memory_order_acquire) && !s_ee_owns_dbf) // empty: the EE takes the DBF back
 		{
@@ -680,7 +705,7 @@ namespace ForjaVifT
 	{
 		if (t_on_thread || t_in_drain || !s_started.load(std::memory_order_relaxed) || std::this_thread::get_id() != s_ee_tid)
 			return;
-		FullDrain();
+		FullDrain(5);
 		if (!g_stopped.load(std::memory_order_acquire))
 			return;
 		// The thread waits on g_stopped and reads s_tail only after it clears: what's left goes.
@@ -694,6 +719,7 @@ namespace ForjaVifT
 		vif1.vifstalled.enabled = false;
 		g_discards.fetch_add(1, std::memory_order_relaxed);
 		g_stopped.store(0, std::memory_order_release);
+		s_wake->NotifyOfWork(); // 198 in the app
 	}
 
 	static bool Push(const u32* data, u32 n)
@@ -721,6 +747,7 @@ namespace ForjaVifT
 		std::memcpy(&s_q[head + 1], data, sizeof(u32) * n);
 		s_q[head] = n;
 		s_head.store(head + need, std::memory_order_release);
+		s_wake->NotifyOfWork(); // 198 in the app
 		return true;
 	}
 } // namespace ForjaVifT

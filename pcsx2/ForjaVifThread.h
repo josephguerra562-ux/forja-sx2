@@ -20,10 +20,15 @@ namespace ForjaVifT
 	// 197 in the app: pieces the thread left whole to the EE because a DIRECT/DIRECTHL was half done, and pieces that went to the thread
 	// with an interrupt offset (a DMA tag's two words with TTE).
 	extern std::atomic<u64> g_direct_left, g_offset_pieces;
+	// 198 in the app: the EE's TSC ticks waiting for the thread, and how many waits, by site (above); the thread's sleeps.
+	extern std::atomic<u64> g_wait_ticks[10], g_wait_n[10], g_sleeps;
 	bool IsHardForThread(const u32* data, u32 pSize);
 	bool On();
 	bool Pending();
-	void FullDrain();
+	// 198 in the app: where the EE waits from, for the meter: 0 VIF1 register read, 1 VIF1 register write, 2 GIF DMA start, 3 VIF1 DMA
+	// start (to memory or MFIFO only), 4 VIF1 FIFO write, 5 state save/load or reset, 6 the EE writing the VU1's ring, 7 waiting for the
+	// VU1, 8 vifTransfer (queue full, or a piece that stays on the EE), 9 other.
+	void FullDrain(int site = 8);
 	void EventHook();
 	void ApplyPending();
 	// 196 in the app: on a reset or a state load, the queue as far as it goes and then dropped (the state is replaced).

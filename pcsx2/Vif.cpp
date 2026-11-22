@@ -57,7 +57,7 @@ bool SaveStateBase::vif1Freeze()
 	if (IsLoading())
 		ForjaVifT::Discard(); // 196 in the app: the state is replaced
 	else
-		ForjaVifT::FullDrain(); // 195 in the app: the state as the EE sees it
+		ForjaVifT::FullDrain(5); // 195 in the app: the state as the EE sees it
 #endif
 	if (!FreezeTag("VIF1dma"))
 		return false;
@@ -310,7 +310,7 @@ _vifT __fi u32 vifRead32(u32 mem)
 {
 #if defined(PCSX2_PS4)
 	if (idx)
-		ForjaVifT::FullDrain(); // 195 in the app
+		ForjaVifT::FullDrain(0); // 195 in the app
 #endif
 	vifStruct& vif = MTVU_VifX;
 	bool wait = idx && THREAD_VU1;
@@ -361,7 +361,7 @@ _vifT __fi bool vifWrite32(u32 mem, u32 value)
 {
 #if defined(PCSX2_PS4)
 	if (idx)
-		ForjaVifT::FullDrain(); // 195 in the app
+		ForjaVifT::FullDrain(1); // 195 in the app
 #endif
 	vifStruct& vif = GetVifX;
 

@@ -474,7 +474,7 @@ void GIFdma()
 void dmaGIF()
 {
 #if defined(PCSX2_PS4)
-	ForjaVifT::FullDrain(); // 195 in the app: PATH3 after the VIF's packets
+	ForjaVifT::FullDrain(2); // 195 in the app: PATH3 after the VIF's packets
 #endif
 	// DevCon.Warning("dmaGIFstart chcr = %lx, madr = %lx, qwc  = %lx\n tadr = %lx, asr0 = %lx, asr1 = %lx", gifch.chcr._u32, gifch.madr, gifch.qwc, gifch.tadr, gifch.asr0, gifch.asr1);
 
