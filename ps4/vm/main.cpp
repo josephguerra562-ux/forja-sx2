@@ -425,6 +425,7 @@ extern std::atomic<int> g_forja_gs_ab; // pcsx2/GS/GSState.cpp (183 in the app, 
 extern u64 g_forja_ab_switches, g_forja_ab_flushes, g_forja_ab_one_draws, g_forja_ab_one_segs, g_forja_ab_replays, g_forja_ab_replay_segs,
 	g_forja_ab_capture_fail, g_forja_ab_mismatch;
 extern u32 g_forja_ab_diff_offset[8], g_forja_ab_diff_n; // pcsx2/GS/Renderers/HW/GSRendererHW.cpp (183)
+extern u64 g_forja_ab_switch_fail[8]; // pcsx2/GS/GSState.cpp (185)
 extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app, "PLZCW rápido")
 // 174 in the app, "Animación a medias" ([Forja] AnimMediasDir/AnimMediasFuncion/AnimMediasVacia). God of War II's map (the 171-173,
 // herramientas/mapa_ee.py): the EE's busiest code in the Colossus is decoding animations (0x112380, ~13 %: each bone channel's keys for
@@ -6514,6 +6515,13 @@ void VMHostPoll()
 						abm, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], g_forja_ab_diff_offset[0], g_forja_ab_diff_offset[1],
 						g_forja_ab_diff_offset[2], g_forja_ab_diff_offset[3], g_forja_ab_diff_offset[4], g_forja_ab_diff_offset[5],
 						g_forja_ab_diff_offset[6], g_forja_ab_diff_offset[7]);
+					// 185: why the switches weren't taken so far (nothing pending, another context, a global register, PRIM, TEX0,
+					// palette, shared registers, the slot's registers).
+					ProbeLog("GS A/B switches refused (185): pending=%llu context=%llu global=%llu prim=%llu tex0=%llu palette=%llu shared=%llu slot=%llu\n",
+						static_cast<unsigned long long>(g_forja_ab_switch_fail[0]), static_cast<unsigned long long>(g_forja_ab_switch_fail[1]),
+						static_cast<unsigned long long>(g_forja_ab_switch_fail[2]), static_cast<unsigned long long>(g_forja_ab_switch_fail[3]),
+						static_cast<unsigned long long>(g_forja_ab_switch_fail[4]), static_cast<unsigned long long>(g_forja_ab_switch_fail[5]),
+						static_cast<unsigned long long>(g_forja_ab_switch_fail[6]), static_cast<unsigned long long>(g_forja_ab_switch_fail[7]));
 				}
 				for (int k = 0; k < 8; k++)
 					s_ab[k] = now[k];

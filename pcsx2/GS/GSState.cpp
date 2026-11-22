@@ -2823,20 +2823,27 @@ void GSState::ForjaAbScratch::Reserve(u32 nv, u32 ni, u32 nmap)
 	}
 }
 
-// What both slots must share: where and how they draw.
+// What both slots must share: the same targets and the same scissor (the joined draw takes one). The 185 (the 183's test: not one
+// switch taken) leaves the rest to the configurations' comparison in GSRendererHW::ForjaAbSubmit (the test, the blending, FBA, the
+// clamp and XYOFFSET all end up in the draw's configuration); drawn piece by piece, each slot uses its own context anyway.
 static bool ForjaAbSameDraw(const GSDrawingContext& a, const GSDrawingContext& b)
 {
-	return a.FRAME.U64 == b.FRAME.U64 && a.ZBUF.U64 == b.ZBUF.U64 && a.TEST.U64 == b.TEST.U64 && a.ALPHA.U64 == b.ALPHA.U64 &&
-		   a.FBA.U64 == b.FBA.U64 && a.CLAMP.U64 == b.CLAMP.U64 && a.XYOFFSET.U64 == b.XYOFFSET.U64 && a.SCISSOR.U64 == b.SCISSOR.U64;
+	return a.FRAME.U64 == b.FRAME.U64 && a.ZBUF.U64 == b.ZBUF.U64 && a.SCISSOR.U64 == b.SCISSOR.U64;
 }
 
-// A slot's context, unchanged since its first piece (TEX0 without the CLD bits).
+// A slot's context, unchanged since its first piece (every register; TEX0 without the CLD bits).
 static bool ForjaAbSameSlot(const GSDrawingContext& a, const GSDrawingContext& b)
 {
 	constexpr u64 kNoCld = (1ull << 61) - 1;
-	return ForjaAbSameDraw(a, b) && ((a.TEX0.U64 ^ b.TEX0.U64) & kNoCld) == 0 && a.TEX1.U64 == b.TEX1.U64 &&
-		   a.MIPTBP1.U64 == b.MIPTBP1.U64 && a.MIPTBP2.U64 == b.MIPTBP2.U64;
+	return a.FRAME.U64 == b.FRAME.U64 && a.ZBUF.U64 == b.ZBUF.U64 && a.TEST.U64 == b.TEST.U64 && a.ALPHA.U64 == b.ALPHA.U64 &&
+		   a.FBA.U64 == b.FBA.U64 && a.CLAMP.U64 == b.CLAMP.U64 && a.XYOFFSET.U64 == b.XYOFFSET.U64 && a.SCISSOR.U64 == b.SCISSOR.U64 &&
+		   ((a.TEX0.U64 ^ b.TEX0.U64) & kNoCld) == 0 && a.TEX1.U64 == b.TEX1.U64 && a.MIPTBP1.U64 == b.MIPTBP1.U64 &&
+		   a.MIPTBP2.U64 == b.MIPTBP2.U64;
 }
+
+// 185 in the app: why a switch wasn't taken (the meter writes it) and the first few cases in full.
+u64 g_forja_ab_switch_fail[8] = {}; // 0 nothing pending, 1 another context, 2 a global register, 3 PRIM, 4 TEX0, 5 palette, 6 shared, 7 slot
+static u32 s_forja_ab_fail_examples = 0;
 
 void GSState::ForjaAbReset()
 {
@@ -2923,29 +2930,61 @@ bool GSState::ForjaAbSwitch()
 {
 	ForjaAbState& ab = m_forja_ab;
 	ab.expect = false;
-	if (m_index->tail == 0)
-		return false;
 	const u32 ctx = m_env.PRIM.CTXT;
+	const GSDrawingContext& nc = m_env.CTXT[ctx];
+	const u32 s = ab.expect_slot;
+	constexpr u64 kNoCld = (1ull << 61) - 1;
+	auto fail = [&](int why) {
+		g_forja_ab_switch_fail[why]++;
+		if (s_forja_ab_fail_examples < 8)
+		{
+			s_forja_ab_fail_examples++;
+			const GSDrawingContext& ref = ab.env[(s == 1 && !ab.has_b) ? 0 : s];
+			ProbeLog("GS A/B switch refused (185): why %d slot %u ctx %u (expected %u) PRIM %03x (slot A %03x) TEX0 %016llx (expected %016llx) "
+					 "dirty %08x; FRAME %llx/%llx ZBUF %llx/%llx SCISSOR %llx/%llx TEST %llx/%llx ALPHA %llx/%llx CLAMP %llx/%llx XYOFFSET %llx/%llx\n",
+				why, s, ctx, ab.expect_ctx, m_env.PRIM.U32[0] & PRIM_REG_MASK, ab.prim[0].U32[0] & PRIM_REG_MASK,
+				static_cast<unsigned long long>(nc.TEX0.U64 & kNoCld), static_cast<unsigned long long>(ab.expect_tex), m_dirty_gs_regs,
+				static_cast<unsigned long long>(nc.FRAME.U64), static_cast<unsigned long long>(ref.FRAME.U64),
+				static_cast<unsigned long long>(nc.ZBUF.U64), static_cast<unsigned long long>(ref.ZBUF.U64),
+				static_cast<unsigned long long>(nc.SCISSOR.U64), static_cast<unsigned long long>(ref.SCISSOR.U64),
+				static_cast<unsigned long long>(nc.TEST.U64), static_cast<unsigned long long>(ref.TEST.U64),
+				static_cast<unsigned long long>(nc.ALPHA.U64), static_cast<unsigned long long>(ref.ALPHA.U64),
+				static_cast<unsigned long long>(nc.CLAMP.U64), static_cast<unsigned long long>(ref.CLAMP.U64),
+				static_cast<unsigned long long>(nc.XYOFFSET.U64), static_cast<unsigned long long>(ref.XYOFFSET.U64));
+		}
+		return false;
+	};
+	if (m_index->tail == 0)
+		return fail(0);
 	if (ctx != ab.expect_ctx)
 	{
 		// The game drew on in the same context after loading the other slot's palette: the pending draw goes now with its own
 		// palette, and what comes next starts a new draw with the loaded one.
+		fail(1);
 		Flush(GSFlushReason::CLUTCHANGE);
 		return false;
 	}
 	constexpr u32 kGlobal = (1u << DIRTY_REG_COLCLAMP) | (1u << DIRTY_REG_DIMX) | (1u << DIRTY_REG_DTHE) | (1u << DIRTY_REG_FOGCOL) |
 							(1u << DIRTY_REG_PABE) | (1u << DIRTY_REG_SCANMSK) | (1u << DIRTY_REG_TEXA);
-	if ((m_dirty_gs_regs & kGlobal) != 0 || ((m_env.PRIM.U32[0] ^ ab.prim[0].U32[0]) & PRIM_REG_MASK & ~(1u << 9)) != 0)
-		return false;
-	constexpr u64 kNoCld = (1ull << 61) - 1;
-	const GSDrawingContext& nc = m_env.CTXT[ctx];
-	const u32 s = ab.expect_slot;
-	if ((nc.TEX0.U64 & kNoCld) != ab.expect_tex || !ab.clut_ok[s])
-		return false;
+	if ((m_dirty_gs_regs & kGlobal) != 0)
+		return fail(2);
+	// PRIM: the first time in slot B, any triangles with a texture and no fog (the rest is compared in the draw's configuration);
+	// back in a slot, its PRIM exactly as it was.
+	if (s == 1 && !ab.has_b)
+	{
+		if (GSUtil::GetPrimClass(m_env.PRIM.PRIM) != GS_PRIM_CLASS::GS_TRIANGLE_CLASS || !m_env.PRIM.TME || m_env.PRIM.FGE)
+			return fail(3);
+	}
+	else if (((m_env.PRIM.U32[0] ^ ab.prim[s].U32[0]) & PRIM_REG_MASK) != 0)
+		return fail(3);
+	if ((nc.TEX0.U64 & kNoCld) != ab.expect_tex)
+		return fail(4);
+	if (!ab.clut_ok[s])
+		return fail(5);
 	if (s == 1 && !ab.has_b)
 	{
 		if (!ForjaAbSameDraw(ab.env[0], nc))
-			return false;
+			return fail(6);
 		ab.env[1] = nc;
 		ab.tex[1] = ab.expect_tex;
 		ab.ctx[1] = ctx;
@@ -2953,7 +2992,7 @@ bool GSState::ForjaAbSwitch()
 		ab.has_b = true;
 	}
 	else if (!ForjaAbSameSlot(ab.env[s], nc))
-		return false;
+		return fail(7);
 	ab.segs.push_back({m_index->tail, s});
 	ab.slot = s;
 	m_forja_ab_tag = s ? 0x100u : 0u;
