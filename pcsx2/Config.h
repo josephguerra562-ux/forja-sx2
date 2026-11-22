@@ -1151,7 +1151,11 @@ struct Pcsx2Config
 		static constexpr s8 MIN_EE_CYCLE_RATE = -6;
 		// Forja SX2 (compilation 97): 100 % at most. Above it asks more of the console for nothing: 17 of 32 players' reports went
 		// through it trying to speed a game up, no factory profile uses it, and Command Mission's own value is 100 %.
-		static constexpr s8 MAX_EE_CYCLE_RATE = 0;
+		// 179 in the app: up to +3 again (130/200/400 %), for the factory profiles: Shadow of the Colossus (2026-11-22, the 177) runs its
+		// heavy view at full speed with the EE waiting 27 %, a frame every 6 refreshes for want of PS2 CPU; the 178's EECycleRate = 1 came
+		// out 0 from this clamp. The players still can't go over 100 %: the pause menu's row is -6..0 and ajustes.ini's ee_rate is
+		// clamped to -6..0 (ps4/vm/ForjaSettings.h).
+		static constexpr s8 MAX_EE_CYCLE_RATE = 3;
 		static constexpr u8 MAX_EE_CYCLE_SKIP = 3;
 
 		BITFIELD32()
