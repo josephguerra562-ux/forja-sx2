@@ -431,6 +431,8 @@ extern u64 g_forja_ab_capfail[16];
 extern u64 g_forja_ab_submit_why[8]; // GSRendererHW.cpp (188)
 extern u64 g_forja_ab_alpha_retries, g_forja_ab_alpha_retry_ok; // GSState.cpp (188)
 extern u64 g_forja_ab_skipped; // GSState.cpp (189)
+extern u64 g_forja_vifm_pieces[2], g_forja_vifm_codes[2], g_forja_vifm_ticks[2], g_forja_vifm_hardcodes, g_forja_vifm_prefix,
+	g_forja_vifm_hard_by[8]; // pcsx2/Vif_Transfer.cpp (193, "VIF en su hilo" step 2)
 extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app, "PLZCW rápido")
 // 174 in the app, "Animación a medias" ([Forja] AnimMediasDir/AnimMediasFuncion/AnimMediasVacia). God of War II's map (the 171-173,
 // herramientas/mapa_ee.py): the EE's busiest code in the Colossus is decoding animations (0x112380, ~13 %: each bone channel's keys for
@@ -6337,6 +6339,29 @@ void VMHostPoll()
 			s_last_audio_us = audio_us;
 		}
 		{
+			// 193 in the app, "VIF en su hilo" step 2: the VIF1 pieces a second without and with a hard code, their codes, the share of the
+			// EE's time each took (TSC ticks against the TSC's own rate over the interval), the codes before the first hard one, and the
+			// hard codes by kind.
+			{
+				static u64 s_vm[12] = {}, s_tsc = 0;
+				const u64 tsc = __builtin_ia32_rdtsc();
+				const u64 now[12] = {g_forja_vifm_pieces[0], g_forja_vifm_pieces[1], g_forja_vifm_codes[0], g_forja_vifm_codes[1], g_forja_vifm_ticks[0],
+					g_forja_vifm_ticks[1], g_forja_vifm_hardcodes, g_forja_vifm_prefix, g_forja_vifm_hard_by[0], g_forja_vifm_hard_by[2] + g_forja_vifm_hard_by[3],
+					g_forja_vifm_hard_by[4], g_forja_vifm_hard_by[1] + g_forja_vifm_hard_by[5] + g_forja_vifm_hard_by[6] + g_forja_vifm_hard_by[7]};
+				if (s_tsc && tsc > s_tsc && now[0] + now[1] > s_vm[0] + s_vm[1] && interval > 0.0 && vm_state == VMState::Running)
+				{
+					const double ticks = static_cast<double>(tsc - s_tsc);
+					double d[12];
+					for (int k = 0; k < 12; k++)
+						d[k] = static_cast<double>(now[k] - s_vm[k]);
+					ProbeLog("VIF1 pieces (193): easy_per_second=%.0f hard_per_second=%.0f codes_easy=%.0f codes_hard=%.0f codes_before_first_hard=%.0f "
+						"ee_pct_easy=%.1f ee_pct_hard=%.1f hard_codes_per_second=%.0f (direct=%.0f flush=%.0f mscalf=%.0f other=%.0f)\n",
+						d[0] / interval, d[1] / interval, d[2] / interval, d[3] / interval, d[7] / interval, 100.0 * d[4] / ticks, 100.0 * d[5] / ticks,
+						d[6] / interval, d[8] / interval, d[9] / interval, d[10] / interval, d[11] / interval);
+				}
+				std::copy(std::begin(now), std::end(now), s_vm);
+				s_tsc = tsc;
+			}
 			// 151 in the app, "VIF1 en menos turnos": the VIF1 steps joined into the scan (EE thread, like this heartbeat).
 			static u64 s_last_vif1_fused = 0, s_last_not[5] = {};
 			const s32 limit = g_forja_vif1_fuse.load(std::memory_order_relaxed);

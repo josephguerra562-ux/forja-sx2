@@ -18,6 +18,16 @@ std::atomic<u64> g_forja_vif_tramos_checked{0}, g_forja_vif_tramos_wrong{0};
 // cycle, mode, mask). Written once by the EE thread before g_forja_vif_tramos_wrong becomes 1 (release); main.cpp's meter prints it.
 u32 g_forja_vif_tramos_first_wrong[2][10] = {};
 extern std::atomic<int> g_orbis_vif1_exec_early; // Vif_Unpack.cpp
+#if defined(PCSX2_PS4)
+// 193 in the app, "VIF en su hilo", step 2 (informes/VIF_HILO_PROPIO_PLAN_2026-11-22.md): each VIF1 piece (one vifTransfer) measured.
+// "Hard" codes are the ones another thread couldn't run by itself: DIRECT/DIRECTHL (the GIF's PATH2, ordered with PATH3 and PATH1),
+// FLUSH/FLUSHA/MSCALF (wait for the GIF), MARK, MSKPATH3, and any code with the interrupt bit. [0] pieces without one, [1] with;
+// codes, the EE's time (TSC ticks), and in the hard pieces the codes before the first hard one (another thread could take those).
+u64 g_forja_vifm_pieces[2] = {}, g_forja_vifm_codes[2] = {}, g_forja_vifm_ticks[2] = {}, g_forja_vifm_hardcodes = 0, g_forja_vifm_prefix = 0;
+u64 g_forja_vifm_hard_by[8] = {}; // 0 DIRECT, 1 DIRECTHL, 2 FLUSH, 3 FLUSHA, 4 MSCALF, 5 MARK, 6 MSKPATH3, 7 interrupt bit
+static u32 s_forja_vifm_codes = 0, s_forja_vifm_first_hard = 0;
+static bool s_forja_vifm_hard = false;
+#endif
 
 namespace
 {
@@ -245,6 +255,23 @@ _vifT void vifTransferLoop(u32* &data) {
 
 			vifXRegs.code = data[0];
 			vifX.cmd	  = data[0] >> 24;
+#if defined(PCSX2_PS4)
+			if (idx) // 193 in the app: the piece's codes and its first hard one
+			{
+				const u32 c = vifX.cmd & 0x7f;
+				const int hb = (vifX.cmd & 0x80) ? 7 : c == 0x50 ? 0 : c == 0x51 ? 1 : c == 0x11 ? 2 : c == 0x13 ? 3 : c == 0x15 ? 4 : c == 0x07 ? 5 :
+								 c == 0x06 ? 6 : -1;
+				if (hb >= 0)
+				{
+					if (!s_forja_vifm_hard)
+						s_forja_vifm_first_hard = s_forja_vifm_codes;
+					s_forja_vifm_hard = true;
+					g_forja_vifm_hardcodes++;
+					g_forja_vifm_hard_by[hb]++;
+				}
+				s_forja_vifm_codes++;
+			}
+#endif
 			if (idx)
 				ORBIS_EEDIAG(OrbisEEDiag::vif1_codes[vifX.cmd & 0x7f]++; OrbisEEDiag::vif1_irq_codes += vifX.cmd >> 7); // vk-285-100; 150
 
@@ -354,7 +381,27 @@ _vifT static __fi bool vifTransfer(u32 *data, int size, bool TTE) {
 	int transferred = vifX.irqoffset.enabled ? vifX.irqoffset.value : 0;
 
 	vifX.vifpacketsize = size;
+#if defined(PCSX2_PS4)
+	u64 forja_vifm_t0 = 0;
+	if (idx) // 193 in the app
+	{
+		forja_vifm_t0 = __builtin_ia32_rdtsc();
+		s_forja_vifm_codes = 0;
+		s_forja_vifm_hard = false;
+	}
+#endif
 	vifTransferLoop<idx>(data);
+#if defined(PCSX2_PS4)
+	if (idx)
+	{
+		const int h = s_forja_vifm_hard ? 1 : 0;
+		g_forja_vifm_pieces[h]++;
+		g_forja_vifm_codes[h] += s_forja_vifm_codes;
+		g_forja_vifm_ticks[h] += __builtin_ia32_rdtsc() - forja_vifm_t0;
+		if (h)
+			g_forja_vifm_prefix += s_forja_vifm_first_hard;
+	}
+#endif
 
 	transferred += size - vifX.vifpacketsize;
 
