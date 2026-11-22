@@ -5,6 +5,9 @@
 // of the VU0 micro.
 
 #include "Common.h"
+#if defined(PCSX2_PS4)
+#include "ForjaVifThread.h" // 195 in the app, "VIF en su hilo"
+#endif
 #include <cmath>
 #include "VUmicro.h"
 #include "MTVU.h"
@@ -49,6 +52,9 @@ void vu1Finish(bool add_cycles) {
 void vu1ExecMicro(u32 addr)
 {
 	if (THREAD_VU1) {
+#if defined(PCSX2_PS4)
+		if (!ForjaVifT::OnThread()) // 195: VPU_STAT is the EE's
+#endif
 		VU0.VI[REG_VPU_STAT].UL &= ~0xFF00;
 		// Okay this is a little bit of a hack, but with good reason.
 		// Most of the time with MTVU we want to pretend the VU has finished quickly as to gain the benefit from running another thread
@@ -59,6 +65,13 @@ void vu1ExecMicro(u32 addr)
 		//	VU0.VI[REG_VPU_STAT].UL |= 0x0100;
 		// }
 		// Update 25/06/2022: Disabled this for now, let games YOLO it, if it breaks MTVU, disable MTVU (it doesn't work properly anyway) - Refraction
+#if defined(PCSX2_PS4)
+		if (ForjaVifT::OnThread()) // 195 in the app: from the VIF thread, only the ring (the EE does the rest at its next event)
+		{
+			vu1Thread.ForjaExecuteVUFromVifThread(addr, vif1Regs.top, vif1Regs.itop, VU0.VI[REG_FBRST].UL);
+			return;
+		}
+#endif
 		vu1Thread.ExecuteVU(addr, vif1Regs.top, vif1Regs.itop, VU0.VI[REG_FBRST].UL);
 		return;
 	}

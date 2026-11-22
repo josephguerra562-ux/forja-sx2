@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0+
 
 #include "Common.h"
+#if defined(PCSX2_PS4)
+#include "ForjaVifThread.h" // 195 in the app, "VIF en su hilo"
+#endif
 #include "GS.h"
 #include "Gif_Unit.h"
 #include "MTVU.h"
@@ -94,6 +97,19 @@ static __fi void vuExecMicro(int idx, u32 addr, bool requires_wait)
 		vifRegs.top = vifRegs.tops & 0x3ff;
 
 		// is DBF flag set in VIF_STAT?
+#if defined(PCSX2_PS4)
+		// 195 in the app: the VIF thread's own DBF while it runs (vif1Regs.stat is the EE's)
+		if (ForjaVifT::DbfGet())
+		{
+			vifRegs.tops = vifRegs.base;
+			ForjaVifT::DbfSet(false);
+		}
+		else
+		{
+			vifRegs.tops = vifRegs.base + vifRegs.ofst;
+			ForjaVifT::DbfSet(true);
+		}
+#else
 		if (vifRegs.stat.DBF)
 		{
 			// it is, so set tops with base, and clear the stat DBF flag
@@ -106,6 +122,7 @@ static __fi void vuExecMicro(int idx, u32 addr, bool requires_wait)
 			vifRegs.tops = vifRegs.base + vifRegs.ofst;
 			vifRegs.stat.DBF = true;
 		}
+#endif
 	}
 
 	GetVifX.queued_program = true;
@@ -580,7 +597,11 @@ vifOp(vifCode_Offset)
 	vif1Only();
 	pass1
 	{
+#if defined(PCSX2_PS4)
+		ForjaVifT::DbfSet(false); // 195 in the app
+#else
 		vif1Regs.stat.DBF = false;
+#endif
 		vif1Regs.ofst = vif1Regs.code & 0x3ff;
 		vif1Regs.tops = vif1Regs.base;
 		vif1.cmd = 0;

@@ -130,6 +130,7 @@ public:
 	void Get_MTVUChanges();
 
 	void ExecuteVU(u32 vu_addr, u32 vif_top, u32 vif_itop, u32 fbrst);
+	void ForjaExecuteVUFromVifThread(u32 vu_addr, u32 vif_top, u32 vif_itop, u32 fbrst); // 195 in the app (MTVU.cpp)
 
 	// 175 in the app, "VIF sin copia": nocopy 0 copies the data (as always), 1 copies it and adds its address (the check), 2 sends
 	// only the address (the VU thread reads the game's RAM).

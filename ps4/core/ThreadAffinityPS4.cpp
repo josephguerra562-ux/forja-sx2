@@ -286,6 +286,23 @@ namespace PS4ThreadAffinity
 		return core;
 	}
 
+	int PinCurrentThreadToVif()
+	{
+		if (!IsEnabled())
+			return -1;
+		ApplyPriority("VIF", WORKER_PRIORITY);
+		int core = ResolveCore("VIF", -1);
+		if (core < 0 || core > 6)
+		{
+			core = ResolveCore("AYUDANTES", 4);
+			if (core < 0 || core > 5)
+				core = 4;
+		}
+		const int result = scePthreadSetaffinity(scePthreadSelf(), 1ULL << core);
+		ProbeLog("PS4 thread affinity: VIF core=%d sce_result=0x%x\n", core, result);
+		return core;
+	}
+
 	void SetGamePlan(const char* plan)
 	{
 		std::call_once(s_file_loaded, LoadOverrides);

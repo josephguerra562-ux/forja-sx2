@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0+
 
 #include "Common.h"
+#if defined(PCSX2_PS4)
+#include "ForjaVifThread.h" // 195 in the app, "VIF en su hilo"
+#endif
 #include "GS.h"
 #include "Gif_Unit.h"
 #include "MTVU.h"
@@ -446,6 +449,9 @@ __fi void vif1Interrupt()
 		}
 	}
 
+#if defined(PCSX2_PS4)
+	if (!ForjaVifT::Pending()) // 195 in the app
+#endif
 	vif1.vifstalled.enabled = false;
 
 	//Mirroring change to VIF0
@@ -565,6 +571,9 @@ __fi void vif1Interrupt()
 
 void dmaVIF1()
 {
+#if defined(PCSX2_PS4)
+	ForjaVifT::FullDrain(); // 195 in the app
+#endif
 	VIF_LOG("dmaVIF1 chcr = %lx, madr = %lx, qwc  = %lx\n"
 			"        tadr = %lx, asr0 = %lx, asr1 = %lx",
 		vif1ch.chcr._u32, vif1ch.madr, vif1ch.qwc,

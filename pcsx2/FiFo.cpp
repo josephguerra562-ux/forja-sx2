@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0+
 
 #include "Common.h"
+#if defined(PCSX2_PS4)
+#include "ForjaVifThread.h" // 195 in the app, "VIF en su hilo"
+#endif
 
 #include "Gif.h"
 #include "Gif_Unit.h"
@@ -77,6 +80,9 @@ void WriteFIFO_VIF0(const mem128_t* value)
 
 void WriteFIFO_VIF1(const mem128_t* value)
 {
+#if defined(PCSX2_PS4)
+	ForjaVifT::FullDrain(); // 195 in the app
+#endif
 	VIF_LOG("WriteFIFO/VIF1 <- 0x%08X.%08X.%08X.%08X", value->_u32[0], value->_u32[1], value->_u32[2], value->_u32[3]);
 
 	if (vif1Regs.stat.FDR)

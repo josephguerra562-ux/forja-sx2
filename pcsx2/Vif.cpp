@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0+
 
 #include "Common.h"
+#if defined(PCSX2_PS4)
+#include "ForjaVifThread.h" // 195 in the app, "VIF en su hilo"
+#endif
 #include "GS.h"
 #include "Gif.h"
 #include "Gif_Unit.h"
@@ -23,6 +26,9 @@ void vif0Reset()
 
 void vif1Reset()
 {
+#if defined(PCSX2_PS4)
+	ForjaVifT::FullDrain(); // 195 in the app
+#endif
 	/* Reset the whole VIF, meaning the internal pcsx2 vars, and all the registers */
 	std::memset(&vif1, 0, sizeof(vif1));
 	std::memset(&vif1Regs, 0, sizeof(vif1Regs));
@@ -47,6 +53,9 @@ bool SaveStateBase::vif0Freeze()
 
 bool SaveStateBase::vif1Freeze()
 {
+#if defined(PCSX2_PS4)
+	ForjaVifT::FullDrain(); // 195 in the app: the state as the EE sees it
+#endif
 	if (!FreezeTag("VIF1dma"))
 		return false;
 
@@ -296,6 +305,10 @@ __fi void vif1STAT(u32 value)
 
 _vifT __fi u32 vifRead32(u32 mem)
 {
+#if defined(PCSX2_PS4)
+	if (idx)
+		ForjaVifT::FullDrain(); // 195 in the app
+#endif
 	vifStruct& vif = MTVU_VifX;
 	bool wait = idx && THREAD_VU1;
 
@@ -343,6 +356,10 @@ _vifT __fi u32 vifRead32(u32 mem)
 // returns TRUE if the caller should writeback the value to the eeHw register map.
 _vifT __fi bool vifWrite32(u32 mem, u32 value)
 {
+#if defined(PCSX2_PS4)
+	if (idx)
+		ForjaVifT::FullDrain(); // 195 in the app
+#endif
 	vifStruct& vif = GetVifX;
 
 	switch (mem)

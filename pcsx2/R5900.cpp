@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0+
 
 #include "Common.h"
+#if defined(PCSX2_PS4)
+#include "ForjaVifThread.h" // 195 in the app, "VIF en su hilo"
+#endif
 #include "OrbisEEDiag.h" // vk-285-100
 #include "OrbisEEHle.h" // vk-285-102
 
@@ -433,6 +436,10 @@ static float s_orbis_ratio = 8.0f;
 // and the recompiler.  (moved here to help alleviate redundant code)
 __fi void _cpuEventTest_Shared()
 {
+#if defined(PCSX2_PS4)
+	if (ForjaVifT::g_stopped.load(std::memory_order_relaxed) | ForjaVifT::g_mtvu_gif_pending.load(std::memory_order_relaxed)) // 195 in the app
+		ForjaVifT::EventHook();
+#endif
 #if defined(PCSX2_PS4_VM_BOOT)
 	PS4EEEventProfile::EventScope event_profile(&cpuRegs.pc);
 	if (PS4EEHotspots::enabled)

@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0+
 
 #include "Common.h"
+#if defined(PCSX2_PS4)
+#include "ForjaVifThread.h" // 195 in the app, "VIF en su hilo"
+#endif
 #include "Gif_Unit.h"
 #include "MTVU.h"
 #include "OrbisCopy.h" // vk-285-98
@@ -865,6 +868,10 @@ void VU_Thread::OrbisBadCommand(u32 tag)
 // to write a continuous 'size * sizeof(u32)' bytes
 void VU_Thread::ReserveSpace(s32 size)
 {
+#if defined(PCSX2_PS4)
+	if (!ForjaVifT::OnThread() && ForjaVifT::Pending()) // 195 in the app: the EE writes the ring only after the VIF thread's queue
+		ForjaVifT::FullDrain();
+#endif
 	pxAssert(m_write_pos < buffer_size);
 	pxAssert(size < buffer_size);
 	pxAssert(size > 0);
@@ -1135,6 +1142,10 @@ bool VU_Thread::IsDone()
 void VU_Thread::WaitVU()
 {
 	MTVU_LOG("MTVU - WaitVU!");
+#if defined(PCSX2_PS4)
+	if (!ForjaVifT::OnThread() && ForjaVifT::Pending()) // 195 in the app: the VU1 isn't done while the VIF thread has work queued
+		ForjaVifT::FullDrain();
+#endif
 	FlushKick(); // vk-285-84: WaitForEmpty takes a spinning or sleeping thread as done
 	const unsigned long long t0 = __builtin_ia32_rdtsc(); // eerec-281
 	OrbisEEWaitScope orbis_wait; // vk-285-8
@@ -1144,6 +1155,37 @@ void VU_Thread::WaitVU()
 
 // Forja SX2 (compilation 135): the cycle skip in sixteenths of a VU1 program's cycles, -1 when the row's quarters rule (ExecuteVU).
 std::atomic<int> g_forja_skip16{-1};
+
+#if defined(PCSX2_PS4)
+// 195 in the app, "VIF en su hilo": a VU1 program started by the VIF thread. Only the ring; the EE's parts of ExecuteVU go to the EE's
+// next event (ForjaVifT::ApplyPending): the MTVU GIF transfer, and the cycle skip's cycles (Instant VU1 is on: no busy time).
+void VU_Thread::ForjaExecuteVUFromVifThread(u32 vu_addr, u32 vif_top, u32 vif_itop, u32 fbrst)
+{
+	ReserveSpace(5);
+	{
+		const s32 wp = m_write_pos;
+		u32* p = &buffer[wp];
+		p[0] = MTVU_VU_EXECUTE;
+		p[1] = vu_addr;
+		p[2] = vif_top;
+		p[3] = vif_itop;
+		p[4] = fbrst;
+		m_write_pos = wp + 5;
+	}
+	CommitWritePos();
+	KickAfterWrite();
+	ForjaVifT::g_mtvu_gif_pending.store(1, std::memory_order_release);
+	const int skip_fine = g_forja_skip16.load(std::memory_order_relaxed);
+	const u32 cycle_skip16 = skip_fine >= 0 ? static_cast<u32>(skip_fine) :
+	                                          (EmuConfig.Speedhacks.EECycleSkip * 4u + EmuConfig.Speedhacks.EECycleSkipQuarters) * 4u;
+	if (cycle_skip16)
+	{
+		const u32 cycles = std::max(Get_vuCycles(), 4u);
+		const u32 skip_cycles = std::min(cycles, 3000u);
+		ForjaVifT::g_skip_cycles.fetch_add(skip_cycles * cycle_skip16 / 16, std::memory_order_relaxed);
+	}
+}
+#endif
 
 void VU_Thread::ExecuteVU(u32 vu_addr, u32 vif_top, u32 vif_itop, u32 fbrst)
 {

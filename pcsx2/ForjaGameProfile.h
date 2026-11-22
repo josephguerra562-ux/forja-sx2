@@ -149,6 +149,10 @@ namespace ForjaGameProfile
 		// the EE tells the VU thread about new work once per VIF1 piece instead of once per packet. Off unless the profile says.
 		int mtvu_batch = -1;
 		Origin mtvu_batch_origin = Origin::Global;
+		// 195 in the app: [Forja] VifHilo, "VIF en su hilo" (pcsx2/Vif_Transfer.cpp, ForjaVifThread.h): 1 the VIF1's codes run on their own
+		// thread. Off unless the profile says.
+		int vif_hilo = -1;
+		Origin vif_hilo_origin = Origin::Global;
 		Origin gs_ab_origin = Origin::Global;
 		// 173 in the app: [Forja] EEPlzcwRapido, "PLZCW rápido" (pcsx2/x86/iMMI.cpp): 1 the EE's PLZCW with LZCNT and no branches. Off unless
 		// the profile says.
@@ -404,6 +408,7 @@ namespace ForjaGameProfile
 		read_int("GSVerticesUnaVez", &v.gs_vt_once, &v.gs_vt_once_origin); // 171 in the app
 		read_int("GSDibujoAB", &v.gs_ab, &v.gs_ab_origin); // 183 in the app
 		read_int("VU1AvisoPorPedazo", &v.mtvu_batch, &v.mtvu_batch_origin); // 194 in the app
+		read_int("VifHilo", &v.vif_hilo, &v.vif_hilo_origin); // 195 in the app
 		read_int("EEPlzcwRapido", &v.ee_lzcnt, &v.ee_lzcnt_origin); // 173 in the app
 		read_int("AnimMediasDir", &v.anim_half_addr, &v.anim_half_origin); // 174 in the app
 		read_int("AnimMediasFuncion", &v.anim_half_fn, &v.anim_half_origin);
@@ -563,6 +568,7 @@ namespace ForjaGameProfile
 		v.gs_vt_once = std::clamp(v.gs_vt_once, -1, 1); // 171 in the app
 		v.gs_ab = std::clamp(v.gs_ab, -1, 3); // 183 in the app (188: 3 also joins draws with the second alpha pass)
 		v.mtvu_batch = std::clamp(v.mtvu_batch, -1, 1); // 194 in the app
+		v.vif_hilo = std::clamp(v.vif_hilo, -1, 1); // 195 in the app
 		v.ee_lzcnt = std::clamp(v.ee_lzcnt, -1, 1); // 173 in the app
 		v.vif_nocopy = std::clamp(v.vif_nocopy, -1, 1); // 175 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"

@@ -416,6 +416,7 @@ extern std::atomic<u64> g_forja_vif_tramos_checked, g_forja_vif_tramos_wrong;
 extern u32 g_forja_vif_tramos_first_wrong[2][10];
 extern std::atomic<u32> g_orbis_mtvu_ring_kb; // pcsx2/MTVU.cpp (169 in the app, "Cola corta del VU1")
 extern std::atomic<int> g_orbis_mtvu_batch; // pcsx2/MTVU.cpp (194 in the app, "Aviso al VU1 por pedazo")
+#include "ForjaVifThread.h" // pcsx2 (195 in the app, "VIF en su hilo")
 extern std::atomic<bool> g_forja_vif_adelanto; // pcsx2/Vif1_Dma.cpp (170 in the app, "VIF1 por adelantado")
 extern u64 g_orbis_vif1_tag_ids[8]; // pcsx2/Vif1_Dma.cpp (the VIF1 DMA tags read, per ID)
 extern std::atomic<int> g_forja_gs_vt_once; // pcsx2/GS/Renderers/Common/GSVertexTrace.cpp (171 in the app, "Vértices una vez")
@@ -3612,6 +3613,16 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				old ? ", vm-ee-plzcw-viejo" : "");
 	}
 	{
+		// 195 in the app, "VIF en su hilo" ([Forja] VifHilo; informes/VIF_HILO_PROPIO_PLAN_2026-11-22.md). /data/ForjaSX2/vm-vif-hilo-no
+		// turns it off.
+		{
+			const bool no = access("/data/ForjaSX2/vm-vif-hilo-no", F_OK) == 0;
+			const bool on = !no && s_profile.vif_hilo == 1;
+			ForjaVifT::g_mode.store(on ? 1 : 0, std::memory_order_relaxed);
+			if (on || no || s_profile.vif_hilo_origin != ForjaGameProfile::Origin::Global)
+				ProbeLog("VIF thread (195 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.vif_hilo_origin),
+					no ? ", vm-vif-hilo-no" : "");
+		}
 		// 194 in the app, "Aviso al VU1 por pedazo" ([Forja] VU1AvisoPorPedazo): the EE tells the VU thread once per VIF1 piece (the PS5
 		// port's kick batching, vk-285-84; WaitVU and the other waits flush a deferred kick first). Shadow of the Colossus' heavy view sends
 		// the VU thread over a million packets a second in ~440,000 pieces (the 193). /data/ForjaSX2/vm-vu1-aviso-cada-paquete turns it off.
@@ -6351,6 +6362,19 @@ void VMHostPoll()
 			s_last_audio_us = audio_us;
 		}
 		{
+			// 195 in the app, "VIF en su hilo": pieces a second run by the thread and by the EE, the thread's stops before a hard code,
+			// the EE's waits for the queue (and those that actually waited), and the stops that stalled again.
+			{
+				static u64 s_vt[6] = {};
+				const u64 now[6] = {ForjaVifT::g_pieces_thread.load(std::memory_order_relaxed), ForjaVifT::g_pieces_inline.load(std::memory_order_relaxed),
+					ForjaVifT::g_stops.load(std::memory_order_relaxed), ForjaVifT::g_drains.load(std::memory_order_relaxed),
+					ForjaVifT::g_full_waits.load(std::memory_order_relaxed), ForjaVifT::g_stalls_left.load(std::memory_order_relaxed)};
+				if (ForjaVifT::g_mode.load(std::memory_order_relaxed) && interval > 0.0 && vm_state == VMState::Running)
+					ProbeLog("VIF thread (195): thread_pieces_per_second=%.0f ee_pieces_per_second=%.0f stops_per_second=%.0f drains_per_second=%.0f "
+						"drains_that_waited=%.0f stalled_again=%.0f\n", (now[0] - s_vt[0]) / interval, (now[1] - s_vt[1]) / interval, (now[2] - s_vt[2]) / interval,
+						(now[3] - s_vt[3]) / interval, (now[4] - s_vt[4]) / interval, (now[5] - s_vt[5]) / interval);
+				std::copy(std::begin(now), std::end(now), s_vt);
+			}
 			// 193 in the app, "VIF en su hilo" step 2: the VIF1 pieces a second without and with a hard code, their codes, the share of the
 			// EE's time each took (TSC ticks against the TSC's own rate over the interval), the codes before the first hard one, and the
 			// hard codes by kind.

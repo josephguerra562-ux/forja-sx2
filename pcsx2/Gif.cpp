@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0+
 
 #include "Common.h"
+#if defined(PCSX2_PS4)
+#include "ForjaVifThread.h" // 195 in the app, "VIF en su hilo"
+#endif
 #include "GS.h"
 #include "Gif_Unit.h"
 #include "Vif_Dma.h"
@@ -470,6 +473,9 @@ void GIFdma()
 
 void dmaGIF()
 {
+#if defined(PCSX2_PS4)
+	ForjaVifT::FullDrain(); // 195 in the app: PATH3 after the VIF's packets
+#endif
 	// DevCon.Warning("dmaGIFstart chcr = %lx, madr = %lx, qwc  = %lx\n tadr = %lx, asr0 = %lx, asr1 = %lx", gifch.chcr._u32, gifch.madr, gifch.qwc, gifch.tadr, gifch.asr0, gifch.asr1);
 
 	gif.gspath3done = false; // For some reason this doesn't clear? So when the system starts the thread, we will clear it :)

@@ -19,6 +19,18 @@ std::atomic<u64> g_forja_vif_tramos_checked{0}, g_forja_vif_tramos_wrong{0};
 u32 g_forja_vif_tramos_first_wrong[2][10] = {};
 extern std::atomic<int> g_orbis_vif1_exec_early; // Vif_Unpack.cpp
 #if defined(PCSX2_PS4)
+#include <thread>
+#include <unistd.h>
+#include "ForjaVifThread.h"
+namespace ForjaVifT
+{
+	static thread_local bool t_on_thread = false; // 195 in the app (ForjaVifThread.h: OnThread)
+	static thread_local bool t_hit_hard = false;
+	bool OnThread() { return t_on_thread; }
+} // namespace ForjaVifT
+namespace PS4ThreadAffinity { int PinCurrentThreadToVif(); } // ps4/core/ThreadAffinityPS4.cpp (195)
+#endif
+#if defined(PCSX2_PS4)
 // 193 in the app, "VIF en su hilo", step 2 (informes/VIF_HILO_PROPIO_PLAN_2026-11-22.md): each VIF1 piece (one vifTransfer) measured.
 // "Hard" codes are the ones another thread couldn't run by itself: DIRECT/DIRECTHL (the GIF's PATH2, ordered with PATH3 and PATH1),
 // FLUSH/FLUSHA/MSCALF (wait for the GIF), MARK, MSKPATH3, and any code with the interrupt bit. [0] pieces without one, [1] with;
@@ -217,8 +229,13 @@ _vifT void vifTransferLoop(u32* &data) {
 
 	int ret = 0;
 
-	vifXRegs.stat.VPS |= VPS_TRANSFERRING;
-	vifXRegs.stat.ER1  = false;
+#if defined(PCSX2_PS4)
+	if (!(idx && ForjaVifT::t_on_thread)) // 195 in the app: vif1Regs.stat is the EE's
+#endif
+	{
+		vifXRegs.stat.VPS |= VPS_TRANSFERRING;
+		vifXRegs.stat.ER1  = false;
+	}
 	if (idx)
 		s_tramo_pred_n = s_tramo_pred_i = 0; // 167 in the app: predictions don't outlive the loop
 	//VIF_LOG("Starting VIF%d loop, pSize = %x, stalled = %x", idx, pSize, vifX.vifstalled.enabled );
@@ -244,6 +261,14 @@ _vifT void vifTransferLoop(u32* &data) {
 		}
 
 		if(!vifX.cmd) { // Get new VifCode
+#if defined(PCSX2_PS4)
+			// 195 in the app, "VIF en su hilo": the VIF thread leaves a hard code (and all after it in the piece) to the EE.
+			if (idx && ForjaVifT::t_on_thread && ForjaVifT::IsHardForThread(data, pSize))
+			{
+				ForjaVifT::t_hit_hard = true;
+				break;
+			}
+#endif
 
 			if(!vifXRegs.err.MII)
 			{
@@ -256,7 +281,7 @@ _vifT void vifTransferLoop(u32* &data) {
 			vifXRegs.code = data[0];
 			vifX.cmd	  = data[0] >> 24;
 #if defined(PCSX2_PS4)
-			if (idx) // 193 in the app: the piece's codes and its first hard one
+			if (idx && !ForjaVifT::t_on_thread) // 193 in the app: the piece's codes and its first hard one (EE only)
 			{
 				const u32 c = vifX.cmd & 0x7f;
 				const int hb = (vifX.cmd & 0x80) ? 7 : c == 0x50 ? 0 : c == 0x51 ? 1 : c == 0x11 ? 2 : c == 0x13 ? 3 : c == 0x15 ? 4 : c == 0x07 ? 5 :
@@ -327,7 +352,11 @@ _vifT void vifTransferLoop(u32* &data) {
 						done = false;
 					else
 					{
+#if defined(PCSX2_PS4)
+						ForjaVifT::DbfSet(false); // 195 in the app
+#else
 						vif1Regs.stat.DBF = false;
+#endif
 						vif1Regs.ofst = vif1Regs.code & 0x3ff;
 						vif1Regs.tops = vif1Regs.base;
 					}
@@ -360,8 +389,310 @@ _vifT void vifTransferLoop(u32* &data) {
 	}
 }
 
+#if defined(PCSX2_PS4)
+// ---------------------------------------------------------------------------------------------------------------------------------
+// 195 in the app, "VIF en su hilo" (informes/VIF_HILO_PROPIO_PLAN_2026-11-22.md). Shadow of the Colossus' heavy view: ~440,000 VIF1
+// pieces a second that only feed the VU1 (~5 codes each) took ~30 % of the EE (the 193). The EE copies each piece into a queue and
+// counts it as transferred (the DMA, its tags and its timing stay on the EE: g_vif1Cycles goes by size); the VIF thread runs the same
+// vifTransferLoop on it, with the same VIF state, writing the same packets into the VU1's ring. Before a hard code (DIRECT/DIRECTHL,
+// FLUSH/FLUSHA/MSCALF, MARK, MSKPATH3, the interrupt bit, or a program while the VU1 shows busy) it stops, and the EE runs from there
+// at its next event. The EE waits for the queue to empty before it reads or writes the VIF1's registers, writes the VU1's ring itself,
+// starts a GIF DMA, saves or loads a state, or resets the VIF1.
+namespace ForjaVifT
+{
+	std::atomic<int> g_mode{0}; // 0 off, 1 on (ps4/vm/main.cpp, [Forja] VifHilo)
+	static thread_local int t_in_drain = 0;
+	std::atomic<u64> g_skip_cycles{0};
+	std::atomic<u32> g_mtvu_gif_pending{0};
+	std::atomic<u32> g_stopped{0};
+	std::atomic<u64> g_pieces_thread{0}, g_pieces_inline{0}, g_stops{0}, g_drains{0}, g_full_waits{0}, g_stalls_left{0};
+	static constexpr u32 kCap = 1u << 20; // words (4 MB)
+	static constexpr u32 kWrap = 0xffffffffu;
+	static u32* s_q = nullptr;
+	static std::atomic<u32> s_head{0}, s_tail{0};
+	static std::atomic<bool> s_busy{false};
+	static u32 s_stop_pos = 0, s_stop_left = 0, s_stop_next = 0; // written by the thread before g_stopped
+	static std::atomic<bool> s_started{false};
+	static bool s_dbf = false; // the thread's DBF while it owns the VIF1's state
+	static bool s_ee_owns_dbf = true; // after a drain the EE's vif1Regs.stat.DBF is the one; the next push hands it over
+	static std::thread::id s_ee_tid;
+	bool DbfGet() { return t_on_thread ? s_dbf : vif1Regs.stat.DBF; }
+	void DbfSet(bool v)
+	{
+		if (t_on_thread)
+			s_dbf = v;
+		else
+			vif1Regs.stat.DBF = v;
+	}
+	static bool s_off_for_good = false; // something the thread can't follow showed up (an interrupt bit through the EE): EE only
+
+	bool IsHardForThread(const u32* data, u32 pSize)
+	{
+		const u32 w = data[0];
+		const u32 c = (w >> 24) & 0x7f;
+		if (w & 0x80000000u)
+			return true;
+		switch (c)
+		{
+			case 0x06: case 0x07: case 0x11: case 0x13: case 0x15: case 0x50: case 0x51:
+				return true;
+			case 0x00: // a NOP that announces MSKPATH3 stalls
+				return pSize > 1 && ((data[1] >> 24) & 0x7f) == 0x6 && (data[1] & 0x1);
+			case 0x10: case 0x14: case 0x17: // FLUSHE, MSCAL, MSCNT: the EE handles a VU1 that shows busy (or stopped by a T bit)
+				return (VU0.VI[REG_VPU_STAT].UL & 0x500) != 0;
+			default:
+				return false;
+		}
+	}
+
+	static void ThreadMain()
+	{
+		t_on_thread = true;
+		PS4ThreadAffinity::PinCurrentThreadToVif();
+		u32 idle = 0;
+		for (;;)
+		{
+			if (g_stopped.load(std::memory_order_acquire))
+			{
+				__builtin_ia32_pause();
+				continue;
+			}
+			const u32 tail = s_tail.load(std::memory_order_relaxed);
+			const u32 head = s_head.load(std::memory_order_acquire);
+			if (tail == head)
+			{
+				if (++idle > 4000)
+					usleep(20);
+				else
+					__builtin_ia32_pause();
+				continue;
+			}
+			idle = 0;
+			const u32 n = s_q[tail];
+			if (n == kWrap)
+			{
+				s_tail.store(0, std::memory_order_release);
+				continue;
+			}
+			s_busy.store(true, std::memory_order_relaxed);
+			u32* data = &s_q[tail + 1];
+			t_hit_hard = false;
+			vif1.vifpacketsize = n;
+			vifTransferLoop<1>(data);
+			const u32 left = vif1.vifpacketsize;
+			if (left > 0 || t_hit_hard || vif1.vifstalled.enabled)
+			{
+				s_stop_pos = tail + 1 + (n - left);
+				s_stop_left = left;
+				s_stop_next = tail + 1 + n;
+				g_stops.fetch_add(1, std::memory_order_relaxed);
+				s_busy.store(false, std::memory_order_relaxed);
+				g_stopped.store(1, std::memory_order_release);
+				continue;
+			}
+			vifExecQueue(1);
+			g_pieces_thread.fetch_add(1, std::memory_order_relaxed);
+			s_tail.store(tail + 1 + n, std::memory_order_release);
+			s_busy.store(false, std::memory_order_release);
+		}
+	}
+
+	bool On()
+	{
+		if (g_mode.load(std::memory_order_relaxed) == 0 || s_off_for_good || !THREAD_VU1)
+			return false;
+		if (!s_started.load(std::memory_order_acquire))
+		{
+			s_q = static_cast<u32*>(_aligned_malloc(sizeof(u32) * kCap, 64));
+			if (!s_q)
+			{
+				s_off_for_good = true;
+				return false;
+			}
+			s_ee_tid = std::this_thread::get_id();
+			s_started.store(true, std::memory_order_release);
+			std::thread(ThreadMain).detach();
+		}
+		return true;
+	}
+
+	bool Pending()
+	{
+		return s_started.load(std::memory_order_relaxed) &&
+			   (s_tail.load(std::memory_order_acquire) != s_head.load(std::memory_order_relaxed) || s_busy.load(std::memory_order_acquire) ||
+				   g_stopped.load(std::memory_order_acquire));
+	}
+
+	// The EE's share of what the thread did: the MTVU GIF transfer after its programs, and the cycle skip's cycles.
+	void ApplyPending()
+	{
+		if (g_mtvu_gif_pending.load(std::memory_order_relaxed) && g_mtvu_gif_pending.exchange(0, std::memory_order_acq_rel))
+			gifUnit.TransferGSPacketData(GIF_TRANS_MTVU, NULL, 0);
+		if (g_skip_cycles.load(std::memory_order_relaxed))
+		{
+			const u64 sk = g_skip_cycles.exchange(0, std::memory_order_acq_rel);
+			cpuRegs.cycle += sk;
+			VU0.cycle += sk;
+		}
+	}
+
+	// EE: the thread stopped before a hard code; run from there to the piece's end, the usual way. False if it stalled again.
+	bool ServiceStop()
+	{
+		if (!g_stopped.load(std::memory_order_acquire) || std::this_thread::get_id() != s_ee_tid)
+			return !g_stopped.load(std::memory_order_acquire);
+		t_in_drain++;
+		vif1Regs.stat.DBF = s_dbf; // the thread's DBF, for the EE's run
+		if (vif1.vifstalled.enabled)
+		{
+			if (vif1.waitforvu && (VU0.VI[REG_VPU_STAT].UL & 0x500))
+			{
+				t_in_drain--;
+				return false;
+			}
+			vif1.vifstalled.enabled = false;
+			vif1.waitforvu = false;
+			vif1Regs.stat.VEW = false;
+		}
+		bool done = true;
+		if (s_stop_left > 0)
+		{
+			u32* data = &s_q[s_stop_pos];
+			vif1.vifpacketsize = s_stop_left;
+			vifTransferLoop<1>(data);
+			const u32 left = vif1.vifpacketsize;
+			if (left > 0)
+			{
+				s_stop_pos += s_stop_left - left;
+				s_stop_left = left;
+				g_stalls_left.fetch_add(1, std::memory_order_relaxed);
+				done = false;
+			}
+		}
+		if (done)
+		{
+			if (vif1.irq)
+				s_off_for_good = true; // an interrupt bit: its stall and IRQ belong to the DMA, which already ran ahead; EE only from here
+			vifExecQueue(1);
+			s_dbf = vif1Regs.stat.DBF; // back to the thread
+			s_tail.store(s_stop_next, std::memory_order_release);
+			g_stopped.store(0, std::memory_order_release);
+		}
+		t_in_drain--;
+		return done;
+	}
+
+	// EE: until the queue is empty (or a hard code can't go on yet: then as far as it can).
+	void FullDrain()
+	{
+		if (t_on_thread || t_in_drain || !s_started.load(std::memory_order_relaxed) || std::this_thread::get_id() != s_ee_tid)
+			return;
+		t_in_drain++;
+		g_drains.fetch_add(1, std::memory_order_relaxed);
+		u32 spins = 0;
+		for (;;)
+		{
+			if (g_stopped.load(std::memory_order_acquire))
+			{
+				t_in_drain--;
+				const bool ok = ServiceStop();
+				t_in_drain++;
+				if (!ok)
+					break;
+				continue;
+			}
+			if (s_tail.load(std::memory_order_acquire) == s_head.load(std::memory_order_relaxed) && !s_busy.load(std::memory_order_acquire))
+				break;
+			if (++spins == 1)
+				g_full_waits.fetch_add(1, std::memory_order_relaxed);
+			__builtin_ia32_pause();
+		}
+		ApplyPending();
+		if (!g_stopped.load(std::memory_order_acquire) && !s_ee_owns_dbf) // empty: the EE takes the DBF back
+		{
+			vif1Regs.stat.DBF = s_dbf;
+			s_ee_owns_dbf = true;
+		}
+		vif1Regs.stat.VPS = VPS_IDLE;
+		t_in_drain--;
+	}
+
+	void EventHook()
+	{
+		if (std::this_thread::get_id() != s_ee_tid)
+			return;
+		if (g_stopped.load(std::memory_order_relaxed))
+			ServiceStop();
+		ApplyPending();
+	}
+
+	static bool Push(const u32* data, u32 n)
+	{
+		u32 head = s_head.load(std::memory_order_relaxed);
+		const u32 tail = s_tail.load(std::memory_order_acquire);
+		const u32 need = n + 1;
+		if (head >= tail)
+		{
+			if (head + need + 1 > kCap) // no room before the end: wrap (needs room at the start, not reaching the reader)
+			{
+				if (need + 1 >= tail)
+					return false;
+				s_q[head] = kWrap;
+				head = 0;
+			}
+		}
+		else if (head + need + 1 >= tail)
+			return false;
+		if (s_ee_owns_dbf) // the thread is idle (the queue was drained): it takes the DBF from here
+		{
+			s_dbf = vif1Regs.stat.DBF;
+			s_ee_owns_dbf = false;
+		}
+		std::memcpy(&s_q[head + 1], data, sizeof(u32) * n);
+		s_q[head] = n;
+		s_head.store(head + need, std::memory_order_release);
+		return true;
+	}
+} // namespace ForjaVifT
+#endif
+
 _vifT static __fi bool vifTransfer(u32 *data, int size, bool TTE) {
 	vifStruct& vifX = GetVifX;
+#if defined(PCSX2_PS4)
+	// 195 in the app, "VIF en su hilo": while the DMA runs, the piece goes to the VIF thread whole (no stall on the EE's side).
+	if (idx && ForjaVifT::On())
+	{
+		ForjaVifT::EventHook();
+		if (vif1ch.chcr.STR && !vifX.irqoffset.enabled && size > 0 && !vifX.vifstalled.enabled)
+		{
+			bool pushed = ForjaVifT::Push(data, static_cast<u32>(size));
+			if (!pushed)
+			{
+				ForjaVifT::FullDrain();
+				pushed = ForjaVifT::Push(data, static_cast<u32>(size));
+			}
+			if (pushed)
+			{
+				int transferred = size;
+				g_vif1Cycles += std::max(1, (int)((transferred * BIAS) >> 2));
+				vifX.irqoffset.value = 0;
+				vifX.irqoffset.enabled = false;
+				if (!TTE)
+				{
+					transferred = std::min((int)vifXch.qwc, transferred >> 2);
+					vifXch.madr += (transferred << 4);
+					vifXch.qwc -= transferred;
+					hwDmacSrcTadrInc(vifXch);
+					if (!vifXch.qwc)
+						vifX.inprogress &= ~0x1;
+				}
+				return true;
+			}
+		}
+		ForjaVifT::FullDrain(); // anything else goes the usual way, after the queue
+		ForjaVifT::g_pieces_inline.fetch_add(1, std::memory_order_relaxed);
+	}
+#endif
 
 	// PS5 port (vk-285-84): with EmuCore/Speedhacks/OrbisMTVUBatch on, the MTVU packets this transfer
 	// writes (unpacks, MSCAL/MSCNT, STROW...) wake the VU thread once, at the end, instead of each doing
