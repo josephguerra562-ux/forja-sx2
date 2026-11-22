@@ -11764,6 +11764,9 @@ u32 g_forja_ab_diff_n = 0;
 u32 g_forja_ab_diff_bytes[1024] = {};
 u32 g_forja_ab_conf_size = sizeof(GSHWDrawConfig);
 u64 g_forja_ab_capfail[16] = {};
+// 188: why ForjaAbSubmit refused (1 LOD both ways, 2 filters, 3 configuration bytes, 4 too many vertices, 5-6 index counts).
+u64 g_forja_ab_submit_why[8] = {};
+extern std::atomic<int> g_forja_gs_ab; // pcsx2/GS/GSState.cpp
 
 void GSRendererHW::ForjaAbCaptureBegin(u32 pass)
 {
@@ -11793,7 +11796,9 @@ void GSRendererHW::ForjaAbCaptureNow()
 	else if (g_gs_device->IsDSInRTActive()) why = 1;
 	else if (m_conf.vs.expand != GSHWDrawConfig::VSExpand::None) why = 2;
 	else if (m_conf.topology != GSHWDrawConfig::Topology::Triangle || m_conf.indices_per_prim != 3) why = 3;
-	else if (m_conf.alpha_second_pass.enable) why = 4;
+	// 188: the second alpha pass (AFAIL FB_ONLY: colour first, then Z) joins in mode 3. PCSX2 already draws all of one draw's
+	// triangles in the first pass before the second; joined, that reaches over more triangles that overlap (an approximation).
+	else if (m_conf.alpha_second_pass.enable && g_forja_gs_ab.load(std::memory_order_relaxed) < 3) why = 4;
 	else if (m_conf.blend_multi_pass.enable) why = 5;
 	else if (m_conf.require_full_barrier) why = 6;
 	else if (m_conf.drawlist) why = 7;
@@ -11808,7 +11813,7 @@ void GSRendererHW::ForjaAbCaptureNow()
 		m_forja_ab_bad[p] = true;
 		return;
 	}
-	m_forja_ab_conf[p] = m_conf;
+	std::memcpy(static_cast<void*>(&m_forja_ab_conf[p]), static_cast<const void*>(&m_conf), sizeof(GSHWDrawConfig)); // 188: padding too
 	m_forja_ab_v[p].assign(m_conf.verts, m_conf.verts + m_conf.nverts);
 	m_forja_ab_i[p].assign(m_conf.indices, m_conf.indices + m_conf.nindices);
 }
@@ -11817,7 +11822,9 @@ bool GSRendererHW::ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total)
 {
 	GSHWDrawConfig& a = m_forja_ab_conf[0];
 	const GSHWDrawConfig& b = m_forja_ab_conf[1];
-	auto note = [](u32 offset) {
+	auto note = [this](u32 offset, int why) {
+		m_forja_ab_submit_why = why;
+		g_forja_ab_submit_why[why]++;
 		if (g_forja_ab_diff_n < 8)
 			g_forja_ab_diff_offset[g_forja_ab_diff_n++] = offset;
 		return false;
@@ -11831,17 +11838,18 @@ bool GSRendererHW::ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total)
 	if (a.ps.automatic_lod != b.ps.automatic_lod || a.ps.manual_lod != b.ps.manual_lod)
 	{
 		if (lod_a && lod_b)
-			return note(0xFFFF0001u);
+			return note(0xFFFF0001u, 1);
 		const GSHWDrawConfig& with = lod_a ? a : b;
 		const GSHWDrawConfig& without = lod_a ? b : a;
 		ps.automatic_lod = with.ps.automatic_lod;
 		ps.manual_lod = with.ps.manual_lod;
 		if (ps.automatic_lod && without.sampler.IsMinFilterLinear() != without.sampler.IsMagFilterLinear())
-			return note(0xFFFF0002u);
+			return note(0xFFFF0002u, 2);
 		zero_lod[lod_a ? 1 : 0] = ps.manual_lod;
 	}
 	// Everything else must be the same.
-	GSHWDrawConfig bn = b;
+	GSHWDrawConfig bn;
+	std::memcpy(static_cast<void*>(&bn), static_cast<const void*>(&b), sizeof(GSHWDrawConfig)); // 188: padding too
 	bn.tex = a.tex;
 	bn.pal = a.pal;
 	bn.sampler = a.sampler;
@@ -11857,6 +11865,17 @@ bool GSRendererHW::ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total)
 	// 186: fog in one slot only (Shadow: A without, B with). The shader then fogs only the slot that has it (AbFog); the fog colour
 	// comes from the one with fog (the other pass may have left an old one).
 	bn.ps.fog = a.ps.fog;
+	// 188: flat or smooth shading (PCSX2 draws flat when all the colours are equal; with IIP in both slots, smooth is the same), and
+	// the second alpha pass's selector the same way as the first's.
+	if (m_forja_ab_both_iip)
+	{
+		bn.vs.iip = a.vs.iip;
+		bn.ps.iip = a.ps.iip;
+		bn.alpha_second_pass.ps.iip = a.alpha_second_pass.ps.iip;
+	}
+	bn.alpha_second_pass.ps.fog = a.alpha_second_pass.ps.fog;
+	bn.alpha_second_pass.ps.automatic_lod = a.alpha_second_pass.ps.automatic_lod;
+	bn.alpha_second_pass.ps.manual_lod = a.alpha_second_pass.ps.manual_lod;
 	if (a.ps.fog != b.ps.fog)
 		bn.cb_ps.FogColor_AREF = a.cb_ps.FogColor_AREF.blend32<8>(b.cb_ps.FogColor_AREF);
 	bn.cb_vs.texture_scale = a.cb_vs.texture_scale;
@@ -11885,10 +11904,10 @@ bool GSRendererHW::ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total)
 		}
 	}
 	if (first != ~0u)
-		return note(first);
+		return note(first, 3);
 	const u32 na = a.nverts, nb = b.nverts;
 	if (na + nb > 65535)
-		return note(0xFFFF0003u);
+		return note(0xFFFF0003u, 4);
 	// The vertices: slot A's prepared copy, then slot B's; the indices in the order of the segments.
 	m_forja_ab_jv.resize(na + nb);
 	std::copy(m_forja_ab_v[0].begin(), m_forja_ab_v[0].end(), m_forja_ab_jv.begin());
@@ -11902,17 +11921,33 @@ bool GSRendererHW::ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total)
 		const u32 s = segs[k].slot;
 		const u16 base = s ? static_cast<u16>(na) : 0;
 		if (cur[s] + len > m_forja_ab_i[s].size() || out + len > total)
-			return note(0xFFFF0004u);
+			return note(0xFFFF0004u, 5);
 		for (u32 j = 0; j < len; j++)
 			m_forja_ab_ji[out++] = static_cast<u16>(m_forja_ab_i[s][cur[s]++] + base);
 	}
 	if (out != total || cur[0] != m_forja_ab_i[0].size() || cur[1] != m_forja_ab_i[1].size())
-		return note(0xFFFF0005u);
+		return note(0xFFFF0005u, 6);
 
-	GSHWDrawConfig c = a;
+	GSHWDrawConfig c;
+	std::memcpy(static_cast<void*>(&c), static_cast<const void*>(&a), sizeof(GSHWDrawConfig));
 	c.ps = ps;
 	c.ps.ab = 1;
 	c.ps.fog = a.ps.fog || b.ps.fog;
+	if (m_forja_ab_both_iip) // 188
+	{
+		c.vs.iip = a.vs.iip || b.vs.iip;
+		c.ps.iip = a.ps.iip || b.ps.iip;
+	}
+	if (c.alpha_second_pass.enable) // 188: the second alpha pass draws the same triangles: the same choices
+	{
+		GSHWDrawConfig::PSSelector& p2 = c.alpha_second_pass.ps;
+		p2.ab = 1;
+		p2.fog = a.alpha_second_pass.ps.fog || b.alpha_second_pass.ps.fog;
+		p2.automatic_lod = ps.automatic_lod;
+		p2.manual_lod = ps.manual_lod;
+		if (m_forja_ab_both_iip)
+			p2.iip = a.alpha_second_pass.ps.iip || b.alpha_second_pass.ps.iip;
+	}
 	c.cb_ps.AbFog = static_cast<float>((a.ps.fog ? 1 : 0) | (b.ps.fog ? 2 : 0));
 	if (!a.ps.fog && b.ps.fog)
 		c.cb_ps.FogColor_AREF = b.cb_ps.FogColor_AREF.blend32<8>(a.cb_ps.FogColor_AREF); // B's colour, A's AREF
@@ -11937,6 +11972,7 @@ bool GSRendererHW::ForjaAbSubmit(const ForjaAbSeg* segs, u32 nsegs, u32 total)
 	c.nindices = total;
 	c.drawarea = a.drawarea.runion(b.drawarea);
 	c.scissor = a.scissor.runion(b.scissor);
+	m_forja_ab_submit_why = 0;
 	g_gs_device->RenderHW(c);
 	return true;
 }

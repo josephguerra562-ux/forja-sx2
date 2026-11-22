@@ -1422,6 +1422,7 @@ static u64 s_forja_ab_mark = ~0ull, s_forja_ab_draws = 0;
 std::atomic<int> g_forja_gs_ab{0};
 u64 g_forja_ab_switches = 0, g_forja_ab_flushes = 0, g_forja_ab_one_draws = 0, g_forja_ab_one_segs = 0, g_forja_ab_replays = 0,
 	g_forja_ab_replay_segs = 0, g_forja_ab_capture_fail = 0, g_forja_ab_mismatch = 0;
+u64 g_forja_ab_alpha_retries = 0, g_forja_ab_alpha_retry_ok = 0; // 188: second tries with the union of the alpha ranges
 static u64 s_forja_ab_tex[2] = {};
 static u32 s_forja_ab_ctx[2] = {};
 static bool s_forja_ab_two = false;
@@ -3090,26 +3091,54 @@ void GSState::ForjaAbFlush(F&& draw_now)
 	};
 
 	bool done = false;
-	if (mode == 2 && ab.has_b && nsegs >= 2 && ForjaAbCanCapture())
+	if (mode >= 2 && ab.has_b && nsegs >= 2 && ForjaAbCanCapture())
 	{
-		bool ok = true;
-		for (u32 pass = 0; pass < 2 && ok; pass++)
-		{
-			const u32 ni = ForjaAbCompact(vb_keep, ib_keep, total, static_cast<int>(pass), -1);
-			ForjaAbCaptureBegin(pass);
-			run(pass, ni);
-			ok = ForjaAbCaptureEnd(pass);
-		}
-		if (!ok)
+		m_forja_ab_both_iip = ab.prim[0].IIP && ab.prim[1].IIP;
+		// Both passes captured; ovr: with the union of the slots' texture alpha (188).
+		auto capture_both = [&](bool ovr) {
+			m_forja_ab_alpha_rec = !ovr;
+			m_forja_ab_alpha_ovr = ovr;
+			if (!ovr)
+				m_forja_ab_talpha_ok[0] = m_forja_ab_talpha_ok[1] = false;
+			bool ok = true;
+			for (u32 pass = 0; pass < 2 && ok; pass++)
+			{
+				m_forja_ab_alpha_pass = pass;
+				const u32 ni = ForjaAbCompact(vb_keep, ib_keep, total, static_cast<int>(pass), -1);
+				ForjaAbCaptureBegin(pass);
+				run(pass, ni);
+				ok = ForjaAbCaptureEnd(pass);
+			}
+			m_forja_ab_alpha_rec = m_forja_ab_alpha_ovr = false;
+			return ok;
+		};
+		if (!capture_both(false))
 			g_forja_ab_capture_fail++;
 		else if (ForjaAbSubmit(ab.segs.data(), nsegs, total))
-		{
 			done = true;
+		else
+		{
+			// 188: the configurations differed. When the two textures' alpha ranges differ, prepare both again with their union.
+			const int(&t)[2][2] = m_forja_ab_talpha;
+			if (m_forja_ab_submit_why == 3 && m_forja_ab_talpha_ok[0] && m_forja_ab_talpha_ok[1] && (t[0][0] != t[1][0] || t[0][1] != t[1][1]))
+			{
+				m_forja_ab_ovr[0] = std::min(t[0][0], t[1][0]);
+				m_forja_ab_ovr[1] = std::max(t[0][1], t[1][1]);
+				g_forja_ab_alpha_retries++;
+				if (capture_both(true) && ForjaAbSubmit(ab.segs.data(), nsegs, total))
+				{
+					done = true;
+					g_forja_ab_alpha_retry_ok++;
+				}
+			}
+			if (!done)
+				g_forja_ab_mismatch++;
+		}
+		if (done)
+		{
 			g_forja_ab_one_draws++;
 			g_forja_ab_one_segs += nsegs;
 		}
-		else
-			g_forja_ab_mismatch++;
 	}
 	if (!done)
 	{
@@ -7133,6 +7162,21 @@ void GSState::CalcAlphaMinMax(const int tex_alpha_min, const int tex_alpha_max)
 				default:
 					ASSUME(0);
 			}
+#if defined(PCSX2_PS4)
+			// 188 in the app, "A/B en un dibujo": each slot's texture alpha (first try), then both slots with the union of the two
+			// (second try): a wider range only leads to more careful choices, right for both textures.
+			if (m_forja_ab_alpha_rec)
+			{
+				m_forja_ab_talpha[m_forja_ab_alpha_pass][0] = a.y;
+				m_forja_ab_talpha[m_forja_ab_alpha_pass][1] = a.w;
+				m_forja_ab_talpha_ok[m_forja_ab_alpha_pass] = true;
+			}
+			if (m_forja_ab_alpha_ovr)
+			{
+				a.y = m_forja_ab_ovr[0];
+				a.w = m_forja_ab_ovr[1];
+			}
+#endif
 
 			switch (context->TEX0.TFX)
 			{

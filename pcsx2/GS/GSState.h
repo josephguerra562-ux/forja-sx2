@@ -543,6 +543,16 @@ public:
 	u32 m_forja_ab_scratch_nv = 0;
 	GSClut::ForjaSaved* m_forja_ab_clut = nullptr; // [3]: slot A, slot B, and the loaded one while flushing
 	u32 m_forja_ab_tag = 0; // ORed into each vertex's FOG (bit 8: slot B; the shaders read the fog from bits 0-7)
+	// 188 in the app: what ForjaAbFlush and the renderer share. Both slots' PRIM with IIP (then flat shading only means equal colours,
+	// and Gouraud gives the same); why ForjaAbSubmit refused (0 sent); each slot's texture alpha as CalcAlphaMinMax found it, and the
+	// union both passes use on the second try.
+	bool m_forja_ab_both_iip = false;
+	int m_forja_ab_submit_why = 0;
+	bool m_forja_ab_alpha_rec = false, m_forja_ab_alpha_ovr = false;
+	u32 m_forja_ab_alpha_pass = 0;
+	int m_forja_ab_talpha[2][2] = {};
+	bool m_forja_ab_talpha_ok[2] = {};
+	int m_forja_ab_ovr[2] = {};
 	bool ForjaAbJoinCut(int i, const GIFRegTEX0& TEX0);
 	void ForjaAbAfterClutWrite();
 	bool ForjaAbSwitch();

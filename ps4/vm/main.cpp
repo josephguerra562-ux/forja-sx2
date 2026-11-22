@@ -428,6 +428,8 @@ extern u32 g_forja_ab_diff_offset[8], g_forja_ab_diff_n; // pcsx2/GS/Renderers/H
 extern u64 g_forja_ab_switch_fail[8]; // pcsx2/GS/GSState.cpp (185)
 extern u32 g_forja_ab_diff_bytes[1024], g_forja_ab_conf_size; // pcsx2/GS/Renderers/HW/GSRendererHW.cpp (187)
 extern u64 g_forja_ab_capfail[16];
+extern u64 g_forja_ab_submit_why[8]; // GSRendererHW.cpp (188)
+extern u64 g_forja_ab_alpha_retries, g_forja_ab_alpha_retry_ok; // GSState.cpp (188)
 extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app, "PLZCW rápido")
 // 174 in the app, "Animación a medias" ([Forja] AnimMediasDir/AnimMediasFuncion/AnimMediasVacia). God of War II's map (the 171-173,
 // herramientas/mapa_ee.py): the EE's busiest code in the Colossus is decoding animations (0x112380, ~13 %: each bone channel's keys for
@@ -6552,6 +6554,12 @@ void VMHostPoll()
 							m += std::snprintf(db + m, sizeof(db) - m, "%s%x:%u", t ? "," : "", idx[t], top[t]);
 						db[m] = 0;
 						ProbeLog("GS A/B captures and differences (187): capture_fail_why=%s differing_bytes=%s\n", cf, m ? db : "-");
+						ProbeLog("GS A/B refusals (188): lod=%llu filters=%llu bytes=%llu vertices=%llu index_len=%llu index_total=%llu alpha_retries=%llu "
+							"alpha_retry_ok=%llu\n", static_cast<unsigned long long>(g_forja_ab_submit_why[1]),
+							static_cast<unsigned long long>(g_forja_ab_submit_why[2]), static_cast<unsigned long long>(g_forja_ab_submit_why[3]),
+							static_cast<unsigned long long>(g_forja_ab_submit_why[4]), static_cast<unsigned long long>(g_forja_ab_submit_why[5]),
+							static_cast<unsigned long long>(g_forja_ab_submit_why[6]), static_cast<unsigned long long>(g_forja_ab_alpha_retries),
+							static_cast<unsigned long long>(g_forja_ab_alpha_retry_ok));
 					}
 				}
 				for (int k = 0; k < 8; k++)

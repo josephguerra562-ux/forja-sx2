@@ -555,7 +555,7 @@ namespace ForjaGameProfile
 		v.vu1_ring_alt = std::clamp(v.vu1_ring_alt, -1, 1); // 169 in the app
 		v.vif_adelanto = std::clamp(v.vif_adelanto, -1, 1); // 170 in the app
 		v.gs_vt_once = std::clamp(v.gs_vt_once, -1, 1); // 171 in the app
-		v.gs_ab = std::clamp(v.gs_ab, -1, 2); // 183 in the app
+		v.gs_ab = std::clamp(v.gs_ab, -1, 3); // 183 in the app (188: 3 also joins draws with the second alpha pass)
 		v.ee_lzcnt = std::clamp(v.ee_lzcnt, -1, 1); // 173 in the app
 		v.vif_nocopy = std::clamp(v.vif_nocopy, -1, 1); // 175 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"
