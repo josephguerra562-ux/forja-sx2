@@ -436,6 +436,9 @@ extern u64 g_forja_ab_skipped; // GSState.cpp (189)
 extern u64 g_forja_vifm_pieces[2], g_forja_vifm_codes[2], g_forja_vifm_ticks[2], g_forja_vifm_hardcodes, g_forja_vifm_prefix,
 	g_forja_vifm_hard_by[8]; // pcsx2/Vif_Transfer.cpp (193, "VIF en su hilo" step 2)
 extern bool g_forja_vifm_on; // pcsx2/Vif_Transfer.cpp (202 in the app: the 193's meter only with vm-vif-medidor)
+extern std::atomic<int> g_forja_ev_calm; // pcsx2/COP0.cpp (205 in the app, "Eventos sin prisa")
+extern u64 g_forja_ev_calm_ei_skips, g_forja_ev_calm_eret_skips, g_forja_ev_calm_timer;
+extern std::atomic<u64> g_orbis_ee_evtests; // pcsx2/R5900.cpp
 extern std::atomic<u64> g_forja_upk_whole; // pcsx2/Vif_Transfer.cpp (203 in the app: UNPACKs taken whole)
 extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app, "PLZCW rápido")
 // 174 in the app, "Animación a medias" ([Forja] AnimMediasDir/AnimMediasFuncion/AnimMediasVacia). God of War II's map (the 171-173,
@@ -3615,6 +3618,15 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				old ? ", vm-ee-plzcw-viejo" : "");
 	}
 	{
+		// 205 in the app, "Eventos sin prisa" ([Forja] EventosSinPrisa; pcsx2/COP0.cpp). /data/ForjaSX2/vm-eventos-con-prisa turns it off.
+		{
+			const bool hurry = access("/data/ForjaSX2/vm-eventos-con-prisa", F_OK) == 0;
+			const bool on = !hurry && s_profile.ev_calm == 1;
+			g_forja_ev_calm.store(on ? 1 : 0, std::memory_order_relaxed);
+			if (on || hurry || s_profile.ev_calm_origin != ForjaGameProfile::Origin::Global)
+				ProbeLog("Event tests without hurry (205 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.ev_calm_origin),
+					hurry ? ", vm-eventos-con-prisa" : "");
+		}
 		// 202 in the app: the 193's meter of VIF1 pieces (two TSC reads a piece and a jump table a code: ~2-5 % of the EE in Shadow of the
 		// Colossus) only with /data/ForjaSX2/vm-vif-medidor.
 		g_forja_vifm_on = access("/data/ForjaSX2/vm-vif-medidor", F_OK) == 0;
@@ -6398,6 +6410,16 @@ void VMHostPoll()
 						(unsigned long long)ForjaVifT::g_discards.load(std::memory_order_relaxed),
 						(unsigned long long)ForjaVifT::g_long_waits.load(std::memory_order_relaxed));
 				std::copy(std::begin(now), std::end(now), s_vw);
+			}
+			// 205 in the app, "Eventos sin prisa": the event tests a second, and the EI and ERET tests left out and the COP0 timer's own.
+			{
+				static u64 s_ec[4] = {};
+				const u64 now[4] = {g_orbis_ee_evtests.load(std::memory_order_relaxed), g_forja_ev_calm_ei_skips, g_forja_ev_calm_eret_skips,
+					g_forja_ev_calm_timer};
+				if (g_forja_ev_calm.load(std::memory_order_relaxed) && interval > 0.0 && vm_state == VMState::Running)
+					ProbeLog("Event tests without hurry (205): event_tests_per_second=%.0f ei_left_out=%.0f eret_left_out=%.0f timer_scheduled=%.0f\n",
+						(now[0] - s_ec[0]) / interval, (now[1] - s_ec[1]) / interval, (now[2] - s_ec[2]) / interval, (now[3] - s_ec[3]) / interval);
+				std::copy(std::begin(now), std::end(now), s_ec);
 			}
 			// 203 in the app: UNPACKs taken whole in one go a second (the rest: split across pieces, or the path off).
 			{

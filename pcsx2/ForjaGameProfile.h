@@ -153,6 +153,10 @@ namespace ForjaGameProfile
 		// thread. Off unless the profile says.
 		int vif_hilo = -1;
 		Origin vif_hilo_origin = Origin::Global;
+		// 205 in the app: [Forja] EventosSinPrisa, "Eventos sin prisa" (pcsx2/COP0.cpp): 1 EI and ERET ask for an event test 4 cycles on
+		// only when an interrupt or VU0 is waiting. Off unless the profile says.
+		int ev_calm = -1;
+		Origin ev_calm_origin = Origin::Global;
 		Origin gs_ab_origin = Origin::Global;
 		// 173 in the app: [Forja] EEPlzcwRapido, "PLZCW rápido" (pcsx2/x86/iMMI.cpp): 1 the EE's PLZCW with LZCNT and no branches. Off unless
 		// the profile says.
@@ -409,6 +413,7 @@ namespace ForjaGameProfile
 		read_int("GSDibujoAB", &v.gs_ab, &v.gs_ab_origin); // 183 in the app
 		read_int("VU1AvisoPorPedazo", &v.mtvu_batch, &v.mtvu_batch_origin); // 194 in the app
 		read_int("VifHilo", &v.vif_hilo, &v.vif_hilo_origin); // 195 in the app
+		read_int("EventosSinPrisa", &v.ev_calm, &v.ev_calm_origin); // 205 in the app
 		read_int("EEPlzcwRapido", &v.ee_lzcnt, &v.ee_lzcnt_origin); // 173 in the app
 		read_int("AnimMediasDir", &v.anim_half_addr, &v.anim_half_origin); // 174 in the app
 		read_int("AnimMediasFuncion", &v.anim_half_fn, &v.anim_half_origin);
@@ -569,6 +574,7 @@ namespace ForjaGameProfile
 		v.gs_ab = std::clamp(v.gs_ab, -1, 3); // 183 in the app (188: 3 also joins draws with the second alpha pass)
 		v.mtvu_batch = std::clamp(v.mtvu_batch, -1, 1); // 194 in the app
 		v.vif_hilo = std::clamp(v.vif_hilo, -1, 1); // 195 in the app
+		v.ev_calm = std::clamp(v.ev_calm, -1, 1); // 205 in the app
 		v.ee_lzcnt = std::clamp(v.ee_lzcnt, -1, 1); // 173 in the app
 		v.vif_nocopy = std::clamp(v.vif_nocopy, -1, 1); // 175 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"

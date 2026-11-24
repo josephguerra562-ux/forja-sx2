@@ -5,6 +5,39 @@
 #include "COP0.h"
 #include "VUmicro.h" // vk-285-102: VPU_STAT for ERET
 #include "OrbisEEHle.h" // vk-285-102
+#include <atomic>
+
+// 205 in the app, "Eventos sin prisa" ([Forja] EventosSinPrisa; ps4/vm/main.cpp sets the mode; vm-eventos-con-prisa turns it off).
+// EI and ERET asked for an event test 4 cycles on every time, to raise an interrupt that might be waiting. Shadow of the Colossus'
+// heavy view makes ~57,000 WaitSema/SignalSema calls a second (vm-eediag, 2026-11-23), each with its EI and its ERET, and ~380,000
+// event tests a second (each one also runs the IOP a little); the PS5 port's ERET fast path never skipped one there, because the
+// game keeps the COP0 timer's mask bit on (and never once raised that interrupt: no "timr intr" in any of Joseph's logs). With this
+// on, the test 4 cycles on is asked for only when something is waiting: an INTC or DMAC interrupt pending and unmasked, VU0 running
+// a micro program (the event test steps it), or the COP0 timer inside its window. The COP0 timer otherwise gets an event test of its
+// own exactly where Count reaches Compare (better than before: _cpuTestTIMR raises it only inside 1000 cycles of Compare, and the
+// tests used to land wherever). An interrupt that becomes pending later schedules its own test (hwIntcIrq, hwDmacIrq).
+std::atomic<int> g_forja_ev_calm{0};
+u64 g_forja_ev_calm_ei_skips = 0, g_forja_ev_calm_eret_skips = 0, g_forja_ev_calm_timer = 0; // EE thread only
+
+static bool ForjaEventSoon()
+{
+	if ((psHu32(INTC_STAT) & psHu32(INTC_MASK)) != 0)
+		return true;
+	if ((psHu16(0xe012) & psHu16(0xe010)) != 0 || (psHu16(0xe010) & 0x8000) != 0)
+		return true;
+	if ((VU0.VI[REG_VPU_STAT].UL & 1) != 0)
+		return true;
+	if (cpuRegs.CP0.n.Status.val & 0x8000) // the COP0 timer's interrupt enabled
+	{
+		const u32 now = cpuRegs.CP0.n.Count + (cpuRegs.cycle - cpuRegs.lastCOP0Cycle);
+		const s32 until = static_cast<s32>(cpuRegs.CP0.n.Compare - now);
+		if (until <= 4)
+			return until > -1000; // inside _cpuTestTIMR's window: now; past it, it never fires (as before)
+		cpuSetNextEventDelta(until); // an event test where Count reaches Compare
+		g_forja_ev_calm_timer++;
+	}
+	return false;
+}
 extern u64 g_orbis_eret_block[4]; // vk-285-103 (OrbisEEDiag.cpp)
 
 // Updates the CPU's mode of operation (either, Kernel, Supervisor, or User modes).
@@ -672,6 +705,14 @@ cpuRegs.PERF.n.pccr, cpuRegs.PERF.n.pcr0, cpuRegs.PERF.n.pcr1, _Imm_ & 0x3F);*/
 		cpuUpdateOperationMode();
 #if !defined(PCSX2_PS4_CORE_PROBE)
 		OrbisTidEret(); // PS5 port (vk-285-102): the GetThreadId cache (OrbisEEHle.h)
+		if (g_forja_ev_calm.load(std::memory_order_relaxed)) // 205 in the app, "Eventos sin prisa"
+		{
+			if (ForjaEventSoon())
+				cpuSetNextEventDelta(4);
+			else
+				g_forja_ev_calm_eret_skips++;
+		}
+		else
 		// PS5 port (vk-285-102): unless flags/noeretfast (vk-285-105: on by default), the event test 4 cycles on only when an interrupt is
 		// waiting to be taken now that EXL is clear (the INTC or DMAC conditions of cpuTestINTCInts and
 		// cpuTestDMACInts, the COP0 timer enabled) or VU0 runs a micro program (the event test steps it).
@@ -722,7 +763,11 @@ cpuRegs.PERF.n.pccr, cpuRegs.PERF.n.pcr0, cpuRegs.PERF.n.pcr1, _Imm_ & 0x3F);*/
 		{
 			cpuRegs.CP0.n.Status.b.EIE = 1;
 			// schedule an event test, which will check for and raise pending IRQs.
-			cpuSetNextEventDelta(4);
+			// 205 in the app, "Eventos sin prisa": only when one is pending (ForjaEventSoon, above).
+			if (g_forja_ev_calm.load(std::memory_order_relaxed) && !ForjaEventSoon())
+				g_forja_ev_calm_ei_skips++;
+			else
+				cpuSetNextEventDelta(4);
 		}
 	}
 
