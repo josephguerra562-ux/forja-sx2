@@ -3627,6 +3627,13 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				ProbeLog("Event tests without hurry (205 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.ev_calm_origin),
 					hurry ? ", vm-eventos-con-prisa" : "");
 		}
+		// 206 in the app: the meter of what asks for each event test (/data/ForjaSX2/vm-eventos-razones; R5900.cpp ForjaEvWhyTake).
+		{
+			const bool why = access("/data/ForjaSX2/vm-eventos-razones", F_OK) == 0;
+			g_forja_ev_why_on.store(why ? 1 : 0, std::memory_order_relaxed);
+			if (why)
+				ProbeLog("Event reasons (206 in the app): on (vm-eventos-razones)\n");
+		}
 		// 202 in the app: the 193's meter of VIF1 pieces (two TSC reads a piece and a jump table a code: ~2-5 % of the EE in Shadow of the
 		// Colossus) only with /data/ForjaSX2/vm-vif-medidor.
 		g_forja_vifm_on = access("/data/ForjaSX2/vm-vif-medidor", F_OK) == 0;
@@ -6420,6 +6427,31 @@ void VMHostPoll()
 					ProbeLog("Event tests without hurry (205): event_tests_per_second=%.0f ei_left_out=%.0f eret_left_out=%.0f timer_scheduled=%.0f\n",
 						(now[0] - s_ec[0]) / interval, (now[1] - s_ec[1]) / interval, (now[2] - s_ec[2]) / interval, (now[3] - s_ec[3]) / interval);
 				std::copy(std::begin(now), std::end(now), s_ec);
+			}
+			// 206 in the app: what asked for the event tests (vm-eventos-razones): the busiest 16, a second each; "IOP<-" the IOP's next
+			// event (set there), "PSX_INT<-" an IOP event that woke the EE; and the IOP's sleeps and runs at the event tests.
+			{
+				static u64 s_why_sleeps = 0, s_why_runs = 0;
+				if (g_forja_ev_why_on.load(std::memory_order_relaxed) && interval > 0.0 && vm_state == VMState::Running)
+				{
+					ForjaEvWhyRow rows[16];
+					u64 counted = 0;
+					const int n = ForjaEvWhyTake(rows, 16, &counted);
+					std::string list;
+					for (int i = 0; i < n; i++)
+					{
+						const char* base = std::strrchr(rows[i].file, '/');
+						base = base ? base + 1 : rows[i].file;
+						char item[192];
+						std::snprintf(item, sizeof(item), " %s%s:%d=%.0f", (rows[i].line & 0x40000000) ? "IOP<-" : (rows[i].line & 0x20000000) ? "PSX_INT<-" : "",
+							base, rows[i].line & 0x1fffffff, rows[i].count / interval);
+						list += item;
+					}
+					ProbeLog("Event reasons (206): counted_per_second=%.0f iop_sleeps=%.0f iop_runs=%.0f;%s\n", counted / interval,
+						(g_forja_iop_sleeps - s_why_sleeps) / interval, (g_forja_iop_runs - s_why_runs) / interval, list.c_str());
+				}
+				s_why_sleeps = g_forja_iop_sleeps;
+				s_why_runs = g_forja_iop_runs;
 			}
 			// 203 in the app: UNPACKs taken whole in one go a second (the rest: split across pieces, or the path off).
 			{

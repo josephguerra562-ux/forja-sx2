@@ -227,8 +227,78 @@ static u32 s_forja_vif1_run = 0; // joined in a row: past 4096 one step goes bac
 // 3 the 4096 in a row, 4 a wait (not a step that moved data). Only with the limit on (EE thread, for the heartbeat).
 u64 g_forja_vif1_not_joined[5] = {};
 
+// 206 in the app: what set the deadline the next event test comes at (the caller of the last cpuSetNextEvent that moved it), and that
+// deadline: if nextEventCycle no longer matches it, something stored it directly (the recompiler's recBranchCall, cpuSetEvent).
+static const char* s_forja_ev_why_file = "EE start";
+static int s_forja_ev_why_line = 0;
+static u64 s_forja_ev_why_cycle = 0;
+std::atomic<int> g_forja_ev_why_on{0};
+namespace
+{
+	constexpr int FORJA_EV_WHY_SLOTS = 256;
+	ForjaEvWhyRow s_forja_ev_why[FORJA_EV_WHY_SLOTS] = {};
+	u64 s_forja_ev_why_full = 0;
+}
+
+// At each event test with the meter on (vm-eventos-razones): one more for what asked for it.
+static void ForjaEvWhyCount()
+{
+	const char* file = s_forja_ev_why_file;
+	int line = s_forja_ev_why_line;
+	if (cpuRegs.nextEventCycle != s_forja_ev_why_cycle)
+	{
+		file = "stored directly (recBranchCall: ERET, EI, traps; cpuSetEvent)";
+		line = 0;
+	}
+	u32 h = (static_cast<u32>(reinterpret_cast<uptr>(file) >> 2) * 2654435761u) ^ (static_cast<u32>(line) * 40503u);
+	for (int i = 0; i < FORJA_EV_WHY_SLOTS; i++)
+	{
+		ForjaEvWhyRow& row = s_forja_ev_why[(h + i) & (FORJA_EV_WHY_SLOTS - 1)];
+		if (row.file == file && row.line == line)
+		{
+			row.count++;
+			return;
+		}
+		if (!row.file)
+		{
+			row.file = file;
+			row.line = line;
+			row.count = 1;
+			return;
+		}
+	}
+	s_forja_ev_why_full++;
+}
+
+int ForjaEvWhyTake(ForjaEvWhyRow* rows, int max_rows, u64* counted)
+{
+	u64 total = s_forja_ev_why_full;
+	int n = 0;
+	for (ForjaEvWhyRow& row : s_forja_ev_why)
+	{
+		if (!row.file || !row.count)
+			continue;
+		total += row.count;
+		// keep the busiest max_rows (insertion into the short list, busiest first)
+		int at = n < max_rows ? n++ : max_rows;
+		while (at > 0 && rows[at - 1].count < row.count)
+		{
+			if (at < max_rows)
+				rows[at] = rows[at - 1];
+			at--;
+		}
+		if (at < max_rows)
+			rows[at] = row;
+	}
+	for (ForjaEvWhyRow& row : s_forja_ev_why)
+		row = ForjaEvWhyRow{};
+	s_forja_ev_why_full = 0;
+	*counted = total;
+	return n;
+}
+
 // sets a branch test to occur some time from an arbitrary starting point.
-__fi void cpuSetNextEvent( u64 startCycle, s32 delta )
+__fi void cpuSetNextEvent( u64 startCycle, s32 delta, const char* why_file, int why_line )
 {
 	// typecast the conditional to signed so that things don't blow up
 	// if startCycle is greater than our next branch cycle.
@@ -236,13 +306,16 @@ __fi void cpuSetNextEvent( u64 startCycle, s32 delta )
 	if( (int)(cpuRegs.nextEventCycle - startCycle) > delta )
 	{
 		cpuRegs.nextEventCycle = startCycle + delta;
+		s_forja_ev_why_file = why_file; // 206 in the app
+		s_forja_ev_why_line = why_line;
+		s_forja_ev_why_cycle = cpuRegs.nextEventCycle;
 	}
 }
 
 // sets a branch to occur some time from the current cycle
-__fi void cpuSetNextEventDelta( s32 delta )
+__fi void cpuSetNextEventDelta( s32 delta, const char* why_file, int why_line )
 {
-	cpuSetNextEvent( cpuRegs.cycle, delta );
+	cpuSetNextEvent( cpuRegs.cycle, delta, why_file, why_line );
 }
 
 __fi int cpuGetCycles(int interrupt)
@@ -463,7 +536,12 @@ __fi void _cpuEventTest_Shared()
 #endif
 	OrbisPrefetchEventLines(); // vk-285-98
 	eeEventTestIsActive = true;
+	if (g_forja_ev_why_on.load(std::memory_order_relaxed)) // 206 in the app: what asked for this one
+		ForjaEvWhyCount();
 	cpuRegs.nextEventCycle = cpuRegs.cycle + eeWaitCycles;
+	s_forja_ev_why_file = "EE wait 3072 (nothing sooner)";
+	s_forja_ev_why_line = 0;
+	s_forja_ev_why_cycle = cpuRegs.nextEventCycle;
 	cpuRegs.lastEventCycle = cpuRegs.cycle;
 	// ---- INTC / DMAC (CPU-level Exceptions) -----------------
 	// Done first because exceptions raised during event tests need to be postponed a few
@@ -603,7 +681,9 @@ __fi void _cpuEventTest_Shared()
 	else
 	{
 		// Otherwise IOP is caught up/not doing anything so we can wait for the next event.
-		cpuSetNextEventDelta(((psxRegs.iopNextEventCycle - psxRegs.cycle) * mutiplier) - EEsCycle);
+		// 206 in the app: the reason is what set the IOP's next event (R3000A.cpp g_forja_iop_why_*), marked with bit 30.
+		cpuSetNextEventDelta(((psxRegs.iopNextEventCycle - psxRegs.cycle) * mutiplier) - EEsCycle, g_forja_iop_why_file,
+			g_forja_iop_why_line | 0x40000000);
 	}
 
 	// Apply vsync and other counter nextCycles
@@ -684,7 +764,7 @@ __fi void CPU_SET_DMASTALL(EE_EventType n, bool set)
 		OrbisDmaStallStore(cpuRegs.dmastall & ~(1u << n));
 }
 
-__fi void CPU_INT( EE_EventType n, s32 ecycle)
+__fi void CPU_INT( EE_EventType n, s32 ecycle, const char* why_file, int why_line )
 {
 	ORBIS_EEDIAG(OrbisEEDiag::cpu_int[n & 31]++); // vk-285-100
 	// If it's retunning too quick, just rerun the DMA, there's no point in running the EE for < 4 cycles.
@@ -746,7 +826,7 @@ __fi void CPU_INT( EE_EventType n, s32 ecycle)
 		psxRegs.iopCycleEE = 0;
 	}
 
-	cpuSetNextEventDelta(cpuRegs.eCycle[n]);
+	cpuSetNextEventDelta(cpuRegs.eCycle[n], why_file, why_line); // 206 in the app: the reason is CPU_INT's caller
 }
 
 // Count arguments, save their starting locations, and replace the space separators with null terminators so they're separate strings

@@ -6,6 +6,7 @@
 #include "common/Pcsx2Defs.h"
 
 #include <array>
+#include <atomic> // 206 in the app (g_forja_ev_why_on)
 
 // --------------------------------------------------------------------------------------
 //  EE Bios function name tables.
@@ -391,7 +392,9 @@ enum EE_EventType
 	VU_MTVU_BUSY
 };
 
-extern void CPU_INT( EE_EventType n, s32 ecycle );
+// 206 in the app: why_file/why_line are the caller's (clang's __builtin_FILE/__builtin_LINE), for the meter of what asks for each
+// event test (vm-eventos-razones, R5900.cpp ForjaEvWhyTake). Nothing reads them on the way: two stores when the deadline moves.
+extern void CPU_INT( EE_EventType n, s32 ecycle, const char* why_file = __builtin_FILE(), int why_line = __builtin_LINE() );
 extern void CPU_SET_DMASTALL(EE_EventType n, bool set);
 extern uint intcInterrupt();
 extern uint dmacInterrupt();
@@ -405,8 +408,17 @@ extern void cpuClearInt(uint n);
 extern void GoemonPreloadTlb();
 extern void GoemonUnloadTlb(u32 key);
 
-extern void cpuSetNextEvent( u64 startCycle, s32 delta );
-extern void cpuSetNextEventDelta( s32 delta );
+extern void cpuSetNextEvent( u64 startCycle, s32 delta, const char* why_file = __builtin_FILE(), int why_line = __builtin_LINE() ); // 206 in the app: why_* (CPU_INT, above)
+extern void cpuSetNextEventDelta( s32 delta, const char* why_file = __builtin_FILE(), int why_line = __builtin_LINE() );
+// 206 in the app: the meter of what asks for each event test (vm-eventos-razones; ps4/vm/main.cpp prints it). EE thread only.
+struct ForjaEvWhyRow
+{
+	const char* file;
+	int line; // bit 30: the IOP's next event, set there; bit 29: PSX_INT waking the EE
+	u64 count;
+};
+extern std::atomic<int> g_forja_ev_why_on;
+extern int ForjaEvWhyTake(ForjaEvWhyRow* rows, int max_rows, u64* counted); // the busiest first; clears the table
 extern int  cpuTestCycle( u64 startCycle, s32 delta );
 extern void cpuSetEvent();
 extern int cpuGetCycles(int interrupt);

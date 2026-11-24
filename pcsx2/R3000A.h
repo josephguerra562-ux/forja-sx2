@@ -176,6 +176,11 @@ extern bool iopEventAction;
 extern bool g_forja_iop_sleep;
 extern u32 g_forja_iop_sleep_lag;
 extern u64 g_forja_iop_sleeps, g_forja_iop_runs;
+// 206 in the app: what set the IOP's next event (for the EE's meter of event tests, R5900.cpp), and the IOP counter that set
+// psxNextDeltaCounter last (0-5 the timers, 6 the SPU2's 48 kHz tick, 7 USB; 20+ one already past its time). EE thread only.
+extern const char* g_forja_iop_why_file;
+extern int g_forja_iop_why_line;
+extern int g_forja_iop_cnt_why;
 extern void ForjaNoteIopIdleLoop(u32 pc, u32 end);
 // Compilation 123: a loop that only reads memory and tests what it read (R3000A.cpp), how many are known, and the IOP's code around an
 // address as text (for the log, where it waits without sleeping).

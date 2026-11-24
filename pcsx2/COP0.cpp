@@ -775,3 +775,22 @@ cpuRegs.PERF.n.pccr, cpuRegs.PERF.n.pcr0, cpuRegs.PERF.n.pcr1, _Imm_ & 0x3F);*/
 } // namespace OpcodeImpl
 } // namespace Interpreter
 } // namespace R5900
+
+// 206 in the app: the recompiler's ERET and EI (pcsx2/x86/iCOP0.cpp). recBranchCall stored nextEventCycle = cycle before calling the
+// interpreter's, so their block always ended in an event test, whatever ERET/EI asked for after: the 205's "Eventos sin prisa" left
+// out ~110,000 4-cycle requests a second in Shadow of the Colossus and the event tests stayed at ~404,000 a second (the same as the
+// 203 and the 204). With the mode on, the test comes only if the interpreter's ERET/EI asked for it (ForjaEventSoon, above: an
+// interrupt pending and unmasked, VU0 running, the COP0 timer in its window); with it off, exactly as before.
+void ForjaRecERET()
+{
+	if (!g_forja_ev_calm.load(std::memory_order_relaxed))
+		cpuRegs.nextEventCycle = cpuRegs.cycle;
+	R5900::Interpreter::OpcodeImpl::COP0::ERET();
+}
+
+void ForjaRecEI()
+{
+	if (!g_forja_ev_calm.load(std::memory_order_relaxed))
+		cpuRegs.nextEventCycle = cpuRegs.cycle;
+	R5900::Interpreter::OpcodeImpl::COP0::EI();
+}

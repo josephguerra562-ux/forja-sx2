@@ -40,6 +40,9 @@ bool iopEventAction = false;
 bool g_forja_iop_sleep = false;
 u32 g_forja_iop_sleep_lag = 0;
 u64 g_forja_iop_sleeps = 0, g_forja_iop_runs = 0;
+const char* g_forja_iop_why_file = "IOP start"; // 206 in the app (R3000A.h)
+int g_forja_iop_why_line = 0;
+int g_forja_iop_cnt_why = -1;
 
 namespace
 {
@@ -372,18 +375,22 @@ void psxException(u32 code, u32 bd)
 	}*/
 }
 
-__fi void psxSetNextBranch( u64 startCycle, s32 delta )
+__fi void psxSetNextBranch( u64 startCycle, s32 delta, const char* why_file, int why_line )
 {
 	// typecast the conditional to signed so that things don't blow up
 	// if startCycle is greater than our next branch cycle.
 
 	if( (int)(psxRegs.iopNextEventCycle - startCycle) > delta )
+	{
 		psxRegs.iopNextEventCycle = startCycle + delta;
+		g_forja_iop_why_file = why_file; // 206 in the app
+		g_forja_iop_why_line = why_line;
+	}
 }
 
-__fi void psxSetNextBranchDelta( s32 delta )
+__fi void psxSetNextBranchDelta( s32 delta, const char* why_file, int why_line )
 {
-	psxSetNextBranch( psxRegs.cycle, delta );
+	psxSetNextBranch( psxRegs.cycle, delta, why_file, why_line );
 }
 
 __fi int psxTestCycle( u64 startCycle, s32 delta )
@@ -402,7 +409,7 @@ __fi int psxRemainingCycles(IopEventId n)
 		return 0;
 }
 
-__fi void PSX_INT( IopEventId n, s32 ecycle )
+__fi void PSX_INT( IopEventId n, s32 ecycle, const char* why_file, int why_line )
 {
 #if defined(PCSX2_PS4_VM_BOOT)
 	// Forja SX2 (compilation 67): scheduled by the EE while the IOP sleeps behind it: from the EE's time, as with the IOP in step,
@@ -411,7 +418,7 @@ __fi void PSX_INT( IopEventId n, s32 ecycle )
 	{
 		ecycle += static_cast<s32>(g_forja_iop_sleep_lag);
 		iopEventAction = true;
-		cpuSetNextEventDelta(16);
+		cpuSetNextEventDelta(16, why_file, why_line | 0x20000000); // 206 in the app: the reason is PSX_INT's caller, bit 29
 	}
 #endif
 	// 19 is CDVD read int, it's supposed to be high.
@@ -423,7 +430,7 @@ __fi void PSX_INT( IopEventId n, s32 ecycle )
 	psxRegs.sCycle[n] = psxRegs.cycle;
 	psxRegs.eCycle[n] = ecycle;
 
-	psxSetNextBranchDelta(ecycle);
+	psxSetNextBranchDelta(ecycle, why_file, why_line);
 	const float mutiplier = static_cast<float>(PS2CLK) / static_cast<float>(PSXCLK);
 	const s32 iopDelta = (psxRegs.iopNextEventCycle - psxRegs.cycle) * mutiplier;
 
@@ -431,7 +438,7 @@ __fi void PSX_INT( IopEventId n, s32 ecycle )
 	{
 		// The EE called this int, so inform it to branch as needed:
 		
-		cpuSetNextEventDelta(iopDelta - psxRegs.iopCycleEE);
+		cpuSetNextEventDelta(iopDelta - psxRegs.iopCycleEE, why_file, why_line | 0x20000000);
 	}
 }
 
@@ -495,6 +502,8 @@ static __fi void _psxTestInterrupts()
 __ri void iopEventTest()
 {
 	psxRegs.iopNextEventCycle = psxRegs.cycle + iopWaitCycles;
+	g_forja_iop_why_file = "IOP wait 384"; // 206 in the app
+	g_forja_iop_why_line = 0;
 
 	if (psxTestCycle(psxNextStartCounter, psxNextDeltaCounter))
 	{
@@ -506,7 +515,11 @@ __ri void iopEventTest()
 		// start the next branch at the next counter event by default
 		// the interrupt code below will assign nearer branches if needed.
 		if (psxNextDeltaCounter < static_cast<s32>(psxRegs.iopNextEventCycle - psxNextStartCounter))
+		{
 			psxRegs.iopNextEventCycle = psxNextStartCounter + psxNextDeltaCounter;
+			g_forja_iop_why_file = "IOP counter"; // 206 in the app
+			g_forja_iop_why_line = g_forja_iop_cnt_why;
+		}
 	}
 
 	if (psxRegs.interrupt)

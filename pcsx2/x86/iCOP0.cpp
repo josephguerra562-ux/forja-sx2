@@ -13,6 +13,8 @@
 #include "iR5900.h"
 
 namespace Interp = R5900::Interpreter::OpcodeImpl::COP0;
+extern void ForjaRecERET(); // pcsx2/COP0.cpp (206 in the app)
+extern void ForjaRecEI();
 using namespace x86Emitter;
 
 namespace R5900 {
@@ -84,14 +86,19 @@ void recTLBWR() { recCall(Interp::TLBWR); }
 
 void recERET()
 {
-	recBranchCall(Interp::ERET);
+	// 206 in the app: was recBranchCall(Interp::ERET), an event test at the block's end every time. ForjaRecERET forces it the same way
+	// with "Eventos sin prisa" off; with it on, the interpreter's ERET asks for one only when something waits (pcsx2/COP0.cpp).
+	recCall(ForjaRecERET);
+	g_branch = 2;
 }
 
 void recEI()
 {
 	// must branch after enabling interrupts, so that anything
 	// pending gets triggered properly.
-	recBranchCall(Interp::EI);
+	// 206 in the app: as recERET, above (ForjaRecEI; the interpreter's EI asks for the test when an interrupt is pending).
+	recCall(ForjaRecEI);
+	g_branch = 2;
 }
 
 void recDI()

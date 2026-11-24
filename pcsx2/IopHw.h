@@ -313,11 +313,11 @@ enum IopEventId
 	IopEvt_USB,
 };
 
-extern void PSX_INT( IopEventId n, s32 ecycle);
+extern void PSX_INT( IopEventId n, s32 ecycle, const char* why_file = __builtin_FILE(), int why_line = __builtin_LINE() ); // 206 in the app: why_* as R5900.h's CPU_INT
 extern int psxRemainingCycles(IopEventId n);
 
-extern void psxSetNextBranch( u64 startCycle, s32 delta );
-extern void psxSetNextBranchDelta( s32 delta );
+extern void psxSetNextBranch( u64 startCycle, s32 delta, const char* why_file = __builtin_FILE(), int why_line = __builtin_LINE() );
+extern void psxSetNextBranchDelta( s32 delta, const char* why_file = __builtin_FILE(), int why_line = __builtin_LINE() );
 
 extern void psxHwReset();
 extern u8   psxHw4Read8 (u32 add);

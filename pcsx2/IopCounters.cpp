@@ -136,6 +136,7 @@ static void _rcntSet(int cntidx)
 	if (counter.count > overflowCap || counter.count > counter.target)
 	{
 		psxNextDeltaCounter = 4;
+		g_forja_iop_cnt_why = 20 + cntidx; // 206 in the app (R3000A.h)
 		return;
 	}
 
@@ -146,7 +147,8 @@ static void _rcntSet(int cntidx)
 	if (c < (u64)psxNextDeltaCounter)
 	{
 		psxNextDeltaCounter = (u32)c;
-		psxSetNextBranch(psxNextStartCounter, psxNextDeltaCounter); //Need to update on counter resets/target changes
+		g_forja_iop_cnt_why = cntidx; // 206 in the app (R3000A.h)
+		psxSetNextBranch(psxNextStartCounter, psxNextDeltaCounter, "IOP counter", cntidx); //Need to update on counter resets/target changes
 	}
 
 	if (counter.target & IOPCNT_FUTURE_TARGET)
@@ -158,7 +160,8 @@ static void _rcntSet(int cntidx)
 	if (c < (u64)psxNextDeltaCounter)
 	{
 		psxNextDeltaCounter = (u32)c;
-		psxSetNextBranch(psxNextStartCounter, psxNextDeltaCounter); //Need to update on counter resets/target changes
+		g_forja_iop_cnt_why = cntidx; // 206 in the app (R3000A.h)
+		psxSetNextBranch(psxNextStartCounter, psxNextDeltaCounter, "IOP counter", cntidx); //Need to update on counter resets/target changes
 	}
 }
 
@@ -506,6 +509,7 @@ void psxRcntUpdate()
 	SPU2async();
 #endif
 	psxNextDeltaCounter = psxCounters[6].deltaCycles;
+	g_forja_iop_cnt_why = 6; // 206 in the app: the SPU2's tick
 
 	DEV9async(1);    
 	const s32 diffusb = psxRegs.cycle - psxCounters[7].startCycle;
@@ -521,7 +525,10 @@ void psxRcntUpdate()
 		cusb -= diffusb;
 
 	if (cusb < psxNextDeltaCounter)
+	{
 		psxNextDeltaCounter = cusb;
+		g_forja_iop_cnt_why = 7; // 206 in the app: USB
+	}
 
 	for (i = 0; i < 6; i++)
 		_rcntSet(i);
