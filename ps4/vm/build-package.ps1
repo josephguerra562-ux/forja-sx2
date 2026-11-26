@@ -159,7 +159,9 @@ foreach ($fontName in $languageFonts) {
 New-Item -ItemType Directory -Force -Path (Join-Path $packageDir 'resources/licenses') | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'assets/licenses/speex-resampler.txt') -Destination (Join-Path $packageDir 'resources/licenses/speex-resampler.txt')
 $packageFiles += 'resources/licenses/speex-resampler.txt'
-foreach ($license in @('libchdr.txt', 'lzma.txt', 'fuentes-montserrat-OFL.txt', 'fuentes-noto-OFL.txt')) {
+# Forja SX2 1.08: the GPL itself (PCSX2 and Forja SX2 are GPL-3.0+), which has to travel with the program (the audit's LIC-01;
+# informes/REVISION_AUDITORIA_OTRA_IA_2026-11-20.md). A copy of the repository's COPYING.GPLv3.
+foreach ($license in @('COPYING.GPLv3.txt', 'libchdr.txt', 'lzma.txt', 'fuentes-montserrat-OFL.txt', 'fuentes-noto-OFL.txt')) {
   Copy-Item -LiteralPath (Join-Path $PSScriptRoot "assets/licenses/$license") -Destination (Join-Path $packageDir "resources/licenses/$license")
   $packageFiles += "resources/licenses/$license"
 }
