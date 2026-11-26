@@ -443,6 +443,8 @@ extern u64 g_forja_ev_calm_ei_skips, g_forja_ev_calm_eret_skips, g_forja_ev_calm
 extern u64 g_forja_ev_calm_status_skips; // pcsx2/COP0.cpp (207 in the app)
 extern std::atomic<u64> g_orbis_ee_evtests; // pcsx2/R5900.cpp
 extern std::atomic<u64> g_forja_upk_whole; // pcsx2/Vif_Transfer.cpp (203 in the app: UNPACKs taken whole)
+extern std::atomic<int> g_forja_vif_inner; // pcsx2/Vif_Transfer.cpp (212 in the app, "Bucle rápido del VIF1")
+extern u64 g_forja_vif_inner_codes;
 extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app, "PLZCW rápido")
 // 174 in the app, "Animación a medias" ([Forja] AnimMediasDir/AnimMediasFuncion/AnimMediasVacia). God of War II's map (the 171-173,
 // herramientas/mapa_ee.py): the EE's busiest code in the Colossus is decoding animations (0x112380, ~13 %: each bone channel's keys for
@@ -3639,6 +3641,15 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 				ProbeLog("VIF1 timing breaks joined (208 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.vif_breaks_origin),
 					apart ? ", vm-vif-cortes-separados" : "");
 		}
+		// 212 in the app, "Bucle rápido del VIF1" ([Forja] VifBucleRapido; pcsx2/Vif_Transfer.cpp). vm-vif-bucle-viejo turns it off.
+		{
+			const bool old = access("/data/ForjaSX2/vm-vif-bucle-viejo", F_OK) == 0;
+			const bool on = !old && s_profile.vif_inner == 1;
+			g_forja_vif_inner.store(on ? 1 : 0, std::memory_order_relaxed);
+			if (on || old || s_profile.vif_inner_origin != ForjaGameProfile::Origin::Global)
+				ProbeLog("VIF1 fast loop (212 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.vif_inner_origin),
+					old ? ", vm-vif-bucle-viejo" : "");
+		}
 		// 211 in the app, "Sonido en tandas" ([Forja] SonidoEnTandas; pcsx2/IopCounters.cpp). vm-sonido-cada-muestra turns it off.
 		{
 			const bool each = access("/data/ForjaSX2/vm-sonido-cada-muestra", F_OK) == 0;
@@ -6483,6 +6494,13 @@ void VMHostPoll()
 				if (upk != s_upk && interval > 0.0 && vm_state == VMState::Running)
 					ProbeLog("VIF1 whole UNPACKs (203): per_second=%.0f\n", static_cast<double>(upk - s_upk) / interval);
 				s_upk = upk;
+			}
+			// 212 in the app: the VIF1 codes the fast loop took a second.
+			{
+				static u64 s_in = 0;
+				if (g_forja_vif_inner.load(std::memory_order_relaxed) && interval > 0.0 && vm_state == VMState::Running)
+					ProbeLog("VIF1 fast loop (212): codes_per_second=%.0f\n", static_cast<double>(g_forja_vif_inner_codes - s_in) / interval);
+				s_in = g_forja_vif_inner_codes;
 			}
 			// 198 in the app: the EE's waits for the VIF thread by where they came from (share of the EE's time: TSC ticks against the TSC's
 			// own rate over the interval), and the thread's sleeps a second.

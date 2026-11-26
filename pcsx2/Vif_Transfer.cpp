@@ -21,6 +21,16 @@ u32 g_forja_vif_tramos_first_wrong[2][10] = {};
 extern std::atomic<int> g_orbis_vif1_exec_early; // Vif_Unpack.cpp
 extern std::atomic<int> g_forja_vif_nocopy_mode; // MTVU.cpp (175 in the app, "VIF sin copia"; 203: the whole-UNPACK path needs it off)
 std::atomic<u64> g_forja_upk_whole{0}; // 203 in the app: UNPACKs taken whole in one go (ps4/vm/main.cpp's meter)
+// 212 in the app, "Bucle rápido del VIF1" ([Forja] VifBucleRapido; ps4/vm/main.cpp sets it; vm-vif-bucle-viejo turns it off). The
+// 211's samples: vifTransferLoop<1> 9.2 % of Shadow of the Colossus' EE at ~2.3 million VIF1 codes a second, a state machine that
+// stores and reloads its state for every code (the packet's words left, the data pointer the caller owns, cmd, pass, irq), each
+// load waiting on the store just before it. A run of the codes it takes fast (NOP, STMOD, STCYCL, BASE, OFFSET, ITOP and the
+// 203's whole UNPACK, none with the interrupt bit, no interrupt pending) now goes in an inner loop that keeps the pointer and the
+// words left in registers: they reach vif1.vifpacketsize and the caller only before vifUnpackSetup (which reads the words left)
+// and when the run ends. Each code does what the loop below does with it, step for step; any other code leaves the inner loop
+// untouched and goes the usual way. The codes it took (EE thread, for the meter).
+std::atomic<int> g_forja_vif_inner{0};
+u64 g_forja_vif_inner_codes = 0;
 #if defined(PCSX2_PS4)
 #include <thread>
 #include <unistd.h>
@@ -251,6 +261,9 @@ _vifT void vifTransferLoop(u32* &data) {
 #if defined(PCSX2_PS4)
 	const bool on_thread = idx && ForjaVifT::t_on_thread;
 	const bool meter = idx && !on_thread && g_forja_vifm_on;
+	// 212 in the app: the inner loop (above), only where every code it takes would go one of the fast ways below anyway.
+	const bool inner = idx && vif_fast && tramos == 0 && !on_thread && !meter && !diag &&
+					   !(IsDevBuild && TraceLogging.EE.VIFcode.IsActive()) && g_forja_vif_inner.load(std::memory_order_relaxed) != 0;
 	if (!on_thread) // 195 in the app: vif1Regs.stat is the EE's
 #endif
 	{
@@ -261,6 +274,90 @@ _vifT void vifTransferLoop(u32* &data) {
 		s_tramo_pred_n = s_tramo_pred_i = 0; // 167 in the app: predictions don't outlive the loop
 	//VIF_LOG("Starting VIF%d loop, pSize = %x, stalled = %x", idx, pSize, vifX.vifstalled.enabled );
 	while (pSize > 0 && !vifX.vifstalled.enabled) {
+
+#if defined(PCSX2_PS4)
+		// 212 in the app, "Bucle rápido del VIF1" (g_forja_vif_inner, above). Entered between codes only (cmd and pass 0) and with no
+		// interrupt pending, so the get-new-code step below would leave irq as it is (no code here has the interrupt bit) and store the
+		// code in VIF1_CODE, which each code here does. It leaves with the code it doesn't take still unread: the steps below take it.
+		if (inner && !vifX.cmd && !vifX.pass && !vifX.irq)
+		{
+			u32* d = data;
+			u32 left = pSize;
+			u32 taken = 0;
+			while (left > 0 && !vifX.vifstalled.enabled)
+			{
+				const u32 code = d[0];
+				if (static_cast<s32>(code) < 0)
+					break; // the interrupt bit: the usual way
+				const u32 cmd = code >> 24;
+				if (cmd == 0) // NOP (vk-285-96's fast path below)
+				{
+					vifXRegs.code = code;
+					if (vifX.queued_program)
+						vifExecQueue(idx);
+					if (left > 1 && ((d[1] >> 24) & 0x7f) == 0x6 && (d[1] & 0x1)) // is mskpath3 next
+					{
+						vifX.vifstalled.enabled = VifStallEnable(vifXch);
+						vifX.vifstalled.value = VIF_TIMING_BREAK;
+					}
+					d += 1;
+					left -= 1;
+					taken++;
+					continue;
+				}
+				if (cmd <= 0x05) // STCYCL, OFFSET, BASE, ITOP, STMOD (vk-285-102's fast path below; VIF1)
+				{
+					vifXRegs.code = code;
+					switch (cmd)
+					{
+						case 0x05: vifXRegs.mode = code & 0x3; break;
+						case 0x01: *reinterpret_cast<u32*>(&vifXRegs.cycle) = code & 0xffffu; break;
+						case 0x03: vif1Regs.base = code & 0x3ff; break;
+						case 0x02:
+							ForjaVifT::DbfSet(false); // 195 in the app
+							vif1Regs.ofst = code & 0x3ff;
+							vif1Regs.tops = vif1Regs.base;
+							break;
+						default: vifXRegs.itops = code & 0x3ff; break; // 0x04
+					}
+					d += 1;
+					left -= 1;
+					taken++;
+					continue;
+				}
+				if (upk_whole && cmd >= 0x60) // the 203's whole UNPACK below (cmd < 0x80: no interrupt bit)
+				{
+					vifXRegs.code = code;
+					vifX.cmd = cmd;
+					pSize = left; // vifUnpackSetup reads the words left (start_aligned)
+					vifUnpackSetup<idx>(d); // pass 1: the code word
+					d += 1;
+					left -= 1;
+					taken++;
+					const u32 words = vifX.tag.size;
+					if (words <= left && nVif[idx].bSize == 0 && !vifX.vifstalled.enabled)
+					{
+						vu1Thread.VifUnpack(vifX, vifXRegs, reinterpret_cast<const u8*>(d), (words << 2) + 4, 0);
+						vifX.pass = 0;
+						vifX.tag.size = 0;
+						vifX.cmd = 0;
+						vifXRegs.num = 0;
+						d += words;
+						left -= words;
+						g_forja_upk_whole.store(g_forja_upk_whole.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+						continue;
+					}
+					break; // a split one (cmd and pass set): pass 2 the usual way
+				}
+				break; // any other code: the usual way, unread
+			}
+			data = d;
+			pSize = left;
+			g_forja_vif_inner_codes += taken;
+			if (pSize == 0 || vifX.vifstalled.enabled)
+				break; // what the outer loop's test would do now
+		}
+#endif
 
 		// 167 in the app, "VIF en tramos": a run of codes only the VU1 needs goes to the VU thread in one piece (mode 2), or (mode 1) the
 		// walk predicts its UNPACKs for the normal path to compare.
