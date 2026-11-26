@@ -438,6 +438,7 @@ extern u64 g_forja_vifm_pieces[2], g_forja_vifm_codes[2], g_forja_vifm_ticks[2],
 extern bool g_forja_vifm_on; // pcsx2/Vif_Transfer.cpp (202 in the app: the 193's meter only with vm-vif-medidor)
 extern std::atomic<int> g_forja_ev_calm; // pcsx2/COP0.cpp (205 in the app, "Eventos sin prisa")
 extern u64 g_forja_ev_calm_ei_skips, g_forja_ev_calm_eret_skips, g_forja_ev_calm_timer;
+extern u64 g_forja_ev_calm_status_skips; // pcsx2/COP0.cpp (207 in the app)
 extern std::atomic<u64> g_orbis_ee_evtests; // pcsx2/R5900.cpp
 extern std::atomic<u64> g_forja_upk_whole; // pcsx2/Vif_Transfer.cpp (203 in the app: UNPACKs taken whole)
 extern std::atomic<bool> g_forja_ee_lzcnt; // pcsx2/x86/iMMI.cpp (173 in the app, "PLZCW rápido")
@@ -6420,12 +6421,14 @@ void VMHostPoll()
 			}
 			// 205 in the app, "Eventos sin prisa": the event tests a second, and the EI and ERET tests left out and the COP0 timer's own.
 			{
-				static u64 s_ec[4] = {};
-				const u64 now[4] = {g_orbis_ee_evtests.load(std::memory_order_relaxed), g_forja_ev_calm_ei_skips, g_forja_ev_calm_eret_skips,
-					g_forja_ev_calm_timer};
+				static u64 s_ec[5] = {};
+				const u64 now[5] = {g_orbis_ee_evtests.load(std::memory_order_relaxed), g_forja_ev_calm_ei_skips, g_forja_ev_calm_eret_skips,
+					g_forja_ev_calm_timer, g_forja_ev_calm_status_skips};
 				if (g_forja_ev_calm.load(std::memory_order_relaxed) && interval > 0.0 && vm_state == VMState::Running)
-					ProbeLog("Event tests without hurry (205): event_tests_per_second=%.0f ei_left_out=%.0f eret_left_out=%.0f timer_scheduled=%.0f\n",
-						(now[0] - s_ec[0]) / interval, (now[1] - s_ec[1]) / interval, (now[2] - s_ec[2]) / interval, (now[3] - s_ec[3]) / interval);
+					ProbeLog("Event tests without hurry (205): event_tests_per_second=%.0f ei_left_out=%.0f eret_left_out=%.0f timer_scheduled=%.0f "
+						"status_left_out=%.0f\n",
+						(now[0] - s_ec[0]) / interval, (now[1] - s_ec[1]) / interval, (now[2] - s_ec[2]) / interval, (now[3] - s_ec[3]) / interval,
+						(now[4] - s_ec[4]) / interval);
 				std::copy(std::begin(now), std::end(now), s_ec);
 			}
 			// 206 in the app: what asked for the event tests (vm-eventos-razones): the busiest 16, a second each; "IOP<-" the IOP's next

@@ -1063,12 +1063,26 @@ void DEV9write32(u32 addr, u32 value)
 	}
 }
 
+// 207 in the app: the network's lines for every packet (SMAP's unknown registers, each packet sent, each DMA, each TCP piece): in
+// Joseph's online fights of Mortal Kombat Armageddon (2026-11-24, the 190) ~100 a second, 8 MB of log in an hour. The first 400
+// of a game are kept (enough to see a connection start), then one line for every 20,000 left out.
+bool ForjaDev9Chatty()
+{
+	static u32 s_lines = 0;
+	if (++s_lines <= 400)
+		return true;
+	if ((s_lines - 400) % 20000 == 0)
+		DevCon.WriteLn("DEV9: %u lines about each packet left out of the log so far", s_lines - 400);
+	return false;
+}
+
 void DEV9readDMA8Mem(u32* pMem, int size)
 {
 	if (!EmuConfig.DEV9.EthEnable && !EmuConfig.DEV9.HddEnable)
 		return;
 
-	DevCon.WriteLn("DEV9: *DEV9readDMA8Mem: size %x", size);
+	if (ForjaDev9Chatty()) // 207 in the app
+		DevCon.WriteLn("DEV9: *DEV9readDMA8Mem: size %x", size);
 
 	if (dev9.dma_ctrl & SPD_DMA_TO_SMAP)
 	{
@@ -1096,7 +1110,8 @@ void DEV9writeDMA8Mem(u32* pMem, int size)
 	if (!EmuConfig.DEV9.EthEnable && !EmuConfig.DEV9.HddEnable)
 		return;
 
-	DevCon.WriteLn("DEV9: *DEV9writeDMA8Mem: size %x", size);
+	if (ForjaDev9Chatty()) // 207 in the app
+		DevCon.WriteLn("DEV9: *DEV9writeDMA8Mem: size %x", size);
 
 	if (dev9.dma_ctrl & SPD_DMA_TO_SMAP)
 	{

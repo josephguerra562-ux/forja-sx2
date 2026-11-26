@@ -16,6 +16,8 @@
 #include "net.h"
 #include "pcap_io.h"
 
+bool ForjaDev9Chatty(); // DEV9.cpp (207 in the app)
+
 bool has_link = true;
 volatile bool fireIntR = false;
 std::mutex frame_counter_mutex;
@@ -145,7 +147,8 @@ void tx_process()
 		else
 		{
 			const u32 base = (pbd->pointer - 0x1000) & 16383;
-			DevCon.WriteLn("DEV9: Sending Packet from base %x, size %d", base, pbd->length);
+			if (ForjaDev9Chatty()) // 207 in the app
+				DevCon.WriteLn("DEV9: Sending Packet from base %x, size %d", base, pbd->length);
 
 			pk.size = pbd->length;
 
@@ -338,7 +341,8 @@ u8 smap_read8(u32 addr)
 			return dev9.bd_swap;
 
 		default:
-			DevCon.WriteLn("DEV9: SMAP : Unknown 8 bit read @ %X,v=%X", addr, dev9Ru8(addr));
+			if (ForjaDev9Chatty()) // 207 in the app
+				DevCon.WriteLn("DEV9: SMAP : Unknown 8 bit read @ %X,v=%X", addr, dev9Ru8(addr));
 			return dev9Ru8(addr);
 	}
 
@@ -492,7 +496,8 @@ u16 smap_read16(u32 addr)
 			DevCon.WriteLn("DEV9: SMAP_R_EMAC3_STA_CTRL_H 16bit read %x", dev9Ru16(addr));
 			return dev9Ru16(addr);
 		default:
-			DevCon.WriteLn("DEV9: SMAP : Unknown 16 bit read @ %X,v=%X", addr, dev9Ru16(addr));
+			if (ForjaDev9Chatty()) // 207 in the app
+				DevCon.WriteLn("DEV9: SMAP : Unknown 16 bit read @ %X,v=%X", addr, dev9Ru16(addr));
 			return dev9Ru16(addr);
 	}
 #endif
@@ -531,7 +536,8 @@ u32 smap_read32(u32 addr)
 			return rv;
 		}
 		default:
-			DevCon.WriteLn("DEV9: SMAP : Unknown 32 bit read @ %X,v=%X", addr, dev9Ru32(addr));
+			if (ForjaDev9Chatty()) // 207 in the app
+				DevCon.WriteLn("DEV9: SMAP : Unknown 32 bit read @ %X,v=%X", addr, dev9Ru32(addr));
 			return dev9Ru32(addr);
 	}
 }
@@ -601,7 +607,8 @@ void smap_write8(u32 addr, u8 value)
 			}
 			return;
 		default:
-			DevCon.WriteLn("DEV9: SMAP : Unknown 8 bit write @ %X,v=%X", addr, value);
+			if (ForjaDev9Chatty()) // 207 in the app
+				DevCon.WriteLn("DEV9: SMAP : Unknown 8 bit write @ %X,v=%X", addr, value);
 			dev9Ru8(addr) = value;
 			return;
 	}
@@ -787,7 +794,8 @@ void smap_write16(u32 addr, u16 value)
 		*/
 
 		default:
-			DevCon.WriteLn("DEV9: SMAP : Unknown 16 bit write @ %X,v=%X", addr, value);
+			if (ForjaDev9Chatty()) // 207 in the app
+				DevCon.WriteLn("DEV9: SMAP : Unknown 16 bit write @ %X,v=%X", addr, value);
 			dev9Ru16(addr) = value;
 			return;
 	}
@@ -809,7 +817,8 @@ void smap_write32(u32 addr, u32 value)
 			dev9Ru32(SMAP_R_TXFIFO_WR_PTR) = (dev9Ru32(SMAP_R_TXFIFO_WR_PTR) + 4) & 16383;
 			return;
 		default:
-			DevCon.WriteLn("DEV9: SMAP : Unknown 32 bit write @ %X,v=%X", addr, value);
+			if (ForjaDev9Chatty()) // 207 in the app
+				DevCon.WriteLn("DEV9: SMAP : Unknown 32 bit write @ %X,v=%X", addr, value);
 			dev9Ru32(addr) = value;
 			return;
 	}

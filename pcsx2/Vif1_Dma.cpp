@@ -489,7 +489,11 @@ __fi void vif1Interrupt()
 					continue;
 				}
 				g_forja_vif1_step = !vif1Regs.stat.VGW && !vif1.vifstalled.enabled; // 151 in the app: a step that moved data on, not a stall
-				CPU_INT(DMAC_VIF1, g_vif1Cycles);
+				// 207 in the app: for the 206's meter (vm-eventos-razones), why: 10000 x the stall (1 timing break, 2 IRQ), 1000 if waiting
+				// for the GIF (VGW), plus the VIF command (0 between commands); 100000 more on the chain's second path (the tag read).
+				CPU_INT(DMAC_VIF1, g_vif1Cycles, "VIF1 step (10000 stall, 1000 VGW, cmd)",
+					(vif1.vifstalled.enabled ? 10000 * static_cast<int>(vif1.vifstalled.value) : 0) + (vif1Regs.stat.VGW ? 1000 : 0) +
+						static_cast<int>(vif1.cmd & 0x7f));
 				g_forja_vif1_step = false;
 			}
 		}
@@ -526,7 +530,11 @@ __fi void vif1Interrupt()
 					continue;
 				}
 				g_forja_vif1_step = !vif1Regs.stat.VGW && !vif1.vifstalled.enabled; // 151 in the app: a step that moved data on, not a stall
-				CPU_INT(DMAC_VIF1, g_vif1Cycles);
+				// 207 in the app: for the 206's meter (vm-eventos-razones), why: 10000 x the stall (1 timing break, 2 IRQ), 1000 if waiting
+				// for the GIF (VGW), plus the VIF command (0 between commands); 100000 more on the chain's second path (the tag read).
+				CPU_INT(DMAC_VIF1, g_vif1Cycles, "VIF1 step (10000 stall, 1000 VGW, cmd)",
+					(vif1.vifstalled.enabled ? 10000 * static_cast<int>(vif1.vifstalled.value) : 0) + (vif1Regs.stat.VGW ? 1000 : 0) +
+						static_cast<int>(vif1.cmd & 0x7f) + 100000);
 				g_forja_vif1_step = false;
 			}
 		}

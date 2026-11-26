@@ -18,6 +18,7 @@
 // tests used to land wherever). An interrupt that becomes pending later schedules its own test (hwIntcIrq, hwDmacIrq).
 std::atomic<int> g_forja_ev_calm{0};
 u64 g_forja_ev_calm_ei_skips = 0, g_forja_ev_calm_eret_skips = 0, g_forja_ev_calm_timer = 0; // EE thread only
+u64 g_forja_ev_calm_status_skips = 0; // 207 in the app: WriteCP0Status's left out (EE thread only)
 
 static bool ForjaEventSoon()
 {
@@ -60,7 +61,14 @@ void WriteCP0Status(u32 value)
 {
 	COP0_UpdatePCCR();
 	cpuRegs.CP0.n.Status.val = value;
-	cpuSetNextEventDelta(4);
+	// 207 in the app, "Eventos sin prisa": the test 4 cycles on only when something waits (ForjaEventSoon, above, read with the new
+	// Status). The 206's meter (vm-eventos-razones): ~200,000 of Shadow of the Colossus' ~396,000 event tests a second came from here
+	// (its kernel writes Status twice for each of its ~100,000 system calls a second), which is why the 205 and the 206 (EI, ERET)
+	// changed nothing: this one came right before.
+	if (g_forja_ev_calm.load(std::memory_order_relaxed) && !ForjaEventSoon())
+		g_forja_ev_calm_status_skips++;
+	else
+		cpuSetNextEventDelta(4);
 }
 
 void WriteCP0Config(u32 value)
