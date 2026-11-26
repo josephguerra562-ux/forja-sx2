@@ -14,6 +14,21 @@
 #include "OrbisEEDiag.h" // vk-285-100
 
 extern bool g_forja_vif1_step; // R5900.cpp: 151 in the app, "VIF1 en menos turnos" (CPU_INT joins only these steps)
+// 208 in the app, "Cortes del VIF1 juntos" ([Forja] VifCortesJuntos; ps4/vm/main.cpp sets it; vm-vif-cortes-separados turns it off).
+// The 207's meter: ~75,000 of Shadow of the Colossus' ~204,000 event tests a second were VIF1 steps after a timing break with no
+// command left (the one after each whole DIRECT, ~68,000 a second, Vif_Codes.cpp), each a whole event test. With this on, such a
+// step counts as one that moved data for the 151's join (under its limit, no counter due, the IOP not owed): a break that only
+// gives the DMA a turn. Never one waiting for the GIF (VGW), the VU1 (waitforvu) or an interrupt.
+std::atomic<bool> g_forja_vif_breaks_join{false};
+static __fi bool ForjaVif1StepMoves()
+{
+	if (vif1Regs.stat.VGW)
+		return false;
+	if (!vif1.vifstalled.enabled)
+		return true;
+	return vif1.vifstalled.value == VIF_TIMING_BREAK && !vif1.irq && !vif1.waitforvu &&
+		g_forja_vif_breaks_join.load(std::memory_order_relaxed);
+}
 
 u32 g_vif1Cycles = 0;
 // PS5 port (vk-285-99): VIF1 DMA tags read, by ID (REFE, CNT, NEXT, REF, REFS, CALL, RET, END), for the
@@ -488,7 +503,7 @@ __fi void vif1Interrupt()
 					g_orbis_vif1_fused++;
 					continue;
 				}
-				g_forja_vif1_step = !vif1Regs.stat.VGW && !vif1.vifstalled.enabled; // 151 in the app: a step that moved data on, not a stall
+				g_forja_vif1_step = ForjaVif1StepMoves(); // 151 in the app: a step that moved data on, not a stall (208: or a timing break)
 				// 207 in the app: for the 206's meter (vm-eventos-razones), why: 10000 x the stall (1 timing break, 2 IRQ), 1000 if waiting
 				// for the GIF (VGW), plus the VIF command (0 between commands); 100000 more on the chain's second path (the tag read).
 				CPU_INT(DMAC_VIF1, g_vif1Cycles, "VIF1 step (10000 stall, 1000 VGW, cmd)",
@@ -529,7 +544,7 @@ __fi void vif1Interrupt()
 					g_orbis_vif1_fused++;
 					continue;
 				}
-				g_forja_vif1_step = !vif1Regs.stat.VGW && !vif1.vifstalled.enabled; // 151 in the app: a step that moved data on, not a stall
+				g_forja_vif1_step = ForjaVif1StepMoves(); // 151 in the app: a step that moved data on, not a stall (208: or a timing break)
 				// 207 in the app: for the 206's meter (vm-eventos-razones), why: 10000 x the stall (1 timing break, 2 IRQ), 1000 if waiting
 				// for the GIF (VGW), plus the VIF command (0 between commands); 100000 more on the chain's second path (the tag read).
 				CPU_INT(DMAC_VIF1, g_vif1Cycles, "VIF1 step (10000 stall, 1000 VGW, cmd)",

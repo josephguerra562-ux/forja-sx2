@@ -561,7 +561,13 @@ void VU_Thread::ExecuteRingBuffer()
 					const u32 orbis_start_q0 = reinterpret_cast<const u32*>(VU1.Mem)[0];
 					CpuVU1->SetStartPC(VU1.VI[REG_TPC].UL << 3);
 #if defined(PCSX2_PS4_VM_BOOT)
-					const u64 forja_t0 = __builtin_ia32_rdtsc();
+					// 208 in the app: the clock read on one run in 8, picked at random (a fixed one in 8 could keep landing on the same program
+					// in a repeating list), its time counted 8 times. Two rdtsc a run were ~1-2 % of the VU1 thread at Shadow of the Colossus'
+					// ~280,000 runs a second (the 207's samples: the instructions right after each rdtsc). The runs and cycles stay exact.
+					static u32 s_forja_vu1_pick = 0x2545f491u; // the VU thread only
+					s_forja_vu1_pick = s_forja_vu1_pick * 1664525u + 1013904223u;
+					const bool forja_timed = (s_forja_vu1_pick >> 29) == 0;
+					const u64 forja_t0 = forja_timed ? __builtin_ia32_rdtsc() : 0;
 #endif
 #if defined(PCSX2_PS4_VM_BOOT)
 					// Forja SX2 (compilation 44): the VU1 filter: a program the player left out doesn't run.
@@ -576,12 +582,15 @@ void VU_Thread::ExecuteRingBuffer()
 					}
 #if defined(PCSX2_PS4_VM_BOOT)
 					{
-						const u64 forja_t1 = __builtin_ia32_rdtsc();
 						ForjaVU1Program& program = s_forja_vu1_programs[(orbis_start_tpc / 8) & 2047];
-						program.ticks += forja_t1 - forja_t0;
 						program.cycles += VU1.cycle;
 						program.runs++;
-						ForjaVU1ProgramsLog(forja_t1);
+						if (forja_timed) // 208 in the app
+						{
+							const u64 forja_t1 = __builtin_ia32_rdtsc();
+							program.ticks += (forja_t1 - forja_t0) * 8;
+							ForjaVU1ProgramsLog(forja_t1);
+						}
 					}
 #endif
 					gifUnit.gifPath[GIF_PATH_1].FinishGSPacketMTVU();

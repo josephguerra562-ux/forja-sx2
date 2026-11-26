@@ -437,6 +437,7 @@ extern u64 g_forja_vifm_pieces[2], g_forja_vifm_codes[2], g_forja_vifm_ticks[2],
 	g_forja_vifm_hard_by[8]; // pcsx2/Vif_Transfer.cpp (193, "VIF en su hilo" step 2)
 extern bool g_forja_vifm_on; // pcsx2/Vif_Transfer.cpp (202 in the app: the 193's meter only with vm-vif-medidor)
 extern std::atomic<int> g_forja_ev_calm; // pcsx2/COP0.cpp (205 in the app, "Eventos sin prisa")
+extern std::atomic<bool> g_forja_vif_breaks_join; // pcsx2/Vif1_Dma.cpp (208 in the app, "Cortes del VIF1 juntos")
 extern u64 g_forja_ev_calm_ei_skips, g_forja_ev_calm_eret_skips, g_forja_ev_calm_timer;
 extern u64 g_forja_ev_calm_status_skips; // pcsx2/COP0.cpp (207 in the app)
 extern std::atomic<u64> g_orbis_ee_evtests; // pcsx2/R5900.cpp
@@ -3627,6 +3628,15 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 			if (on || hurry || s_profile.ev_calm_origin != ForjaGameProfile::Origin::Global)
 				ProbeLog("Event tests without hurry (205 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.ev_calm_origin),
 					hurry ? ", vm-eventos-con-prisa" : "");
+		}
+		// 208 in the app, "Cortes del VIF1 juntos" ([Forja] VifCortesJuntos; pcsx2/Vif1_Dma.cpp). vm-vif-cortes-separados turns it off.
+		{
+			const bool apart = access("/data/ForjaSX2/vm-vif-cortes-separados", F_OK) == 0;
+			const bool on = !apart && s_profile.vif_breaks == 1;
+			g_forja_vif_breaks_join.store(on, std::memory_order_relaxed);
+			if (on || apart || s_profile.vif_breaks_origin != ForjaGameProfile::Origin::Global)
+				ProbeLog("VIF1 timing breaks joined (208 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.vif_breaks_origin),
+					apart ? ", vm-vif-cortes-separados" : "");
 		}
 		// 206 in the app: the meter of what asks for each event test (/data/ForjaSX2/vm-eventos-razones; R5900.cpp ForjaEvWhyTake).
 		{
