@@ -503,6 +503,60 @@ static const void* UnmappedRecLUTPage = nullptr;
 extern void VMHostPoll();
 #endif
 
+#if defined(PCSX2_PS4_VM_BOOT)
+extern void ProbeLog(const char* format, ...);
+// 214 in the app, "Volcado del traductor del EE" (/data/ForjaSX2/vm-ee-jit-volcado; ps4/vm/main.cpp asks for it at ~60 and ~120 s of
+// play, on this EE thread, between blocks). Every block whose start is in [lo, hi), with its guest code and the x86 this recompiler made
+// for it, to /data/ForjaSX2/logs/eejit-<n>.bin (herramientas/ee_jit.py reads it). For project B (informes/SHADOW_RUTA_50_FPS): what each
+// small block of Shadow of the Colossus' hot list routine costs around its few guest instructions. The guest code is the game's: it
+// stays on the PC, never published. Layout, little-endian: "EEJIT001", u32 count, then per block u32 startpc, u32 guest words,
+// u32 x86 bytes, u32 0, u64 x86 address, the guest words, the x86 bytes.
+void ForjaEEJitDump(u32 lo, u32 hi)
+{
+	static int s_n = 0;
+	if (s_n >= 4)
+		return;
+	char path[96];
+	std::snprintf(path, sizeof(path), "/data/ForjaSX2/logs/eejit-%d.bin", s_n++);
+	FILE* f = std::fopen(path, "wb");
+	if (!f)
+	{
+		ProbeLog("EE JIT dump (214): could not open %s\n", path);
+		return;
+	}
+	std::fwrite("EEJIT001", 1, 8, f);
+	u32 count = 0;
+	std::fwrite(&count, 4, 1, f);
+	u64 bytes = 0;
+	for (int i = 0;; i++)
+	{
+		const BASEBLOCKEX* b = recBlocks[i];
+		if (!b)
+			break;
+		if (b->startpc < lo || b->startpc >= hi || b->x86size == 0 || b->x86size > 65536 || b->size > 16384)
+			continue;
+		const u32 hdr[4] = {b->startpc, b->size, b->x86size, 0};
+		const u64 at = static_cast<u64>(b->fnptr);
+		std::fwrite(hdr, 4, 4, f);
+		std::fwrite(&at, 8, 1, f);
+		const u32* guest = reinterpret_cast<const u32*>(PSM(b->startpc));
+		for (u32 k = 0; k < b->size; k++)
+		{
+			const u32 w = guest ? guest[k] : 0;
+			std::fwrite(&w, 4, 1, f);
+		}
+		std::fwrite(reinterpret_cast<const void*>(b->fnptr), 1, b->x86size, f);
+		bytes += b->x86size;
+		count++;
+	}
+	std::fseek(f, 8, SEEK_SET);
+	std::fwrite(&count, 4, 1, f);
+	std::fclose(f);
+	ProbeLog("EE JIT dump (214): %u blocks in %08x-%08x, %llu bytes of x86, to %s\n", count, lo, hi,
+		static_cast<unsigned long long>(bytes), path);
+}
+#endif
+
 static void recEventTest()
 {
 	// (AI-assisted) Probe bypass: avoid per-event stack canary and probe overhead on ~600k events/s.

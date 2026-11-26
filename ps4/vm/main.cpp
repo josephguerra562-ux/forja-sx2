@@ -397,6 +397,11 @@ extern std::atomic<bool> g_forja_vu1_ahorro; // pcsx2/MTVU.cpp (152 in the app, 
 extern std::atomic<int> g_orbis_vu1_dump_request; // pcsx2/MTVU.cpp: the VU thread runs OrbisVU1Dump (microVU.cpp) between two programs
 static bool s_vu1_map_wanted = false; // 152 in the app: /data/ForjaSX2/vm-vu1-mapa at the game's start
 static unsigned s_vu1_map_beats = 0;
+// 214 in the app: /data/ForjaSX2/vm-ee-jit-volcado at the game's start (its two hex numbers: the range; empty, 0x00100000-0x02000000).
+void ForjaEEJitDump(u32 lo, u32 hi); // pcsx2/x86/ix86-32/iR5900.cpp
+static bool s_ee_jit_dump_wanted = false;
+static u32 s_ee_jit_dump_lo = 0, s_ee_jit_dump_hi = 0;
+static unsigned s_ee_jit_dump_beats = 0;
 extern u64 g_forja_mpg_total, g_forja_mpg_same;
 extern std::atomic<int> g_forja_vu1_dead_flags; // pcsx2/MTVU.cpp (153 in the app, "Banderas muertas del VU1")
 extern std::atomic<bool> g_forja_vu1_keep_regs; // pcsx2/MTVU.cpp (157 in the app, "Registros entre bloques")
@@ -3728,6 +3733,26 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 		// microcode the samples' JIT addresses are (OrbisVU1Dump, the PS5 port's vk-285-74).
 		s_vu1_map_wanted = access("/data/ForjaSX2/vm-vu1-mapa", F_OK) == 0;
 		s_vu1_map_beats = 0;
+		// 214 in the app: the EE recompiler's dump (vm-ee-jit-volcado), at ~60 and ~120 s of play.
+		{
+			s_ee_jit_dump_beats = 0;
+			s_ee_jit_dump_lo = 0x00100000u;
+			s_ee_jit_dump_hi = 0x02000000u;
+			FILE* m = std::fopen("/data/ForjaSX2/vm-ee-jit-volcado", "rb");
+			s_ee_jit_dump_wanted = m != nullptr;
+			if (m)
+			{
+				unsigned lo = 0, hi = 0;
+				if (std::fscanf(m, "%x %x", &lo, &hi) == 2 && lo < hi)
+				{
+					s_ee_jit_dump_lo = lo;
+					s_ee_jit_dump_hi = hi;
+				}
+				std::fclose(m);
+				ProbeLog("EE JIT dump (214 in the app): on (vm-ee-jit-volcado), blocks in %08x-%08x at ~60 and ~120 s of play\n",
+					s_ee_jit_dump_lo, s_ee_jit_dump_hi);
+			}
+		}
 		if (s_vu1_map_wanted)
 			ProbeLog("VU1 map (152 in the app): on (vm-vu1-mapa), dumps at ~60 and ~120 s of play to logs/vu1dump-0.bin and -1.bin\n");
 		const bool no = access("/data/ForjaSX2/vm-vu1-ahorro-no", F_OK) == 0;
@@ -6565,6 +6590,13 @@ void VMHostPoll()
 			}
 			s_last_vif1_fused = g_forja_vif1_fused;
 			std::copy(std::begin(g_forja_vif1_not_joined), std::end(g_forja_vif1_not_joined), s_last_not);
+			// 214 in the app: the EE recompiler's dump at the 12th and the 24th heartbeat of play (this is the EE thread, between blocks).
+			if (s_ee_jit_dump_wanted && vm_state == VMState::Running && PerformanceMetrics::GetInternalFPS() >= 5.0f)
+			{
+				s_ee_jit_dump_beats++;
+				if (s_ee_jit_dump_beats == 12 || s_ee_jit_dump_beats == 24)
+					ForjaEEJitDump(s_ee_jit_dump_lo, s_ee_jit_dump_hi);
+			}
 			// 152 in the app, the VU1's map: a dump at the 12th and the 24th heartbeat of play (~60 and ~120 s).
 			if (s_vu1_map_wanted && vm_state == VMState::Running && PerformanceMetrics::GetInternalFPS() >= 5.0f)
 			{
