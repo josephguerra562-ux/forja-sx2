@@ -438,6 +438,7 @@ extern u64 g_forja_vifm_pieces[2], g_forja_vifm_codes[2], g_forja_vifm_ticks[2],
 extern bool g_forja_vifm_on; // pcsx2/Vif_Transfer.cpp (202 in the app: the 193's meter only with vm-vif-medidor)
 extern std::atomic<int> g_forja_ev_calm; // pcsx2/COP0.cpp (205 in the app, "Eventos sin prisa")
 extern std::atomic<bool> g_forja_vif_breaks_join; // pcsx2/Vif1_Dma.cpp (208 in the app, "Cortes del VIF1 juntos")
+extern std::atomic<int> g_forja_spu2_batch; // pcsx2/IopCounters.cpp (211 in the app, "Sonido en tandas")
 extern u64 g_forja_ev_calm_ei_skips, g_forja_ev_calm_eret_skips, g_forja_ev_calm_timer;
 extern u64 g_forja_ev_calm_status_skips; // pcsx2/COP0.cpp (207 in the app)
 extern std::atomic<u64> g_orbis_ee_evtests; // pcsx2/R5900.cpp
@@ -3637,6 +3638,15 @@ static void ApplyGameProfile(ForjaGameProfile::Values profile)
 			if (on || apart || s_profile.vif_breaks_origin != ForjaGameProfile::Origin::Global)
 				ProbeLog("VIF1 timing breaks joined (208 in the app): %s (%s)%s\n", on ? "on" : "off", ProfileOriginName(s_profile.vif_breaks_origin),
 					apart ? ", vm-vif-cortes-separados" : "");
+		}
+		// 211 in the app, "Sonido en tandas" ([Forja] SonidoEnTandas; pcsx2/IopCounters.cpp). vm-sonido-cada-muestra turns it off.
+		{
+			const bool each = access("/data/ForjaSX2/vm-sonido-cada-muestra", F_OK) == 0;
+			const int batch = (!each && s_profile.spu2_batch >= 2) ? s_profile.spu2_batch : 1;
+			g_forja_spu2_batch.store(batch, std::memory_order_relaxed);
+			if (batch > 1 || each || s_profile.spu2_batch_origin != ForjaGameProfile::Origin::Global)
+				ProbeLog("Sound in batches (211 in the app): the SPU2's tick every %d samples (%s)%s\n", batch,
+					ProfileOriginName(s_profile.spu2_batch_origin), each ? ", vm-sonido-cada-muestra" : "");
 		}
 		// 206 in the app: the meter of what asks for each event test (/data/ForjaSX2/vm-eventos-razones; R5900.cpp ForjaEvWhyTake).
 		{

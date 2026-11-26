@@ -16,6 +16,16 @@
 #include "CDVD/CDVD.h"
 
 #include <math.h>
+#include <atomic>
+
+// 211 in the app, "Sonido en tandas" ([Forja] SonidoEnTandas; ps4/vm/main.cpp sets it; vm-sonido-cada-muestra turns it off): the
+// SPU2's tick (IOP counter 6) every N samples (768 IOP cycles each) instead of every one. The 206's meter, Shadow of the Colossus
+// with the 210: ~47,000 of its ~137,000 EE event tests a second were this tick, and each one ran psxRcntUpdate (all the IOP's
+// counters, _rcntSet six times) to mix a single sample (psxRcntUpdate 1.1 %, _rcntSet 1.0 %, SPU2async 0.7 % of the EE). SPU2's
+// TimeUpdate mixes every sample due, one by one, as before (key on/off, the voices); a register write still catches the SPU2 up
+// first, and a sound DMA in progress still moves the tick sooner (spu2sys.cpp CounterUpdate). Only for a game that raises no SPU2
+// interrupt (Shadow: irq_cores 0): those land at most N - 1 samples late. 1 = as before.
+std::atomic<int> g_forja_spu2_batch{1};
 
 #if defined(PCSX2_PS4_VM_BOOT)
 #include "common/Timer.h"
@@ -491,7 +501,7 @@ void psxRcntUpdate()
 
 	const u32 spu2_delta = (psxRegs.cycle - lClocks) % 768;
 	psxCounters[6].startCycle = psxRegs.cycle - spu2_delta;
-	psxCounters[6].deltaCycles = psxCounters[6].rate;
+	psxCounters[6].deltaCycles = psxCounters[6].rate * g_forja_spu2_batch.load(std::memory_order_relaxed); // 211 in the app
 #if defined(PCSX2_PS4_VM_BOOT)
 	// Forja SX2: how much of the EE thread the PS2's sound mixing takes (it runs inline here). One call in
 	// 16 is timed and counted 16 times; the VM heartbeat in main.cpp logs it and resets it.

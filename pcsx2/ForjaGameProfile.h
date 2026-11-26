@@ -161,6 +161,10 @@ namespace ForjaGameProfile
 		// a step that moved data (needs VifMenosTurnos). Off unless the profile says.
 		int vif_breaks = -1;
 		Origin vif_breaks_origin = Origin::Global;
+		// 211 in the app: [Forja] SonidoEnTandas, "Sonido en tandas" (pcsx2/IopCounters.cpp): the SPU2's tick every N samples (2-8).
+		// Off unless the profile says.
+		int spu2_batch = -1;
+		Origin spu2_batch_origin = Origin::Global;
 		Origin gs_ab_origin = Origin::Global;
 		// 173 in the app: [Forja] EEPlzcwRapido, "PLZCW rápido" (pcsx2/x86/iMMI.cpp): 1 the EE's PLZCW with LZCNT and no branches. Off unless
 		// the profile says.
@@ -419,6 +423,7 @@ namespace ForjaGameProfile
 		read_int("VifHilo", &v.vif_hilo, &v.vif_hilo_origin); // 195 in the app
 		read_int("EventosSinPrisa", &v.ev_calm, &v.ev_calm_origin); // 205 in the app
 		read_int("VifCortesJuntos", &v.vif_breaks, &v.vif_breaks_origin); // 208 in the app
+		read_int("SonidoEnTandas", &v.spu2_batch, &v.spu2_batch_origin); // 211 in the app
 		read_int("EEPlzcwRapido", &v.ee_lzcnt, &v.ee_lzcnt_origin); // 173 in the app
 		read_int("AnimMediasDir", &v.anim_half_addr, &v.anim_half_origin); // 174 in the app
 		read_int("AnimMediasFuncion", &v.anim_half_fn, &v.anim_half_origin);
@@ -581,6 +586,7 @@ namespace ForjaGameProfile
 		v.vif_hilo = std::clamp(v.vif_hilo, -1, 1); // 195 in the app
 		v.ev_calm = std::clamp(v.ev_calm, -1, 1); // 205 in the app
 		v.vif_breaks = std::clamp(v.vif_breaks, -1, 1); // 208 in the app
+		v.spu2_batch = std::clamp(v.spu2_batch, -1, 8); // 211 in the app
 		v.ee_lzcnt = std::clamp(v.ee_lzcnt, -1, 1); // 173 in the app
 		v.vif_nocopy = std::clamp(v.vif_nocopy, -1, 1); // 175 in the app
 		if (v.crowd_every != 0 && v.crowd_every != 99) // compilation 137: 99 is "Al vuelo"
